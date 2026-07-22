@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
-import axios from "axios";
+import API from "../services/api"; // ✅ Using your configured API
 import {
   FiDollarSign,
   FiShoppingBag,
@@ -57,9 +57,8 @@ export default function BusinessDashboard() {
 
   const loadDashboard = async () => {
     try {
-      const res = await axios.get(
-        `http://localhost:5000/api/dashboard?business_id=${businessId}`
-      );
+      // ✅ Using API service - automatically adds JWT token
+      const res = await API.get(`/dashboard?business_id=${businessId}`);
       setDashboard(res.data);
     } catch (err) {
       console.error("Failed to load dashboard:", err);
@@ -71,9 +70,8 @@ export default function BusinessDashboard() {
   const loadRecentSales = async () => {
     try {
       // Load only 5 recent sales
-      const res = await axios.get(
-        `http://localhost:5000/api/sales?business_id=${businessId}&limit=5`
-      );
+      // ✅ Using API service - automatically adds JWT token
+      const res = await API.get(`/sales?business_id=${businessId}&limit=5`);
       // Ensure we only show 5 items
       const salesData = res.data.data || [];
       setRecentSales(salesData.slice(0, 5));
@@ -465,7 +463,6 @@ export default function BusinessDashboard() {
             label="Reports"
             color="#f59e0b"
           />
-          {/* New 3D Shop Designer Button */}
           <QuickActionButton
             to="/create-layout"
             icon={<FiGrid size={20} />}
