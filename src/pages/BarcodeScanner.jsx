@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { BrowserMultiFormatReader } from "@zxing/browser";
 import {
-  BrowserMultiFormatReader,
   BarcodeFormat,
   DecodeHintType,
 } from "@zxing/library";
@@ -69,9 +69,7 @@ export default function BarcodeScanner({
 
       // Create ZXing hints for better detection
       const hints = new Map();
-
       hints.set(DecodeHintType.TRY_HARDER, true);
-
       hints.set(DecodeHintType.POSSIBLE_FORMATS, [
         BarcodeFormat.EAN_13,
         BarcodeFormat.EAN_8,
@@ -89,10 +87,9 @@ export default function BarcodeScanner({
 
       // Create reader with hints
       const reader = new BrowserMultiFormatReader(hints);
-
       codeReader.current = reader;
 
-      // Get cameras
+      // Get cameras - NOW USING @zxing/browser's method
       const devices = await BrowserMultiFormatReader.listVideoInputDevices();
 
       if (!devices.length) {
@@ -103,7 +100,6 @@ export default function BarcodeScanner({
 
       // Prefer back camera
       let deviceId = devices[0].deviceId;
-
       const backCamera = devices.find(
         (d) =>
           d.label.toLowerCase().includes("back") ||
