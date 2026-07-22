@@ -28,14 +28,26 @@ export default function BarcodeScanner({
   const frameSkipRef = useRef(0);
   const lastBarcodeRef = useRef("");
   const beepRef = useRef(null);
+  const [soundEnabled, setSoundEnabled] = useState(true);
 
   // Preload beep sound
   useEffect(() => {
-    beepRef.current = new Audio("/beep.mp3");
-    beepRef.current.volume = 0.5;
+    // Create audio context for better sound handling
+    try {
+      beepRef.current = new Audio("/beep.mp3");
+      beepRef.current.volume = 0.7;
+      beepRef.current.preload = "auto";
+      
+      // Preload the audio
+      beepRef.current.load();
+    } catch (e) {
+      console.log("Failed to load audio:", e);
+    }
+    
     return () => {
       if (beepRef.current) {
         beepRef.current.pause();
+        beepRef.current.src = "";
         beepRef.current = null;
       }
     };
@@ -75,6 +87,62 @@ export default function BarcodeScanner({
     } catch (err) {
       console.log("Torch not supported on this device");
       setTorchAvailable(false);
+    }
+  };
+
+  const playBeep = () => {
+    if (!soundEnabled) return;
+    
+    try {
+      if (beepRef.current) {
+        // Reset audio to start
+        beepRef.current.currentTime = 0;
+        
+        // Create a promise for playing
+        const playPromise = beepRef.current.play();
+        
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              // Audio played successfully
+            })
+            .catch((error) => {
+              // Auto-play was prevented
+              console.log("Audio play prevented:", error);
+              // Try to play with user interaction
+              const playOnInteraction = () => {
+                beepRef.current?.play().catch(() => {});
+                document.removeEventListener('click', playOnInteraction);
+                document.removeEventListener('touchstart', playOnInteraction);
+              };
+              document.addEventListener('click', playOnInteraction);
+              document.addEventListener('touchstart', playOnInteraction);
+            });
+        }
+      } else {
+        // Fallback: Create a temporary audio context for beep
+        try {
+          const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          const oscillator = audioCtx.createOscillator();
+          const gainNode = audioCtx.createGain();
+          
+          oscillator.connect(gainNode);
+          gainNode.connect(audioCtx.destination);
+          
+          oscillator.frequency.value = 800;
+          oscillator.type = "sine";
+          
+          gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+          
+          oscillator.start(audioCtx.currentTime);
+          oscillator.stop(audioCtx.currentTime + 0.2);
+        } catch (e) {
+          console.log("Fallback beep failed:", e);
+        }
+      }
+    } catch (e) {
+      console.log("Beep error:", e);
     }
   };
 
@@ -233,12 +301,7 @@ export default function BarcodeScanner({
             console.log("Format:", result.getBarcodeFormat());
 
             // PLAY BEEP + VIBRATE
-            try {
-              if (beepRef.current) {
-                beepRef.current.currentTime = 0;
-                beepRef.current.play().catch(() => {});
-              }
-            } catch (e) {}
+            playBeep();
 
             // Vibrate
             try {
@@ -280,6 +343,9 @@ export default function BarcodeScanner({
       );
 
       if (res.data.success) {
+        // Play success sound
+        playBeep();
+        
         // Stop scanner after successful scan
         await stopScanner();
 
@@ -289,6 +355,25 @@ export default function BarcodeScanner({
           onProductFound(res.data.data);
         }, 300);
       } else {
+        // Play error sound (different frequency)
+        try {
+          const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          const oscillator = audioCtx.createOscillator();
+          const gainNode = audioCtx.createGain();
+          
+          oscillator.connect(gainNode);
+          gainNode.connect(audioCtx.destination);
+          
+          oscillator.frequency.value = 300;
+          oscillator.type = "sawtooth";
+          
+          gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+          
+          oscillator.start(audioCtx.currentTime);
+          oscillator.stop(audioCtx.currentTime + 0.3);
+        } catch (e) {}
+        
         setError("Product not found in inventory");
         setIsScanning(true);
 
@@ -371,6 +456,7 @@ export default function BarcodeScanner({
       );
 
       if (res.data.success) {
+        playBeep();
         await stopScanner();
         onClose();
         onProductFound(res.data.data);
@@ -435,6 +521,21 @@ export default function BarcodeScanner({
         >
           <h2 style={{ margin: 0 }}>📦 Barcode Scanner</h2>
           <div style={{ display: "flex", gap: "10px" }}>
+            <button
+              onClick={() => setSoundEnabled(!soundEnabled)}
+              style={{
+                background: soundEnabled ? "#10b981" : "#6b7280",
+                color: "#fff",
+                border: "none",
+                padding: "10px 15px",
+                borderRadius: 8,
+                cursor: "pointer",
+                fontSize: "16px",
+              }}
+              title={soundEnabled ? "Sound on" : "Sound off"}
+            >
+              {soundEnabled ? "🔊" : "🔇"}
+            </button>
             {torchAvailable && (
               <button
                 onClick={toggleTorch}
