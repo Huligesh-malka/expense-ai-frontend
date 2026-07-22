@@ -24,6 +24,22 @@ export default function BarcodeScanner({
   const [torchOn, setTorchOn] = useState(false);
   const [torchAvailable, setTorchAvailable] = useState(false);
   const videoTrackRef = useRef(null);
+  const streamRef = useRef(null);
+  const frameSkipRef = useRef(0);
+  const lastBarcodeRef = useRef("");
+  const beepRef = useRef(null);
+
+  // Preload beep sound
+  useEffect(() => {
+    beepRef.current = new Audio("/beep.mp3");
+    beepRef.current.volume = 0.5;
+    return () => {
+      if (beepRef.current) {
+        beepRef.current.pause();
+        beepRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     startScanner();
@@ -67,7 +83,7 @@ export default function BarcodeScanner({
       setLoading(true);
       setError("");
 
-      // Create ZXing hints for better detection
+      // Create ZXing hints for better detection - INCLUDING MORE FORMATS
       const hints = new Map();
       hints.set(DecodeHintType.TRY_HARDER, true);
       hints.set(DecodeHintType.POSSIBLE_FORMATS, [
@@ -83,13 +99,17 @@ export default function BarcodeScanner({
         BarcodeFormat.QR_CODE,
         BarcodeFormat.DATA_MATRIX,
         BarcodeFormat.AZTEC,
+        BarcodeFormat.PDF_417,
+        BarcodeFormat.MAXICODE,
+        BarcodeFormat.RSS_14,
+        BarcodeFormat.RSS_EXPANDED,
       ]);
 
       // Create reader with hints
       const reader = new BrowserMultiFormatReader(hints);
       codeReader.current = reader;
 
-      // Get cameras - NOW USING @zxing/browser's method
+      // Get cameras
       const devices = await BrowserMultiFormatReader.listVideoInputDevices();
 
       if (!devices.length) {
@@ -113,21 +133,118 @@ export default function BarcodeScanner({
 
       console.log("📷 Using camera:", deviceId);
 
-      // Start scanner - decodeFromVideoDevice handles camera opening
-      controls.current = await reader.decodeFromVideoDevice(
-        deviceId,
+      // HIGH-RESOLUTION camera constraints
+      const constraints = {
+        video: {
+          deviceId: { exact: deviceId },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          facingMode: "environment",
+          aspectRatio: { ideal: 1.3333333333333333 },
+        },
+      };
+
+      // Get user media with high resolution
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      streamRef.current = stream;
+
+      // Set video source
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+
+      // Get video track for advanced controls
+      const track = stream.getVideoTracks()[0];
+      videoTrackRef.current = track;
+
+      // APPLY PROFESSIONAL CAMERA SETTINGS
+      try {
+        // 1. CONTINUOUS AUTOFOCUS
+        await track.applyConstraints({
+          advanced: [{ focusMode: "continuous" }],
+        });
+        console.log("✅ Continuous autofocus enabled");
+      } catch (e) {
+        console.log("Autofocus not supported");
+      }
+
+      try {
+        // 2. OPTICAL ZOOM (50% of max)
+        const capabilities = track.getCapabilities();
+        if (capabilities.zoom) {
+          const zoomLevel = capabilities.zoom.max * 0.5;
+          await track.applyConstraints({
+            advanced: [{ zoom: zoomLevel }],
+          });
+          console.log(`✅ Zoom set to ${zoomLevel.toFixed(1)}x`);
+        }
+      } catch (e) {
+        console.log("Zoom not supported");
+      }
+
+      try {
+        // 3. CONTINUOUS EXPOSURE
+        await track.applyConstraints({
+          advanced: [{ exposureMode: "continuous" }],
+        });
+        console.log("✅ Continuous exposure enabled");
+      } catch (e) {
+        console.log("Exposure control not supported");
+      }
+
+      // Check torch availability
+      const capabilities = track.getCapabilities();
+      if (capabilities.torch) {
+        setTorchAvailable(true);
+      }
+
+      // START DECODING WITH FRAME SKIP FOR PERFORMANCE
+      let lastResult = null;
+      let lastResultTime = 0;
+      const MIN_RESULT_INTERVAL = 200; // Minimum 200ms between results
+
+      controls.current = await reader.decodeFromStream(
+        stream,
         videoRef.current,
-        async (result, error) => {
+        (result, error) => {
+          // Frame skipping - process every 2nd frame for better performance
+          frameSkipRef.current++;
+          if (frameSkipRef.current % 2 !== 0) return;
+
           if (result && isScanning) {
             const barcode = result.getText();
+            const now = Date.now();
 
-            // Prevent duplicate scans
-            if (barcode === lastScanned) return;
+            // Prevent duplicate scans using ref (faster than state)
+            if (lastBarcodeRef.current === barcode) {
+              return;
+            }
+
+            // Prevent rapid re-scans
+            if (now - lastResultTime < MIN_RESULT_INTERVAL) {
+              return;
+            }
+
+            lastResultTime = now;
+            lastBarcodeRef.current = barcode;
 
             console.log("✅ Barcode detected:", barcode);
             console.log("Format:", result.getBarcodeFormat());
 
-            setLastScanned(barcode);
+            // PLAY BEEP + VIBRATE
+            try {
+              if (beepRef.current) {
+                beepRef.current.currentTime = 0;
+                beepRef.current.play().catch(() => {});
+              }
+            } catch (e) {}
+
+            // Vibrate
+            try {
+              navigator.vibrate?.(100);
+            } catch (e) {}
+
             setIsScanning(false);
 
             // Clear any existing timeout
@@ -135,47 +252,12 @@ export default function BarcodeScanner({
               clearTimeout(scanTimeoutRef.current);
             }
 
-            try {
-              const res = await API.get(
-                `/products/barcode/${encodeURIComponent(
-                  barcode
-                )}?business_id=${businessId}`
-              );
-
-              if (res.data.success) {
-                await stopScanner();
-
-                // Small delay for clean transition
-                setTimeout(() => {
-                  onClose();
-                  onProductFound(res.data.data);
-                }, 300);
-              } else {
-                setError("Product not found in inventory");
-                setIsScanning(true);
-
-                setTimeout(() => {
-                  setError("");
-                }, 3000);
-              }
-            } catch (e) {
-              console.error("Error searching product:", e);
-              setError("Error searching product");
-              setIsScanning(true);
-
-              setTimeout(() => {
-                setError("");
-              }, 3000);
-            }
-
-            // Reset scanning after cooldown
-            scanTimeoutRef.current = setTimeout(() => {
-              setIsScanning(true);
-            }, 2000);
+            // Search product
+            searchProduct(barcode);
           }
 
           if (error) {
-            // Ignore normal scan errors (NotFoundException means no barcode detected)
+            // Ignore normal scan errors
             if (error.name !== "NotFoundException") {
               console.log("Scanner error:", error.name);
             }
@@ -184,26 +266,50 @@ export default function BarcodeScanner({
       );
 
       setLoading(false);
-
-      // Check if torch is available after stream starts
-      setTimeout(async () => {
-        if (videoRef.current && videoRef.current.srcObject) {
-          const tracks = videoRef.current.srcObject.getVideoTracks();
-          if (tracks.length > 0) {
-            videoTrackRef.current = tracks[0];
-            // Check if torch is available
-            const capabilities = tracks[0].getCapabilities();
-            if (capabilities.torch) {
-              setTorchAvailable(true);
-            }
-          }
-        }
-      }, 1000);
     } catch (err) {
       console.error("Scanner error:", err);
       setError("Unable to access camera. Please use manual entry.");
       setLoading(false);
     }
+  };
+
+  const searchProduct = async (barcode) => {
+    try {
+      const res = await API.get(
+        `/products/barcode/${encodeURIComponent(barcode)}?business_id=${businessId}`
+      );
+
+      if (res.data.success) {
+        // Stop scanner after successful scan
+        await stopScanner();
+
+        // Small delay for transition
+        setTimeout(() => {
+          onClose();
+          onProductFound(res.data.data);
+        }, 300);
+      } else {
+        setError("Product not found in inventory");
+        setIsScanning(true);
+
+        setTimeout(() => {
+          setError("");
+        }, 3000);
+      }
+    } catch (e) {
+      console.error("Error searching product:", e);
+      setError("Error searching product");
+      setIsScanning(true);
+
+      setTimeout(() => {
+        setError("");
+      }, 3000);
+    }
+
+    // Reset scanning after cooldown
+    scanTimeoutRef.current = setTimeout(() => {
+      setIsScanning(true);
+    }, 2000);
   };
 
   const stopScanner = async () => {
@@ -225,16 +331,21 @@ export default function BarcodeScanner({
       console.log("Error resetting reader:", e);
     }
 
-    if (videoRef.current && videoRef.current.srcObject) {
+    // Stop all tracks in stream
+    if (streamRef.current) {
       try {
-        videoRef.current.srcObject.getTracks().forEach((track) => {
+        streamRef.current.getTracks().forEach((track) => {
           track.stop();
           track.enabled = false;
         });
-        videoRef.current.srcObject = null;
+        streamRef.current = null;
       } catch (e) {
-        console.log("Error stopping video tracks:", e);
+        console.log("Error stopping stream tracks:", e);
       }
+    }
+
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
     }
 
     if (scanTimeoutRef.current) {
@@ -244,6 +355,7 @@ export default function BarcodeScanner({
 
     setTorchOn(false);
     videoTrackRef.current = null;
+    lastBarcodeRef.current = "";
   };
 
   const searchManualBarcode = async () => {
@@ -404,7 +516,7 @@ export default function BarcodeScanner({
             muted
           />
 
-          {/* Scanning overlay - better for barcode alignment */}
+          {/* Professional scanning overlay - optimized for small barcodes */}
           {!loading && !error && (
             <div
               style={{
@@ -412,26 +524,27 @@ export default function BarcodeScanner({
                 top: "50%",
                 left: "50%",
                 transform: "translate(-50%, -50%)",
-                width: "85%",
-                maxWidth: "500px",
-                height: "120px",
-                border: "3px solid rgba(255, 255, 255, 0.7)",
-                borderRadius: 10,
+                width: "70%",
+                maxWidth: "450px",
+                height: "140px",
+                border: "2px solid rgba(255, 255, 255, 0.8)",
+                borderRadius: 12,
                 boxShadow: "0 0 0 4000px rgba(0, 0, 0, 0.3)",
                 pointerEvents: "none",
               }}
             >
-              {/* Corner markers */}
+              {/* Corner markers with neon glow */}
               <div
                 style={{
                   position: "absolute",
                   top: -3,
                   left: -3,
-                  width: 30,
-                  height: 30,
-                  borderTop: "4px solid #3b82f6",
-                  borderLeft: "4px solid #3b82f6",
+                  width: 35,
+                  height: 35,
+                  borderTop: "4px solid #00ff00",
+                  borderLeft: "4px solid #00ff00",
                   borderRadius: "4px 0 0 0",
+                  boxShadow: "0 0 10px rgba(0, 255, 0, 0.3)",
                 }}
               />
               <div
@@ -439,11 +552,12 @@ export default function BarcodeScanner({
                   position: "absolute",
                   top: -3,
                   right: -3,
-                  width: 30,
-                  height: 30,
-                  borderTop: "4px solid #3b82f6",
-                  borderRight: "4px solid #3b82f6",
+                  width: 35,
+                  height: 35,
+                  borderTop: "4px solid #00ff00",
+                  borderRight: "4px solid #00ff00",
                   borderRadius: "0 4px 0 0",
+                  boxShadow: "0 0 10px rgba(0, 255, 0, 0.3)",
                 }}
               />
               <div
@@ -451,11 +565,12 @@ export default function BarcodeScanner({
                   position: "absolute",
                   bottom: -3,
                   left: -3,
-                  width: 30,
-                  height: 30,
-                  borderBottom: "4px solid #3b82f6",
-                  borderLeft: "4px solid #3b82f6",
+                  width: 35,
+                  height: 35,
+                  borderBottom: "4px solid #00ff00",
+                  borderLeft: "4px solid #00ff00",
                   borderRadius: "0 0 0 4px",
+                  boxShadow: "0 0 10px rgba(0, 255, 0, 0.3)",
                 }}
               />
               <div
@@ -463,28 +578,60 @@ export default function BarcodeScanner({
                   position: "absolute",
                   bottom: -3,
                   right: -3,
-                  width: 30,
-                  height: 30,
-                  borderBottom: "4px solid #3b82f6",
-                  borderRight: "4px solid #3b82f6",
+                  width: 35,
+                  height: 35,
+                  borderBottom: "4px solid #00ff00",
+                  borderRight: "4px solid #00ff00",
                   borderRadius: "0 0 4px 0",
+                  boxShadow: "0 0 10px rgba(0, 255, 0, 0.3)",
                 }}
               />
-              {/* Center line for better barcode alignment */}
+              {/* Animated scanning line for better alignment */}
               <div
                 style={{
                   position: "absolute",
                   top: "50%",
-                  left: "10%",
-                  right: "10%",
-                  height: "2px",
-                  background: "rgba(59, 130, 246, 0.5)",
+                  left: "5%",
+                  right: "5%",
+                  height: "3px",
+                  background: "linear-gradient(90deg, transparent, #00ff00, transparent)",
                   transform: "translateY(-50%)",
+                  animation: "scanLine 1.5s ease-in-out infinite",
+                  boxShadow: "0 0 20px rgba(0, 255, 0, 0.5)",
                 }}
               />
+              {/* Text hint */}
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: -40,
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  color: "rgba(255, 255, 255, 0.7)",
+                  fontSize: "14px",
+                  whiteSpace: "nowrap",
+                  textShadow: "0 0 10px rgba(0,0,0,0.8)",
+                }}
+              >
+                Align barcode within frame
+              </div>
             </div>
           )}
         </div>
+
+        {/* Add CSS animation */}
+        <style jsx>{`
+          @keyframes scanLine {
+            0%, 100% {
+              top: 20%;
+              opacity: 0.3;
+            }
+            50% {
+              top: 80%;
+              opacity: 1;
+            }
+          }
+        `}</style>
 
         <hr style={{ margin: "16px 0", flexShrink: 0 }} />
 
@@ -550,8 +697,8 @@ export default function BarcodeScanner({
           }}
         >
           <p style={{ margin: 0, fontSize: "13px", color: "#666" }}>
-            📷 Supported: EAN-13 • EAN-8 • UPC-A • UPC-E • CODE-128 • CODE-39 •
-            QR Code • Data Matrix • Aztec
+            📷 Supported: EAN-13 • EAN-8 • UPC-A • UPC-E • CODE-128 • CODE-39 • 
+            QR Code • Data Matrix • Aztec • PDF417 • MaxiCode • RSS-14
           </p>
         </div>
       </div>
