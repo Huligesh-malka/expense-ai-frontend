@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import axios from "axios";
+import API from "../services/api"; // Use centralized API service
 import {
   FiPlus,
   FiSearch,
@@ -13,93 +13,57 @@ import {
 } from "react-icons/fi";
 
 export default function Suppliers() {
-
   const businessId = localStorage.getItem("businessId");
-
   const [suppliers, setSuppliers] = useState([]);
-
   const [loading, setLoading] = useState(true);
-
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-
     loadSuppliers();
-
   }, []);
 
   const loadSuppliers = async () => {
-
     try {
-
-      const res = await axios.get(
-
-        `http://localhost:5000/api/suppliers?business_id=${businessId}`
-
-      );
-
+      const res = await API.get(`/suppliers?business_id=${businessId}`);
       setSuppliers(res.data.data || []);
-
     } catch (err) {
-
-      console.log(err);
-
+      console.error("Error loading suppliers:", err);
       alert("Failed to load suppliers");
-
     } finally {
-
       setLoading(false);
-
     }
-
   };
 
   const deleteSupplier = async (id) => {
-
     const ok = window.confirm(
       "Are you sure you want to delete this supplier?"
     );
-
     if (!ok) return;
 
     try {
-
-      await axios.delete(
-
-        `http://localhost:5000/api/suppliers/${id}`
-
-      );
-
+      await API.delete(`/suppliers/${id}`);
       alert("Supplier deleted successfully.");
-
       loadSuppliers();
-
     } catch (err) {
-
-      console.log(err);
-
+      console.error("Error deleting supplier:", err);
       alert(
         err.response?.data?.message ||
         "Failed to delete supplier."
       );
-
     }
-
   };
 
   const filteredSuppliers = suppliers.filter((item) =>
-
     item.supplier_name
-      .toLowerCase()
+      ?.toLowerCase()
       .includes(search.toLowerCase()) ||
 
     (item.company_name || "")
-      .toLowerCase()
+      ?.toLowerCase()
       .includes(search.toLowerCase()) ||
 
     (item.supplier_phone || "")
-      .includes(search)
-
+      ?.includes(search)
   );
 
   // Get status color
@@ -113,450 +77,396 @@ export default function Suppliers() {
   };
 
   if (loading) {
-
     return (
-
-      <div
-        style={{
-          padding: 40,
-          textAlign: "center",
-          fontSize: 18
-        }}
-      >
-        Loading Suppliers...
+      <div style={styles.loadingContainer}>
+        <div style={styles.loadingSpinner}></div>
+        <p style={styles.loadingText}>Loading Suppliers...</p>
       </div>
-
     );
-
   }
 
   return (
-
-    <div
-      style={{
-        padding:30,
-        background:"#f5f7fb",
-        minHeight:"100vh"
-      }}
-    >
-
+    <div style={styles.container}>
       {/* Header */}
-
-      <div
-        style={{
-          display:"flex",
-          justifyContent:"space-between",
-          alignItems:"center",
-          marginBottom:25,
-          flexWrap:"wrap",
-          gap:15
-        }}
-      >
-
+      <div style={styles.header}>
         <div>
-
-          <h1
-            style={{
-              margin:0,
-              color:"#1f2937"
-            }}
-          >
-            Suppliers
-          </h1>
-
-          <p
-            style={{
-              color:"#6b7280"
-            }}
-          >
-            Manage all suppliers
-          </p>
-
+          <h1 style={styles.title}>Suppliers</h1>
+          <p style={styles.subtitle}>Manage all suppliers</p>
         </div>
-
-        <Link to="/add-supplier">
-
-          <button
-            style={{
-              background:"#2563eb",
-              color:"#fff",
-              border:"none",
-              padding:"12px 20px",
-              borderRadius:10,
-              cursor:"pointer",
-              display:"flex",
-              alignItems:"center",
-              gap:8,
-              transition:"background 0.2s"
-            }}
-            onMouseEnter={(e) => e.target.style.background = "#1d4ed8"}
-            onMouseLeave={(e) => e.target.style.background = "#2563eb"}
-          >
-            <FiPlus />
-            Add Supplier
-          </button>
-
+        <Link to="/add-supplier" style={styles.primaryButton}>
+          <FiPlus size={18} />
+          Add Supplier
         </Link>
-
       </div>
 
       {/* Search */}
-
-      <div
-        style={{
-          background:"#fff",
-          padding:20,
-          borderRadius:12,
-          marginBottom:20
-        }}
-      >
-
-        <div
-          style={{
-            position:"relative"
-          }}
-        >
-
-          <FiSearch
-            style={{
-              position:"absolute",
-              top:14,
-              left:15,
-              color:"#888"
-            }}
-          />
-
+      <div style={styles.searchSection}>
+        <div style={styles.searchWrapper}>
+          <FiSearch size={18} color="#9ca3af" style={styles.searchIcon} />
           <input
-
             type="text"
-
-            placeholder="Search supplier..."
-
+            placeholder="Search by supplier name, company or phone..."
             value={search}
-
-            onChange={(e)=>setSearch(e.target.value)}
-
-            style={{
-              width:"100%",
-              padding:"12px 45px",
-              borderRadius:8,
-              border:"1px solid #ddd",
-              outline:"none",
-              fontSize:"14px"
-            }}
-
+            onChange={(e) => setSearch(e.target.value)}
+            style={styles.searchInput}
           />
-
         </div>
-
+        <span style={styles.resultCount}>
+          {filteredSuppliers.length} supplier{filteredSuppliers.length !== 1 ? "s" : ""}
+        </span>
       </div>
 
       {/* Table */}
-
-      <div
-        style={{
-          background:"#fff",
-          borderRadius:12,
-          overflow:"hidden",
-          boxShadow:"0 2px 8px rgba(0,0,0,.08)",
-          overflowX:"auto"
-        }}
-      >
-
-        <table
-          width="100%"
-          cellPadding="15"
-          style={{
-            borderCollapse:"collapse",
-            minWidth:"700px"
-          }}
-        >
-
+      <div style={styles.tableContainer}>
+        <table style={styles.table}>
           <thead>
-
-            <tr
-              style={{
-                background:"#2563eb",
-                color:"#fff"
-              }}
-            >
-
-              <th align="left">Supplier</th>
-
-              <th align="left">Phone</th>
-
-              <th align="left">Email</th>
-
-              <th align="left">Opening Balance</th>
-
-              <th align="left">Status</th>
-
-              <th align="center">Action</th>
-
+            <tr>
+              <th style={styles.th}>Supplier</th>
+              <th style={styles.th}>Phone</th>
+              <th style={styles.th}>Email</th>
+              <th style={styles.th}>Opening Balance</th>
+              <th style={styles.th}>Status</th>
+              <th style={{...styles.th, textAlign: "center"}}>Action</th>
             </tr>
-
           </thead>
-
           <tbody>
-
-            {filteredSuppliers.length===0 && (
-
+            {filteredSuppliers.length === 0 && (
               <tr>
-
-                <td
-                  colSpan="6"
-                  align="center"
-                  style={{
-                    padding:40
-                  }}
-                >
-
-                  No Suppliers Found
-
+                <td colSpan="6" style={styles.emptyState}>
+                  <div style={styles.emptyIcon}>📦</div>
+                  <p style={styles.emptyText}>
+                    {search ? "No matching suppliers found" : "No suppliers added yet"}
+                  </p>
+                  {!search && (
+                    <Link to="/add-supplier" style={styles.emptyButton}>
+                      Add your first supplier
+                    </Link>
+                  )}
                 </td>
-
               </tr>
-
             )}
-
-            {filteredSuppliers.map((supplier)=>(
-
-              <tr
-                key={supplier.id}
-                style={{
-                  borderBottom:"1px solid #eee",
-                  transition:"background 0.2s"
-                }}
-                onMouseEnter={(e) => e.target.style.background = "#f8fafc"}
-                onMouseLeave={(e) => e.target.style.background = "transparent"}
-              >
-
+            {filteredSuppliers.map((supplier) => (
+              <tr key={supplier.id} style={styles.tableRow}>
                 <td>
-
-                  <div
-                    style={{
-                      display:"flex",
-                      alignItems:"center",
-                      gap:10
-                    }}
-                  >
-
-                    <div
-                      style={{
-                        width:42,
-                        height:42,
-                        borderRadius:"50%",
-                        background:"#e0f2fe",
-                        display:"flex",
-                        justifyContent:"center",
-                        alignItems:"center",
-                        flexShrink:0
-                      }}
-                    >
-                      <FiTruck color="#2563eb"/>
+                  <div style={styles.supplierCell}>
+                    <div style={styles.supplierAvatar}>
+                      <FiTruck size={20} color="#3b82f6" />
                     </div>
-
                     <div>
-
-                      <div
-                        style={{
-                          fontWeight:"bold"
-                        }}
-                      >
+                      <div style={styles.supplierName}>
                         {supplier.supplier_name}
                       </div>
-
-                      <div
-                        style={{
-                          fontSize:13,
-                          color:"#777"
-                        }}
-                      >
+                      <div style={styles.companyName}>
                         {supplier.company_name || "-"}
                       </div>
-
                     </div>
-
                   </div>
-
                 </td>
-
                 <td>
-
-                  <div
-                    style={{
-                      display:"flex",
-                      alignItems:"center",
-                      gap:6
-                    }}
-                  >
-                    <FiPhone size={14}/>
-
+                  <div style={styles.contactCell}>
+                    <FiPhone size={14} color="#94a3b8" />
                     {supplier.supplier_phone || "-"}
-
                   </div>
-
                 </td>
-
                 <td>
-
-                  <div
-                    style={{
-                      display:"flex",
-                      alignItems:"center",
-                      gap:6
-                    }}
-                  >
-
-                    <FiMail size={14}/>
-
+                  <div style={styles.contactCell}>
+                    <FiMail size={14} color="#94a3b8" />
                     {supplier.supplier_email || "-"}
-
                   </div>
-
                 </td>
-
                 <td>
-
-                  ₹{Number(supplier.opening_balance || 0).toFixed(2)}
-
+                  <span style={styles.balance}>
+                    ₹{Number(supplier.opening_balance || 0).toFixed(2)}
+                  </span>
                 </td>
-
                 <td>
-
-                  <span
-                    style={{
-                      display:"inline-block",
-                      padding:"4px 12px",
-                      borderRadius:20,
-                      fontSize:12,
-                      fontWeight:600,
-                      background: getStatusColor(supplier.status),
-                      color:"#fff"
-                    }}
-                  >
+                  <span style={{
+                    ...styles.statusBadge,
+                    background: getStatusColor(supplier.status),
+                    color: "#fff"
+                  }}>
                     {supplier.status || "Active"}
                   </span>
-
                 </td>
-
-                <td align="center">
-
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "center",
-                      gap: 8,
-                      flexWrap: "wrap"
-                    }}
-                  >
-
-                    {/* View */}
-
-                    <Link to={`/supplier/${supplier.id}`}>
-
-                      <button
-                        style={{
-                          background: "#0ea5e9",
-                          color: "#fff",
-                          border: "none",
-                          padding: "8px 10px",
-                          borderRadius: 8,
-                          cursor: "pointer",
-                          transition: "transform 0.1s, background 0.2s",
-                          display:"inline-flex",
-                          alignItems:"center"
-                        }}
-                        title="View Supplier"
-                        onMouseEnter={(e) => {
-                          e.target.style.background = "#0284c7";
-                          e.target.style.transform = "scale(1.05)";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.target.style.background = "#0ea5e9";
-                          e.target.style.transform = "scale(1)";
-                        }}
-                      >
-                        <FiEye />
-                      </button>
-
+                <td>
+                  <div style={styles.actionButtons}>
+                    <Link to={`/supplier/${supplier.id}`} style={styles.viewButton} title="View Supplier">
+                      <FiEye size={14} />
                     </Link>
-
-                    {/* Edit */}
-
-                    <Link to={`/edit-supplier/${supplier.id}`}>
-
-                      <button
-                        style={{
-                          background: "#f59e0b",
-                          color: "#fff",
-                          border: "none",
-                          padding: "8px 10px",
-                          borderRadius: 8,
-                          cursor: "pointer",
-                          transition: "transform 0.1s, background 0.2s",
-                          display:"inline-flex",
-                          alignItems:"center"
-                        }}
-                        title="Edit Supplier"
-                        onMouseEnter={(e) => {
-                          e.target.style.background = "#d97706";
-                          e.target.style.transform = "scale(1.05)";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.target.style.background = "#f59e0b";
-                          e.target.style.transform = "scale(1)";
-                        }}
-                      >
-                        <FiEdit />
-                      </button>
-
+                    <Link to={`/edit-supplier/${supplier.id}`} style={styles.editButton} title="Edit Supplier">
+                      <FiEdit size={14} />
                     </Link>
-
-                    {/* Delete */}
-
                     <button
                       onClick={() => deleteSupplier(supplier.id)}
-                      style={{
-                        background: "#ef4444",
-                        color: "#fff",
-                        border: "none",
-                        padding: "8px 10px",
-                        borderRadius: 8,
-                        cursor: "pointer",
-                        transition: "transform 0.1s, background 0.2s",
-                        display:"inline-flex",
-                        alignItems:"center"
-                      }}
+                      style={styles.deleteButton}
                       title="Delete Supplier"
-                      onMouseEnter={(e) => {
-                        e.target.style.background = "#dc2626";
-                        e.target.style.transform = "scale(1.05)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.target.style.background = "#ef4444";
-                        e.target.style.transform = "scale(1)";
-                      }}
                     >
-                      <FiTrash2 />
+                      <FiTrash2 size={14} />
                     </button>
-
                   </div>
-
                 </td>
-
               </tr>
-
             ))}
-
           </tbody>
-
         </table>
-
       </div>
-
     </div>
-
   );
-
 }
+
+const styles = {
+  container: {
+    padding: "30px",
+    maxWidth: "1440px",
+    margin: "0 auto",
+    background: "#f8fafc",
+    minHeight: "100vh",
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+  },
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: "30px",
+    flexWrap: "wrap",
+    gap: "15px"
+  },
+  title: {
+    margin: 0,
+    fontSize: "28px",
+    fontWeight: "700",
+    color: "#0f172a",
+    letterSpacing: "-0.5px"
+  },
+  subtitle: {
+    margin: "4px 0 0",
+    color: "#64748b",
+    fontSize: "14px",
+    fontWeight: "400"
+  },
+  primaryButton: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    background: "#3b82f6",
+    padding: "12px 24px",
+    color: "#fff",
+    textDecoration: "none",
+    borderRadius: "10px",
+    fontWeight: "600",
+    fontSize: "14px",
+    transition: "all 0.2s",
+    border: "none",
+    cursor: "pointer",
+    boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)"
+  },
+  searchSection: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: "15px",
+    marginBottom: "24px",
+    background: "#fff",
+    padding: "16px 20px",
+    borderRadius: "12px",
+    border: "1px solid #e2e8f0"
+  },
+  searchWrapper: {
+    display: "flex",
+    alignItems: "center",
+    background: "#f1f5f9",
+    borderRadius: "8px",
+    padding: "0 12px",
+    flex: 1,
+    minWidth: "200px",
+    transition: "all 0.2s"
+  },
+  searchIcon: {
+    marginRight: "8px"
+  },
+  searchInput: {
+    border: "none",
+    background: "transparent",
+    padding: "10px 0",
+    fontSize: "14px",
+    outline: "none",
+    width: "100%",
+    color: "#0f172a"
+  },
+  resultCount: {
+    fontSize: "14px",
+    color: "#64748b",
+    fontWeight: "500",
+    whiteSpace: "nowrap"
+  },
+  tableContainer: {
+    background: "#fff",
+    borderRadius: "12px",
+    border: "1px solid #e2e8f0",
+    overflowX: "auto",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.05)"
+  },
+  table: {
+    width: "100%",
+    borderCollapse: "collapse",
+    fontSize: "14px",
+    minWidth: "800px"
+  },
+  th: {
+    padding: "16px 20px",
+    textAlign: "left",
+    fontWeight: "600",
+    color: "#475569",
+    borderBottom: "2px solid #e2e8f0",
+    background: "#f8fafc",
+    fontSize: "12px",
+    textTransform: "uppercase",
+    letterSpacing: "0.5px"
+  },
+  tableRow: {
+    borderBottom: "1px solid #f1f5f9",
+    transition: "background 0.15s"
+  },
+  supplierCell: {
+    display: "flex",
+    alignItems: "center",
+    gap: "12px"
+  },
+  supplierAvatar: {
+    width: "40px",
+    height: "40px",
+    borderRadius: "10px",
+    background: "#dbeafe",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0
+  },
+  supplierName: {
+    fontWeight: "600",
+    color: "#0f172a"
+  },
+  companyName: {
+    fontSize: "13px",
+    color: "#94a3b8"
+  },
+  contactCell: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    color: "#0f172a"
+  },
+  balance: {
+    fontWeight: "600",
+    color: "#0f172a"
+  },
+  statusBadge: {
+    display: "inline-block",
+    padding: "4px 12px",
+    borderRadius: "20px",
+    fontSize: "12px",
+    fontWeight: "600",
+    textTransform: "capitalize"
+  },
+  actionButtons: {
+    display: "flex",
+    gap: "6px",
+    justifyContent: "center"
+  },
+  viewButton: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "#10b981",
+    color: "#fff",
+    padding: "8px 10px",
+    textDecoration: "none",
+    borderRadius: "6px",
+    transition: "all 0.2s",
+    border: "none",
+    cursor: "pointer"
+  },
+  editButton: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "#f59e0b",
+    color: "#fff",
+    padding: "8px 10px",
+    textDecoration: "none",
+    borderRadius: "6px",
+    transition: "all 0.2s",
+    border: "none",
+    cursor: "pointer"
+  },
+  deleteButton: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "#fee2e2",
+    color: "#dc2626",
+    padding: "8px 10px",
+    border: "none",
+    borderRadius: "6px",
+    cursor: "pointer",
+    transition: "all 0.2s"
+  },
+  loadingContainer: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "60px",
+    background: "#fff",
+    borderRadius: "12px",
+    border: "1px solid #e2e8f0"
+  },
+  loadingSpinner: {
+    border: "3px solid #f1f5f9",
+    borderTop: "3px solid #3b82f6",
+    borderRadius: "50%",
+    width: "40px",
+    height: "40px",
+    animation: "spin 0.8s linear infinite"
+  },
+  loadingText: {
+    marginTop: "16px",
+    color: "#64748b",
+    fontSize: "14px"
+  },
+  emptyState: {
+    textAlign: "center",
+    padding: "60px 20px",
+    color: "#94a3b8"
+  },
+  emptyIcon: {
+    fontSize: "48px",
+    marginBottom: "16px"
+  },
+  emptyText: {
+    fontSize: "16px",
+    marginBottom: "12px",
+    color: "#64748b"
+  },
+  emptyButton: {
+    display: "inline-block",
+    padding: "10px 24px",
+    background: "#3b82f6",
+    color: "#fff",
+    textDecoration: "none",
+    borderRadius: "8px",
+    fontWeight: "500",
+    transition: "all 0.2s"
+  }
+};
+
+// Add keyframe animation
+const styleSheet = document.createElement("style");
+styleSheet.textContent = `
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+`;
+document.head.appendChild(styleSheet);
