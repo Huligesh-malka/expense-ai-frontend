@@ -1,6 +1,6 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
-import API from "../services/api";
+import API from "../services/api"; // ✅ Using your configured API
 import {
   FiDollarSign,
   FiShoppingBag,
@@ -20,18 +20,9 @@ import {
   FiClock,
   FiCheckCircle,
   FiXCircle,
-  FiUser,
-  FiSettings,
-  FiEdit,
-  FiLogOut,
-  FiChevronDown,
-  FiHome,
-  FiBriefcase,
 } from "react-icons/fi";
 
 export default function BusinessDashboard() {
-  const navigate = useNavigate();
-  
   // ---------- State ----------
   const [dashboard, setDashboard] = useState({
     totalProducts: 0,
@@ -47,9 +38,6 @@ export default function BusinessDashboard() {
   const [recentSales, setRecentSales] = useState([]);
   const [loading, setLoading] = useState(true);
   const [businessName, setBusinessName] = useState("Your Store");
-  const [businessType, setBusinessType] = useState("");
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [businessLogo, setBusinessLogo] = useState("");
 
   // Get business_id from localStorage
   const businessId = localStorage.getItem("businessId") || "1";
@@ -62,36 +50,14 @@ export default function BusinessDashboard() {
   }, []);
 
   const loadBusinessInfo = () => {
-    // Get business info from localStorage
+    // Get business name from localStorage or API
     const name = localStorage.getItem("businessName") || "Your Store";
-    const type = localStorage.getItem("businessType") || "";
     setBusinessName(name);
-    setBusinessType(type);
-    
-    // Load business logo if available
-    loadBusinessProfile();
-  };
-
-  const loadBusinessProfile = async () => {
-    try {
-      const ownerId = localStorage.getItem("userId");
-      if (ownerId) {
-        const res = await API.get(`/business/profile/${ownerId}`);
-        if (res.data.business) {
-          setBusinessLogo(res.data.business.logo || "");
-          // Also update business name from API if available
-          if (res.data.business.business_name) {
-            setBusinessName(res.data.business.business_name);
-          }
-        }
-      }
-    } catch (err) {
-      console.log("Could not load business profile:", err);
-    }
   };
 
   const loadDashboard = async () => {
     try {
+      // ✅ Using API service - automatically adds JWT token
       const res = await API.get(`/dashboard?business_id=${businessId}`);
       setDashboard(res.data);
     } catch (err) {
@@ -103,18 +69,16 @@ export default function BusinessDashboard() {
 
   const loadRecentSales = async () => {
     try {
+      // Load only 5 recent sales
+      // ✅ Using API service - automatically adds JWT token
       const res = await API.get(`/sales?business_id=${businessId}&limit=5`);
+      // Ensure we only show 5 items
       const salesData = res.data.data || [];
       setRecentSales(salesData.slice(0, 5));
     } catch (err) {
       console.error("Failed to load recent sales:", err);
       setRecentSales([]);
     }
-  };
-
-  const handleLogout = () => {
-    localStorage.clear();
-    navigate("/login");
   };
 
   // ---------- Format Currency ----------
@@ -207,8 +171,7 @@ export default function BusinessDashboard() {
             </span>
           </p>
         </div>
-        
-        <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
           <Link to="/billing-pos">
             <button
               style={{
@@ -228,11 +191,13 @@ export default function BusinessDashboard() {
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.boxShadow = "0 6px 20px rgba(37, 99, 235, 0.4)";
+                e.currentTarget.style.boxShadow =
+                  "0 6px 20px rgba(37, 99, 235, 0.4)";
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "0 4px 12px rgba(37, 99, 235, 0.3)";
+                e.currentTarget.style.boxShadow =
+                  "0 4px 12px rgba(37, 99, 235, 0.3)";
               }}
             >
               <FiShoppingBag /> Billing (POS)
@@ -257,11 +222,13 @@ export default function BusinessDashboard() {
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.boxShadow = "0 6px 20px rgba(22, 163, 74, 0.4)";
+                e.currentTarget.style.boxShadow =
+                  "0 6px 20px rgba(22, 163, 74, 0.4)";
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "0 4px 12px rgba(22, 163, 74, 0.3)";
+                e.currentTarget.style.boxShadow =
+                  "0 4px 12px rgba(22, 163, 74, 0.3)";
               }}
             >
               <FiPlus /> Add Product
@@ -286,300 +253,21 @@ export default function BusinessDashboard() {
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.boxShadow = "0 6px 20px rgba(147, 51, 234, 0.4)";
+                e.currentTarget.style.boxShadow =
+                  "0 6px 20px rgba(147, 51, 234, 0.4)";
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "0 4px 12px rgba(147, 51, 234, 0.3)";
+                e.currentTarget.style.boxShadow =
+                  "0 4px 12px rgba(147, 51, 234, 0.3)";
               }}
             >
               <FiShoppingCart /> Add Purchase
             </button>
           </Link>
-
-          {/* Profile Icon with Dropdown */}
-          <div style={{ position: "relative" }}>
-            <div
-              onClick={() => setShowProfileMenu(!showProfileMenu)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                cursor: "pointer",
-                padding: "8px 12px",
-                borderRadius: "50px",
-                background: "#fff",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-                border: "2px solid transparent",
-                transition: "all 0.3s ease",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "#2563eb";
-                e.currentTarget.style.boxShadow = "0 4px 12px rgba(37, 99, 235, 0.2)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "transparent";
-                e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.08)";
-              }}
-            >
-              {/* Profile Avatar */}
-              <div
-                style={{
-                  width: "40px",
-                  height: "40px",
-                  borderRadius: "50%",
-                  background: businessLogo ? "transparent" : "linear-gradient(135deg, #2563eb, #7c3aed)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  overflow: "hidden",
-                  flexShrink: 0,
-                }}
-              >
-                {businessLogo ? (
-                  <img
-                    src={businessLogo}
-                    alt="Business Logo"
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                    }}
-                  />
-                ) : (
-                  <FiUser size={20} color="#fff" />
-                )}
-              </div>
-              
-              <div style={{ lineHeight: "1.3", minWidth: "80px" }}>
-                <div style={{ fontSize: "14px", fontWeight: "600", color: "#1a2332" }}>
-                  {businessName.length > 15 ? businessName.substring(0, 15) + "..." : businessName}
-                </div>
-                <div style={{ fontSize: "11px", color: "#64748b" }}>
-                  {businessType || "Business"}
-                </div>
-              </div>
-              
-              <FiChevronDown
-                size={16}
-                style={{
-                  color: "#64748b",
-                  transition: "transform 0.3s ease",
-                  transform: showProfileMenu ? "rotate(180deg)" : "rotate(0deg)",
-                }}
-              />
-            </div>
-
-            {/* Dropdown Menu */}
-            {showProfileMenu && (
-              <>
-                {/* Backdrop */}
-                <div
-                  onClick={() => setShowProfileMenu(false)}
-                  style={{
-                    position: "fixed",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    zIndex: 999,
-                  }}
-                />
-                
-                {/* Menu */}
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "calc(100% + 10px)",
-                    right: 0,
-                    background: "#fff",
-                    borderRadius: "16px",
-                    boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
-                    minWidth: "280px",
-                    padding: "8px",
-                    zIndex: 1000,
-                    animation: "slideDown 0.2s ease",
-                    border: "1px solid rgba(0,0,0,0.05)",
-                  }}
-                >
-                  {/* User Info */}
-                  <div
-                    style={{
-                      padding: "16px 16px 12px",
-                      borderBottom: "1px solid #f0f0f0",
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "12px",
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: "48px",
-                          height: "48px",
-                          borderRadius: "50%",
-                          background: businessLogo ? "transparent" : "linear-gradient(135deg, #2563eb, #7c3aed)",
-                          overflow: "hidden",
-                          flexShrink: 0,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        {businessLogo ? (
-                          <img
-                            src={businessLogo}
-                            alt="Business Logo"
-                            style={{
-                              width: "100%",
-                              height: "100%",
-                              objectFit: "cover",
-                            }}
-                          />
-                        ) : (
-                          <FiBriefcase size={24} color="#fff" />
-                        )}
-                      </div>
-                      <div>
-                        <div style={{ fontWeight: "600", color: "#1a2332" }}>
-                          {businessName}
-                        </div>
-                        <div style={{ fontSize: "13px", color: "#64748b" }}>
-                          {businessType || "Business Account"}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Menu Items */}
-                  <div style={{ padding: "4px 0" }}>
-                    <Link
-                      to="/dashboard"
-                      onClick={() => setShowProfileMenu(false)}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "12px",
-                        padding: "10px 16px",
-                        color: "#1a2332",
-                        textDecoration: "none",
-                        borderRadius: "10px",
-                        transition: "all 0.2s ease",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "#f5f7fb";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "transparent";
-                      }}
-                    >
-                      <FiHome size={18} color="#64748b" />
-                      <span>Dashboard</span>
-                    </Link>
-
-                    <Link
-                      to="/edit-business"
-                      onClick={() => setShowProfileMenu(false)}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "12px",
-                        padding: "10px 16px",
-                        color: "#1a2332",
-                        textDecoration: "none",
-                        borderRadius: "10px",
-                        transition: "all 0.2s ease",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "#eff6ff";
-                        e.currentTarget.style.color = "#2563eb";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "transparent";
-                        e.currentTarget.style.color = "#1a2332";
-                      }}
-                    >
-                      <FiEdit size={18} color="#2563eb" />
-                      <span>Edit Business Profile</span>
-                    </Link>
-
-                    <Link
-                      to="/settings"
-                      onClick={() => setShowProfileMenu(false)}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "12px",
-                        padding: "10px 16px",
-                        color: "#1a2332",
-                        textDecoration: "none",
-                        borderRadius: "10px",
-                        transition: "all 0.2s ease",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "#f5f7fb";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "transparent";
-                      }}
-                    >
-                      <FiSettings size={18} color="#64748b" />
-                      <span>Settings</span>
-                    </Link>
-                  </div>
-
-                  {/* Divider */}
-                  <div
-                    style={{
-                      height: "1px",
-                      background: "#f0f0f0",
-                      margin: "4px 16px",
-                    }}
-                  />
-
-                  {/* Logout */}
-                  <div style={{ padding: "4px 0" }}>
-                    <button
-                      onClick={() => {
-                        setShowProfileMenu(false);
-                        handleLogout();
-                      }}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "12px",
-                        padding: "10px 16px",
-                        background: "transparent",
-                        border: "none",
-                        width: "100%",
-                        borderRadius: "10px",
-                        cursor: "pointer",
-                        transition: "all 0.2s ease",
-                        color: "#dc2626",
-                        fontSize: "14px",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "#fef2f2";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "transparent";
-                      }}
-                    >
-                      <FiLogOut size={18} />
-                      <span>Logout</span>
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
         </div>
       </div>
 
-      {/* Rest of your dashboard content remains the same */}
       {/* Business Info Widget */}
       <div
         style={{
@@ -784,7 +472,7 @@ export default function BusinessDashboard() {
         </div>
       </div>
 
-      {/* Recent Sales */}
+      {/* Recent Sales - Only 5 items */}
       <div
         style={{
           background: "#fff",
@@ -1039,17 +727,6 @@ export default function BusinessDashboard() {
           @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
-          }
-          
-          @keyframes slideDown {
-            from {
-              opacity: 0;
-              transform: translateY(-10px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
           }
         `}
       </style>
