@@ -1,12 +1,19 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../services/api";
 
-export default function CreateBusiness() {
+export default function EditBusiness() {
+
     const navigate = useNavigate();
 
+    const ownerId = localStorage.getItem("userId");
+
+    const [loading, setLoading] = useState(true);
+
     const [form, setForm] = useState({
-        owner_id: localStorage.getItem("userId") || 1,
+
+        id: "",
+
         business_name: "",
         business_type: "",
         owner_name: "",
@@ -19,67 +26,134 @@ export default function CreateBusiness() {
         state: "",
         pincode: "",
         logo: ""
+
     });
 
+    useEffect(() => {
+
+        loadBusiness();
+
+    }, []);
+
+    const loadBusiness = async () => {
+
+        try {
+
+            const res = await API.get(`/business/profile/${ownerId}`);
+
+            setForm(res.data.business);
+
+        }
+
+        catch (err) {
+
+            console.log(err);
+
+            alert("Unable to load business profile.");
+
+        }
+
+        finally {
+
+            setLoading(false);
+
+        }
+
+    };
+
     const handleChange = (e) => {
+
         setForm({
+
             ...form,
+
             [e.target.name]: e.target.value
+
         });
+
     };
 
     const handleSubmit = async (e) => {
+
         e.preventDefault();
 
         try {
-            const res = await API.post("/business/create", form);
+
+            const res = await API.put(
+
+                `/business/profile/${form.id}`,
+
+                form
+
+            );
+
             alert(res.data.message);
 
-            // Save business data after creation
             localStorage.setItem(
-                "businessId",
-                res.data.business.id
-            );
-            localStorage.setItem(
+
                 "businessName",
-                res.data.business.business_name
+
+                form.business_name
+
             );
+
             localStorage.setItem(
+
                 "businessType",
-                res.data.business.business_type
+
+                form.business_type
+
             );
 
             navigate("/dashboard");
-        } catch (err) {
-            console.log(err);
-            alert(
-                err.response?.data?.message ||
-                "Unable to create business."
-            );
+
         }
+
+        catch (err) {
+
+            console.log(err);
+
+            alert(
+
+                err.response?.data?.message ||
+
+                "Unable to update business."
+
+            );
+
+        }
+
     };
 
+    if (loading) {
+
+        return <h2 style={{ textAlign: "center" }}>Loading...</h2>;
+
+    }
+
     return (
+
         <div
             style={{
                 maxWidth: "900px",
                 margin: "30px auto",
                 background: "#fff",
                 padding: "30px",
-                borderRadius: "10px",
-                boxShadow: "0 0 10px #ddd"
+                borderRadius: "12px",
+                boxShadow: "0 0 12px rgba(0,0,0,.1)"
             }}
         >
-            <h1>Create Business</h1>
+
+            <h2>Edit Business Profile</h2>
 
             <form onSubmit={handleSubmit}>
+
                 <input
                     type="text"
                     name="business_name"
                     placeholder="Business Name"
                     value={form.business_name}
                     onChange={handleChange}
-                    required
                     style={inputStyle}
                 />
 
@@ -89,10 +163,11 @@ export default function CreateBusiness() {
                     name="business_type"
                     value={form.business_type}
                     onChange={handleChange}
-                    required
                     style={inputStyle}
                 >
+
                     <option value="">Select Business Type</option>
+
                     <option value="grocery">Grocery Store</option>
                     <option value="medical">Medical Shop</option>
                     <option value="restaurant">Restaurant</option>
@@ -107,6 +182,7 @@ export default function CreateBusiness() {
                     <option value="hotel">Hotel</option>
                     <option value="factory">Factory</option>
                     <option value="other">Other</option>
+
                 </select>
 
                 <br /><br />
@@ -167,9 +243,9 @@ export default function CreateBusiness() {
                 <br /><br />
 
                 <textarea
+                    rows="3"
                     name="address"
                     placeholder="Business Address"
-                    rows="3"
                     value={form.address}
                     onChange={handleChange}
                     style={inputStyle}
@@ -213,7 +289,7 @@ export default function CreateBusiness() {
                 <input
                     type="text"
                     name="logo"
-                    placeholder="Logo URL (Optional)"
+                    placeholder="Logo URL"
                     value={form.logo}
                     onChange={handleChange}
                     style={inputStyle}
@@ -225,189 +301,36 @@ export default function CreateBusiness() {
                     type="submit"
                     style={buttonStyle}
                 >
-                    Create Business
+                    Save Changes
                 </button>
+
             </form>
+
         </div>
+
     );
+
 }
 
 const inputStyle = {
+
     width: "100%",
     padding: "12px",
     border: "1px solid #ddd",
     borderRadius: "8px",
     fontSize: "15px",
     boxSizing: "border-box"
+
 };
 
 const buttonStyle = {
-    padding: "12px 30px",
-    border: "none",
-    borderRadius: "8px",
+
     background: "#2563eb",
     color: "#fff",
+    border: "none",
+    padding: "12px 30px",
+    borderRadius: "8px",
     cursor: "pointer",
     fontSize: "16px"
-};
-
-
-
-
-
-// ===============================
-// Get Business Profile
-// ===============================
-
-exports.getBusinessProfile = async (req, res) => {
-
-    try {
-
-        const { owner_id } = req.params;
-
-        const [rows] = await db.query(
-
-            `SELECT *
-             FROM businesses
-             WHERE owner_id=?
-             LIMIT 1`,
-
-            [owner_id]
-
-        );
-
-        if (rows.length === 0) {
-
-            return res.status(404).json({
-
-                success: false,
-                message: "Business not found"
-
-            });
-
-        }
-
-        res.json({
-
-            success: true,
-            business: rows[0]
-
-        });
-
-    }
-
-    catch (err) {
-
-        console.log(err);
-
-        res.status(500).json({
-
-            success: false,
-            message: err.message
-
-        });
-
-    }
-
-};
-
-
-
-
-// ===============================
-// Update Business Profile
-// ===============================
-
-exports.updateBusinessProfile = async (req, res) => {
-
-    try {
-
-        const { id } = req.params;
-
-        const {
-
-            business_name,
-            business_type,
-            owner_name,
-            phone,
-            email,
-            gst_number,
-            upi_id,
-            address,
-            city,
-            state,
-            pincode,
-            logo
-
-        } = req.body;
-
-        await db.query(
-
-            `UPDATE businesses
-             SET
-                business_name=?,
-                business_type=?,
-                owner_name=?,
-                phone=?,
-                email=?,
-                gst_number=?,
-                upi_id=?,
-                address=?,
-                city=?,
-                state=?,
-                pincode=?,
-                logo=?
-             WHERE id=?`,
-
-            [
-
-                business_name,
-                business_type,
-                owner_name,
-                phone,
-                email,
-                gst_number,
-                upi_id,
-                address,
-                city,
-                state,
-                pincode,
-                logo,
-                id
-
-            ]
-
-        );
-
-        const [rows] = await db.query(
-
-            "SELECT * FROM businesses WHERE id=?",
-
-            [id]
-
-        );
-
-        res.json({
-
-            success: true,
-            message: "Business Profile Updated Successfully",
-            business: rows[0]
-
-        });
-
-    }
-
-    catch (err) {
-
-        console.log(err);
-
-        res.status(500).json({
-
-            success: false,
-            message: err.message
-
-        });
-
-    }
 
 };

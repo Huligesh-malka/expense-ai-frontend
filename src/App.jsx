@@ -92,6 +92,11 @@ path="/shop-designer"
 element={<ShopDesigner />}
 />
 
+<Route
+    path="/edit-business"
+    element={<EditBusiness />}
+/>
+
             <Route
     path="/create-layout"
     element={<CreateLayout />}
