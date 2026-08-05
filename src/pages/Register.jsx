@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { signInWithPopup } from "firebase/auth";
+import { auth, googleProvider } from "../firebase";
 import API from "../services/api";
 
 export default function Register() {
@@ -60,6 +62,58 @@ export default function Register() {
                 err.response?.data?.message ||
                 "Server error. Please check your connection."
             );
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleGoogleSignUp = async () => {
+        setIsLoading(true);
+        setError("");
+
+        try {
+            const result = await signInWithPopup(auth, googleProvider);
+            const idToken = await result.user.getIdToken();
+
+            const res = await API.post("/auth/google", {
+                idToken
+            });
+
+            if (res.data.success) {
+                // Store user data in localStorage
+                localStorage.setItem("userId", res.data.user.id);
+                localStorage.setItem("userName", res.data.user.full_name);
+                localStorage.setItem("userEmail", res.data.user.email);
+
+                if (res.data.business) {
+                    localStorage.setItem("businessId", res.data.business.id);
+                    localStorage.setItem("businessName", res.data.business.business_name);
+                    localStorage.setItem("businessType", res.data.business.business_type);
+
+                    navigate("/dashboard");
+                } else {
+                    navigate("/create-business");
+                }
+            } else {
+                setError(res.data.message || "Google sign-up failed. Please try again.");
+            }
+        } catch (err) {
+            console.error("Google sign-up error:", err);
+            
+            // Handle specific Firebase errors
+            if (err.code === "auth/popup-closed-by-user") {
+                setError("Sign-up cancelled. Please try again.");
+            } else if (err.code === "auth/popup-blocked") {
+                setError("Popup blocked. Please allow popups for this site.");
+            } else if (err.code === "auth/email-already-in-use") {
+                setError("This email is already registered. Please sign in instead.");
+            } else {
+                setError(
+                    err.response?.data?.message ||
+                    err.message ||
+                    "Google sign-up failed. Please try again."
+                );
+            }
         } finally {
             setIsLoading(false);
         }
@@ -552,9 +606,8 @@ export default function Register() {
                                     e.target.style.color =
                                         "rgba(255, 255, 255, 0.6)";
                                 }}
-                                onClick={() =>
-                                    alert("Google sign-up coming soon!")
-                                }
+                                onClick={handleGoogleSignUp}
+                                disabled={isLoading}
                             >
                                 <span>🔵</span> Google
                             </button>
@@ -580,6 +633,7 @@ export default function Register() {
                                 onClick={() =>
                                     alert("GitHub sign-up coming soon!")
                                 }
+                                disabled={isLoading}
                             >
                                 <span>⚫</span> GitHub
                             </button>

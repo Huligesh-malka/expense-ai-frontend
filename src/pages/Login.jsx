@@ -1,5 +1,7 @@
 import { useState, useContext } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { signInWithPopup } from "firebase/auth";
+import { auth, googleProvider } from "../firebase";
 import API from "../services/api";
 import { AuthContext } from "../context/AuthContext";
 
@@ -68,6 +70,68 @@ export default function Login() {
                 err.response?.data?.message ||
                 "Server error. Please check your connection."
             );
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleGoogleLogin = async () => {
+        setIsLoading(true);
+        setError("");
+
+        try {
+            const result = await signInWithPopup(auth, googleProvider);
+            const idToken = await result.user.getIdToken();
+
+            const res = await API.post("/auth/google", {
+                idToken
+            });
+
+            if (res.data.success) {
+                login(res.data.user, res.data.token);
+
+                // Save User
+                localStorage.setItem("userId", res.data.user.id);
+                localStorage.setItem("userName", res.data.user.full_name);
+                localStorage.setItem("userEmail", res.data.user.email);
+
+                // Save Business (if exists)
+                if (res.data.business) {
+                    localStorage.setItem(
+                        "businessId",
+                        res.data.business.id
+                    );
+                    localStorage.setItem(
+                        "businessName",
+                        res.data.business.business_name
+                    );
+                    localStorage.setItem(
+                        "businessType",
+                        res.data.business.business_type
+                    );
+
+                    navigate("/dashboard");
+                } else {
+                    navigate("/create-business");
+                }
+            } else {
+                setError(res.data.message || "Google login failed. Please try again.");
+            }
+        } catch (err) {
+            console.error("Google login error:", err);
+            
+            // Handle specific Firebase errors
+            if (err.code === "auth/popup-closed-by-user") {
+                setError("Login cancelled. Please try again.");
+            } else if (err.code === "auth/popup-blocked") {
+                setError("Popup blocked. Please allow popups for this site.");
+            } else {
+                setError(
+                    err.response?.data?.message ||
+                    err.message ||
+                    "Google login failed. Please try again."
+                );
+            }
         } finally {
             setIsLoading(false);
         }
@@ -458,9 +522,8 @@ export default function Login() {
                                     e.target.style.color =
                                         "rgba(255, 255, 255, 0.6)";
                                 }}
-                                onClick={() =>
-                                    alert("Google login coming soon!")
-                                }
+                                onClick={handleGoogleLogin}
+                                disabled={isLoading}
                             >
                                 <span>🔵</span> Google
                             </button>
@@ -486,6 +549,7 @@ export default function Login() {
                                 onClick={() =>
                                     alert("GitHub login coming soon!")
                                 }
+                                disabled={isLoading}
                             >
                                 <span>⚫</span> GitHub
                             </button>
