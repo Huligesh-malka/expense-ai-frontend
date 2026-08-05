@@ -52,8 +52,10 @@ function App() {
     return (
         <Routes>
             {/* Authentication */}
-            <Route path="/" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+            {/* Authentication */}
+<Route path="/" element={<Login />} />
+<Route path="/login" element={<Login />} />
+<Route path="/register" element={<Register />} />
 
             {/* Dashboard */}
             <Route path="/dashboard" element={<Dashboard />} />
