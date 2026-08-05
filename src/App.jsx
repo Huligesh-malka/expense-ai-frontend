@@ -13,6 +13,7 @@ import NotFound from "./pages/NotFound";
 import Expenses from "./pages/Expenses";
 import ShopDesigner from "./pages/ShopDesigner";
 import ReviewReceipt from "./pages/ReviewReceipt";
+import EditBusiness from './pages/EditBusiness';
 
 import CreateBusiness from "./pages/CreateBusiness";
 import SalesHistory from "./pages/SalesHistory";
