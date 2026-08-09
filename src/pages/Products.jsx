@@ -13,6 +13,8 @@ export default function Products() {
     const [currentPage, setCurrentPage] = useState(1);
     const [sortField, setSortField] = useState("product_name");
     const [sortDirection, setSortDirection] = useState("asc");
+    const [selectedProduct, setSelectedProduct] = useState(null);
+    const [showDetailsModal, setShowDetailsModal] = useState(false);
     const itemsPerPage = 10;
 
     useEffect(() => {
@@ -64,6 +66,24 @@ export default function Products() {
             setMessage("Couldn't remove product");
             setMessageType("error");
         }
+    };
+
+    const viewProductDetails = async (id) => {
+        try {
+            const businessId = localStorage.getItem("businessId");
+            const res = await API.get(`/products/${id}?business_id=${businessId}`);
+            setSelectedProduct(res.data.data);
+            setShowDetailsModal(true);
+        } catch (err) {
+            console.error("Error fetching product details:", err);
+            setMessage("Couldn't load product details");
+            setMessageType("error");
+        }
+    };
+
+    const closeDetailsModal = () => {
+        setShowDetailsModal(false);
+        setSelectedProduct(null);
     };
 
     const getUnitLabel = (unit) => String(unit || "pcs").toUpperCase();
@@ -398,6 +418,13 @@ export default function Products() {
                                                     <td style={styles.td}>{renderExpiryCell(product.expiry_date)}</td>
                                                     <td style={styles.td}>
                                                         <div style={styles.actionButtons}>
+                                                            <button
+                                                                style={styles.viewButton}
+                                                                onClick={() => viewProductDetails(product.id)}
+                                                                title="View details"
+                                                            >
+                                                                View
+                                                            </button>
                                                             <Link
                                                                 to={`/edit-product/${product.id}`}
                                                                 style={styles.editButton}
@@ -478,6 +505,170 @@ export default function Products() {
                     </>
                 )}
             </div>
+
+            {/* Product Details Modal */}
+            {showDetailsModal && selectedProduct && (
+                <div style={styles.modalOverlay} onClick={closeDetailsModal}>
+                    <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+                        <div style={styles.modalHeader}>
+                            <h2 style={styles.modalTitle}>Product Details</h2>
+                            <button style={styles.modalClose} onClick={closeDetailsModal}>✕</button>
+                        </div>
+                        <div style={styles.modalBody}>
+                            <div style={styles.detailGrid}>
+                                {/* Left Column - Image & Basic Info */}
+                                <div style={styles.detailLeft}>
+                                    {selectedProduct.image ? (
+                                        <img
+                                            src={selectedProduct.image}
+                                            alt={selectedProduct.product_name}
+                                            style={styles.detailImage}
+                                            onError={(e) => {
+                                                e.target.style.display = "none";
+                                            }}
+                                        />
+                                    ) : (
+                                        <div style={styles.detailImagePlaceholder}>
+                                            {selectedProduct.product_name?.[0]?.toUpperCase() || "?"}
+                                        </div>
+                                    )}
+                                    <div style={styles.detailBasicInfo}>
+                                        <h3 style={styles.detailName}>{selectedProduct.product_name}</h3>
+                                        {selectedProduct.product_code && (
+                                            <p style={styles.detailCode}>Code: {selectedProduct.product_code}</p>
+                                        )}
+                                        {selectedProduct.barcode && (
+                                            <p style={styles.detailBarcode}>Barcode: {selectedProduct.barcode}</p>
+                                        )}
+                                        <span style={styles.detailCategory}>{selectedProduct.category || "Uncategorized"}</span>
+                                    </div>
+                                </div>
+
+                                {/* Right Column - All Details */}
+                                <div style={styles.detailRight}>
+                                    <div style={styles.detailSection}>
+                                        <h4 style={styles.detailSectionTitle}>Pricing Information</h4>
+                                        <div style={styles.detailRow}>
+                                            <span style={styles.detailLabel}>Selling Price</span>
+                                            <span style={styles.detailValue}>₹{parseFloat(selectedProduct.selling_price || 0).toFixed(2)}</span>
+                                        </div>
+                                        <div style={styles.detailRow}>
+                                            <span style={styles.detailLabel}>Cost Price</span>
+                                            <span style={styles.detailValue}>₹{parseFloat(selectedProduct.cost_price || 0).toFixed(2)}</span>
+                                        </div>
+                                        <div style={styles.detailRow}>
+                                            <span style={styles.detailLabel}>Price Per</span>
+                                            <span style={styles.detailValue}>{selectedProduct.price_per || 1} {getUnitLabel(selectedProduct.price_unit)}</span>
+                                        </div>
+                                        {selectedProduct.tax && (
+                                            <div style={styles.detailRow}>
+                                                <span style={styles.detailLabel}>Tax Rate</span>
+                                                <span style={styles.detailValue}>{selectedProduct.tax}%</span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div style={styles.detailSection}>
+                                        <h4 style={styles.detailSectionTitle}>Stock Information</h4>
+                                        <div style={styles.detailRow}>
+                                            <span style={styles.detailLabel}>Current Stock</span>
+                                            <span style={styles.detailValue}>
+                                                {Number(selectedProduct.stock).toFixed(
+                                                    Number.isInteger(Number(selectedProduct.stock)) ? 0 : 2
+                                                )} {getUnitLabel(selectedProduct.unit)}
+                                            </span>
+                                        </div>
+                                        <div style={styles.detailRow}>
+                                            <span style={styles.detailLabel}>Minimum Stock</span>
+                                            <span style={styles.detailValue}>
+                                                {selectedProduct.min_stock || 0} {getUnitLabel(selectedProduct.unit)}
+                                            </span>
+                                        </div>
+                                        <div style={styles.detailRow}>
+                                            <span style={styles.detailLabel}>Stock Status</span>
+                                            <span style={{
+                                                ...styles.detailStockStatus,
+                                                ...getStockStatusInfo(selectedProduct.stock, selectedProduct.min_stock)
+                                            }}>
+                                                {getStockStatusInfo(selectedProduct.stock, selectedProduct.min_stock).label}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div style={styles.detailSection}>
+                                        <h4 style={styles.detailSectionTitle}>Additional Information</h4>
+                                        <div style={styles.detailRow}>
+                                            <span style={styles.detailLabel}>Unit</span>
+                                            <span style={styles.detailValue}>{getUnitLabel(selectedProduct.unit)}</span>
+                                        </div>
+                                        {selectedProduct.expiry_date && (
+                                            <div style={styles.detailRow}>
+                                                <span style={styles.detailLabel}>Expiry Date</span>
+                                                <span style={styles.detailValue}>
+                                                    {new Date(selectedProduct.expiry_date).toLocaleDateString("en-IN")}
+                                                </span>
+                                            </div>
+                                        )}
+                                        {selectedProduct.status && (
+                                            <div style={styles.detailRow}>
+                                                <span style={styles.detailLabel}>Status</span>
+                                                <span style={{
+                                                    ...styles.detailStatus,
+                                                    ...(selectedProduct.status === "active" ? styles.detailStatusActive : styles.detailStatusInactive)
+                                                }}>
+                                                    {selectedProduct.status}
+                                                </span>
+                                            </div>
+                                        )}
+                                        {selectedProduct.description && (
+                                            <div style={styles.detailRow}>
+                                                <span style={styles.detailLabel}>Description</span>
+                                                <span style={styles.detailValue}>{selectedProduct.description}</span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {selectedProduct.created_at && (
+                                        <div style={styles.detailSection}>
+                                            <h4 style={styles.detailSectionTitle}>System Information</h4>
+                                            <div style={styles.detailRow}>
+                                                <span style={styles.detailLabel}>Created</span>
+                                                <span style={styles.detailValue}>
+                                                    {new Date(selectedProduct.created_at).toLocaleString("en-IN")}
+                                                </span>
+                                            </div>
+                                            {selectedProduct.updated_at && (
+                                                <div style={styles.detailRow}>
+                                                    <span style={styles.detailLabel}>Last Updated</span>
+                                                    <span style={styles.detailValue}>
+                                                        {new Date(selectedProduct.updated_at).toLocaleString("en-IN")}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            <div style={styles.detailRow}>
+                                                <span style={styles.detailLabel}>Product ID</span>
+                                                <span style={styles.detailValue}>#{selectedProduct.id}</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                        <div style={styles.modalFooter}>
+                            <Link
+                                to={`/edit-product/${selectedProduct.id}`}
+                                style={styles.modalEditButton}
+                                onClick={closeDetailsModal}
+                            >
+                                Edit Product
+                            </Link>
+                            <button style={styles.modalCloseButton} onClick={closeDetailsModal}>
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -879,6 +1070,18 @@ const styles = {
         gap: "6px",
         alignItems: "center",
     },
+    viewButton: {
+        background: "#E8F0FE",
+        color: "#1A5C8C",
+        padding: "6px 12px",
+        border: "none",
+        borderRadius: "8px",
+        fontSize: "12px",
+        fontWeight: "700",
+        cursor: "pointer",
+        lineHeight: 1,
+        transition: "background 0.2s",
+    },
     editButton: {
         background: "#EAF3EE",
         color: TEAL,
@@ -1000,6 +1203,220 @@ const styles = {
         color: "#B7B0A0",
         display: "inline-block",
     },
+
+    // ─── Modal Styles ─────────────────────────────────────
+    modalOverlay: {
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: "rgba(0, 0, 0, 0.6)",
+        backdropFilter: "blur(4px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 1000,
+        padding: "20px",
+        animation: "fadeIn 0.3s ease",
+    },
+    modal: {
+        background: PAPER,
+        borderRadius: "16px",
+        maxWidth: "900px",
+        width: "100%",
+        maxHeight: "90vh",
+        overflowY: "auto",
+        boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+        animation: "slideUp 0.3s ease",
+    },
+    modalHeader: {
+        padding: "20px 28px",
+        borderBottom: `2px solid ${RULE}`,
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        position: "sticky",
+        top: 0,
+        background: PAPER,
+        zIndex: 10,
+        borderTopLeftRadius: "16px",
+        borderTopRightRadius: "16px",
+    },
+    modalTitle: {
+        fontFamily: "'Baloo 2', sans-serif",
+        fontSize: "24px",
+        color: TEAL,
+        margin: 0,
+    },
+    modalClose: {
+        background: "none",
+        border: "none",
+        fontSize: "24px",
+        color: INK_SOFT,
+        cursor: "pointer",
+        padding: "4px 8px",
+        borderRadius: "6px",
+        transition: "background 0.2s",
+        lineHeight: 1,
+    },
+    modalBody: {
+        padding: "28px",
+    },
+    detailGrid: {
+        display: "grid",
+        gridTemplateColumns: "280px 1fr",
+        gap: "32px",
+    },
+    detailLeft: {
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: "16px",
+    },
+    detailImage: {
+        width: "100%",
+        maxHeight: "280px",
+        objectFit: "contain",
+        borderRadius: "12px",
+        border: `2px solid ${RULE}`,
+        background: "#FFFFFF",
+    },
+    detailImagePlaceholder: {
+        width: "100%",
+        height: "200px",
+        borderRadius: "12px",
+        border: `2px solid ${RULE}`,
+        background: "#EFF6F0",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: "48px",
+        fontWeight: "700",
+        color: TEAL,
+        fontFamily: "'Baloo 2', sans-serif",
+    },
+    detailBasicInfo: {
+        textAlign: "center",
+        width: "100%",
+    },
+    detailName: {
+        fontSize: "20px",
+        fontWeight: "700",
+        color: INK,
+        margin: "0 0 4px 0",
+    },
+    detailCode: {
+        fontSize: "13px",
+        color: INK_SOFT,
+        margin: "4px 0",
+        fontFamily: "'JetBrains Mono', monospace",
+    },
+    detailBarcode: {
+        fontSize: "13px",
+        color: INK_SOFT,
+        margin: "4px 0",
+        fontFamily: "'JetBrains Mono', monospace",
+    },
+    detailCategory: {
+        display: "inline-block",
+        padding: "4px 14px",
+        background: "#EAF3EE",
+        color: TEAL,
+        borderRadius: "20px",
+        fontSize: "13px",
+        fontWeight: "600",
+        marginTop: "8px",
+    },
+    detailRight: {
+        display: "flex",
+        flexDirection: "column",
+        gap: "20px",
+    },
+    detailSection: {
+        background: "#FFFFFF",
+        padding: "16px 20px",
+        borderRadius: "12px",
+        border: `2px solid ${RULE}`,
+    },
+    detailSectionTitle: {
+        fontSize: "13px",
+        fontWeight: "700",
+        color: TEAL,
+        textTransform: "uppercase",
+        letterSpacing: "0.5px",
+        margin: "0 0 12px 0",
+        borderBottom: `1px solid ${RULE}`,
+        paddingBottom: "8px",
+    },
+    detailRow: {
+        display: "flex",
+        justifyContent: "space-between",
+        padding: "6px 0",
+        borderBottom: `1px solid #F5F0E4`,
+        fontSize: "14px",
+    },
+    detailLabel: {
+        color: INK_SOFT,
+        fontWeight: "500",
+    },
+    detailValue: {
+        color: INK,
+        fontWeight: "600",
+        textAlign: "right",
+    },
+    detailStockStatus: {
+        padding: "2px 10px",
+        borderRadius: "20px",
+        fontSize: "12px",
+        fontWeight: "700",
+        textTransform: "uppercase",
+    },
+    detailStatus: {
+        padding: "2px 10px",
+        borderRadius: "20px",
+        fontSize: "12px",
+        fontWeight: "700",
+        textTransform: "uppercase",
+    },
+    detailStatusActive: {
+        background: "#E4F5EC",
+        color: GREEN,
+    },
+    detailStatusInactive: {
+        background: "#FBE7E0",
+        color: RED,
+    },
+    modalFooter: {
+        padding: "16px 28px",
+        borderTop: `2px solid ${RULE}`,
+        display: "flex",
+        justifyContent: "flex-end",
+        gap: "12px",
+    },
+    modalEditButton: {
+        background: MARIGOLD,
+        color: TEAL_DARK,
+        padding: "10px 24px",
+        textDecoration: "none",
+        borderRadius: "10px",
+        fontSize: "14px",
+        fontWeight: "700",
+        border: "none",
+        cursor: "pointer",
+        transition: "transform 0.1s",
+    },
+    modalCloseButton: {
+        background: "#F0EDE4",
+        color: INK_SOFT,
+        padding: "10px 24px",
+        border: "none",
+        borderRadius: "10px",
+        fontSize: "14px",
+        fontWeight: "600",
+        cursor: "pointer",
+        transition: "background 0.2s",
+    },
 };
 
 // Inject fonts, keyframes and interaction states
@@ -1013,12 +1430,49 @@ if (typeof document !== "undefined" && !document.getElementById("products-page-s
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from { 
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to { 
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
         th:hover { color: #083B3D !important; }
         .search-box:focus { border-color: #FFC53D !important; box-shadow: 0 0 0 3px rgba(255,197,61,0.25) !important; }
         .filter-select:focus { border-color: #FFC53D !important; }
         a[href="/add-product"]:hover { transform: translateY(1px); box-shadow: 0 2px 0 #D69A18 !important; }
         .page-button:hover:not(:disabled) { border-color: #FFC53D !important; }
         tr:hover td { background: #FFF6DF !important; }
+        .view-button:hover { background: #D6E8FF !important; }
+        .modal-close:hover { background: #F5F0E4 !important; }
+        .modal-close-button:hover { background: #E4DEC8 !important; }
+        .modal-edit-button:hover { transform: translateY(-1px); box-shadow: 0 2px 0 #D69A18 !important; }
+
+        /* Scrollbar styling */
+        .modal::-webkit-scrollbar {
+            width: 8px;
+        }
+        .modal::-webkit-scrollbar-track {
+            background: #F5F0E4;
+            border-radius: 0 16px 16px 0;
+        }
+        .modal::-webkit-scrollbar-thumb {
+            background: #D4CBB8;
+            border-radius: 4px;
+        }
+        .modal::-webkit-scrollbar-thumb:hover {
+            background: #C4BBA8;
+        }
     `;
     document.head.appendChild(styleSheet);
 }
