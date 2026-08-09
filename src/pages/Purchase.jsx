@@ -12,98 +12,60 @@ import {
 } from "react-icons/fi";
 
 export default function Purchase() {
-
     const businessId = localStorage.getItem("businessId");
-
     const [purchases, setPurchases] = useState([]);
-
     const [loading, setLoading] = useState(true);
-
     const [search, setSearch] = useState("");
 
     useEffect(() => {
-
         loadPurchases();
-
     }, []);
 
     const loadPurchases = async () => {
-
         try {
-
             const res = await axios.get(
-
                 `http://localhost:5000/api/purchases?business_id=${businessId}`
-
             );
-
             setPurchases(res.data.data || []);
-
         } catch (err) {
-
             console.log(err);
-
             alert("Failed to load purchases");
-
         } finally {
-
             setLoading(false);
-
         }
-
     };
 
     const deletePurchase = async (id) => {
-
-        const ok = window.confirm(
-            "Delete this purchase?"
-        );
-
+        const ok = window.confirm("Delete this purchase?");
         if (!ok) return;
 
         try {
-
             await axios.delete(
-
                 `http://localhost:5000/api/purchases/${id}`
-
             );
-
             alert("Purchase Deleted");
-
             loadPurchases();
-
         } catch (err) {
-
             console.log(err);
-
             alert(
                 err.response?.data?.message ||
                 "Delete Failed"
             );
-
         }
-
     };
 
     const filteredPurchases = purchases.filter((item) =>
-
         item.invoice_no
             .toLowerCase()
             .includes(search.toLowerCase())
-
         ||
-
         item.supplier_name
             .toLowerCase()
             .includes(search.toLowerCase())
-
     );
 
     if (loading) {
-
         return (
-
             <div
                 style={{
                     padding: 40,
@@ -111,17 +73,12 @@ export default function Purchase() {
                     fontSize: 18
                 }}
             >
-
                 Loading Purchases...
-
             </div>
-
         );
-
     }
 
     return (
-
         <div
             style={{
                 background: "#f5f7fb",
@@ -129,9 +86,7 @@ export default function Purchase() {
                 padding: 30
             }}
         >
-
             {/* Header */}
-
             <div
                 style={{
                     display: "flex",
@@ -142,9 +97,7 @@ export default function Purchase() {
                     gap: 15
                 }}
             >
-
                 <div>
-
                     <h1
                         style={{
                             margin: 0,
@@ -153,7 +106,6 @@ export default function Purchase() {
                     >
                         Purchases
                     </h1>
-
                     <p
                         style={{
                             color: "#6b7280"
@@ -161,11 +113,9 @@ export default function Purchase() {
                     >
                         Manage Purchase Invoices
                     </p>
-
                 </div>
 
                 <Link to="/add-purchase">
-
                     <button
                         style={{
                             background: "#2563eb",
@@ -182,19 +132,13 @@ export default function Purchase() {
                         onMouseEnter={(e) => e.target.style.background = "#1d4ed8"}
                         onMouseLeave={(e) => e.target.style.background = "#2563eb"}
                     >
-
                         <FiPlus />
-
                         New Purchase
-
                     </button>
-
                 </Link>
-
             </div>
 
             {/* Search */}
-
             <div
                 style={{
                     background: "#fff",
@@ -203,13 +147,11 @@ export default function Purchase() {
                     marginBottom: 20
                 }}
             >
-
                 <div
                     style={{
                         position: "relative"
                     }}
                 >
-
                     <FiSearch
                         style={{
                             position: "absolute",
@@ -218,17 +160,11 @@ export default function Purchase() {
                             color: "#999"
                         }}
                     />
-
                     <input
-
                         type="text"
-
                         placeholder="Search Invoice or Supplier"
-
                         value={search}
-
                         onChange={(e) => setSearch(e.target.value)}
-
                         style={{
                             width: "100%",
                             padding: "12px 45px",
@@ -237,15 +173,11 @@ export default function Purchase() {
                             outline: "none",
                             fontSize: 14
                         }}
-
                     />
-
                 </div>
-
             </div>
 
             {/* Purchase Table */}
-
             <div
                 style={{
                     background: "#fff",
@@ -255,7 +187,6 @@ export default function Purchase() {
                     overflowX: "auto"
                 }}
             >
-
                 <table
                     width="100%"
                     cellPadding="15"
@@ -264,40 +195,25 @@ export default function Purchase() {
                         minWidth: "800px"
                     }}
                 >
-
                     <thead>
-
                         <tr
                             style={{
                                 background: "#2563eb",
                                 color: "#fff"
                             }}
                         >
-
                             <th align="left">Invoice</th>
-
                             <th align="left">Supplier</th>
-
                             <th align="left">Total</th>
-
                             <th align="left">Paid</th>
-
                             <th align="left">Due</th>
-
                             <th align="left">Status</th>
-
                             <th align="center">Action</th>
-
                         </tr>
-
                     </thead>
-
                     <tbody>
-
                         {filteredPurchases.length === 0 && (
-
                             <tr>
-
                                 <td
                                     colSpan="7"
                                     align="center"
@@ -305,17 +221,12 @@ export default function Purchase() {
                                         padding: 40
                                     }}
                                 >
-
                                     No Purchases Found
-
                                 </td>
-
                             </tr>
-
                         )}
 
                         {filteredPurchases.map((purchase) => (
-
                             <tr
                                 key={purchase.id}
                                 style={{
@@ -325,9 +236,7 @@ export default function Purchase() {
                                 onMouseEnter={(e) => e.target.style.background = "#f8fafc"}
                                 onMouseLeave={(e) => e.target.style.background = "transparent"}
                             >
-
                                 <td>
-
                                     <div
                                         style={{
                                             display: "flex",
@@ -335,7 +244,6 @@ export default function Purchase() {
                                             gap: 10
                                         }}
                                     >
-
                                         <div
                                             style={{
                                                 width: 45,
@@ -348,13 +256,9 @@ export default function Purchase() {
                                                 flexShrink: 0
                                             }}
                                         >
-
                                             <FiShoppingCart color="#2563eb" />
-
                                         </div>
-
                                         <div>
-
                                             <div
                                                 style={{
                                                     fontWeight: "bold"
@@ -362,7 +266,6 @@ export default function Purchase() {
                                             >
                                                 {purchase.invoice_no}
                                             </div>
-
                                             <div
                                                 style={{
                                                     fontSize: 13,
@@ -375,47 +278,33 @@ export default function Purchase() {
                                                     year: 'numeric'
                                                 })}
                                             </div>
-
                                         </div>
-
                                     </div>
-
                                 </td>
 
                                 <td>
-
                                     <div
                                         style={{
                                             fontWeight: 600
                                         }}
                                     >
-
                                         {purchase.supplier_name}
-
                                     </div>
-
                                 </td>
 
                                 <td>
-
                                     ₹{Number(purchase.total_amount).toFixed(2)}
-
                                 </td>
 
                                 <td>
-
                                     ₹{Number(purchase.paid_amount).toFixed(2)}
-
                                 </td>
 
                                 <td>
-
                                     ₹{Number(purchase.due_amount).toFixed(2)}
-
                                 </td>
 
                                 <td>
-
                                     <span
                                         style={{
                                             background:
@@ -424,34 +313,24 @@ export default function Purchase() {
                                                     : purchase.payment_status === "Pending"
                                                         ? "#fee2e2"
                                                         : "#fef3c7",
-
                                             color:
                                                 purchase.payment_status === "Paid"
                                                     ? "#15803d"
                                                     : purchase.payment_status === "Pending"
                                                         ? "#dc2626"
                                                         : "#b45309",
-
                                             padding: "6px 14px",
-
                                             borderRadius: 30,
-
                                             fontSize: 13,
-
                                             fontWeight: 600,
-
                                             display: "inline-block"
                                         }}
                                     >
-
                                         {purchase.payment_status}
-
                                     </span>
-
                                 </td>
 
                                 <td align="center">
-
                                     <div
                                         style={{
                                             display: "flex",
@@ -460,11 +339,12 @@ export default function Purchase() {
                                             flexWrap: "wrap"
                                         }}
                                     >
-
                                         <Link
                                             to={`/purchase/${purchase.id}`}
+                                            style={{
+                                                textDecoration: "none"
+                                            }}
                                         >
-
                                             <button
                                                 style={{
                                                     background: "#0ea5e9",
@@ -487,17 +367,16 @@ export default function Purchase() {
                                                     e.target.style.transform = "scale(1)";
                                                 }}
                                             >
-
                                                 <FiEye />
-
                                             </button>
-
                                         </Link>
 
                                         <Link
                                             to={`/edit-purchase/${purchase.id}`}
+                                            style={{
+                                                textDecoration: "none"
+                                            }}
                                         >
-
                                             <button
                                                 style={{
                                                     background: "#f59e0b",
@@ -520,17 +399,12 @@ export default function Purchase() {
                                                     e.target.style.transform = "scale(1)";
                                                 }}
                                             >
-
                                                 <FiEdit />
-
                                             </button>
-
                                         </Link>
 
                                         <button
-
                                             onClick={() => deletePurchase(purchase.id)}
-
                                             style={{
                                                 background: "#ef4444",
                                                 color: "#fff",
@@ -552,27 +426,15 @@ export default function Purchase() {
                                                 e.target.style.transform = "scale(1)";
                                             }}
                                         >
-
                                             <FiTrash2 />
-
                                         </button>
-
                                     </div>
-
                                 </td>
-
                             </tr>
-
                         ))}
-
                     </tbody>
-
                 </table>
-
             </div>
-
         </div>
-
     );
-
 }

@@ -1,10 +1,9 @@
 // src/pages/PurchaseDetails.jsx
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 
 export default function PurchaseDetails() {
-
     const { id } = useParams();
     const navigate = useNavigate();
     const [purchase, setPurchase] = useState(null);
@@ -13,7 +12,7 @@ export default function PurchaseDetails() {
 
     useEffect(() => {
         loadPurchase();
-    }, []);
+    }, [id]);
 
     const loadPurchase = async () => {
         try {
@@ -28,6 +27,10 @@ export default function PurchaseDetails() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handlePrint = () => {
+        window.print();
     };
 
     if (loading) {
@@ -124,35 +127,28 @@ export default function PurchaseDetails() {
                     <div>
                         <h3>Supplier Details</h3>
                         <p>
-                            <strong>Name:</strong>
-                            {purchase.supplier_name}
+                            <strong>Name:</strong> {purchase.supplier_name}
                         </p>
                         <p>
-                            <strong>Company:</strong>
-                            {purchase.company_name}
+                            <strong>Company:</strong> {purchase.company_name}
                         </p>
                         <p>
-                            <strong>Phone:</strong>
-                            {purchase.supplier_phone}
+                            <strong>Phone:</strong> {purchase.supplier_phone}
                         </p>
                         <p>
-                            <strong>Address:</strong>
-                            {purchase.address}
+                            <strong>Address:</strong> {purchase.address}
                         </p>
                     </div>
                     <div>
                         <h3>Invoice Details</h3>
                         <p>
-                            <strong>Date:</strong>
-                            {new Date(purchase.created_at).toLocaleDateString()}
+                            <strong>Date:</strong> {new Date(purchase.created_at).toLocaleDateString()}
                         </p>
                         <p>
-                            <strong>Status:</strong>
-                            {purchase.payment_status}
+                            <strong>Status:</strong> {purchase.payment_status}
                         </p>
                         <p>
-                            <strong>Payment:</strong>
-                            {purchase.payment_method}
+                            <strong>Payment:</strong> {purchase.payment_method}
                         </p>
                     </div>
                 </div>
@@ -192,34 +188,28 @@ export default function PurchaseDetails() {
                             </tr>
                         </thead>
                         <tbody>
-                            {
-                                items.map((item, index) => (
-                                    <tr
-                                        key={index}
-                                        style={{
-                                            borderBottom: "1px solid #eee"
-                                        }}
-                                    >
-                                        <td>
-                                            {item.product_name}
-                                        </td>
-                                        <td align="center">
-                                            {item.quantity}
-                                        </td>
-                                        <td align="right">
-                                            ₹{Number(item.purchase_price).toFixed(2)}
-                                        </td>
-                                        <td align="right">
-                                            ₹{Number(item.tax).toFixed(2)}
-                                        </td>
-                                        <td align="right">
-                                            <strong>
-                                                ₹{Number(item.total).toFixed(2)}
-                                            </strong>
-                                        </td>
-                                    </tr>
-                                ))
-                            }
+                            {items.map((item, index) => (
+                                <tr
+                                    key={index}
+                                    style={{
+                                        borderBottom: "1px solid #eee"
+                                    }}
+                                >
+                                    <td>{item.product_name}</td>
+                                    <td align="center">{item.quantity}</td>
+                                    <td align="right">
+                                        ₹{Number(item.purchase_price).toFixed(2)}
+                                    </td>
+                                    <td align="right">
+                                        ₹{Number(item.tax).toFixed(2)}
+                                    </td>
+                                    <td align="right">
+                                        <strong>
+                                            ₹{Number(item.total).toFixed(2)}
+                                        </strong>
+                                    </td>
+                                </tr>
+                            ))}
                         </tbody>
                     </table>
                 </div>
@@ -336,7 +326,7 @@ export default function PurchaseDetails() {
                     }}
                 >
                     <button
-                        onClick={() => window.print()}
+                        onClick={handlePrint}
                         style={{
                             background: "#16a34a",
                             color: "#fff",
