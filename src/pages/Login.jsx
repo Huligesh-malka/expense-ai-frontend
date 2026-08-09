@@ -653,4 +653,4 @@ hoverStyles.textContent = `
         transform: scale(1.05);
     }
 `;
-document.head.appendChild(hoverStyles);
+document.head.appendChild(hoverStyles); 
