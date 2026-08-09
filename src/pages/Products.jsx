@@ -935,7 +935,7 @@ const styles = {
         transform: "translateY(-50%)",
         background: "none",
         border: "none",
-        color: INK_SOFT",
+        color: "INK_SOFT",
         cursor: "pointer",
         fontSize: "14px",
         padding: "4px 6px",
