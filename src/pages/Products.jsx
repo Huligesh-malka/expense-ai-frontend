@@ -15,12 +15,10 @@ export default function Products() {
     const [sortDirection, setSortDirection] = useState("asc");
     const itemsPerPage = 10;
 
-    // Load products on mount
     useEffect(() => {
         loadProducts();
     }, []);
 
-    // Reset page when filters change
     useEffect(() => {
         setCurrentPage(1);
     }, [search, selectedCategory, selectedStockStatus]);
@@ -30,7 +28,7 @@ export default function Products() {
         try {
             const businessId = localStorage.getItem("businessId");
             if (!businessId) {
-                setMessage("❌ Business ID not found");
+                setMessage("Business ID not found");
                 setMessageType("error");
                 setLoading(false);
                 return;
@@ -41,7 +39,7 @@ export default function Products() {
             setMessage("");
         } catch (err) {
             console.error("Error loading products:", err);
-            setMessage("❌ Failed to load products");
+            setMessage("Couldn't load products");
             setMessageType("error");
         } finally {
             setLoading(false);
@@ -49,11 +47,11 @@ export default function Products() {
     };
 
     const deleteProduct = async (id) => {
-        if (!window.confirm("Are you sure you want to delete this product?")) return;
+        if (!window.confirm("Remove this product from inventory?")) return;
 
         try {
             await API.delete(`/products/${id}`);
-            setMessage("✅ Product deleted successfully!");
+            setMessage("Product removed");
             setMessageType("success");
             loadProducts();
 
@@ -63,80 +61,50 @@ export default function Products() {
             }, 3000);
         } catch (err) {
             console.error("Error deleting product:", err);
-            setMessage("❌ Failed to delete product");
+            setMessage("Couldn't remove product");
             setMessageType("error");
         }
     };
 
-    const getUnitIcon = (unit) => {
-        const icons = {
-            kg: "⚖️",
-            g: "⚖️",
-            pcs: "📦",
-            l: "🥤",
-            ml: "🥤",
-            meter: "📏",
-            feet: "📏",
-            pack: "📦",
-            box: "📦",
-            bottle: "🧴",
-            dozen: "📦",
-        };
-        return icons[unit] || "📦";
-    };
+    const getUnitLabel = (unit) => String(unit || "pcs").toUpperCase();
 
-    // ─── Stock status helper ─────────────────────────────────
+    // ─── Stock status ─────────────────────────────────────────
     const getStockStatusInfo = (stock, minStock) => {
         const ratio = minStock > 0 ? stock / minStock : Infinity;
-        if (stock <= 0) return { key: "out_of_stock", label: "Out of Stock", color: "#991b1b", bg: "#fee2e2" };
-        if (stock <= minStock) return { key: "low_stock", label: "Low Stock", color: "#92400e", bg: "#fef3c7" };
-        if (ratio <= 3) return { key: "medium", label: "Medium", color: "#1e40af", bg: "#dbeafe" };
-        return { key: "in_stock", label: "In Stock", color: "#166534", bg: "#dcfce7" };
+        if (stock <= 0) return { key: "out_of_stock", label: "Out", color: "#B3261E", bg: "#FBEAE9", ring: "#E4B8B5" };
+        if (stock <= minStock) return { key: "low_stock", label: "Low", color: "#A66A00", bg: "#FBF1DE", ring: "#E7CB92" };
+        if (ratio <= 3) return { key: "medium", label: "OK", color: "#3D5A80", bg: "#EAF0F6", ring: "#B9CBDD" };
+        return { key: "in_stock", label: "Stocked", color: "#2F6F4E", bg: "#E9F3ED", ring: "#B7D6C4" };
     };
 
-    // ─── Expiry helper (kept for display only, no filter) ────
+    // ─── Expiry (display only) ─────────────────────────────────
     const getExpiryStatus = (expiryDate) => {
         if (!expiryDate) return null;
-
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-
         const expiry = new Date(expiryDate);
         expiry.setHours(0, 0, 0, 0);
+        const diffDays = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
 
-        const diffTime = expiry - today;
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-        if (diffDays < 0) {
-            return { status: "expired", label: "Expired", color: "#dc2626", bg: "#fee2e2", icon: "🔴" };
-        } else if (diffDays <= 7) {
-            return { status: "expiring_soon", label: "Expiring Soon", color: "#ea580c", bg: "#fff7ed", icon: "🟠" };
-        } else if (diffDays <= 30) {
-            return { status: "expiring", label: "Expiring", color: "#ca8a04", bg: "#fefce8", icon: "🟡" };
-        } else {
-            return { status: "good", label: "Valid", color: "#16a34a", bg: "#dcfce7", icon: "✅" };
-        }
+        if (diffDays < 0) return { label: "Expired", color: "#B3261E", bg: "#FBEAE9" };
+        if (diffDays <= 7) return { label: "This week", color: "#A66A00", bg: "#FBF1DE" };
+        if (diffDays <= 30) return { label: "This month", color: "#8A6D00", bg: "#FAF4DE" };
+        return { label: "Fine", color: "#2F6F4E", bg: "#E9F3ED" };
     };
 
-    const getExpiryBadge = (expiryDate) => {
+    const renderExpiryCell = (expiryDate) => {
+        if (!expiryDate) return <span style={styles.dash}>—</span>;
         const status = getExpiryStatus(expiryDate);
-        if (!status) return <span style={{ color: "#94a3b8", fontSize: "12px" }}>—</span>;
-
         return (
-            <span
-                style={{
-                    ...styles.expiryBadge,
-                    background: status.bg,
-                    color: status.color,
-                }}
-            >
-                <span style={{ marginRight: "4px" }}>{status.icon}</span>
-                {new Date(expiryDate).toLocaleDateString()}
-            </span>
+            <div style={styles.expiryCell}>
+                <span style={styles.expiryDate}>{new Date(expiryDate).toLocaleDateString("en-IN")}</span>
+                <span style={{ ...styles.expiryTag, color: status.color, background: status.bg }}>
+                    {status.label}
+                </span>
+            </div>
         );
     };
 
-    // Get unique categories for filter
     const categories = useMemo(() => {
         const cats = new Set();
         products.forEach((p) => {
@@ -145,7 +113,6 @@ export default function Products() {
         return Array.from(cats);
     }, [products]);
 
-    // Filter and sort products
     const filteredAndSortedProducts = useMemo(() => {
         let filtered = products.filter((item) => {
             const matchesSearch =
@@ -158,19 +125,15 @@ export default function Products() {
             let matchesStockStatus = true;
             if (selectedStockStatus !== "all") {
                 const stockInfo = getStockStatusInfo(item.stock, item.min_stock);
-                if (selectedStockStatus === "low_stock") {
-                    matchesStockStatus = stockInfo.key === "low_stock";
-                } else if (selectedStockStatus === "out_of_stock") {
-                    matchesStockStatus = stockInfo.key === "out_of_stock";
-                } else if (selectedStockStatus === "in_stock") {
+                if (selectedStockStatus === "low_stock") matchesStockStatus = stockInfo.key === "low_stock";
+                else if (selectedStockStatus === "out_of_stock") matchesStockStatus = stockInfo.key === "out_of_stock";
+                else if (selectedStockStatus === "in_stock")
                     matchesStockStatus = stockInfo.key === "in_stock" || stockInfo.key === "medium";
-                }
             }
 
             return matchesSearch && matchesCategory && matchesStockStatus;
         });
 
-        // Sort
         filtered.sort((a, b) => {
             let aVal = a[sortField] ?? "";
             let bVal = b[sortField] ?? "";
@@ -194,13 +157,11 @@ export default function Products() {
         return filtered;
     }, [products, search, selectedCategory, selectedStockStatus, sortField, sortDirection]);
 
-    // Pagination
     const totalPages = Math.ceil(filteredAndSortedProducts.length / itemsPerPage);
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     const currentProducts = filteredAndSortedProducts.slice(startIndex, endIndex);
 
-    // Summary stats — only the 3 that matter day-to-day
     const stats = useMemo(() => {
         const total = filteredAndSortedProducts.length;
         const lowStock = filteredAndSortedProducts.filter((p) => p.stock > 0 && p.stock <= p.min_stock).length;
@@ -208,7 +169,6 @@ export default function Products() {
         return { total, lowStock, outOfStock };
     }, [filteredAndSortedProducts]);
 
-    // Handle sort
     const handleSort = (field) => {
         if (sortField === field) {
             setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
@@ -220,204 +180,63 @@ export default function Products() {
 
     const renderSortIcon = (field) => {
         if (sortField !== field) return <span style={styles.sortIcon}>↕</span>;
-        return <span style={styles.sortIcon}>{sortDirection === "asc" ? "↑" : "↓"}</span>;
+        return <span style={{ ...styles.sortIcon, color: "#C08A1E" }}>{sortDirection === "asc" ? "↑" : "↓"}</span>;
     };
 
-    // Render table
-    const renderTableView = () => (
-        <div style={styles.tableWrapper}>
-            <table style={styles.table}>
-                <thead>
-                    <tr style={styles.tableHeader}>
-                        <th style={styles.th} onClick={() => handleSort("product_name")}>
-                            Product {renderSortIcon("product_name")}
-                        </th>
-                        <th style={styles.th} onClick={() => handleSort("category")}>
-                            Category {renderSortIcon("category")}
-                        </th>
-                        <th style={styles.th} onClick={() => handleSort("selling_price")}>
-                            Price {renderSortIcon("selling_price")}
-                        </th>
-                        <th style={styles.th} onClick={() => handleSort("stock")}>
-                            Stock {renderSortIcon("stock")}
-                        </th>
-                        <th style={styles.th} onClick={() => handleSort("expiry_date")}>
-                            Expiry {renderSortIcon("expiry_date")}
-                        </th>
-                        <th style={{ ...styles.th, textAlign: "center" }}>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {currentProducts.length === 0 ? (
-                        <tr>
-                            <td colSpan="6" style={styles.noData}>
-                                {search || selectedCategory !== "all" || selectedStockStatus !== "all" ? (
-                                    <div>
-                                        <span style={{ fontSize: "32px", display: "block", marginBottom: "8px" }}>🔍</span>
-                                        No products match your filters
-                                    </div>
-                                ) : (
-                                    <div>
-                                        <span style={{ fontSize: "32px", display: "block", marginBottom: "8px" }}>📦</span>
-                                        No products found. Click <strong>"Add Product"</strong> to get started.
-                                    </div>
-                                )}
-                            </td>
-                        </tr>
-                    ) : (
-                        currentProducts.map((product) => {
-                            const formattedStock = Number(product.stock).toFixed(2);
-                            const unit = String(product.unit || "pcs").toUpperCase();
-                            const unitIcon = getUnitIcon(product.unit);
-                            const stockInfo = getStockStatusInfo(product.stock, product.min_stock);
-
-                            return (
-                                <tr key={product.id} style={styles.tableRow}>
-                                    <td style={styles.td}>
-                                        <div style={styles.productInfo}>
-                                            {product.image ? (
-                                                <img
-                                                    src={product.image}
-                                                    alt={product.product_name}
-                                                    style={styles.productImage}
-                                                    onError={(e) => {
-                                                        e.target.style.display = "none";
-                                                    }}
-                                                />
-                                            ) : (
-                                                <div style={styles.productImagePlaceholder}>
-                                                    <span>📦</span>
-                                                </div>
-                                            )}
-                                            <div style={styles.productNameWrapper}>
-                                                <div style={styles.productName}>{product.product_name}</div>
-                                                {product.product_code && (
-                                                    <div style={styles.productCode}>{product.product_code}</div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td style={styles.td}>
-                                        <span style={styles.categoryBadge}>{product.category || "Other"}</span>
-                                    </td>
-                                    <td style={styles.td}>
-                                        <span style={styles.sellingPrice}>
-                                            ₹{parseFloat(product.selling_price || 0).toFixed(2)}
-                                        </span>
-                                        <small style={styles.priceUnitText}>
-                                            /{product.price_per || 1} {String(product.price_unit || "pcs").toUpperCase()}
-                                        </small>
-                                    </td>
-                                    <td style={styles.td}>
-                                        <div style={styles.stockCell}>
-                                            <span
-                                                style={{
-                                                    ...styles.stockBadge,
-                                                    background: stockInfo.bg,
-                                                    color: stockInfo.color,
-                                                }}
-                                            >
-                                                {unitIcon} {formattedStock} {unit}
-                                            </span>
-                                            <div style={styles.stockBarWrapper}>
-                                                <div
-                                                    style={{
-                                                        ...styles.stockBar,
-                                                        width: `${Math.min(
-                                                            (product.stock / (product.min_stock || 1)) * 100,
-                                                            100
-                                                        )}%`,
-                                                        background: stockInfo.color,
-                                                    }}
-                                                />
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td style={styles.td}>{getExpiryBadge(product.expiry_date)}</td>
-                                    <td style={styles.td}>
-                                        <div style={styles.actionButtons}>
-                                            <Link
-                                                to={`/edit-product/${product.id}`}
-                                                style={styles.editButton}
-                                                title="Edit Product"
-                                            >
-                                                ✏️
-                                            </Link>
-                                            <button
-                                                style={styles.deleteButton}
-                                                onClick={() => deleteProduct(product.id)}
-                                                title="Delete Product"
-                                            >
-                                                🗑️
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            );
-                        })
-                    )}
-                </tbody>
-            </table>
-        </div>
-    );
-
     return (
-        <div style={styles.container}>
-            {/* Header */}
-            <div style={styles.header}>
-                <div>
-                    <h1 style={styles.title}>📦 Products</h1>
-                    <p style={styles.subtitle}>{products.length} products in your inventory</p>
+        <div style={styles.page}>
+            <div style={styles.container}>
+                {/* Header — ledger stamp */}
+                <div style={styles.header}>
+                    <div style={styles.headerLeft}>
+                        <span style={styles.eyebrow}>Inventory · Register</span>
+                        <h1 style={styles.title}>Products</h1>
+                        <p style={styles.subtitle}>
+                            <span style={styles.subtitleCount}>{products.length}</span> items on the shelf
+                        </p>
+                    </div>
+                    <Link to="/add-product" style={styles.addButton}>
+                        + Add product
+                    </Link>
                 </div>
-                <Link to="/add-product" style={styles.addButton}>
-                    <span style={styles.addIcon}>+</span> Add Product
-                </Link>
-            </div>
+                <div style={styles.headerRule} />
 
-            {/* Message */}
-            {message && (
-                <div
-                    style={{
-                        ...styles.message,
-                        ...(messageType === "success" ? styles.successMessage : styles.errorMessage),
-                    }}
-                >
-                    {message}
-                </div>
-            )}
+                {message && (
+                    <div
+                        style={{
+                            ...styles.message,
+                            ...(messageType === "success" ? styles.successMessage : styles.errorMessage),
+                        }}
+                    >
+                        {message}
+                    </div>
+                )}
 
-            {/* Stats Cards — only 3 */}
-            <div style={styles.statsContainer}>
-                <div style={styles.statCard}>
-                    <div style={styles.statIcon}>📦</div>
-                    <div style={styles.statContent}>
+                {/* Stat strip */}
+                <div style={styles.statsContainer}>
+                    <div style={styles.statCard}>
+                        <span style={{ ...styles.statEdge, background: "#C08A1E" }} />
                         <span style={styles.statValue}>{stats.total}</span>
-                        <span style={styles.statLabel}>Total Products</span>
+                        <span style={styles.statLabel}>Total products</span>
+                    </div>
+                    <div style={styles.statCard}>
+                        <span style={{ ...styles.statEdge, background: "#A66A00" }} />
+                        <span style={{ ...styles.statValue, color: "#A66A00" }}>{stats.lowStock}</span>
+                        <span style={styles.statLabel}>Running low</span>
+                    </div>
+                    <div style={styles.statCard}>
+                        <span style={{ ...styles.statEdge, background: "#B3261E" }} />
+                        <span style={{ ...styles.statValue, color: "#B3261E" }}>{stats.outOfStock}</span>
+                        <span style={styles.statLabel}>Out of stock</span>
                     </div>
                 </div>
-                <div style={styles.statCard}>
-                    <div style={{ ...styles.statIcon, background: "#fef3c7", color: "#92400e" }}>⚠️</div>
-                    <div style={styles.statContent}>
-                        <span style={styles.statValue}>{stats.lowStock}</span>
-                        <span style={styles.statLabel}>Low Stock</span>
-                    </div>
-                </div>
-                <div style={styles.statCard}>
-                    <div style={{ ...styles.statIcon, background: "#fee2e2", color: "#991b1b" }}>🚫</div>
-                    <div style={styles.statContent}>
-                        <span style={styles.statValue}>{stats.outOfStock}</span>
-                        <span style={styles.statLabel}>Out of Stock</span>
-                    </div>
-                </div>
-            </div>
 
-            {/* Toolbar */}
-            <div style={styles.toolbar}>
-                <div style={styles.toolbarLeft}>
+                {/* Toolbar */}
+                <div style={styles.toolbar}>
                     <div style={styles.searchWrapper}>
-                        <span style={styles.searchIcon}>🔍</span>
+                        <span style={styles.searchIcon}>⌕</span>
                         <input
-                            placeholder="Search product / barcode..."
+                            placeholder="Search by name or scan barcode…"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             style={styles.searchBox}
@@ -428,16 +247,14 @@ export default function Products() {
                             </button>
                         )}
                     </div>
-                </div>
 
-                <div style={styles.toolbarRight}>
                     <div style={styles.filterWrapper}>
                         <select
                             value={selectedCategory}
                             onChange={(e) => setSelectedCategory(e.target.value)}
                             style={styles.filterSelect}
                         >
-                            <option value="all">All Categories</option>
+                            <option value="all">All categories</option>
                             {categories.map((cat) => (
                                 <option key={cat} value={cat}>
                                     {cat}
@@ -450,273 +267,397 @@ export default function Products() {
                             onChange={(e) => setSelectedStockStatus(e.target.value)}
                             style={styles.filterSelect}
                         >
-                            <option value="all">All Stock Status</option>
-                            <option value="in_stock">✅ In Stock</option>
-                            <option value="low_stock">⚠️ Low Stock</option>
-                            <option value="out_of_stock">🚫 Out of Stock</option>
+                            <option value="all">All stock levels</option>
+                            <option value="in_stock">Stocked</option>
+                            <option value="low_stock">Running low</option>
+                            <option value="out_of_stock">Out of stock</option>
                         </select>
                     </div>
                 </div>
-            </div>
 
-            {/* Loading State */}
-            {loading ? (
-                <div style={styles.loadingState}>
-                    <div style={styles.spinner}></div>
-                    <p style={styles.loadingText}>Loading products...</p>
-                </div>
-            ) : (
-                <>
-                    {renderTableView()}
-
-                    {/* Pagination */}
-                    {totalPages > 1 && (
-                        <div style={styles.pagination}>
-                            <button
-                                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                                disabled={currentPage === 1}
-                                style={{
-                                    ...styles.pageButton,
-                                    ...(currentPage === 1 ? styles.pageButtonDisabled : {}),
-                                }}
-                            >
-                                ← Previous
-                            </button>
-                            <div style={styles.pageInfo}>
-                                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                                    let pageNum;
-                                    if (totalPages <= 5) {
-                                        pageNum = i + 1;
-                                    } else if (currentPage <= 3) {
-                                        pageNum = i + 1;
-                                    } else if (currentPage >= totalPages - 2) {
-                                        pageNum = totalPages - 4 + i;
-                                    } else {
-                                        pageNum = currentPage - 2 + i;
-                                    }
-                                    return (
-                                        <button
-                                            key={pageNum}
-                                            onClick={() => setCurrentPage(pageNum)}
-                                            style={{
-                                                ...styles.pageNumber,
-                                                ...(currentPage === pageNum ? styles.pageNumberActive : {}),
-                                            }}
-                                        >
-                                            {pageNum}
-                                        </button>
-                                    );
-                                })}
-                                {totalPages > 5 && currentPage < totalPages - 2 && (
-                                    <span style={styles.pageEllipsis}>…</span>
-                                )}
-                                {totalPages > 5 && currentPage < totalPages - 2 && (
-                                    <button onClick={() => setCurrentPage(totalPages)} style={styles.pageNumber}>
-                                        {totalPages}
-                                    </button>
-                                )}
-                            </div>
-                            <button
-                                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                                disabled={currentPage === totalPages}
-                                style={{
-                                    ...styles.pageButton,
-                                    ...(currentPage === totalPages ? styles.pageButtonDisabled : {}),
-                                }}
-                            >
-                                Next →
-                            </button>
-                        </div>
-                    )}
-
-                    {/* Footer Info */}
-                    <div style={styles.footerInfo}>
-                        Showing {startIndex + 1}–{Math.min(endIndex, filteredAndSortedProducts.length)} of{" "}
-                        {filteredAndSortedProducts.length} products
+                {/* Table */}
+                {loading ? (
+                    <div style={styles.loadingState}>
+                        <div style={styles.spinner}></div>
+                        <p style={styles.loadingText}>Loading the register…</p>
                     </div>
-                </>
-            )}
+                ) : (
+                    <>
+                        <div style={styles.tableWrapper}>
+                            <div style={styles.marginRule} />
+                            <table style={styles.table}>
+                                <thead>
+                                    <tr>
+                                        <th style={styles.th} onClick={() => handleSort("product_name")}>
+                                            Product {renderSortIcon("product_name")}
+                                        </th>
+                                        <th style={styles.th} onClick={() => handleSort("category")}>
+                                            Category {renderSortIcon("category")}
+                                        </th>
+                                        <th style={{ ...styles.th, textAlign: "right" }} onClick={() => handleSort("selling_price")}>
+                                            Price {renderSortIcon("selling_price")}
+                                        </th>
+                                        <th style={{ ...styles.th, textAlign: "right" }} onClick={() => handleSort("stock")}>
+                                            Stock {renderSortIcon("stock")}
+                                        </th>
+                                        <th style={styles.th} onClick={() => handleSort("expiry_date")}>
+                                            Expiry {renderSortIcon("expiry_date")}
+                                        </th>
+                                        <th style={{ ...styles.th, textAlign: "center" }}>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {currentProducts.length === 0 ? (
+                                        <tr>
+                                            <td colSpan="6" style={styles.noData}>
+                                                {search || selectedCategory !== "all" || selectedStockStatus !== "all" ? (
+                                                    <div>
+                                                        <div style={styles.noDataTitle}>No matches</div>
+                                                        <div style={styles.noDataSub}>Try a different search or filter.</div>
+                                                    </div>
+                                                ) : (
+                                                    <div>
+                                                        <div style={styles.noDataTitle}>Nothing on the shelf yet</div>
+                                                        <div style={styles.noDataSub}>
+                                                            Use <strong>Add product</strong> to start the register.
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        currentProducts.map((product, idx) => {
+                                            const unit = getUnitLabel(product.unit);
+                                            const stockInfo = getStockStatusInfo(product.stock, product.min_stock);
+                                            const formattedStock = Number(product.stock).toFixed(
+                                                Number.isInteger(Number(product.stock)) ? 0 : 2
+                                            );
+
+                                            return (
+                                                <tr key={product.id} style={idx % 2 === 1 ? styles.tableRowAlt : styles.tableRow}>
+                                                    <td style={styles.td}>
+                                                        <div style={styles.productInfo}>
+                                                            {product.image ? (
+                                                                <img
+                                                                    src={product.image}
+                                                                    alt={product.product_name}
+                                                                    style={styles.productImage}
+                                                                    onError={(e) => {
+                                                                        e.target.style.display = "none";
+                                                                    }}
+                                                                />
+                                                            ) : (
+                                                                <div style={styles.productImagePlaceholder}>
+                                                                    {product.product_name?.[0]?.toUpperCase() || "?"}
+                                                                </div>
+                                                            )}
+                                                            <div style={styles.productNameWrapper}>
+                                                                <div style={styles.productName}>{product.product_name}</div>
+                                                                {product.product_code && (
+                                                                    <div style={styles.productCode}>{product.product_code}</div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td style={styles.td}>
+                                                        <span style={styles.categoryTag}>{product.category || "Other"}</span>
+                                                    </td>
+                                                    <td style={{ ...styles.td, textAlign: "right" }}>
+                                                        <span style={styles.priceValue}>
+                                                            ₹{parseFloat(product.selling_price || 0).toFixed(2)}
+                                                        </span>
+                                                        <span style={styles.priceUnit}>
+                                                            /{product.price_per || 1} {String(product.price_unit || "pcs").toUpperCase()}
+                                                        </span>
+                                                    </td>
+                                                    <td style={{ ...styles.td, textAlign: "right" }}>
+                                                        <div style={styles.stockCell}>
+                                                            <div>
+                                                                <span style={styles.stockValue}>{formattedStock}</span>
+                                                                <span style={styles.stockUnit}> {unit}</span>
+                                                            </div>
+                                                            <span
+                                                                style={{
+                                                                    ...styles.stockStamp,
+                                                                    color: stockInfo.color,
+                                                                    borderColor: stockInfo.ring,
+                                                                    background: stockInfo.bg,
+                                                                }}
+                                                            >
+                                                                {stockInfo.label}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                    <td style={styles.td}>{renderExpiryCell(product.expiry_date)}</td>
+                                                    <td style={styles.td}>
+                                                        <div style={styles.actionButtons}>
+                                                            <Link
+                                                                to={`/edit-product/${product.id}`}
+                                                                style={styles.editButton}
+                                                                title="Edit product"
+                                                            >
+                                                                Edit
+                                                            </Link>
+                                                            <button
+                                                                style={styles.deleteButton}
+                                                                onClick={() => deleteProduct(product.id)}
+                                                                title="Delete product"
+                                                            >
+                                                                ✕
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {totalPages > 1 && (
+                            <div style={styles.pagination}>
+                                <button
+                                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                                    disabled={currentPage === 1}
+                                    style={{ ...styles.pageButton, ...(currentPage === 1 ? styles.pageButtonDisabled : {}) }}
+                                >
+                                    ← Prev
+                                </button>
+                                <div style={styles.pageInfo}>
+                                    {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                                        let pageNum;
+                                        if (totalPages <= 5) pageNum = i + 1;
+                                        else if (currentPage <= 3) pageNum = i + 1;
+                                        else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i;
+                                        else pageNum = currentPage - 2 + i;
+                                        return (
+                                            <button
+                                                key={pageNum}
+                                                onClick={() => setCurrentPage(pageNum)}
+                                                style={{
+                                                    ...styles.pageNumber,
+                                                    ...(currentPage === pageNum ? styles.pageNumberActive : {}),
+                                                }}
+                                            >
+                                                {pageNum}
+                                            </button>
+                                        );
+                                    })}
+                                    {totalPages > 5 && currentPage < totalPages - 2 && <span style={styles.pageEllipsis}>…</span>}
+                                    {totalPages > 5 && currentPage < totalPages - 2 && (
+                                        <button onClick={() => setCurrentPage(totalPages)} style={styles.pageNumber}>
+                                            {totalPages}
+                                        </button>
+                                    )}
+                                </div>
+                                <button
+                                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                                    disabled={currentPage === totalPages}
+                                    style={{
+                                        ...styles.pageButton,
+                                        ...(currentPage === totalPages ? styles.pageButtonDisabled : {}),
+                                    }}
+                                >
+                                    Next →
+                                </button>
+                            </div>
+                        )}
+
+                        <div style={styles.footerInfo}>
+                            Showing {startIndex + 1}–{Math.min(endIndex, filteredAndSortedProducts.length)} of{" "}
+                            {filteredAndSortedProducts.length}
+                        </div>
+                    </>
+                )}
+            </div>
         </div>
     );
 }
 
 // ============================================================
-// STYLES
+// STYLES — ledger / khata-book direction
 // ============================================================
+const INK = "#1F2A44";
+const INK_SOFT = "#5B6478";
+const PAPER = "#F7F4EE";
+const RULE = "#DFD9C8";
+const GOLD = "#C08A1E";
+
 const styles = {
-    container: {
-        maxWidth: "1200px",
-        margin: "24px auto",
-        padding: "0 24px",
+    page: {
+        background: PAPER,
+        minHeight: "100%",
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+        color: INK,
+    },
+    container: {
+        maxWidth: "1180px",
+        margin: "0 auto",
+        padding: "40px 24px 64px",
     },
 
     header: {
         display: "flex",
         justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: "28px",
-        flexWrap: "wrap",
+        alignItems: "flex-end",
         gap: "16px",
+        flexWrap: "wrap",
+    },
+    headerLeft: {
+        display: "flex",
+        flexDirection: "column",
+        gap: "2px",
+    },
+    eyebrow: {
+        fontFamily: "'IBM Plex Mono', monospace",
+        fontSize: "11px",
+        letterSpacing: "1.6px",
+        textTransform: "uppercase",
+        color: GOLD,
+        fontWeight: "600",
     },
     title: {
-        fontSize: "28px",
-        fontWeight: "700",
-        color: "#0f172a",
-        margin: "0 0 4px 0",
+        fontFamily: "'Fraunces', Georgia, serif",
+        fontSize: "40px",
+        fontWeight: "600",
+        color: INK,
+        margin: "2px 0 0 0",
         letterSpacing: "-0.5px",
     },
     subtitle: {
         fontSize: "14px",
-        color: "#64748b",
-        margin: 0,
+        color: INK_SOFT,
+        margin: "6px 0 0 0",
+    },
+    subtitleCount: {
+        fontFamily: "'IBM Plex Mono', monospace",
+        fontWeight: "600",
+        color: INK,
     },
     addButton: {
-        background: "#0f172a",
-        color: "#fff",
+        background: INK,
+        color: PAPER,
         textDecoration: "none",
-        padding: "12px 28px",
-        borderRadius: "10px",
-        fontSize: "15px",
+        padding: "13px 24px",
+        borderRadius: "3px",
+        fontSize: "14px",
         fontWeight: "600",
-        display: "flex",
-        alignItems: "center",
-        gap: "8px",
-        transition: "all 0.2s",
         whiteSpace: "nowrap",
-        border: "none",
-        cursor: "pointer",
-        boxShadow: "0 4px 12px rgba(15, 23, 42, 0.15)",
+        letterSpacing: "0.2px",
+        transition: "all 0.15s",
     },
-    addIcon: {
-        fontSize: "20px",
-        fontWeight: "300",
-        lineHeight: 1,
+    headerRule: {
+        height: "3px",
+        background: `repeating-linear-gradient(90deg, ${INK} 0, ${INK} 6px, transparent 6px, transparent 10px)`,
+        opacity: 0.5,
+        margin: "20px 0 28px",
     },
 
     message: {
-        padding: "14px 20px",
-        marginBottom: "24px",
-        borderRadius: "10px",
+        padding: "12px 18px",
+        marginBottom: "20px",
+        borderRadius: "4px",
         fontSize: "14px",
         fontWeight: "500",
-        display: "flex",
-        alignItems: "center",
-        gap: "8px",
+        borderLeft: "3px solid",
     },
     successMessage: {
-        background: "#f0fdf4",
-        color: "#166534",
-        border: "1px solid #bbf7d0",
+        background: "#E9F3ED",
+        color: "#215838",
+        borderLeftColor: "#2F6F4E",
     },
     errorMessage: {
-        background: "#fef2f2",
-        color: "#991b1b",
-        border: "1px solid #fecaca",
+        background: "#FBEAE9",
+        color: "#8C1D14",
+        borderLeftColor: "#B3261E",
     },
 
     statsContainer: {
         display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-        gap: "12px",
-        marginBottom: "24px",
+        gridTemplateColumns: "repeat(3, 1fr)",
+        gap: "1px",
+        background: RULE,
+        border: `1px solid ${RULE}`,
+        borderRadius: "4px",
+        overflow: "hidden",
+        marginBottom: "28px",
     },
     statCard: {
-        background: "#ffffff",
-        padding: "16px 18px",
-        borderRadius: "12px",
-        border: "1px solid #e2e8f0",
-        display: "flex",
-        alignItems: "center",
-        gap: "14px",
-        transition: "all 0.2s",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-    },
-    statIcon: {
-        width: "44px",
-        height: "44px",
-        borderRadius: "10px",
-        background: "#f1f5f9",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontSize: "20px",
-        flexShrink: 0,
-    },
-    statContent: {
+        position: "relative",
+        background: "#FFFFFF",
+        padding: "20px 22px 18px",
         display: "flex",
         flexDirection: "column",
+        gap: "2px",
+    },
+    statEdge: {
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        height: "3px",
     },
     statValue: {
-        fontSize: "22px",
-        fontWeight: "700",
-        color: "#0f172a",
-        lineHeight: 1.2,
+        fontFamily: "'IBM Plex Mono', monospace",
+        fontSize: "30px",
+        fontWeight: "600",
+        color: INK,
+        lineHeight: 1.1,
+        fontVariantNumeric: "tabular-nums",
     },
     statLabel: {
         fontSize: "12px",
-        color: "#94a3b8",
+        color: INK_SOFT,
         fontWeight: "500",
-        textTransform: "uppercase",
-        letterSpacing: "0.3px",
+        marginTop: "4px",
     },
 
     toolbar: {
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        marginBottom: "24px",
-        gap: "16px",
-        flexWrap: "wrap",
-    },
-    toolbarLeft: {
-        flex: 1,
-        minWidth: "200px",
-    },
-    toolbarRight: {
-        display: "flex",
-        alignItems: "center",
-        gap: "12px",
+        marginBottom: "22px",
+        gap: "14px",
         flexWrap: "wrap",
     },
     searchWrapper: {
         position: "relative",
-        maxWidth: "420px",
+        maxWidth: "400px",
         width: "100%",
+        flex: 1,
+        minWidth: "220px",
     },
     searchIcon: {
         position: "absolute",
         left: "14px",
         top: "50%",
         transform: "translateY(-50%)",
-        color: "#94a3b8",
+        color: INK_SOFT,
         fontSize: "16px",
     },
     searchBox: {
         width: "100%",
-        padding: "11px 40px 11px 42px",
-        border: "1px solid #e2e8f0",
-        borderRadius: "10px",
+        padding: "11px 40px 11px 38px",
+        border: `1px solid ${RULE}`,
+        borderRadius: "4px",
         fontSize: "14px",
-        backgroundColor: "#f8fafc",
-        transition: "all 0.2s",
+        backgroundColor: "#FFFFFF",
         boxSizing: "border-box",
-        color: "#0f172a",
+        color: INK,
         outline: "none",
     },
     clearButton: {
         position: "absolute",
-        right: "12px",
+        right: "10px",
         top: "50%",
         transform: "translateY(-50%)",
         background: "none",
         border: "none",
-        color: "#94a3b8",
+        color: INK_SOFT,
         cursor: "pointer",
-        fontSize: "16px",
-        padding: "4px 8px",
-        borderRadius: "6px",
-        transition: "background 0.2s",
+        fontSize: "14px",
+        padding: "4px 6px",
     },
     filterWrapper: {
         display: "flex",
@@ -724,59 +665,69 @@ const styles = {
         flexWrap: "wrap",
     },
     filterSelect: {
-        padding: "10px 14px",
-        border: "1px solid #e2e8f0",
-        borderRadius: "10px",
+        padding: "10px 12px",
+        border: `1px solid ${RULE}`,
+        borderRadius: "4px",
         fontSize: "13px",
-        backgroundColor: "#f8fafc",
+        backgroundColor: "#FFFFFF",
         cursor: "pointer",
-        color: "#0f172a",
+        color: INK,
         outline: "none",
-        transition: "border-color 0.2s",
         minWidth: "150px",
     },
 
     tableWrapper: {
+        position: "relative",
         overflowX: "auto",
-        borderRadius: "12px",
-        border: "1px solid #e2e8f0",
-        background: "#ffffff",
-        marginBottom: "20px",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+        background: "#FFFFFF",
+        border: `1px solid ${RULE}`,
+        borderRadius: "4px",
+        marginBottom: "18px",
+        paddingLeft: "10px",
+    },
+    marginRule: {
+        position: "absolute",
+        top: 0,
+        bottom: 0,
+        left: "10px",
+        width: "1px",
+        background: "#D9B9B6",
     },
     table: {
         width: "100%",
         borderCollapse: "collapse",
-        fontSize: "13px",
+        fontSize: "13.5px",
         minWidth: "760px",
-    },
-    tableHeader: {
-        background: "#f8fafc",
-        borderBottom: "1px solid #e2e8f0",
     },
     th: {
         padding: "14px 16px",
         textAlign: "left",
         fontWeight: "600",
-        color: "#475569",
-        fontSize: "12px",
+        color: INK_SOFT,
+        fontSize: "11px",
         textTransform: "uppercase",
-        letterSpacing: "0.4px",
-        borderBottom: "1px solid #e2e8f0",
+        letterSpacing: "0.6px",
+        borderBottom: `1px solid ${RULE}`,
         whiteSpace: "nowrap",
         cursor: "pointer",
         userSelect: "none",
     },
     tableRow: {
-        borderBottom: "1px solid #f1f5f9",
-        transition: "background 0.15s",
+        borderBottom: `1px solid #EFEBE1`,
+    },
+    tableRowAlt: {
+        borderBottom: `1px solid #EFEBE1`,
+        background: "#FBFAF6",
     },
     td: {
-        padding: "12px 16px",
+        padding: "13px 16px",
         verticalAlign: "middle",
-        borderBottom: "1px solid #f1f5f9",
+        fontSize: "13.5px",
+        color: INK,
+    },
+    dash: {
+        color: "#B7B0A0",
         fontSize: "13px",
-        color: "#0f172a",
     },
     productInfo: {
         display: "flex",
@@ -784,25 +735,27 @@ const styles = {
         gap: "12px",
     },
     productImage: {
-        width: "40px",
-        height: "40px",
-        borderRadius: "8px",
+        width: "36px",
+        height: "36px",
+        borderRadius: "4px",
         objectFit: "cover",
-        border: "1px solid #e2e8f0",
-        background: "#f8fafc",
+        border: `1px solid ${RULE}`,
         flexShrink: 0,
     },
     productImagePlaceholder: {
-        width: "40px",
-        height: "40px",
-        borderRadius: "8px",
-        border: "1px solid #e2e8f0",
-        background: "#f8fafc",
+        width: "36px",
+        height: "36px",
+        borderRadius: "4px",
+        border: `1px solid ${RULE}`,
+        background: "#F1EDE1",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        fontSize: "18px",
+        fontSize: "14px",
+        fontWeight: "700",
+        color: GOLD,
         flexShrink: 0,
+        fontFamily: "'Fraunces', serif",
     },
     productNameWrapper: {
         display: "flex",
@@ -810,134 +763,136 @@ const styles = {
     },
     productName: {
         fontWeight: "600",
-        color: "#0f172a",
+        color: INK,
         fontSize: "14px",
     },
     productCode: {
         fontSize: "11px",
-        color: "#94a3b8",
-        fontFamily: "monospace",
+        color: INK_SOFT,
+        fontFamily: "'IBM Plex Mono', monospace",
         marginTop: "1px",
     },
-    categoryBadge: {
-        background: "#f1f5f9",
-        padding: "4px 12px",
-        borderRadius: "20px",
+    categoryTag: {
         fontSize: "12px",
-        color: "#475569",
-        display: "inline-block",
+        color: INK_SOFT,
         fontWeight: "500",
+        borderBottom: `1px dotted ${RULE}`,
+        paddingBottom: "1px",
     },
-    sellingPrice: {
-        color: "#0f172a",
+    priceValue: {
+        fontFamily: "'IBM Plex Mono', monospace",
+        color: INK,
         fontSize: "14px",
-        fontWeight: "700",
-        display: "block",
+        fontWeight: "600",
+        fontVariantNumeric: "tabular-nums",
     },
-    priceUnitText: {
+    priceUnit: {
         fontSize: "10px",
-        color: "#94a3b8",
-        fontWeight: "400",
+        color: INK_SOFT,
         display: "block",
         marginTop: "1px",
     },
     stockCell: {
         display: "flex",
         flexDirection: "column",
+        alignItems: "flex-end",
         gap: "4px",
-        minWidth: "80px",
     },
-    stockBadge: {
-        display: "inline-block",
-        padding: "3px 12px",
-        borderRadius: "20px",
-        fontSize: "12px",
+    stockValue: {
+        fontFamily: "'IBM Plex Mono', monospace",
+        fontSize: "14px",
         fontWeight: "600",
-        whiteSpace: "nowrap",
+        color: INK,
+        fontVariantNumeric: "tabular-nums",
     },
-    stockBarWrapper: {
-        width: "100%",
-        height: "4px",
-        background: "#e2e8f0",
-        borderRadius: "4px",
-        overflow: "hidden",
+    stockUnit: {
+        fontSize: "11px",
+        color: INK_SOFT,
     },
-    stockBar: {
-        height: "100%",
-        borderRadius: "4px",
-        transition: "width 0.4s ease",
-    },
-    expiryBadge: {
-        padding: "4px 12px",
+    stockStamp: {
+        fontSize: "10px",
+        fontWeight: "700",
+        letterSpacing: "0.5px",
+        textTransform: "uppercase",
+        padding: "2px 8px",
         borderRadius: "20px",
-        fontSize: "12px",
+        border: "1px solid",
+    },
+    expiryCell: {
+        display: "flex",
+        flexDirection: "column",
+        gap: "2px",
+    },
+    expiryDate: {
+        fontSize: "13px",
+        color: INK,
+    },
+    expiryTag: {
+        fontSize: "10px",
         fontWeight: "600",
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "4px",
-        whiteSpace: "nowrap",
+        padding: "1px 7px",
+        borderRadius: "20px",
+        width: "fit-content",
     },
     actionButtons: {
         display: "flex",
         gap: "6px",
         alignItems: "center",
-        justifyContent: "center",
     },
     editButton: {
-        background: "#f1f5f9",
-        color: "#0f172a",
+        background: "transparent",
+        color: INK,
         padding: "6px 12px",
         textDecoration: "none",
-        borderRadius: "8px",
-        fontSize: "14px",
-        transition: "all 0.2s",
-        border: "none",
+        borderRadius: "3px",
+        fontSize: "12px",
+        fontWeight: "600",
+        border: `1px solid ${RULE}`,
         cursor: "pointer",
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
         lineHeight: 1,
     },
     deleteButton: {
-        background: "#fef2f2",
-        color: "#dc2626",
-        border: "none",
-        padding: "6px 12px",
+        background: "transparent",
+        color: "#B3261E",
+        border: "1px solid #EAC7C4",
+        padding: "6px 10px",
         cursor: "pointer",
-        borderRadius: "8px",
-        fontSize: "14px",
-        transition: "all 0.2s",
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
+        borderRadius: "3px",
+        fontSize: "12px",
         lineHeight: 1,
     },
     noData: {
-        padding: "48px 20px",
+        padding: "56px 20px",
         textAlign: "center",
-        color: "#94a3b8",
-        fontSize: "15px",
+    },
+    noDataTitle: {
+        fontFamily: "'Fraunces', serif",
+        fontSize: "18px",
+        color: INK,
+        marginBottom: "4px",
+    },
+    noDataSub: {
+        fontSize: "13px",
+        color: INK_SOFT,
     },
 
     pagination: {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        gap: "12px",
-        marginTop: "8px",
-        padding: "16px 0",
+        gap: "10px",
+        padding: "8px 0 16px",
         flexWrap: "wrap",
     },
     pageButton: {
-        padding: "8px 18px",
-        background: "#f8fafc",
-        border: "1px solid #e2e8f0",
-        borderRadius: "8px",
+        padding: "8px 16px",
+        background: "#FFFFFF",
+        border: `1px solid ${RULE}`,
+        borderRadius: "3px",
         cursor: "pointer",
         fontSize: "13px",
         fontWeight: "500",
-        color: "#475569",
-        transition: "all 0.2s",
+        color: INK,
     },
     pageButtonDisabled: {
         opacity: 0.4,
@@ -949,26 +904,25 @@ const styles = {
         gap: "4px",
     },
     pageNumber: {
-        padding: "6px 12px",
-        borderRadius: "6px",
+        padding: "6px 11px",
+        borderRadius: "3px",
         border: "none",
         background: "transparent",
         cursor: "pointer",
         fontSize: "13px",
         fontWeight: "500",
-        color: "#475569",
-        transition: "all 0.2s",
-        minWidth: "32px",
+        color: INK_SOFT,
+        fontFamily: "'IBM Plex Mono', monospace",
+        minWidth: "30px",
         textAlign: "center",
     },
     pageNumberActive: {
-        background: "#0f172a",
-        color: "#fff",
+        background: INK,
+        color: PAPER,
     },
     pageEllipsis: {
-        color: "#94a3b8",
+        color: INK_SOFT,
         padding: "0 4px",
-        fontSize: "14px",
     },
 
     loadingState: {
@@ -980,55 +934,51 @@ const styles = {
         gap: "16px",
     },
     spinner: {
-        width: "44px",
-        height: "44px",
-        border: "4px solid #e2e8f0",
-        borderTop: "4px solid #0f172a",
+        width: "36px",
+        height: "36px",
+        border: `3px solid ${RULE}`,
+        borderTop: `3px solid ${GOLD}`,
         borderRadius: "50%",
         animation: "spin 0.7s linear infinite",
     },
     loadingText: {
-        color: "#94a3b8",
-        fontSize: "15px",
-        fontWeight: "500",
+        color: INK_SOFT,
+        fontSize: "14px",
     },
 
     footerInfo: {
         textAlign: "center",
-        fontSize: "13px",
-        color: "#94a3b8",
+        fontSize: "12px",
+        color: INK_SOFT,
+        fontFamily: "'IBM Plex Mono', monospace",
         padding: "4px 0 8px",
     },
 
     sortIcon: {
         marginLeft: "4px",
-        fontSize: "12px",
-        color: "#94a3b8",
+        fontSize: "11px",
+        color: "#B7B0A0",
         display: "inline-block",
     },
 };
 
-// Inject keyframe animations and hover styles
+// Inject fonts, keyframes and interaction states
 if (typeof document !== "undefined" && !document.getElementById("products-page-styles")) {
     const styleSheet = document.createElement("style");
     styleSheet.id = "products-page-styles";
     styleSheet.textContent = `
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap');
+
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        th:hover {
-            color: #0f172a !important;
-        }
-        .search-box:focus {
-            border-color: #0f172a !important;
-            box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.08) !important;
-            background: #ffffff !important;
-        }
-        .page-button:hover:not(:disabled) {
-            background: #e2e8f0 !important;
-            border-color: #cbd5e1 !important;
-        }
+        th:hover { color: ${INK} !important; }
+        .search-box:focus { border-color: ${GOLD} !important; box-shadow: 0 0 0 3px rgba(192,138,30,0.12) !important; }
+        .filter-select:focus { border-color: ${GOLD} !important; }
+        a[href="/add-product"]:hover { background: #33456B !important; }
+        .page-button:hover:not(:disabled) { border-color: ${GOLD} !important; }
+        tr:hover td { background: #FBF4E4 !important; }
     `;
     document.head.appendChild(styleSheet);
 }
