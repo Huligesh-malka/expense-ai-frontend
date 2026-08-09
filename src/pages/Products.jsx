@@ -71,10 +71,10 @@ export default function Products() {
     // ─── Stock status ─────────────────────────────────────────
     const getStockStatusInfo = (stock, minStock) => {
         const ratio = minStock > 0 ? stock / minStock : Infinity;
-        if (stock <= 0) return { key: "out_of_stock", label: "Out", color: "#B3261E", bg: "#FBEAE9", ring: "#E4B8B5" };
-        if (stock <= minStock) return { key: "low_stock", label: "Low", color: "#A66A00", bg: "#FBF1DE", ring: "#E7CB92" };
-        if (ratio <= 3) return { key: "medium", label: "OK", color: "#3D5A80", bg: "#EAF0F6", ring: "#B9CBDD" };
-        return { key: "in_stock", label: "Stocked", color: "#2F6F4E", bg: "#E9F3ED", ring: "#B7D6C4" };
+        if (stock <= 0) return { key: "out_of_stock", label: "Out", color: "#D6482B", bg: "#FBE7E0", ring: "#F0BDA9" };
+        if (stock <= minStock) return { key: "low_stock", label: "Low", color: "#C97A12", bg: "#FCF0DA", ring: "#F0D49B" };
+        if (ratio <= 3) return { key: "medium", label: "OK", color: "#2A6E8C", bg: "#E4F0F5", ring: "#B7D4E2" };
+        return { key: "in_stock", label: "Stocked", color: "#2F8F5B", bg: "#E4F5EC", ring: "#B3DEC5" };
     };
 
     // ─── Expiry (display only) ─────────────────────────────────
@@ -86,10 +86,10 @@ export default function Products() {
         expiry.setHours(0, 0, 0, 0);
         const diffDays = Math.ceil((expiry - today) / (1000 * 60 * 60 * 24));
 
-        if (diffDays < 0) return { label: "Expired", color: "#B3261E", bg: "#FBEAE9" };
-        if (diffDays <= 7) return { label: "This week", color: "#A66A00", bg: "#FBF1DE" };
-        if (diffDays <= 30) return { label: "This month", color: "#8A6D00", bg: "#FAF4DE" };
-        return { label: "Fine", color: "#2F6F4E", bg: "#E9F3ED" };
+        if (diffDays < 0) return { label: "Expired", color: "#D6482B", bg: "#FBE7E0" };
+        if (diffDays <= 7) return { label: "This week", color: "#C97A12", bg: "#FCF0DA" };
+        if (diffDays <= 30) return { label: "This month", color: "#9C7A00", bg: "#FBF3D6" };
+        return { label: "Fine", color: "#2F8F5B", bg: "#E4F5EC" };
     };
 
     const renderExpiryCell = (expiryDate) => {
@@ -180,26 +180,31 @@ export default function Products() {
 
     const renderSortIcon = (field) => {
         if (sortField !== field) return <span style={styles.sortIcon}>↕</span>;
-        return <span style={{ ...styles.sortIcon, color: "#C08A1E" }}>{sortDirection === "asc" ? "↑" : "↓"}</span>;
+        return <span style={{ ...styles.sortIcon, color: "#FFC53D" }}>{sortDirection === "asc" ? "↑" : "↓"}</span>;
     };
 
     return (
         <div style={styles.page}>
             <div style={styles.container}>
-                {/* Header — ledger stamp */}
-                <div style={styles.header}>
-                    <div style={styles.headerLeft}>
-                        <span style={styles.eyebrow}>Inventory · Register</span>
-                        <h1 style={styles.title}>Products</h1>
-                        <p style={styles.subtitle}>
-                            <span style={styles.subtitleCount}>{products.length}</span> items on the shelf
-                        </p>
+                {/* Signboard header */}
+                <div style={styles.signboard}>
+                    <div style={styles.signboardInner}>
+                        <div>
+                            <span style={styles.signboardEyebrow}>Shop Register</span>
+                            <h1 style={styles.signboardTitle}>Products</h1>
+                        </div>
+                        <div style={styles.signboardRight}>
+                            <div style={styles.signboardCount}>
+                                <span style={styles.signboardCountNum}>{products.length}</span>
+                                <span style={styles.signboardCountLabel}>on the shelf</span>
+                            </div>
+                            <Link to="/add-product" style={styles.addButton}>
+                                + Add product
+                            </Link>
+                        </div>
                     </div>
-                    <Link to="/add-product" style={styles.addButton}>
-                        + Add product
-                    </Link>
+                    <div style={styles.signboardNotch} />
                 </div>
-                <div style={styles.headerRule} />
 
                 {message && (
                     <div
@@ -212,21 +217,18 @@ export default function Products() {
                     </div>
                 )}
 
-                {/* Stat strip */}
+                {/* Stat tags */}
                 <div style={styles.statsContainer}>
                     <div style={styles.statCard}>
-                        <span style={{ ...styles.statEdge, background: "#C08A1E" }} />
                         <span style={styles.statValue}>{stats.total}</span>
                         <span style={styles.statLabel}>Total products</span>
                     </div>
-                    <div style={styles.statCard}>
-                        <span style={{ ...styles.statEdge, background: "#A66A00" }} />
-                        <span style={{ ...styles.statValue, color: "#A66A00" }}>{stats.lowStock}</span>
+                    <div style={{ ...styles.statCard, ...styles.statCardWarn }}>
+                        <span style={{ ...styles.statValue, color: "#C97A12" }}>{stats.lowStock}</span>
                         <span style={styles.statLabel}>Running low</span>
                     </div>
-                    <div style={styles.statCard}>
-                        <span style={{ ...styles.statEdge, background: "#B3261E" }} />
-                        <span style={{ ...styles.statValue, color: "#B3261E" }}>{stats.outOfStock}</span>
+                    <div style={{ ...styles.statCard, ...styles.statCardDanger }}>
+                        <span style={{ ...styles.statValue, color: "#D6482B" }}>{stats.outOfStock}</span>
                         <span style={styles.statLabel}>Out of stock</span>
                     </div>
                 </div>
@@ -279,12 +281,11 @@ export default function Products() {
                 {loading ? (
                     <div style={styles.loadingState}>
                         <div style={styles.spinner}></div>
-                        <p style={styles.loadingText}>Loading the register…</p>
+                        <p style={styles.loadingText}>Loading the shelf…</p>
                     </div>
                 ) : (
                     <>
                         <div style={styles.tableWrapper}>
-                            <div style={styles.marginRule} />
                             <table style={styles.table}>
                                 <thead>
                                     <tr>
@@ -294,7 +295,7 @@ export default function Products() {
                                         <th style={styles.th} onClick={() => handleSort("category")}>
                                             Category {renderSortIcon("category")}
                                         </th>
-                                        <th style={{ ...styles.th, textAlign: "right" }} onClick={() => handleSort("selling_price")}>
+                                        <th style={styles.th} onClick={() => handleSort("selling_price")}>
                                             Price {renderSortIcon("selling_price")}
                                         </th>
                                         <th style={{ ...styles.th, textAlign: "right" }} onClick={() => handleSort("stock")}>
@@ -362,13 +363,19 @@ export default function Products() {
                                                     <td style={styles.td}>
                                                         <span style={styles.categoryTag}>{product.category || "Other"}</span>
                                                     </td>
-                                                    <td style={{ ...styles.td, textAlign: "right" }}>
-                                                        <span style={styles.priceValue}>
-                                                            ₹{parseFloat(product.selling_price || 0).toFixed(2)}
-                                                        </span>
-                                                        <span style={styles.priceUnit}>
-                                                            /{product.price_per || 1} {String(product.price_unit || "pcs").toUpperCase()}
-                                                        </span>
+                                                    <td style={styles.td}>
+                                                        <div style={styles.priceTagWrapper}>
+                                                            <span style={styles.priceTagHole} />
+                                                            <span style={styles.priceTag}>
+                                                                <span style={styles.priceTagValue}>
+                                                                    ₹{parseFloat(product.selling_price || 0).toFixed(2)}
+                                                                </span>
+                                                                <span style={styles.priceTagUnit}>
+                                                                    /{product.price_per || 1}{" "}
+                                                                    {String(product.price_unit || "pcs").toUpperCase()}
+                                                                </span>
+                                                            </span>
+                                                        </div>
                                                     </td>
                                                     <td style={{ ...styles.td, textAlign: "right" }}>
                                                         <div style={styles.stockCell}>
@@ -476,13 +483,17 @@ export default function Products() {
 }
 
 // ============================================================
-// STYLES — ledger / khata-book direction
+// STYLES — shop signboard / price-tag direction
 // ============================================================
-const INK = "#1F2A44";
-const INK_SOFT = "#5B6478";
-const PAPER = "#F7F4EE";
-const RULE = "#DFD9C8";
-const GOLD = "#C08A1E";
+const TEAL = "#0B4F52";
+const TEAL_DARK = "#083B3D";
+const MARIGOLD = "#FFC53D";
+const PAPER = "#FFFBF2";
+const INK = "#182422";
+const INK_SOFT = "#5C6B67";
+const RULE = "#E4DEC8";
+const GREEN = "#2F8F5B";
+const RED = "#D6482B";
 
 const styles = {
     page: {
@@ -494,117 +505,129 @@ const styles = {
     container: {
         maxWidth: "1180px",
         margin: "0 auto",
-        padding: "40px 24px 64px",
+        padding: "32px 24px 64px",
     },
 
-    header: {
+    signboard: {
+        position: "relative",
+        background: TEAL,
+        borderRadius: "14px",
+        marginBottom: "26px",
+        boxShadow: "0 8px 0 " + TEAL_DARK + ", 0 14px 24px rgba(11,79,82,0.25)",
+    },
+    signboardInner: {
         display: "flex",
         justifyContent: "space-between",
-        alignItems: "flex-end",
+        alignItems: "center",
         gap: "16px",
         flexWrap: "wrap",
+        padding: "24px 28px",
     },
-    headerLeft: {
+    signboardEyebrow: {
+        fontSize: "11px",
+        letterSpacing: "2px",
+        textTransform: "uppercase",
+        color: MARIGOLD,
+        fontWeight: "700",
+    },
+    signboardTitle: {
+        fontFamily: "'Baloo 2', 'Inter', sans-serif",
+        fontSize: "34px",
+        fontWeight: "700",
+        color: "#FFFDF6",
+        margin: "2px 0 0 0",
+    },
+    signboardRight: {
+        display: "flex",
+        alignItems: "center",
+        gap: "18px",
+    },
+    signboardCount: {
         display: "flex",
         flexDirection: "column",
-        gap: "2px",
+        alignItems: "flex-end",
+        color: "#DCEEE9",
     },
-    eyebrow: {
-        fontFamily: "'IBM Plex Mono', monospace",
+    signboardCountNum: {
+        fontFamily: "'JetBrains Mono', monospace",
+        fontSize: "22px",
+        fontWeight: "700",
+        color: "#FFFFFF",
+        lineHeight: 1,
+    },
+    signboardCountLabel: {
         fontSize: "11px",
-        letterSpacing: "1.6px",
-        textTransform: "uppercase",
-        color: GOLD,
-        fontWeight: "600",
-    },
-    title: {
-        fontFamily: "'Fraunces', Georgia, serif",
-        fontSize: "40px",
-        fontWeight: "600",
-        color: INK,
-        margin: "2px 0 0 0",
-        letterSpacing: "-0.5px",
-    },
-    subtitle: {
-        fontSize: "14px",
-        color: INK_SOFT,
-        margin: "6px 0 0 0",
-    },
-    subtitleCount: {
-        fontFamily: "'IBM Plex Mono', monospace",
-        fontWeight: "600",
-        color: INK,
+        marginTop: "2px",
     },
     addButton: {
-        background: INK,
-        color: PAPER,
+        background: MARIGOLD,
+        color: TEAL_DARK,
         textDecoration: "none",
-        padding: "13px 24px",
-        borderRadius: "3px",
+        padding: "12px 22px",
+        borderRadius: "10px",
         fontSize: "14px",
-        fontWeight: "600",
+        fontWeight: "700",
         whiteSpace: "nowrap",
-        letterSpacing: "0.2px",
-        transition: "all 0.15s",
+        boxShadow: "0 3px 0 #D69A18",
+        transition: "transform 0.1s",
     },
-    headerRule: {
-        height: "3px",
-        background: `repeating-linear-gradient(90deg, ${INK} 0, ${INK} 6px, transparent 6px, transparent 10px)`,
-        opacity: 0.5,
-        margin: "20px 0 28px",
+    signboardNotch: {
+        position: "absolute",
+        bottom: "-8px",
+        left: "32px",
+        width: "16px",
+        height: "16px",
+        background: TEAL_DARK,
+        borderRadius: "3px",
+        transform: "rotate(45deg)",
     },
 
     message: {
         padding: "12px 18px",
         marginBottom: "20px",
-        borderRadius: "4px",
+        borderRadius: "8px",
         fontSize: "14px",
         fontWeight: "500",
-        borderLeft: "3px solid",
+        borderLeft: "4px solid",
     },
     successMessage: {
-        background: "#E9F3ED",
-        color: "#215838",
-        borderLeftColor: "#2F6F4E",
+        background: "#E4F5EC",
+        color: "#1F6B45",
+        borderLeftColor: GREEN,
     },
     errorMessage: {
-        background: "#FBEAE9",
-        color: "#8C1D14",
-        borderLeftColor: "#B3261E",
+        background: "#FBE7E0",
+        color: "#A5341A",
+        borderLeftColor: RED,
     },
 
     statsContainer: {
         display: "grid",
         gridTemplateColumns: "repeat(3, 1fr)",
-        gap: "1px",
-        background: RULE,
-        border: `1px solid ${RULE}`,
-        borderRadius: "4px",
-        overflow: "hidden",
-        marginBottom: "28px",
+        gap: "14px",
+        marginBottom: "26px",
     },
     statCard: {
-        position: "relative",
         background: "#FFFFFF",
-        padding: "20px 22px 18px",
+        padding: "18px 20px",
+        borderRadius: "12px",
+        border: `2px solid ${RULE}`,
         display: "flex",
         flexDirection: "column",
         gap: "2px",
     },
-    statEdge: {
-        position: "absolute",
-        top: 0,
-        left: 0,
-        right: 0,
-        height: "3px",
+    statCardWarn: {
+        borderColor: "#F0D49B",
+    },
+    statCardDanger: {
+        borderColor: "#F0BDA9",
     },
     statValue: {
-        fontFamily: "'IBM Plex Mono', monospace",
-        fontSize: "30px",
-        fontWeight: "600",
-        color: INK,
+        fontFamily: "'JetBrains Mono', monospace",
+        fontSize: "28px",
+        fontWeight: "700",
+        color: TEAL,
         lineHeight: 1.1,
-        fontVariantNumeric: "tabular-nums",
     },
     statLabel: {
         fontSize: "12px",
@@ -639,8 +662,8 @@ const styles = {
     searchBox: {
         width: "100%",
         padding: "11px 40px 11px 38px",
-        border: `1px solid ${RULE}`,
-        borderRadius: "4px",
+        border: `2px solid ${RULE}`,
+        borderRadius: "10px",
         fontSize: "14px",
         backgroundColor: "#FFFFFF",
         boxSizing: "border-box",
@@ -666,8 +689,8 @@ const styles = {
     },
     filterSelect: {
         padding: "10px 12px",
-        border: `1px solid ${RULE}`,
-        borderRadius: "4px",
+        border: `2px solid ${RULE}`,
+        borderRadius: "10px",
         fontSize: "13px",
         backgroundColor: "#FFFFFF",
         cursor: "pointer",
@@ -677,47 +700,38 @@ const styles = {
     },
 
     tableWrapper: {
-        position: "relative",
         overflowX: "auto",
         background: "#FFFFFF",
-        border: `1px solid ${RULE}`,
-        borderRadius: "4px",
+        border: `2px solid ${RULE}`,
+        borderRadius: "12px",
         marginBottom: "18px",
-        paddingLeft: "10px",
-    },
-    marginRule: {
-        position: "absolute",
-        top: 0,
-        bottom: 0,
-        left: "10px",
-        width: "1px",
-        background: "#D9B9B6",
     },
     table: {
         width: "100%",
         borderCollapse: "collapse",
         fontSize: "13.5px",
-        minWidth: "760px",
+        minWidth: "800px",
     },
     th: {
         padding: "14px 16px",
         textAlign: "left",
-        fontWeight: "600",
-        color: INK_SOFT,
+        fontWeight: "700",
+        color: TEAL,
         fontSize: "11px",
         textTransform: "uppercase",
         letterSpacing: "0.6px",
-        borderBottom: `1px solid ${RULE}`,
+        borderBottom: `2px solid ${RULE}`,
         whiteSpace: "nowrap",
         cursor: "pointer",
         userSelect: "none",
+        background: "#FBF7EA",
     },
     tableRow: {
-        borderBottom: `1px solid #EFEBE1`,
+        borderBottom: `1px dashed ${RULE}`,
     },
     tableRowAlt: {
-        borderBottom: `1px solid #EFEBE1`,
-        background: "#FBFAF6",
+        borderBottom: `1px dashed ${RULE}`,
+        background: "#FFFCF3",
     },
     td: {
         padding: "13px 16px",
@@ -737,25 +751,25 @@ const styles = {
     productImage: {
         width: "36px",
         height: "36px",
-        borderRadius: "4px",
+        borderRadius: "8px",
         objectFit: "cover",
-        border: `1px solid ${RULE}`,
+        border: `2px solid ${RULE}`,
         flexShrink: 0,
     },
     productImagePlaceholder: {
         width: "36px",
         height: "36px",
-        borderRadius: "4px",
-        border: `1px solid ${RULE}`,
-        background: "#F1EDE1",
+        borderRadius: "8px",
+        border: `2px solid ${RULE}`,
+        background: "#EFF6F0",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         fontSize: "14px",
         fontWeight: "700",
-        color: GOLD,
+        color: TEAL,
         flexShrink: 0,
-        fontFamily: "'Fraunces', serif",
+        fontFamily: "'Baloo 2', sans-serif",
     },
     productNameWrapper: {
         display: "flex",
@@ -769,29 +783,56 @@ const styles = {
     productCode: {
         fontSize: "11px",
         color: INK_SOFT,
-        fontFamily: "'IBM Plex Mono', monospace",
+        fontFamily: "'JetBrains Mono', monospace",
         marginTop: "1px",
     },
     categoryTag: {
         fontSize: "12px",
-        color: INK_SOFT,
-        fontWeight: "500",
-        borderBottom: `1px dotted ${RULE}`,
-        paddingBottom: "1px",
-    },
-    priceValue: {
-        fontFamily: "'IBM Plex Mono', monospace",
-        color: INK,
-        fontSize: "14px",
+        color: TEAL,
         fontWeight: "600",
-        fontVariantNumeric: "tabular-nums",
+        background: "#EAF3EE",
+        padding: "3px 10px",
+        borderRadius: "20px",
+        display: "inline-block",
     },
-    priceUnit: {
-        fontSize: "10px",
-        color: INK_SOFT,
-        display: "block",
-        marginTop: "1px",
+
+    // ─── Die-cut price tag ─────────────────────────────────────
+    priceTagWrapper: {
+        display: "inline-flex",
+        alignItems: "center",
+        position: "relative",
     },
+    priceTagHole: {
+        width: "6px",
+        height: "6px",
+        borderRadius: "50%",
+        background: PAPER,
+        border: `1.5px solid ${MARIGOLD}`,
+        position: "relative",
+        left: "8px",
+        zIndex: 2,
+    },
+    priceTag: {
+        display: "flex",
+        flexDirection: "column",
+        background: MARIGOLD,
+        color: TEAL_DARK,
+        padding: "5px 12px 5px 16px",
+        marginLeft: "-4px",
+        clipPath: "polygon(10px 0, 100% 0, 100% 100%, 10px 100%, 0 50%)",
+    },
+    priceTagValue: {
+        fontFamily: "'JetBrains Mono', monospace",
+        fontSize: "13.5px",
+        fontWeight: "700",
+        lineHeight: 1.2,
+    },
+    priceTagUnit: {
+        fontSize: "9px",
+        fontWeight: "600",
+        opacity: 0.75,
+    },
+
     stockCell: {
         display: "flex",
         flexDirection: "column",
@@ -799,11 +840,10 @@ const styles = {
         gap: "4px",
     },
     stockValue: {
-        fontFamily: "'IBM Plex Mono', monospace",
+        fontFamily: "'JetBrains Mono', monospace",
         fontSize: "14px",
         fontWeight: "600",
         color: INK,
-        fontVariantNumeric: "tabular-nums",
     },
     stockUnit: {
         fontSize: "11px",
@@ -816,7 +856,7 @@ const styles = {
         textTransform: "uppercase",
         padding: "2px 8px",
         borderRadius: "20px",
-        border: "1px solid",
+        border: "1.5px solid",
     },
     expiryCell: {
         display: "flex",
@@ -829,7 +869,7 @@ const styles = {
     },
     expiryTag: {
         fontSize: "10px",
-        fontWeight: "600",
+        fontWeight: "700",
         padding: "1px 7px",
         borderRadius: "20px",
         width: "fit-content",
@@ -840,24 +880,24 @@ const styles = {
         alignItems: "center",
     },
     editButton: {
-        background: "transparent",
-        color: INK,
+        background: "#EAF3EE",
+        color: TEAL,
         padding: "6px 12px",
         textDecoration: "none",
-        borderRadius: "3px",
+        borderRadius: "8px",
         fontSize: "12px",
-        fontWeight: "600",
-        border: `1px solid ${RULE}`,
+        fontWeight: "700",
+        border: "none",
         cursor: "pointer",
         lineHeight: 1,
     },
     deleteButton: {
-        background: "transparent",
-        color: "#B3261E",
-        border: "1px solid #EAC7C4",
+        background: "#FBE7E0",
+        color: RED,
+        border: "none",
         padding: "6px 10px",
         cursor: "pointer",
-        borderRadius: "3px",
+        borderRadius: "8px",
         fontSize: "12px",
         lineHeight: 1,
     },
@@ -866,7 +906,7 @@ const styles = {
         textAlign: "center",
     },
     noDataTitle: {
-        fontFamily: "'Fraunces', serif",
+        fontFamily: "'Baloo 2', sans-serif",
         fontSize: "18px",
         color: INK,
         marginBottom: "4px",
@@ -887,12 +927,12 @@ const styles = {
     pageButton: {
         padding: "8px 16px",
         background: "#FFFFFF",
-        border: `1px solid ${RULE}`,
-        borderRadius: "3px",
+        border: `2px solid ${RULE}`,
+        borderRadius: "8px",
         cursor: "pointer",
         fontSize: "13px",
-        fontWeight: "500",
-        color: INK,
+        fontWeight: "600",
+        color: TEAL,
     },
     pageButtonDisabled: {
         opacity: 0.4,
@@ -905,20 +945,20 @@ const styles = {
     },
     pageNumber: {
         padding: "6px 11px",
-        borderRadius: "3px",
+        borderRadius: "8px",
         border: "none",
         background: "transparent",
         cursor: "pointer",
         fontSize: "13px",
-        fontWeight: "500",
+        fontWeight: "600",
         color: INK_SOFT,
-        fontFamily: "'IBM Plex Mono', monospace",
+        fontFamily: "'JetBrains Mono', monospace",
         minWidth: "30px",
         textAlign: "center",
     },
     pageNumberActive: {
-        background: INK,
-        color: PAPER,
+        background: TEAL,
+        color: "#FFFFFF",
     },
     pageEllipsis: {
         color: INK_SOFT,
@@ -937,7 +977,7 @@ const styles = {
         width: "36px",
         height: "36px",
         border: `3px solid ${RULE}`,
-        borderTop: `3px solid ${GOLD}`,
+        borderTop: `3px solid ${MARIGOLD}`,
         borderRadius: "50%",
         animation: "spin 0.7s linear infinite",
     },
@@ -950,7 +990,7 @@ const styles = {
         textAlign: "center",
         fontSize: "12px",
         color: INK_SOFT,
-        fontFamily: "'IBM Plex Mono', monospace",
+        fontFamily: "'JetBrains Mono', monospace",
         padding: "4px 0 8px",
     },
 
@@ -967,18 +1007,18 @@ if (typeof document !== "undefined" && !document.getElementById("products-page-s
     const styleSheet = document.createElement("style");
     styleSheet.id = "products-page-styles";
     styleSheet.textContent = `
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap');
 
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        th:hover { color: ${INK} !important; }
-        .search-box:focus { border-color: ${GOLD} !important; box-shadow: 0 0 0 3px rgba(192,138,30,0.12) !important; }
-        .filter-select:focus { border-color: ${GOLD} !important; }
-        a[href="/add-product"]:hover { background: #33456B !important; }
-        .page-button:hover:not(:disabled) { border-color: ${GOLD} !important; }
-        tr:hover td { background: #FBF4E4 !important; }
+        th:hover { color: #083B3D !important; }
+        .search-box:focus { border-color: #FFC53D !important; box-shadow: 0 0 0 3px rgba(255,197,61,0.25) !important; }
+        .filter-select:focus { border-color: #FFC53D !important; }
+        a[href="/add-product"]:hover { transform: translateY(1px); box-shadow: 0 2px 0 #D69A18 !important; }
+        .page-button:hover:not(:disabled) { border-color: #FFC53D !important; }
+        tr:hover td { background: #FFF6DF !important; }
     `;
     document.head.appendChild(styleSheet);
 }
