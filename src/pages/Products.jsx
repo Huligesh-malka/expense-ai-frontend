@@ -15,6 +15,7 @@ export default function Products() {
     const [sortDirection, setSortDirection] = useState("asc");
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [showDetailsModal, setShowDetailsModal] = useState(false);
+    const [barcodeInput, setBarcodeInput] = useState("");
     const itemsPerPage = 10;
 
     useEffect(() => {
@@ -86,6 +87,43 @@ export default function Products() {
         setSelectedProduct(null);
     };
 
+    // ─── BARCODE SEARCH ─────────────────────────────────────
+    const handleBarcodeSearch = async () => {
+        if (!barcodeInput.trim()) return;
+
+        try {
+            const businessId = localStorage.getItem("businessId");
+            const res = await API.get(`/products/barcode/${barcodeInput.trim()}?business_id=${businessId}`);
+            
+            if (res.data.data) {
+                // Focus on the found product
+                const product = res.data.data;
+                setSearch(product.product_name || product.product_code || "");
+                setBarcodeInput("");
+                
+                // Optionally scroll to or highlight the product
+                setMessage(`Found: ${product.product_name}`);
+                setMessageType("success");
+                
+                // Load all products to ensure we have the full list
+                await loadProducts();
+                
+                setTimeout(() => {
+                    setMessage("");
+                    setMessageType("");
+                }, 3000);
+            }
+        } catch (err) {
+            console.error("Error searching by barcode:", err);
+            setMessage("Product not found by barcode");
+            setMessageType("error");
+            setTimeout(() => {
+                setMessage("");
+                setMessageType("");
+            }, 3000);
+        }
+    };
+
     const getUnitLabel = (unit) => String(unit || "pcs").toUpperCase();
 
     // ─── Stock status ─────────────────────────────────────────
@@ -125,6 +163,14 @@ export default function Products() {
         );
     };
 
+    // ─── Get status badge ─────────────────────────────────────
+    const getStatusBadge = (status) => {
+        if (status === "active") {
+            return <span style={styles.statusBadgeActive}>Active</span>;
+        }
+        return <span style={styles.statusBadgeInactive}>Inactive</span>;
+    };
+
     const categories = useMemo(() => {
         const cats = new Set();
         products.forEach((p) => {
@@ -138,7 +184,7 @@ export default function Products() {
             const matchesSearch =
                 item.product_name?.toLowerCase().includes(search.toLowerCase()) ||
                 item.product_code?.toLowerCase().includes(search.toLowerCase()) ||
-                item.barcode?.includes(search);
+                (item.barcode && item.barcode.includes(search));
 
             const matchesCategory = selectedCategory === "all" || item.category === selectedCategory;
 
@@ -158,7 +204,7 @@ export default function Products() {
             let aVal = a[sortField] ?? "";
             let bVal = b[sortField] ?? "";
 
-            if (sortField === "selling_price" || sortField === "stock") {
+            if (sortField === "selling_price" || sortField === "stock" || sortField === "purchase_price") {
                 aVal = parseFloat(aVal) || 0;
                 bVal = parseFloat(bVal) || 0;
             } else if (sortField === "expiry_date") {
@@ -258,7 +304,7 @@ export default function Products() {
                     <div style={styles.searchWrapper}>
                         <span style={styles.searchIcon}>⌕</span>
                         <input
-                            placeholder="Search by name or scan barcode…"
+                            placeholder="Search by name, code or barcode…"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             style={styles.searchBox}
@@ -268,6 +314,19 @@ export default function Products() {
                                 ✕
                             </button>
                         )}
+                    </div>
+
+                    <div style={styles.barcodeWrapper}>
+                        <input
+                            placeholder="Scan barcode…"
+                            value={barcodeInput}
+                            onChange={(e) => setBarcodeInput(e.target.value)}
+                            style={styles.barcodeInput}
+                            onKeyPress={(e) => e.key === "Enter" && handleBarcodeSearch()}
+                        />
+                        <button style={styles.barcodeButton} onClick={handleBarcodeSearch}>
+                            Scan
+                        </button>
                     </div>
 
                     <div style={styles.filterWrapper}>
@@ -324,13 +383,16 @@ export default function Products() {
                                         <th style={styles.th} onClick={() => handleSort("expiry_date")}>
                                             Expiry {renderSortIcon("expiry_date")}
                                         </th>
+                                        <th style={styles.th} onClick={() => handleSort("status")}>
+                                            Status {renderSortIcon("status")}
+                                        </th>
                                         <th style={{ ...styles.th, textAlign: "center" }}>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {currentProducts.length === 0 ? (
                                         <tr>
-                                            <td colSpan="6" style={styles.noData}>
+                                            <td colSpan="7" style={styles.noData}>
                                                 {search || selectedCategory !== "all" || selectedStockStatus !== "all" ? (
                                                     <div>
                                                         <div style={styles.noDataTitle}>No matches</div>
@@ -377,6 +439,12 @@ export default function Products() {
                                                                 {product.product_code && (
                                                                     <div style={styles.productCode}>{product.product_code}</div>
                                                                 )}
+                                                                {product.barcode && (
+                                                                    <div style={styles.productBarcode}>📷 {product.barcode}</div>
+                                                                )}
+                                                                {product.tax > 0 && (
+                                                                    <div style={styles.productTax}>Tax: {product.tax}%</div>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </td>
@@ -395,6 +463,11 @@ export default function Products() {
                                                                     {String(product.price_unit || "pcs").toUpperCase()}
                                                                 </span>
                                                             </span>
+                                                            {product.purchase_price > 0 && (
+                                                                <span style={styles.costPriceTag}>
+                                                                    Cost: ₹{parseFloat(product.purchase_price).toFixed(2)}
+                                                                </span>
+                                                            )}
                                                         </div>
                                                     </td>
                                                     <td style={{ ...styles.td, textAlign: "right" }}>
@@ -416,6 +489,7 @@ export default function Products() {
                                                         </div>
                                                     </td>
                                                     <td style={styles.td}>{renderExpiryCell(product.expiry_date)}</td>
+                                                    <td style={styles.td}>{getStatusBadge(product.status)}</td>
                                                     <td style={styles.td}>
                                                         <div style={styles.actionButtons}>
                                                             <button
@@ -541,6 +615,9 @@ export default function Products() {
                                             <p style={styles.detailBarcode}>Barcode: {selectedProduct.barcode}</p>
                                         )}
                                         <span style={styles.detailCategory}>{selectedProduct.category || "Uncategorized"}</span>
+                                        <div style={styles.detailStatusWrapper}>
+                                            {getStatusBadge(selectedProduct.status)}
+                                        </div>
                                     </div>
                                 </div>
 
@@ -553,14 +630,14 @@ export default function Products() {
                                             <span style={styles.detailValue}>₹{parseFloat(selectedProduct.selling_price || 0).toFixed(2)}</span>
                                         </div>
                                         <div style={styles.detailRow}>
-                                            <span style={styles.detailLabel}>Cost Price</span>
-                                            <span style={styles.detailValue}>₹{parseFloat(selectedProduct.cost_price || 0).toFixed(2)}</span>
+                                            <span style={styles.detailLabel}>Purchase Price</span>
+                                            <span style={styles.detailValue}>₹{parseFloat(selectedProduct.purchase_price || 0).toFixed(2)}</span>
                                         </div>
                                         <div style={styles.detailRow}>
                                             <span style={styles.detailLabel}>Price Per</span>
                                             <span style={styles.detailValue}>{selectedProduct.price_per || 1} {getUnitLabel(selectedProduct.price_unit)}</span>
                                         </div>
-                                        {selectedProduct.tax && (
+                                        {selectedProduct.tax > 0 && (
                                             <div style={styles.detailRow}>
                                                 <span style={styles.detailLabel}>Tax Rate</span>
                                                 <span style={styles.detailValue}>{selectedProduct.tax}%</span>
@@ -585,10 +662,15 @@ export default function Products() {
                                             </span>
                                         </div>
                                         <div style={styles.detailRow}>
+                                            <span style={styles.detailLabel}>Stock Unit</span>
+                                            <span style={styles.detailValue}>{getUnitLabel(selectedProduct.unit)}</span>
+                                        </div>
+                                        <div style={styles.detailRow}>
                                             <span style={styles.detailLabel}>Stock Status</span>
                                             <span style={{
                                                 ...styles.detailStockStatus,
-                                                ...getStockStatusInfo(selectedProduct.stock, selectedProduct.min_stock)
+                                                color: getStockStatusInfo(selectedProduct.stock, selectedProduct.min_stock).color,
+                                                background: getStockStatusInfo(selectedProduct.stock, selectedProduct.min_stock).bg,
                                             }}>
                                                 {getStockStatusInfo(selectedProduct.stock, selectedProduct.min_stock).label}
                                             </span>
@@ -597,26 +679,11 @@ export default function Products() {
 
                                     <div style={styles.detailSection}>
                                         <h4 style={styles.detailSectionTitle}>Additional Information</h4>
-                                        <div style={styles.detailRow}>
-                                            <span style={styles.detailLabel}>Unit</span>
-                                            <span style={styles.detailValue}>{getUnitLabel(selectedProduct.unit)}</span>
-                                        </div>
                                         {selectedProduct.expiry_date && (
                                             <div style={styles.detailRow}>
                                                 <span style={styles.detailLabel}>Expiry Date</span>
                                                 <span style={styles.detailValue}>
                                                     {new Date(selectedProduct.expiry_date).toLocaleDateString("en-IN")}
-                                                </span>
-                                            </div>
-                                        )}
-                                        {selectedProduct.status && (
-                                            <div style={styles.detailRow}>
-                                                <span style={styles.detailLabel}>Status</span>
-                                                <span style={{
-                                                    ...styles.detailStatus,
-                                                    ...(selectedProduct.status === "active" ? styles.detailStatusActive : styles.detailStatusInactive)
-                                                }}>
-                                                    {selectedProduct.status}
                                                 </span>
                                             </div>
                                         )}
@@ -837,10 +904,10 @@ const styles = {
     },
     searchWrapper: {
         position: "relative",
-        maxWidth: "400px",
+        maxWidth: "320px",
         width: "100%",
         flex: 1,
-        minWidth: "220px",
+        minWidth: "180px",
     },
     searchIcon: {
         position: "absolute",
@@ -868,10 +935,39 @@ const styles = {
         transform: "translateY(-50%)",
         background: "none",
         border: "none",
-        color: INK_SOFT,
+        color: INK_SOFT",
         cursor: "pointer",
         fontSize: "14px",
         padding: "4px 6px",
+    },
+    barcodeWrapper: {
+        display: "flex",
+        gap: "6px",
+        alignItems: "center",
+    },
+    barcodeInput: {
+        padding: "11px 14px",
+        border: `2px solid ${RULE}`,
+        borderRadius: "10px",
+        fontSize: "14px",
+        backgroundColor: "#FFFFFF",
+        boxSizing: "border-box",
+        color: INK,
+        outline: "none",
+        width: "160px",
+        fontFamily: "'JetBrains Mono', monospace",
+    },
+    barcodeButton: {
+        padding: "11px 18px",
+        background: TEAL,
+        color: "#FFFFFF",
+        border: "none",
+        borderRadius: "10px",
+        fontSize: "13px",
+        fontWeight: "700",
+        cursor: "pointer",
+        whiteSpace: "nowrap",
+        transition: "background 0.2s",
     },
     filterWrapper: {
         display: "flex",
@@ -901,7 +997,7 @@ const styles = {
         width: "100%",
         borderCollapse: "collapse",
         fontSize: "13.5px",
-        minWidth: "800px",
+        minWidth: "900px",
     },
     th: {
         padding: "14px 16px",
@@ -965,6 +1061,7 @@ const styles = {
     productNameWrapper: {
         display: "flex",
         flexDirection: "column",
+        gap: "1px",
     },
     productName: {
         fontWeight: "600",
@@ -976,6 +1073,16 @@ const styles = {
         color: INK_SOFT,
         fontFamily: "'JetBrains Mono', monospace",
         marginTop: "1px",
+    },
+    productBarcode: {
+        fontSize: "10px",
+        color: INK_SOFT,
+        fontFamily: "'JetBrains Mono', monospace",
+    },
+    productTax: {
+        fontSize: "10px",
+        color: TEAL,
+        fontWeight: "600",
     },
     categoryTag: {
         fontSize: "12px",
@@ -992,6 +1099,8 @@ const styles = {
         display: "inline-flex",
         alignItems: "center",
         position: "relative",
+        flexWrap: "wrap",
+        gap: "4px",
     },
     priceTagHole: {
         width: "6px",
@@ -1022,6 +1131,12 @@ const styles = {
         fontSize: "9px",
         fontWeight: "600",
         opacity: 0.75,
+    },
+    costPriceTag: {
+        fontSize: "10px",
+        color: INK_SOFT,
+        fontWeight: "500",
+        marginLeft: "4px",
     },
 
     stockCell: {
@@ -1064,6 +1179,24 @@ const styles = {
         padding: "1px 7px",
         borderRadius: "20px",
         width: "fit-content",
+    },
+    statusBadgeActive: {
+        fontSize: "11px",
+        fontWeight: "700",
+        color: GREEN,
+        background: "#E4F5EC",
+        padding: "2px 10px",
+        borderRadius: "20px",
+        display: "inline-block",
+    },
+    statusBadgeInactive: {
+        fontSize: "11px",
+        fontWeight: "700",
+        color: RED,
+        background: "#FBE7E0",
+        padding: "2px 10px",
+        borderRadius: "20px",
+        display: "inline-block",
     },
     actionButtons: {
         display: "flex",
@@ -1328,6 +1461,9 @@ const styles = {
         fontWeight: "600",
         marginTop: "8px",
     },
+    detailStatusWrapper: {
+        marginTop: "8px",
+    },
     detailRight: {
         display: "flex",
         flexDirection: "column",
@@ -1371,21 +1507,6 @@ const styles = {
         fontSize: "12px",
         fontWeight: "700",
         textTransform: "uppercase",
-    },
-    detailStatus: {
-        padding: "2px 10px",
-        borderRadius: "20px",
-        fontSize: "12px",
-        fontWeight: "700",
-        textTransform: "uppercase",
-    },
-    detailStatusActive: {
-        background: "#E4F5EC",
-        color: GREEN,
-    },
-    detailStatusInactive: {
-        background: "#FBE7E0",
-        color: RED,
     },
     modalFooter: {
         padding: "16px 28px",
@@ -1450,6 +1571,8 @@ if (typeof document !== "undefined" && !document.getElementById("products-page-s
         th:hover { color: #083B3D !important; }
         .search-box:focus { border-color: #FFC53D !important; box-shadow: 0 0 0 3px rgba(255,197,61,0.25) !important; }
         .filter-select:focus { border-color: #FFC53D !important; }
+        .barcode-input:focus { border-color: #FFC53D !important; }
+        .barcode-button:hover { background: #083B3D !important; }
         a[href="/add-product"]:hover { transform: translateY(1px); box-shadow: 0 2px 0 #D69A18 !important; }
         .page-button:hover:not(:disabled) { border-color: #FFC53D !important; }
         tr:hover td { background: #FFF6DF !important; }
