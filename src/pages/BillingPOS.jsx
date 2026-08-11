@@ -557,27 +557,31 @@ export default function BillingPOS() {
 
         :root {
           --pos-bg: #EEF1F4;
-          --panel-dark: #191C21;
-          --panel-dark-2: #101216;
-          --gold: #FFB300;
+          --panel-dark: #1E2633;
+          --panel-dark-2: #111720;
+          --panel-dark-3: #151D2A;
+          --gold: #FFB000;
+          --gold-soft: #FFC44D;
           --text: #20242A;
           --muted: #737B85;
           --border: #D5DADF;
-          --success: #39B86F;
+          --success: #35B86B;
           --danger: #EF5350;
-          --brass-bright: #FFB300;
+          --brass-bright: #FFB000;
           --brass-deep: #C68A00;
-          --charcoal: #191C21;
-          --charcoal-soft: #262B32;
-          --charcoal-line: #3B4048;
-          --led-amber: #FFB300;
+          --charcoal: #1E2633;
+          --charcoal-soft: #26303F;
+          --charcoal-line: #36404D;
+          --led-amber: #FFB000;
           --led-red: #EF5350;
           --ink: #20242A;
           --ink-soft: #5B616B;
           --line: #D5DADF;
-          --good: #39B86F;
+          --good: #35B86B;
           --steel-panel: #FFFFFF;
           --steel-panel-2: #F0F2F5;
+          --text-light: #F2F4F7;
+          --text-secondary: #9AA4B2;
         }
 
         * { box-sizing: border-box; }
@@ -948,7 +952,7 @@ export default function BillingPOS() {
           background: var(--panel-dark);
           border-radius: 16px;
           padding: 22px 22px 24px;
-          color: #E8EAEE;
+          color: var(--text-light);
           box-shadow: 0 20px 50px rgba(20,22,26,0.35);
           border: 1px solid var(--charcoal-line);
         }
@@ -970,7 +974,7 @@ export default function BillingPOS() {
         .receipt-inv {
           font-family: 'JetBrains Mono', monospace;
           font-size: 10.5px;
-          color: #8C93A0;
+          color: var(--text-secondary);
           letter-spacing: 0.5px;
         }
 
@@ -979,7 +983,7 @@ export default function BillingPOS() {
           background: var(--panel-dark-2);
           border-radius: 12px;
           padding: 16px 18px;
-          border: 1px solid #33383F;
+          border: 1px solid var(--charcoal-line);
           box-shadow: inset 0 2px 8px rgba(0,0,0,0.5);
         }
         .scale-display .scale-label {
@@ -987,7 +991,7 @@ export default function BillingPOS() {
           font-size: 9.5px;
           letter-spacing: 2.5px;
           text-transform: uppercase;
-          color: #6B7178;
+          color: var(--text-secondary);
           margin-bottom: 4px;
           display: flex;
           justify-content: space-between;
@@ -1008,7 +1012,7 @@ export default function BillingPOS() {
           margin-top: 6px;
           font-family: 'JetBrains Mono', monospace;
           font-size: 10.5px;
-          color: #6B7178;
+          color: var(--text-secondary);
         }
 
         .save-banner {
@@ -1038,7 +1042,7 @@ export default function BillingPOS() {
           font-size: 9.5px;
           text-transform: uppercase;
           letter-spacing: 2px;
-          color: #8C93A0;
+          color: var(--text-secondary);
           display: block;
           margin-bottom: 6px;
         }
@@ -1047,7 +1051,7 @@ export default function BillingPOS() {
           border: none;
           border-bottom: 1.5px solid var(--charcoal-line);
           background: transparent;
-          color: #fff;
+          color: var(--text-light);
           font-family: 'JetBrains Mono', monospace;
           font-size: 14.5px;
           padding: 5px 2px;
@@ -1061,7 +1065,7 @@ export default function BillingPOS() {
           font-weight: 600;
         }
         .status-found { color: var(--success); }
-        .status-new { color: #8C93A0; }
+        .status-new { color: var(--text-secondary); }
         .status-searching { color: var(--gold); }
         .status-invalid { color: var(--danger); }
 
@@ -1074,7 +1078,7 @@ export default function BillingPOS() {
           border-radius: 6px;
           margin-top: 6px;
           font-size: 13px;
-          color: #8C93A0;
+          color: var(--text-secondary);
         }
         .walkin-badge .icon { font-size: 18px; }
 
@@ -1102,12 +1106,12 @@ export default function BillingPOS() {
           text-overflow: ellipsis;
           display: block;
           font-weight: 600;
-          color: #F2F3F5;
+          color: var(--text-light);
         }
         .item-line .name-block .qty {
           font-family: 'JetBrains Mono', monospace;
           font-size: 10px;
-          color: #8C93A0;
+          color: var(--text-secondary);
         }
         .item-line .qty-controls {
           display: flex;
@@ -1117,7 +1121,7 @@ export default function BillingPOS() {
         .item-line .qty-btn {
           background: var(--panel-dark-2);
           border: 1px solid var(--charcoal-line);
-          color: #E8EAEE;
+          color: var(--text-light);
           border-radius: 4px;
           width: 22px;
           height: 22px;
@@ -1136,6 +1140,7 @@ export default function BillingPOS() {
           font-weight: 600;
           min-width: 24px;
           text-align: center;
+          color: var(--text-light);
         }
         .item-line .amt {
           font-family: 'JetBrains Mono', monospace;
@@ -1159,7 +1164,7 @@ export default function BillingPOS() {
         .item-line .rm:hover { opacity: 1; }
         .empty-receipt {
           text-align: center;
-          color: #6B7178;
+          color: var(--text-secondary);
           font-size: 12.5px;
           padding: 22px 0;
         }
@@ -1169,9 +1174,9 @@ export default function BillingPOS() {
           display: flex;
           justify-content: space-between;
           padding: 3px 0;
-          color: #8C93A0;
+          color: var(--text-secondary);
         }
-        .totals-row .v { color: #E8EAEE; font-weight: 600; }
+        .totals-row .v { color: var(--text-light); font-weight: 600; }
 
         .field-pair { display: flex; gap: 12px; margin: 16px 0 14px; }
         .field-pair .fld { flex: 1; }
@@ -1180,7 +1185,7 @@ export default function BillingPOS() {
           font-size: 9px;
           text-transform: uppercase;
           letter-spacing: 1.5px;
-          color: #6B7178;
+          color: var(--text-secondary);
           display: block;
           margin-bottom: 4px;
         }
@@ -1189,7 +1194,7 @@ export default function BillingPOS() {
           border: none;
           border-bottom: 1.5px solid var(--charcoal-line);
           background: transparent;
-          color: #fff;
+          color: var(--text-light);
           font-family: 'JetBrains Mono', monospace;
           font-size: 13px;
           padding: 3px 0;
@@ -1209,7 +1214,7 @@ export default function BillingPOS() {
           font-weight: 600;
           border-radius: 6px;
           cursor: pointer;
-          color: #8C93A0;
+          color: var(--text-secondary);
           transition: all 0.15s;
           display: flex;
           align-items: center;
@@ -1227,7 +1232,7 @@ export default function BillingPOS() {
           border-radius: 8px;
           padding: 10px 14px;
           margin-bottom: 12px;
-          border: 1px solid #33383F;
+          border: 1px solid var(--charcoal-line);
         }
         .cash-change-row {
           display: flex;
@@ -1236,15 +1241,15 @@ export default function BillingPOS() {
           font-size: 12px;
           padding: 2px 0;
         }
-        .cash-change-row .lbl { color: #8C93A0; }
-        .cash-change-row .val { color: #E8EAEE; font-weight: 600; }
+        .cash-change-row .lbl { color: var(--text-secondary); }
+        .cash-change-row .val { color: var(--text-light); font-weight: 600; }
         .cash-change-row .val.change { color: var(--gold); }
         .cash-input {
           width: 100%;
           border: none;
           border-bottom: 1.5px solid var(--charcoal-line);
           background: transparent;
-          color: #fff;
+          color: var(--text-light);
           font-family: 'JetBrains Mono', monospace;
           font-size: 14px;
           padding: 4px 2px;
@@ -1280,7 +1285,7 @@ export default function BillingPOS() {
           box-shadow: 0 4px 14px rgba(255,179,0,0.35);
         }
         .btn-settle:hover:not(:disabled) { filter: brightness(1.06); }
-        .btn-settle:disabled { background: #3B4048; color: #6B7178; box-shadow: none; cursor: not-allowed; }
+        .btn-settle:disabled { background: var(--charcoal-line); color: var(--text-secondary); box-shadow: none; cursor: not-allowed; }
 
         .scan-mode-toggle {
           display: flex;
@@ -1289,7 +1294,7 @@ export default function BillingPOS() {
           background: var(--panel-dark-2);
           padding: 4px;
           border-radius: 8px;
-          border: 1px solid #33383F;
+          border: 1px solid var(--charcoal-line);
         }
         .scan-mode-btn {
           flex: 1;
@@ -1297,7 +1302,7 @@ export default function BillingPOS() {
           border: none;
           border-radius: 6px;
           background: transparent;
-          color: #8C93A0;
+          color: var(--text-secondary);
           font-family: 'JetBrains Mono', monospace;
           font-size: 10px;
           font-weight: 600;
@@ -1324,9 +1329,9 @@ export default function BillingPOS() {
           background: var(--panel-dark-2);
           padding: 2px 6px;
           border-radius: 3px;
-          border: 1px solid #33383F;
+          border: 1px solid var(--charcoal-line);
           font-size: 9px;
-          color: #8C93A0;
+          color: var(--text-secondary);
         }
 
         /* ============ QTY MODAL ============ */
@@ -1350,7 +1355,7 @@ export default function BillingPOS() {
           box-shadow: 0 24px 64px rgba(0,0,0,0.5);
           position: relative;
           border: 1px solid var(--charcoal-line);
-          color: #E8EAEE;
+          color: var(--text-light);
         }
         .qty-tag-head {
           display: flex;
@@ -1370,27 +1375,27 @@ export default function BillingPOS() {
           background: none;
           border: none;
           font-size: 18px;
-          color: #8C93A0;
+          color: var(--text-secondary);
           cursor: pointer;
           flex-shrink: 0;
         }
         .qty-rate {
           font-family: 'JetBrains Mono', monospace;
           font-size: 12px;
-          color: #8C93A0;
+          color: var(--text-secondary);
           margin: 0 0 18px;
         }
         .qty-rate b { color: var(--gold); font-weight: 700; }
 
         .qty-field { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-        .qty-field label { min-width: 68px; font-size: 12.5px; font-weight: 600; color: #8C93A0; }
+        .qty-field label { min-width: 68px; font-size: 12.5px; font-weight: 600; color: var(--text-secondary); }
         .qty-input {
           flex: 1;
           padding: 9px 10px;
           border: 1.5px solid var(--charcoal-line);
           background: var(--panel-dark-2);
           border-radius: 8px;
-          color: #fff;
+          color: var(--text-light);
           font-family: 'JetBrains Mono', monospace;
           font-size: 15px;
           text-align: center;
@@ -1402,7 +1407,7 @@ export default function BillingPOS() {
           padding: 9px 10px;
           border: 1.5px solid var(--charcoal-line);
           background: var(--panel-dark-2);
-          color: #fff;
+          color: var(--text-light);
           border-radius: 8px;
           font-size: 13px;
           outline: none;
@@ -1413,7 +1418,7 @@ export default function BillingPOS() {
           background: var(--panel-dark-2);
           border-radius: 12px;
           padding: 4px;
-          border: 1px solid #33383F;
+          border: 1px solid var(--charcoal-line);
         }
         .qty-preview-rows { padding: 10px 12px 4px; }
         .qty-preview-row {
@@ -1421,7 +1426,7 @@ export default function BillingPOS() {
           justify-content: space-between;
           font-family: 'JetBrains Mono', monospace;
           font-size: 12px;
-          color: #8C93A0;
+          color: var(--text-secondary);
           padding: 3px 0;
         }
         .qty-preview-total {
@@ -1430,14 +1435,14 @@ export default function BillingPOS() {
           align-items: baseline;
           padding: 12px 14px;
           margin-top: 6px;
-          border-top: 1px dashed #33383F;
+          border-top: 1px dashed var(--charcoal-line);
         }
         .qty-preview-total .lbl {
           font-family: 'JetBrains Mono', monospace;
           font-size: 9.5px;
           letter-spacing: 2px;
           text-transform: uppercase;
-          color: #6B7178;
+          color: var(--text-secondary);
         }
         .qty-preview-total .val {
           font-family: 'Orbitron', sans-serif;
@@ -1450,7 +1455,7 @@ export default function BillingPOS() {
         .qty-stock-note {
           font-family: 'JetBrains Mono', monospace;
           font-size: 11px;
-          color: #6B7178;
+          color: var(--text-secondary);
           text-align: right;
           margin-top: 8px;
         }
@@ -1463,7 +1468,7 @@ export default function BillingPOS() {
           border-radius: 9px;
           font-weight: 600;
           font-size: 13.5px;
-          color: #8C93A0;
+          color: var(--text-secondary);
           cursor: pointer;
         }
         .qty-confirm {
@@ -1661,7 +1666,7 @@ export default function BillingPOS() {
               <hr className="receipt-dash" />
 
               <div className="customer-line">
-                <label>Customer Phone <span style={{ fontWeight: 'normal', color: '#6B7178' }}>(optional)</span></label>
+                <label>Customer Phone <span style={{ fontWeight: 'normal', color: 'var(--text-secondary)' }}>(optional)</span></label>
                 <input
                   className="customer-input"
                   placeholder="10-digit number or leave blank"
@@ -1785,7 +1790,7 @@ export default function BillingPOS() {
                     />
                   </div>
                   {showChange && (
-                    <div className="cash-change-row" style={{ marginTop: '4px', borderTop: '1px dashed #33383F', paddingTop: '4px' }}>
+                    <div className="cash-change-row" style={{ marginTop: '4px', borderTop: '1px dashed var(--charcoal-line)', paddingTop: '4px' }}>
                       <span className="lbl">Change</span>
                       <span className="val change">₹{change.toFixed(2)}</span>
                     </div>
