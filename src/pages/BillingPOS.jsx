@@ -5,6 +5,9 @@ import BarcodeScanner from "../pages/BarcodeScanner";
 export default function BillingPOS() {
   const businessId = localStorage.getItem("businessId");
 
+  // Business profile state
+  const [businessName, setBusinessName] = useState("Your Store");
+
   const [products, setProducts] = useState([]);
   const [cart, setCart] = useState([]);
   const [search, setSearch] = useState("");
@@ -68,6 +71,25 @@ export default function BillingPOS() {
     if (price === undefined || price === null) return 0;
     const numPrice = typeof price === 'string' ? parseFloat(price) : price;
     return isNaN(numPrice) ? 0 : numPrice;
+  };
+
+  // Load business profile - same as Dashboard
+  const loadBusinessProfile = async () => {
+    try {
+      const ownerId = localStorage.getItem("userId");
+
+      if (!ownerId) return;
+
+      const res = await API.get(`/business/profile/${ownerId}`);
+
+      if (res.data.business) {
+        setBusinessName(
+          res.data.business.business_name || "Your Store"
+        );
+      }
+    } catch (err) {
+      console.log("Could not load business profile:", err);
+    }
   };
 
   // Keyboard shortcuts
@@ -231,6 +253,7 @@ export default function BillingPOS() {
     generateInvoiceNo();
     extractCategories();
     loadDashboard();
+    loadBusinessProfile(); // Load business name
   }, []);
 
   const generateInvoiceNo = () => {
@@ -1511,10 +1534,10 @@ export default function BillingPOS() {
       `}</style>
 
       <div className="pos-wrap">
-        {/* Status Bar - Now using real dashboard data */}
+        {/* Status Bar - Now using real business name and dashboard data */}
         <div className="status-bar">
           <div className="status-left">
-            <span className="status-brand">₹ LAABHA COUNTER</span>
+            <span className="status-brand">₹ {businessName.toUpperCase()} COUNTER</span>
             <span className="status-online">ONLINE</span>
             <span style={{ color: '#6B7178' }}>Cashier: Admin</span>
           </div>
@@ -1546,7 +1569,7 @@ export default function BillingPOS() {
               <div className="brand-block">
                 <div className="brand-mark">₹</div>
                 <div className="shelf-heading">
-                  Laabha
+                  {businessName}
                   <span className="sub">Counter Billing</span>
                 </div>
               </div>
@@ -1638,7 +1661,7 @@ export default function BillingPOS() {
           <div className="receipt-col">
             <div className="receipt">
               <div className="receipt-store-row">
-                <span className="receipt-store">Laabha Counter</span>
+                <span className="receipt-store">{businessName} Counter</span>
                 <span className="receipt-inv">{invoiceNo}</span>
               </div>
 
