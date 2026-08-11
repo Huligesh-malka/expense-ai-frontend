@@ -378,67 +378,102 @@ export default function BillingPOS() {
     return null;
   };
 
+  const liveTotalDigits = showQtyModal ? calculateLivePrice().total.toFixed(2) : null;
+
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=Libre+Barcode+128&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800;900&family=Manrope:wght@400;500;600;700;800&family=Orbitron:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
         :root {
-          --shelf-bg: #EAE6DA;
-          --tag-white: #FFFFFF;
-          --tag-cream: #FFFDF8;
-          --ink: #20241F;
-          --ink-soft: #565A50;
-          --price-green: #1E7A46;
-          --rust: #C1502B;
-          --rust-deep: #9C3F21;
-          --muted: #8E8A78;
-          --line: #DCD6C4;
-          --paper: #FFFFFF;
+          --steel-bg: #E6E9EC;
+          --steel-panel: #FBFCFD;
+          --steel-panel-2: #EFF2F4;
+          --charcoal: #1A1D22;
+          --charcoal-soft: #262B32;
+          --charcoal-line: #3B4048;
+          --brass: #C6A15B;
+          --brass-bright: #E7C888;
+          --brass-deep: #8C6C34;
+          --led-amber: #FFB020;
+          --led-red: #FF5C4D;
+          --ink: #1A1D22;
+          --ink-soft: #5B616B;
+          --muted: #90959D;
+          --line: #D2D7DC;
+          --good: #1E8A5C;
         }
 
         * { box-sizing: border-box; }
 
         .pos-wrap {
-          font-family: 'IBM Plex Sans', sans-serif;
-          background: var(--shelf-bg);
+          font-family: 'Manrope', sans-serif;
+          background:
+            repeating-linear-gradient(115deg, rgba(255,255,255,0.35) 0px, rgba(255,255,255,0.35) 1px, transparent 1px, transparent 34px),
+            var(--steel-bg);
           min-height: 100vh;
-          padding: 22px;
+          padding: 26px;
         }
 
         .pos-layout {
-          max-width: 1580px;
+          max-width: 1620px;
           margin: 0 auto;
           display: flex;
-          gap: 22px;
+          gap: 24px;
           align-items: flex-start;
         }
 
-        /* ============ LEFT: SHELF OF PRICE TAGS ============ */
-        .shelf-col { flex: 1.7; }
+        /* ============ LEFT: PRODUCT SHELF ============ */
+        .shelf-col { flex: 1.75; }
 
         .shelf-topbar {
           display: flex;
           justify-content: space-between;
-          align-items: center;
-          margin-bottom: 14px;
+          align-items: flex-end;
+          margin-bottom: 16px;
+          padding-bottom: 14px;
+          border-bottom: 3px solid var(--charcoal);
+        }
+        .brand-block { display: flex; align-items: baseline; gap: 12px; }
+        .brand-mark {
+          width: 34px; height: 34px;
+          border-radius: 7px;
+          background: linear-gradient(155deg, var(--brass-bright), var(--brass-deep));
+          display: flex; align-items: center; justify-content: center;
+          font-family: 'Orbitron', sans-serif;
+          font-weight: 700;
+          font-size: 15px;
+          color: var(--charcoal);
+          box-shadow: 0 2px 0 var(--brass-deep);
+          flex-shrink: 0;
         }
         .shelf-heading {
-          font-family: 'Barlow Condensed', sans-serif;
-          font-weight: 800;
-          font-size: 28px;
-          color: var(--ink);
+          font-family: 'Big Shoulders Display', sans-serif;
+          font-weight: 900;
+          font-size: 34px;
+          line-height: 1;
+          color: var(--charcoal);
           text-transform: uppercase;
           letter-spacing: 0.5px;
         }
-        .shelf-heading .count {
-          font-family: 'IBM Plex Mono', monospace;
-          font-size: 13px;
+        .shelf-heading .sub {
+          display: block;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 10.5px;
           font-weight: 500;
           color: var(--ink-soft);
-          text-transform: none;
-          letter-spacing: 0;
-          margin-left: 10px;
+          text-transform: uppercase;
+          letter-spacing: 2.5px;
+          margin-top: 2px;
+        }
+        .shelf-count {
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 12.5px;
+          color: var(--ink-soft);
+          background: var(--steel-panel-2);
+          border: 1px solid var(--line);
+          padding: 5px 10px;
+          border-radius: 20px;
         }
 
         .shelf-search-row {
@@ -448,223 +483,234 @@ export default function BillingPOS() {
         }
         .shelf-search {
           flex: 1;
-          padding: 12px 16px;
-          border-radius: 10px;
-          border: 2px solid var(--line);
-          background: var(--tag-white);
+          padding: 13px 16px;
+          border-radius: 9px;
+          border: 1.5px solid var(--line);
+          background: var(--steel-panel);
+          font-family: 'Manrope', sans-serif;
           font-size: 14px;
+          font-weight: 500;
           outline: none;
-          transition: border-color 0.15s;
+          transition: border-color 0.15s, box-shadow 0.15s;
         }
-        .shelf-search:focus { border-color: var(--rust); }
+        .shelf-search:focus { border-color: var(--brass); box-shadow: 0 0 0 3px rgba(198,161,91,0.18); }
         .shelf-scan {
-          padding: 0 20px;
-          background: var(--ink);
-          color: #fff;
+          padding: 0 22px;
+          background: var(--charcoal);
+          color: var(--brass-bright);
           border: none;
-          border-radius: 10px;
-          font-weight: 600;
-          font-size: 13.5px;
+          border-radius: 9px;
+          font-weight: 700;
+          font-size: 13px;
+          letter-spacing: 0.3px;
           cursor: pointer;
           transition: background 0.15s, transform 0.1s;
+          display: flex; align-items: center; gap: 7px;
         }
-        .shelf-scan:hover { background: var(--rust-deep); }
+        .shelf-scan:hover { background: var(--charcoal-soft); }
         .shelf-scan:active { transform: scale(0.96); }
 
         .tag-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+          grid-template-columns: repeat(auto-fill, minmax(216px, 1fr));
           gap: 14px;
-          max-height: calc(100vh - 220px);
+          max-height: calc(100vh - 240px);
           overflow-y: auto;
-          padding: 4px 4px 12px 0;
+          padding: 4px 6px 12px 2px;
         }
         .tag-grid::-webkit-scrollbar { width: 6px; }
-        .tag-grid::-webkit-scrollbar-thumb { background: #C7BFA4; border-radius: 6px; }
+        .tag-grid::-webkit-scrollbar-thumb { background: #B9C0C7; border-radius: 6px; }
 
-        /* ===== the price tag card — hero is name + price ===== */
+        /* ===== steel shelf tag card ===== */
         .price-tag {
           position: relative;
-          background: var(--tag-white);
-          border-radius: 12px;
-          padding: 16px 14px 12px;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+          background: var(--steel-panel);
+          border-radius: 10px;
+          padding: 0 0 12px;
+          box-shadow: 0 1px 2px rgba(20,22,26,0.06), 0 6px 16px rgba(20,22,26,0.05);
           border: 1px solid var(--line);
           display: flex;
           flex-direction: column;
-          transition: transform 0.12s, box-shadow 0.12s;
+          overflow: hidden;
+          transition: transform 0.14s, box-shadow 0.14s, border-color 0.14s;
         }
         .price-tag:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 18px rgba(0,0,0,0.12);
+          transform: translateY(-3px);
+          box-shadow: 0 14px 26px rgba(20,22,26,0.14);
+          border-color: var(--brass);
         }
-        /* punch hole, like a hanging shelf tag */
-        .price-tag::before {
-          content: "";
-          position: absolute;
-          top: 10px;
-          left: 14px;
-          width: 9px;
-          height: 9px;
-          border-radius: 50%;
-          background: var(--shelf-bg);
-          box-shadow: inset 0 1px 2px rgba(0,0,0,0.25);
+        .tag-brass-strip {
+          height: 5px;
+          background: linear-gradient(90deg, var(--brass-deep), var(--brass-bright) 45%, var(--brass-deep));
         }
 
+        .tag-body { padding: 13px 14px 0; display: flex; flex-direction: column; flex: 1; }
+
         .tag-name {
-          font-family: 'Barlow Condensed', sans-serif;
+          font-family: 'Manrope', sans-serif;
           font-weight: 700;
-          font-size: 19px;
-          line-height: 1.15;
+          font-size: 14.5px;
+          line-height: 1.28;
           color: var(--ink);
-          margin: 6px 0 10px 20px;
+          margin: 0 0 10px;
           display: -webkit-box;
           -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
           overflow: hidden;
-          min-height: 44px;
+          min-height: 37px;
         }
 
-        .tag-price-row {
+        /* LED chip, echo of the big counter display */
+        .led-chip {
+          background: var(--charcoal);
+          border-radius: 7px;
+          padding: 8px 10px;
           display: flex;
           align-items: baseline;
-          gap: 5px;
-          margin-bottom: 6px;
+          justify-content: space-between;
+          gap: 6px;
+          margin-bottom: 9px;
         }
-        .tag-price {
-          font-family: 'IBM Plex Mono', monospace;
+        .led-chip .amt {
+          font-family: 'Orbitron', sans-serif;
           font-weight: 700;
-          font-size: 24px;
-          color: var(--price-green);
+          font-size: 18px;
+          color: var(--led-amber);
+          text-shadow: 0 0 8px rgba(255,176,32,0.55);
+          white-space: nowrap;
         }
-        .tag-price-unit {
-          font-size: 12px;
-          color: var(--ink-soft);
-          font-weight: 500;
+        .led-chip .per {
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 9.5px;
+          color: #8C93A0;
+          text-align: right;
+          line-height: 1.3;
         }
 
         .tag-stock {
-          font-size: 11.5px;
+          font-size: 11px;
+          font-weight: 600;
           color: var(--muted);
-          margin-bottom: 8px;
+          margin-bottom: 10px;
         }
-        .tag-stock.low { color: var(--rust-deep); font-weight: 600; }
-        .tag-stock.mid { color: #A4762A; font-weight: 600; }
-
-        /* decorative + real barcode number */
-        .tag-barcode {
-          margin: 2px 0 10px;
-          overflow: hidden;
-        }
-        .tag-barcode .bars {
-          font-family: 'Libre Barcode 128', cursive;
-          font-size: 30px;
-          line-height: 1;
-          color: #1a1a1a;
-          letter-spacing: 1px;
-          white-space: nowrap;
-        }
-        .tag-barcode .digits {
-          font-family: 'IBM Plex Mono', monospace;
-          font-size: 10px;
-          letter-spacing: 1.5px;
-          color: var(--muted);
-        }
+        .tag-stock.low { color: var(--led-red); }
+        .tag-stock.mid { color: var(--brass-deep); }
 
         .tag-add-btn {
           margin-top: auto;
           width: 100%;
-          padding: 9px 0;
-          background: var(--ink);
-          color: #fff;
+          padding: 10px 0;
+          background: var(--charcoal);
+          color: var(--brass-bright);
           border: none;
           border-radius: 8px;
           font-weight: 700;
-          font-size: 13px;
+          font-size: 12.5px;
           text-transform: uppercase;
-          letter-spacing: 0.5px;
+          letter-spacing: 0.6px;
           cursor: pointer;
           transition: background 0.15s, transform 0.1s;
         }
-        .tag-add-btn:hover:not(:disabled) { background: var(--rust); }
+        .tag-add-btn:hover:not(:disabled) { background: linear-gradient(135deg, var(--brass-deep), var(--brass)); color: var(--charcoal); }
         .tag-add-btn:active:not(:disabled) { transform: scale(0.96); }
         .tag-add-btn:disabled {
-          background: #C9C4B4;
+          background: var(--steel-panel-2);
+          color: var(--muted);
           cursor: not-allowed;
         }
 
         .no-products {
           grid-column: 1 / -1;
           text-align: center;
-          padding: 50px 0;
+          padding: 60px 0;
           color: var(--muted);
+          font-weight: 500;
         }
 
-        /* ============ RIGHT: THERMAL RECEIPT ============ */
+        /* ============ RIGHT: COUNTER DISPLAY PANEL ============ */
         .receipt-col {
           flex: 1;
-          max-width: 400px;
+          max-width: 408px;
           position: sticky;
-          top: 22px;
+          top: 26px;
         }
         .receipt {
-          position: relative;
-          background: var(--paper);
-          padding: 22px 22px 26px;
-          font-family: 'IBM Plex Mono', monospace;
-          color: var(--ink);
-          box-shadow: 0 10px 26px rgba(0,0,0,0.18);
-          border-radius: 3px 3px 0 0;
-        }
-        .receipt::after {
-          content: "";
-          position: absolute;
-          left: 0; right: 0; bottom: -13px;
-          height: 14px;
-          background:
-            linear-gradient(-45deg, transparent 7px, var(--paper) 0) 0 0,
-            linear-gradient(45deg, transparent 7px, var(--paper) 0) 0 0;
-          background-size: 14px 14px;
-          background-repeat: repeat-x;
+          background: var(--charcoal);
+          border-radius: 16px;
+          padding: 22px 22px 24px;
+          color: #E8EAEE;
+          box-shadow: 0 20px 50px rgba(20,22,26,0.35);
+          border: 1px solid var(--charcoal-line);
         }
 
-        .receipt-store {
-          text-align: center;
-          font-family: 'Barlow Condensed', sans-serif;
-          font-weight: 800;
-          font-size: 22px;
-          letter-spacing: 1px;
-          text-transform: uppercase;
-        }
-        .receipt-sub {
-          text-align: center;
-          font-size: 10.5px;
-          color: var(--ink-soft);
-          letter-spacing: 2px;
-          text-transform: uppercase;
-          margin-bottom: 10px;
-        }
-        .receipt-dash {
-          border: none;
-          border-top: 1.5px dashed #B9B4A2;
-          margin: 10px 0;
-        }
-        .receipt-meta-row {
+        .receipt-store-row {
           display: flex;
           justify-content: space-between;
-          font-size: 12px;
-          padding: 1px 0;
+          align-items: center;
+          margin-bottom: 4px;
+        }
+        .receipt-store {
+          font-family: 'Big Shoulders Display', sans-serif;
+          font-weight: 800;
+          font-size: 21px;
+          letter-spacing: 0.5px;
+          text-transform: uppercase;
+          color: #fff;
+        }
+        .receipt-inv {
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 10.5px;
+          color: #8C93A0;
+          letter-spacing: 0.5px;
+        }
+
+        /* the digital weighing-scale total display: signature element */
+        .scale-display {
+          margin-top: 14px;
+          background: #0F1114;
+          border-radius: 12px;
+          padding: 16px 18px;
+          border: 1px solid #33383F;
+          box-shadow: inset 0 2px 8px rgba(0,0,0,0.5);
+        }
+        .scale-display .scale-label {
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 9.5px;
+          letter-spacing: 2.5px;
+          text-transform: uppercase;
+          color: #6B7178;
+          margin-bottom: 4px;
+          display: flex;
+          justify-content: space-between;
+        }
+        .scale-display .scale-total {
+          font-family: 'Orbitron', sans-serif;
+          font-weight: 700;
+          font-size: 40px;
+          line-height: 1.1;
+          color: var(--led-amber);
+          text-shadow: 0 0 14px rgba(255,176,32,0.55), 0 0 2px rgba(255,176,32,0.8);
+          letter-spacing: 1px;
+        }
+        .scale-display .scale-total .rupee { font-size: 22px; margin-right: 3px; opacity: 0.85; }
+        .scale-display .scale-meta {
+          display: flex;
+          justify-content: space-between;
+          margin-top: 6px;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 10.5px;
+          color: #6B7178;
         }
 
         .save-banner {
-          background: var(--price-green);
+          background: var(--good);
           color: #fff;
           text-align: center;
           font-size: 12.5px;
-          font-weight: 600;
-          padding: 7px 0;
-          border-radius: 6px;
-          margin-bottom: 10px;
+          font-weight: 700;
+          padding: 8px 0;
+          border-radius: 7px;
+          margin-top: 12px;
           animation: bannerIn 0.25s ease;
         }
         @keyframes bannerIn {
@@ -672,48 +718,61 @@ export default function BillingPOS() {
           to { opacity: 1; transform: translateY(0); }
         }
 
-        .customer-line { margin: 10px 0 4px; }
+        .receipt-dash {
+          border: none;
+          border-top: 1px dashed var(--charcoal-line);
+          margin: 16px 0;
+        }
+
         .customer-line label {
-          font-size: 10px;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 9.5px;
           text-transform: uppercase;
-          letter-spacing: 1.5px;
-          color: var(--ink-soft);
+          letter-spacing: 2px;
+          color: #8C93A0;
           display: block;
-          margin-bottom: 4px;
+          margin-bottom: 6px;
         }
         .customer-input {
           width: 100%;
           border: none;
-          border-bottom: 1.5px solid var(--ink);
+          border-bottom: 1.5px solid var(--charcoal-line);
           background: transparent;
-          font-family: 'IBM Plex Mono', monospace;
-          font-size: 14px;
-          padding: 4px 2px;
+          color: #fff;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 14.5px;
+          padding: 5px 2px;
           outline: none;
+          transition: border-color 0.15s;
         }
+        .customer-input:focus { border-bottom-color: var(--brass); }
         .customer-status {
           font-size: 11.5px;
-          margin-top: 5px;
+          margin-top: 6px;
           font-weight: 600;
         }
-        .status-found { color: var(--price-green); }
-        .status-new { color: var(--ink-soft); }
-        .status-searching { color: #A4762A; }
-        .status-invalid { color: var(--rust-deep); }
+        .status-found { color: #5FE0A0; }
+        .status-new { color: #8C93A0; }
+        .status-searching { color: var(--led-amber); }
+        .status-invalid { color: var(--led-red); }
 
         .items-zone {
-          min-height: 90px;
-          max-height: 200px;
+          min-height: 84px;
+          max-height: 190px;
           overflow-y: auto;
-          margin: 10px 0;
+          margin: 14px 0;
         }
+        .items-zone::-webkit-scrollbar { width: 5px; }
+        .items-zone::-webkit-scrollbar-thumb { background: var(--charcoal-line); border-radius: 6px; }
         .item-line {
           display: flex;
           justify-content: space-between;
           gap: 8px;
           font-size: 12.5px;
-          padding: 5px 0;
+          padding: 7px 0;
+          border-bottom: 1px solid rgba(255,255,255,0.05);
         }
+        .item-line:last-child { border-bottom: none; }
         .item-line .name-block { flex: 1; min-width: 0; }
         .item-line .name-block .nm {
           white-space: nowrap;
@@ -721,289 +780,303 @@ export default function BillingPOS() {
           text-overflow: ellipsis;
           display: block;
           font-weight: 600;
+          color: #F2F3F5;
         }
         .item-line .name-block .qty {
+          font-family: 'JetBrains Mono', monospace;
           font-size: 10.5px;
-          color: var(--ink-soft);
+          color: #8C93A0;
         }
         .item-line .amt {
+          font-family: 'JetBrains Mono', monospace;
           font-weight: 700;
+          color: var(--led-amber);
           white-space: nowrap;
         }
         .item-line .rm {
           background: none;
           border: none;
-          color: var(--rust);
+          color: var(--led-red);
           font-weight: 700;
           cursor: pointer;
           padding: 0 0 0 6px;
+          opacity: 0.75;
         }
+        .item-line .rm:hover { opacity: 1; }
         .empty-receipt {
           text-align: center;
-          color: var(--muted);
+          color: #6B7178;
           font-size: 12.5px;
           padding: 22px 0;
         }
 
-        .totals-block { font-size: 12.5px; }
+        .totals-block { font-size: 12.5px; font-family: 'JetBrains Mono', monospace; }
         .totals-row {
           display: flex;
           justify-content: space-between;
-          padding: 2px 0;
-          color: var(--ink-soft);
+          padding: 3px 0;
+          color: #8C93A0;
         }
-        .totals-row .v { color: var(--ink); font-weight: 500; }
-        .grand-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: baseline;
-          margin-top: 8px;
-          padding-top: 8px;
-          border-top: 1.5px dashed #B9B4A2;
-        }
-        .grand-row .label {
-          font-family: 'Barlow Condensed', sans-serif;
-          font-weight: 700;
-          font-size: 16px;
-          text-transform: uppercase;
-        }
-        .grand-row .value {
-          font-size: 22px;
-          font-weight: 700;
-          color: var(--price-green);
-        }
+        .totals-row .v { color: #E8EAEE; font-weight: 600; }
 
-        .field-pair { display: flex; gap: 12px; margin: 12px 0; }
+        .field-pair { display: flex; gap: 12px; margin: 16px 0 14px; }
         .field-pair .fld { flex: 1; }
         .field-pair label {
-          font-size: 10px;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 9px;
           text-transform: uppercase;
-          letter-spacing: 1px;
-          color: var(--ink-soft);
+          letter-spacing: 1.5px;
+          color: #6B7178;
           display: block;
-          margin-bottom: 3px;
+          margin-bottom: 4px;
         }
         .field-pair input {
           width: 100%;
           border: none;
-          border-bottom: 1.5px solid var(--line);
+          border-bottom: 1.5px solid var(--charcoal-line);
           background: transparent;
-          font-family: 'IBM Plex Mono', monospace;
+          color: #fff;
+          font-family: 'JetBrains Mono', monospace;
           font-size: 13px;
           padding: 3px 0;
           outline: none;
         }
-        .field-pair input:focus { border-bottom-color: var(--rust); }
+        .field-pair input:focus { border-bottom-color: var(--brass); }
 
-        .pay-row { display: flex; gap: 6px; margin-bottom: 14px; }
+        .pay-row { display: flex; gap: 6px; margin-bottom: 16px; }
         .pay-opt {
           flex: 1;
-          padding: 7px 0;
+          padding: 8px 0;
           text-align: center;
-          border: 1.5px solid var(--line);
+          border: 1.5px solid var(--charcoal-line);
           background: transparent;
-          font-family: 'IBM Plex Mono', monospace;
+          font-family: 'JetBrains Mono', monospace;
           font-size: 11.5px;
           font-weight: 600;
-          border-radius: 5px;
+          border-radius: 6px;
           cursor: pointer;
-          color: var(--ink-soft);
+          color: #8C93A0;
+          transition: all 0.15s;
         }
         .pay-opt.active {
-          border-color: var(--ink);
-          background: var(--ink);
-          color: #fff;
+          border-color: var(--brass);
+          background: linear-gradient(135deg, var(--brass-bright), var(--brass-deep));
+          color: var(--charcoal);
         }
 
-        .receipt-actions { display: flex; gap: 8px; margin-top: 4px; }
+        .receipt-actions { display: flex; gap: 8px; }
         .btn-clear {
           flex: 1;
-          padding: 11px 0;
+          padding: 13px 0;
           background: transparent;
-          border: 1.5px solid var(--rust);
-          color: var(--rust-deep);
-          border-radius: 7px;
+          border: 1.5px solid var(--led-red);
+          color: var(--led-red);
+          border-radius: 8px;
           font-weight: 700;
           font-size: 12.5px;
           cursor: pointer;
         }
-        .btn-clear:disabled { opacity: 0.35; cursor: not-allowed; }
+        .btn-clear:disabled { opacity: 0.3; cursor: not-allowed; }
         .btn-settle {
-          flex: 2;
-          padding: 11px 0;
-          background: var(--price-green);
-          color: #fff;
+          flex: 2.2;
+          padding: 13px 0;
+          background: linear-gradient(135deg, var(--brass-bright), var(--brass-deep));
+          color: var(--charcoal);
           border: none;
-          border-radius: 7px;
-          font-weight: 700;
-          font-size: 13px;
+          border-radius: 8px;
+          font-weight: 800;
+          font-size: 13.5px;
+          letter-spacing: 0.2px;
           cursor: pointer;
-          font-family: 'IBM Plex Sans', sans-serif;
+          font-family: 'Manrope', sans-serif;
+          box-shadow: 0 4px 14px rgba(198,161,91,0.35);
         }
-        .btn-settle:hover:not(:disabled) { background: #175E37; }
-        .btn-settle:disabled { background: #B7CBBC; cursor: not-allowed; }
+        .btn-settle:hover:not(:disabled) { filter: brightness(1.06); }
+        .btn-settle:disabled { background: #3B4048; color: #6B7178; box-shadow: none; cursor: not-allowed; }
 
-        /* ============ QTY MODAL: an enlarged tag ============ */
+        /* ============ QTY MODAL ============ */
         .modal-overlay {
           position: fixed;
           inset: 0;
-          background: rgba(20,20,15,0.5);
+          background: rgba(15,17,20,0.62);
+          backdrop-filter: blur(2px);
           display: flex;
           align-items: center;
           justify-content: center;
           z-index: 1000;
+          padding: 16px;
         }
         .qty-tag {
-          background: var(--tag-white);
-          border-radius: 14px;
+          background: var(--charcoal);
+          border-radius: 16px;
           padding: 24px;
           width: 400px;
-          max-width: 92%;
-          box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+          max-width: 100%;
+          box-shadow: 0 24px 64px rgba(0,0,0,0.5);
           position: relative;
-        }
-        .qty-tag::before {
-          content: "";
-          position: absolute;
-          top: 14px; left: 20px;
-          width: 12px; height: 12px;
-          border-radius: 50%;
-          background: var(--shelf-bg);
-          box-shadow: inset 0 1px 2px rgba(0,0,0,0.25);
+          border: 1px solid var(--charcoal-line);
+          color: #E8EAEE;
         }
         .qty-tag-head {
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
-          margin: 8px 0 4px 22px;
+          margin-bottom: 4px;
         }
         .qty-tag-head h3 {
-          font-family: 'Barlow Condensed', sans-serif;
-          font-weight: 700;
+          font-family: 'Big Shoulders Display', sans-serif;
+          font-weight: 800;
           font-size: 22px;
-          color: var(--ink);
+          color: #fff;
           margin: 0;
+          padding-right: 12px;
         }
         .qty-close {
           background: none;
           border: none;
-          font-size: 20px;
-          color: var(--muted);
+          font-size: 18px;
+          color: #8C93A0;
           cursor: pointer;
+          flex-shrink: 0;
         }
         .qty-rate {
-          font-family: 'IBM Plex Mono', monospace;
-          font-size: 22px;
-          font-weight: 700;
-          color: var(--price-green);
-          margin: 0 0 18px 22px;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 12px;
+          color: #8C93A0;
+          margin: 0 0 18px;
         }
-        .qty-rate span { font-size: 12px; color: var(--ink-soft); font-weight: 500; }
+        .qty-rate b { color: var(--led-amber); font-weight: 700; }
 
         .qty-field { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-        .qty-field label { min-width: 70px; font-size: 13px; font-weight: 600; color: var(--ink-soft); }
+        .qty-field label { min-width: 68px; font-size: 12.5px; font-weight: 600; color: #8C93A0; }
         .qty-input {
           flex: 1;
-          padding: 8px 10px;
-          border: 2px solid var(--line);
+          padding: 9px 10px;
+          border: 1.5px solid var(--charcoal-line);
+          background: #0F1114;
           border-radius: 8px;
-          font-family: 'IBM Plex Mono', monospace;
-          font-size: 16px;
+          color: #fff;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 15px;
           text-align: center;
           outline: none;
         }
-        .qty-input:focus { border-color: var(--rust); }
+        .qty-input:focus { border-color: var(--brass); }
         .qty-select {
           flex: 1;
-          padding: 8px 10px;
-          border: 2px solid var(--line);
+          padding: 9px 10px;
+          border: 1.5px solid var(--charcoal-line);
+          background: #0F1114;
+          color: #fff;
           border-radius: 8px;
-          font-size: 13.5px;
-          background: #fff;
+          font-size: 13px;
           outline: none;
         }
+
         .qty-preview {
-          background: var(--shelf-bg);
-          border-radius: 10px;
-          padding: 12px 14px;
-          margin-top: 14px;
+          margin-top: 16px;
+          background: #0F1114;
+          border-radius: 12px;
+          padding: 4px;
+          border: 1px solid #33383F;
         }
+        .qty-preview-rows { padding: 10px 12px 4px; }
         .qty-preview-row {
           display: flex;
           justify-content: space-between;
-          font-size: 13px;
-          color: var(--ink-soft);
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 12px;
+          color: #8C93A0;
           padding: 3px 0;
         }
         .qty-preview-total {
           display: flex;
           justify-content: space-between;
-          padding-top: 6px;
+          align-items: baseline;
+          padding: 12px 14px;
           margin-top: 6px;
-          border-top: 2px solid #D1CBB6;
-          font-family: 'IBM Plex Mono', monospace;
-          font-size: 19px;
-          font-weight: 700;
-          color: var(--price-green);
+          border-top: 1px dashed #33383F;
         }
+        .qty-preview-total .lbl {
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 9.5px;
+          letter-spacing: 2px;
+          text-transform: uppercase;
+          color: #6B7178;
+        }
+        .qty-preview-total .val {
+          font-family: 'Orbitron', sans-serif;
+          font-size: 26px;
+          font-weight: 700;
+          color: var(--led-amber);
+          text-shadow: 0 0 10px rgba(255,176,32,0.5);
+        }
+
         .qty-stock-note {
-          font-size: 11.5px;
-          color: var(--muted);
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 11px;
+          color: #6B7178;
           text-align: right;
           margin-top: 8px;
         }
         .qty-footer { display: flex; gap: 10px; margin-top: 18px; }
         .qty-cancel {
           flex: 1;
-          padding: 11px;
+          padding: 12px;
           background: transparent;
-          border: 2px solid var(--line);
-          border-radius: 8px;
+          border: 1.5px solid var(--charcoal-line);
+          border-radius: 9px;
           font-weight: 600;
           font-size: 13.5px;
-          color: var(--ink-soft);
+          color: #8C93A0;
           cursor: pointer;
         }
         .qty-confirm {
           flex: 2;
-          padding: 11px;
-          background: var(--ink);
-          color: #fff;
+          padding: 12px;
+          background: linear-gradient(135deg, var(--brass-bright), var(--brass-deep));
+          color: var(--charcoal);
           border: none;
-          border-radius: 8px;
-          font-weight: 700;
+          border-radius: 9px;
+          font-weight: 800;
           font-size: 13.5px;
           cursor: pointer;
         }
-        .qty-confirm:hover { background: var(--rust); }
+        .qty-confirm:hover { filter: brightness(1.06); }
         .qty-hint {
           text-align: center;
           margin-top: 10px;
-          font-size: 11px;
-          color: var(--muted);
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 10.5px;
+          color: #565C64;
         }
 
         @media (max-width: 1100px) {
           .pos-layout { flex-direction: column; }
           .receipt-col { max-width: 100%; position: static; width: 100%; }
-          .tag-grid { max-height: 460px; }
+          .tag-grid { max-height: 480px; }
         }
         @media (max-width: 520px) {
           .pos-wrap { padding: 12px; }
           .tag-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
-          .tag-name { font-size: 16px; min-height: 36px; }
-          .tag-price { font-size: 20px; }
+          .shelf-heading { font-size: 26px; }
+          .scale-display .scale-total { font-size: 32px; }
         }
       `}</style>
 
       <div className="pos-wrap">
         <div className="pos-layout">
-          {/* LEFT: shelf of price tags */}
+          {/* LEFT: product shelf */}
           <div className="shelf-col">
             <div className="shelf-topbar">
-              <div className="shelf-heading">
-                Shelf <span className="count">{products.length} items</span>
+              <div className="brand-block">
+                <div className="brand-mark">₹</div>
+                <div className="shelf-heading">
+                  Laabha
+                  <span className="sub">Counter Billing</span>
+                </div>
               </div>
+              <div className="shelf-count">{products.length} items on shelf</div>
             </div>
 
             <div className="shelf-search-row">
@@ -1014,7 +1087,7 @@ export default function BillingPOS() {
                 onChange={(e) => setSearch(e.target.value)}
               />
               <button className="shelf-scan" onClick={() => setShowScanner(true)}>
-                📷 Scan
+                Scan
               </button>
             </div>
 
@@ -1028,35 +1101,31 @@ export default function BillingPOS() {
                   const unit = product.price_unit || "pcs";
                   return (
                     <div key={product.id} className="price-tag">
-                      <div className="tag-name">{product.product_name}</div>
+                      <div className="tag-brass-strip" />
+                      <div className="tag-body">
+                        <div className="tag-name">{product.product_name}</div>
 
-                      <div className="tag-price-row">
-                        <span className="tag-price">₹{product.selling_price}</span>
-                        <span className="tag-price-unit">
-                          / {product.price_per || 1} {formatUnitDisplay(unit)}
-                        </span>
-                      </div>
-
-                      {stockStatus ? (
-                        <div className={`tag-stock ${stockStatus.tone}`}>{stockStatus.text}</div>
-                      ) : (
-                        <div className="tag-stock">{product.stock} {formatUnitDisplay(unit)} in stock</div>
-                      )}
-
-                      {product.barcode && (
-                        <div className="tag-barcode">
-                          <div className="bars">{product.barcode}</div>
-                          <div className="digits">{product.barcode}</div>
+                        <div className="led-chip">
+                          <span className="amt">₹{product.selling_price}</span>
+                          <span className="per">
+                            per {product.price_per || 1}<br />{formatUnitDisplay(unit)}
+                          </span>
                         </div>
-                      )}
 
-                      <button
-                        className="tag-add-btn"
-                        onClick={() => openQuantityModal(product)}
-                        disabled={product.stock <= 0}
-                      >
-                        {product.stock > 0 ? "Add" : "Sold Out"}
-                      </button>
+                        {stockStatus ? (
+                          <div className={`tag-stock ${stockStatus.tone}`}>{stockStatus.text}</div>
+                        ) : (
+                          <div className="tag-stock">{product.stock} {formatUnitDisplay(unit)} in stock</div>
+                        )}
+
+                        <button
+                          className="tag-add-btn"
+                          onClick={() => openQuantityModal(product)}
+                          disabled={product.stock <= 0}
+                        >
+                          {product.stock > 0 ? "Add to bill" : "Sold out"}
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
@@ -1066,22 +1135,29 @@ export default function BillingPOS() {
             </div>
           </div>
 
-          {/* RIGHT: thermal receipt */}
+          {/* RIGHT: digital counter display */}
           <div className="receipt-col">
             <div className="receipt">
-              <div className="receipt-store">Laabha</div>
-              <div className="receipt-sub">Bill No. {invoiceNo}</div>
+              <div className="receipt-store-row">
+                <span className="receipt-store">Laabha Counter</span>
+                <span className="receipt-inv">{invoiceNo}</span>
+              </div>
+
+              <div className="scale-display">
+                <div className="scale-label">
+                  <span>Bill Total</span>
+                  <span>{new Date().toLocaleDateString("en-IN")}</span>
+                </div>
+                <div className="scale-total">
+                  <span className="rupee">₹</span>{grandTotal.toFixed(2)}
+                </div>
+                <div className="scale-meta">
+                  <span>{cart.reduce((sum, item) => sum + item.quantity, 0)} items</span>
+                  <span>{paymentMethod}</span>
+                </div>
+              </div>
 
               {saleComplete && <div className="save-banner">✓ Bill settled</div>}
-
-              <div className="receipt-meta-row">
-                <span>Date</span>
-                <span>{new Date().toLocaleDateString("en-IN")}</span>
-              </div>
-              <div className="receipt-meta-row">
-                <span>Items</span>
-                <span>{cart.reduce((sum, item) => sum + item.quantity, 0)}</span>
-              </div>
 
               <hr className="receipt-dash" />
 
@@ -1120,8 +1196,6 @@ export default function BillingPOS() {
                 )}
               </div>
 
-              <hr className="receipt-dash" />
-
               <div className="items-zone">
                 {cart.length === 0 ? (
                   <div className="empty-receipt">no items added yet</div>
@@ -1149,10 +1223,6 @@ export default function BillingPOS() {
                 <div className="totals-row"><span>Taxable</span><span className="v">₹{taxableAmount.toFixed(2)}</span></div>
                 <div className="totals-row"><span>CGST ({(gst / 2).toFixed(0)}%)</span><span className="v">₹{cgst.toFixed(2)}</span></div>
                 <div className="totals-row"><span>SGST ({(gst / 2).toFixed(0)}%)</span><span className="v">₹{sgst.toFixed(2)}</span></div>
-                <div className="grand-row">
-                  <span className="label">Total</span>
-                  <span className="value">₹{grandTotal.toFixed(2)}</span>
-                </div>
               </div>
 
               <div className="field-pair">
@@ -1193,7 +1263,7 @@ export default function BillingPOS() {
         </div>
       </div>
 
-      {/* Quantity modal — enlarged tag */}
+      {/* Quantity modal */}
       {showQtyModal && selectedProduct && (
         <div
           className="modal-overlay"
@@ -1220,10 +1290,7 @@ export default function BillingPOS() {
               </button>
             </div>
             <div className="qty-rate">
-              ₹{selectedProduct.selling_price}{" "}
-              <span>
-                / {selectedProduct.price_per || 1} {formatUnitDisplay(selectedProduct.price_unit || "pcs")}
-              </span>
+              <b>₹{selectedProduct.selling_price}</b> per {selectedProduct.price_per || 1} {formatUnitDisplay(selectedProduct.price_unit || "pcs")}
             </div>
 
             <div className="qty-field">
@@ -1255,29 +1322,31 @@ export default function BillingPOS() {
             </div>
 
             <div className="qty-preview">
-              <div className="qty-preview-row">
-                <span>Quantity</span>
-                <span>{quantity} {formatUnitDisplay(selectedUnit)}</span>
-              </div>
-              {selectedUnit !== (selectedProduct.price_unit || "pcs") && (
+              <div className="qty-preview-rows">
                 <div className="qty-preview-row">
-                  <span>Converted</span>
+                  <span>Quantity</span>
+                  <span>{quantity} {formatUnitDisplay(selectedUnit)}</span>
+                </div>
+                {selectedUnit !== (selectedProduct.price_unit || "pcs") && (
+                  <div className="qty-preview-row">
+                    <span>Converted</span>
+                    <span>
+                      {calculateLivePrice().displayQuantity.toFixed(2)}{" "}
+                      {formatUnitDisplay(calculateLivePrice().displayUnit)}
+                    </span>
+                  </div>
+                )}
+                <div className="qty-preview-row">
+                  <span>Rate</span>
                   <span>
-                    {calculateLivePrice().displayQuantity.toFixed(2)}{" "}
-                    {formatUnitDisplay(calculateLivePrice().displayUnit)}
+                    ₹{selectedProduct.selling_price} / {selectedProduct.price_per || 1}{" "}
+                    {formatUnitDisplay(selectedProduct.price_unit || "pcs")}
                   </span>
                 </div>
-              )}
-              <div className="qty-preview-row">
-                <span>Rate</span>
-                <span>
-                  ₹{selectedProduct.selling_price} / {selectedProduct.price_per || 1}{" "}
-                  {formatUnitDisplay(selectedProduct.price_unit || "pcs")}
-                </span>
               </div>
               <div className="qty-preview-total">
-                <span>Total</span>
-                <span>₹{calculateLivePrice().total.toFixed(2)}</span>
+                <span className="lbl">Total</span>
+                <span className="val">₹{liveTotalDigits}</span>
               </div>
             </div>
 
