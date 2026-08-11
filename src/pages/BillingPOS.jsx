@@ -45,6 +45,20 @@ export default function BillingPOS() {
   // Current time
   const [currentTime, setCurrentTime] = useState(new Date());
 
+  // Helper function to safely format price
+  const formatPrice = (price) => {
+    if (price === undefined || price === null) return "0.00";
+    const numPrice = typeof price === 'string' ? parseFloat(price) : price;
+    return isNaN(numPrice) ? "0.00" : numPrice.toFixed(2);
+  };
+
+  // Helper function to safely get numeric price
+  const getNumericPrice = (price) => {
+    if (price === undefined || price === null) return 0;
+    const numPrice = typeof price === 'string' ? parseFloat(price) : price;
+    return isNaN(numPrice) ? 0 : numPrice;
+  };
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -278,7 +292,8 @@ export default function BillingPOS() {
   const calculateLivePriceForProduct = (product, qty, unit) => {
     const baseUnit = product.price_unit || "pcs";
     const convertedQuantity = convertDisplayUnit(qty, unit, baseUnit);
-    const pricePerUnit = product.selling_price / (product.price_per || 1);
+    const sellingPrice = getNumericPrice(product.selling_price);
+    const pricePerUnit = sellingPrice / (product.price_per || 1);
     const total = convertedQuantity * pricePerUnit;
 
     let displayQuantity = convertedQuantity;
@@ -484,15 +499,16 @@ export default function BillingPOS() {
   const getStockStatus = (product) => {
     const unit = product.price_unit || "pcs";
     const unitDisplay = formatUnitDisplay(unit);
+    const stock = Number(product.stock) || 0;
 
-    if (product.stock <= 0) {
+    if (stock <= 0) {
       return { text: "OUT OF STOCK", tone: "out" };
-    } else if (product.stock <= 5) {
-      return { text: `${product.stock} ${unitDisplay} left`, tone: "low" };
-    } else if (product.stock <= 20) {
-      return { text: `${product.stock} ${unitDisplay} left`, tone: "mid" };
+    } else if (stock <= 5) {
+      return { text: `${stock} ${unitDisplay} left`, tone: "low" };
+    } else if (stock <= 20) {
+      return { text: `${stock} ${unitDisplay} left`, tone: "mid" };
     }
-    return { text: `${product.stock} ${unitDisplay} available`, tone: "high" };
+    return { text: `${stock} ${unitDisplay} available`, tone: "high" };
   };
 
   const liveTotalDigits = showQtyModal ? calculateLivePrice().total.toFixed(2) : null;
@@ -1515,7 +1531,9 @@ export default function BillingPOS() {
               {filteredProducts.map((product) => {
                 const stockStatus = getStockStatus(product);
                 const unit = product.price_unit || "pcs";
-                const isOutOfStock = product.stock <= 0;
+                const isOutOfStock = Number(product.stock) <= 0;
+                const formattedPrice = formatPrice(product.selling_price);
+                const pricePer = product.price_per || 1;
                 
                 return (
                   <div key={product.id} className="price-tag">
@@ -1527,10 +1545,10 @@ export default function BillingPOS() {
                       {/* 2. Selling Price + 3. Unit */}
                       <div className="tag-price-block">
                         <span className="tag-price">
-                          <span className="rupee-symbol">₹</span>{product.selling_price.toFixed(2)}
+                          <span className="rupee-symbol">₹</span>{formattedPrice}
                         </span>
                         <span className="tag-unit">
-                          <span className="per-text">per</span> {product.price_per || 1} {formatUnitDisplay(unit)}
+                          <span className="per-text">per</span> {pricePer} {formatUnitDisplay(unit)}
                         </span>
                       </div>
 
@@ -1795,7 +1813,7 @@ export default function BillingPOS() {
               </button>
             </div>
             <div className="qty-rate">
-              <b>₹{selectedProduct.selling_price}</b> per {selectedProduct.price_per || 1} {formatUnitDisplay(selectedProduct.price_unit || "pcs")}
+              <b>₹{formatPrice(selectedProduct.selling_price)}</b> per {selectedProduct.price_per || 1} {formatUnitDisplay(selectedProduct.price_unit || "pcs")}
             </div>
 
             <div className="qty-field">
@@ -1844,7 +1862,7 @@ export default function BillingPOS() {
                 <div className="qty-preview-row">
                   <span>Rate</span>
                   <span>
-                    ₹{selectedProduct.selling_price} / {selectedProduct.price_per || 1}{" "}
+                    ₹{formatPrice(selectedProduct.selling_price)} / {selectedProduct.price_per || 1}{" "}
                     {formatUnitDisplay(selectedProduct.price_unit || "pcs")}
                   </span>
                 </div>
