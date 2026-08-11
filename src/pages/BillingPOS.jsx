@@ -485,12 +485,14 @@ export default function BillingPOS() {
     const unit = product.price_unit || "pcs";
     const unitDisplay = formatUnitDisplay(unit);
 
-    if (product.stock <= 5) {
+    if (product.stock <= 0) {
+      return { text: "OUT OF STOCK", tone: "out" };
+    } else if (product.stock <= 5) {
       return { text: `${product.stock} ${unitDisplay} left`, tone: "low" };
     } else if (product.stock <= 20) {
       return { text: `${product.stock} ${unitDisplay} left`, tone: "mid" };
     }
-    return null;
+    return { text: `${product.stock} ${unitDisplay} available`, tone: "high" };
   };
 
   const liveTotalDigits = showQtyModal ? calculateLivePrice().total.toFixed(2) : null;
@@ -711,8 +713,8 @@ export default function BillingPOS() {
 
         .tag-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-          gap: 12px;
+          grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+          gap: 14px;
           max-height: calc(100vh - 280px);
           overflow-y: auto;
           padding: 4px 6px 12px 2px;
@@ -720,18 +722,19 @@ export default function BillingPOS() {
         .tag-grid::-webkit-scrollbar { width: 6px; }
         .tag-grid::-webkit-scrollbar-thumb { background: #B9C0C7; border-radius: 6px; }
 
-        /* ===== Compact product card ===== */
+        /* ===== COMPACT PRODUCT CARD - Simplified ===== */
         .price-tag {
           position: relative;
           background: var(--steel-panel);
-          border-radius: 8px;
-          padding: 0 0 10px;
+          border-radius: 10px;
+          padding: 0 0 12px;
           box-shadow: 0 1px 2px rgba(20,22,26,0.06), 0 6px 16px rgba(20,22,26,0.05);
           border: 1px solid var(--line);
           display: flex;
           flex-direction: column;
           overflow: hidden;
           transition: transform 0.14s, box-shadow 0.14s, border-color 0.14s;
+          min-height: 220px;
         }
         .price-tag:hover {
           transform: translateY(-2px);
@@ -741,80 +744,124 @@ export default function BillingPOS() {
         .tag-brass-strip {
           height: 3px;
           background: linear-gradient(90deg, var(--brass-deep), var(--brass-bright) 45%, var(--brass-deep));
+          flex-shrink: 0;
         }
 
-        .tag-body { padding: 10px 12px 0; display: flex; flex-direction: column; flex: 1; }
+        .tag-body { 
+          padding: 14px 14px 10px; 
+          display: flex; 
+          flex-direction: column; 
+          flex: 1; 
+          gap: 8px;
+        }
 
+        /* 1. Product Name */
         .tag-name {
           font-family: 'Manrope', sans-serif;
           font-weight: 700;
-          font-size: 13px;
-          line-height: 1.25;
+          font-size: 14px;
+          line-height: 1.3;
           color: var(--ink);
-          margin: 0 0 6px;
+          margin: 0;
           display: -webkit-box;
           -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
           overflow: hidden;
-          min-height: 32px;
+          min-height: 36px;
         }
 
-        .led-chip {
-          background: var(--charcoal);
-          border-radius: 6px;
-          padding: 5px 8px;
+        /* 2. Price and Unit combined */
+        .tag-price-block {
           display: flex;
           align-items: baseline;
-          justify-content: space-between;
           gap: 6px;
-          margin-bottom: 6px;
+          margin: 4px 0;
         }
-        .led-chip .amt {
+        .tag-price {
           font-family: 'Orbitron', sans-serif;
           font-weight: 700;
-          font-size: 15px;
+          font-size: 20px;
           color: var(--led-amber);
-          text-shadow: 0 0 8px rgba(255,176,32,0.55);
+          text-shadow: 0 0 8px rgba(255,176,32,0.45);
+          letter-spacing: 0.5px;
           white-space: nowrap;
         }
-        .led-chip .per {
+        .tag-price .rupee-symbol {
+          font-size: 14px;
+          opacity: 0.8;
+          margin-right: 1px;
+        }
+        .tag-unit {
           font-family: 'JetBrains Mono', monospace;
-          font-size: 8.5px;
-          color: #8C93A0;
-          text-align: right;
-          line-height: 1.2;
+          font-size: 12px;
+          color: var(--ink-soft);
+          font-weight: 500;
+          white-space: nowrap;
+        }
+        .tag-unit .per-text {
+          font-size: 10px;
+          color: var(--muted);
         }
 
+        /* 3. Available Stock */
         .tag-stock {
-          font-size: 10px;
+          font-size: 12px;
           font-weight: 600;
           color: var(--muted);
-          margin-bottom: 6px;
+          padding: 2px 0;
         }
-        .tag-stock.low { color: var(--led-red); }
+        .tag-stock.high { color: var(--good); }
         .tag-stock.mid { color: var(--brass-deep); }
+        .tag-stock.low { color: var(--led-red); }
+        .tag-stock.out { 
+          color: var(--led-red); 
+          font-weight: 700;
+          background: rgba(255,92,77,0.1);
+          padding: 2px 8px;
+          border-radius: 4px;
+          display: inline-block;
+          width: fit-content;
+        }
 
+        /* 4. Action Button */
         .tag-add-btn {
           margin-top: auto;
           width: 100%;
-          padding: 7px 0;
+          padding: 9px 0;
           background: var(--charcoal);
           color: var(--brass-bright);
           border: none;
-          border-radius: 6px;
+          border-radius: 8px;
           font-weight: 700;
-          font-size: 11px;
+          font-size: 13px;
           text-transform: uppercase;
           letter-spacing: 0.5px;
           cursor: pointer;
-          transition: background 0.15s, transform 0.1s;
+          transition: background 0.15s, transform 0.1s, opacity 0.15s;
+          font-family: 'Manrope', sans-serif;
         }
-        .tag-add-btn:hover:not(:disabled) { background: linear-gradient(135deg, var(--brass-deep), var(--brass)); color: var(--charcoal); }
+        .tag-add-btn:hover:not(:disabled) { 
+          background: linear-gradient(135deg, var(--brass-deep), var(--brass)); 
+          color: var(--charcoal);
+        }
         .tag-add-btn:active:not(:disabled) { transform: scale(0.96); }
         .tag-add-btn:disabled {
           background: var(--steel-panel-2);
           color: var(--muted);
           cursor: not-allowed;
+          opacity: 0.7;
+        }
+
+        /* 5. SKU - Small at bottom */
+        .tag-sku {
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 9px;
+          color: var(--muted);
+          padding: 2px 0 0;
+          border-top: 1px solid var(--line);
+          margin-top: 2px;
+          opacity: 0.6;
+          letter-spacing: 0.3px;
         }
 
         .no-products {
@@ -1391,10 +1438,15 @@ export default function BillingPOS() {
         }
         @media (max-width: 520px) {
           .pos-wrap { padding: 12px; }
-          .tag-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+          .tag-grid { 
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); 
+            gap: 10px; 
+          }
           .shelf-heading { font-size: 26px; }
           .scale-display .scale-total { font-size: 32px; }
           .status-right { display: none; }
+          .tag-price { font-size: 17px; }
+          .tag-name { font-size: 13px; }
         }
       `}</style>
 
@@ -1463,25 +1515,31 @@ export default function BillingPOS() {
               {filteredProducts.map((product) => {
                 const stockStatus = getStockStatus(product);
                 const unit = product.price_unit || "pcs";
+                const isOutOfStock = product.stock <= 0;
+                
                 return (
                   <div key={product.id} className="price-tag">
                     <div className="tag-brass-strip" />
                     <div className="tag-body">
+                      {/* 1. Product Name */}
                       <div className="tag-name">{product.product_name}</div>
 
-                      <div className="led-chip">
-                        <span className="amt">₹{product.selling_price}</span>
-                        <span className="per">
-                          / {product.price_per || 1} {formatUnitDisplay(unit)}
+                      {/* 2. Selling Price + 3. Unit */}
+                      <div className="tag-price-block">
+                        <span className="tag-price">
+                          <span className="rupee-symbol">₹</span>{product.selling_price.toFixed(2)}
+                        </span>
+                        <span className="tag-unit">
+                          <span className="per-text">per</span> {product.price_per || 1} {formatUnitDisplay(unit)}
                         </span>
                       </div>
 
-                      {stockStatus ? (
-                        <div className={`tag-stock ${stockStatus.tone}`}>{stockStatus.text}</div>
-                      ) : (
-                        <div className="tag-stock">{product.stock} {formatUnitDisplay(unit)} in stock</div>
-                      )}
+                      {/* 4. Available Stock */}
+                      <div className={`tag-stock ${stockStatus.tone}`}>
+                        {isOutOfStock ? '⚠ OUT OF STOCK' : stockStatus.text}
+                      </div>
 
+                      {/* 5. Action Button */}
                       <button
                         className="tag-add-btn"
                         onClick={() => {
@@ -1491,10 +1549,15 @@ export default function BillingPOS() {
                             openQuantityModal(product);
                           }
                         }}
-                        disabled={product.stock <= 0}
+                        disabled={isOutOfStock}
                       >
-                        {product.stock > 0 ? "+ ADD" : "Sold out"}
+                        {isOutOfStock ? 'SOLD OUT' : '+ ADD'}
                       </button>
+
+                      {/* Optional: SKU - small at bottom */}
+                      {product.sku && (
+                        <div className="tag-sku">SKU: {product.sku}</div>
+                      )}
                     </div>
                   </div>
                 );
