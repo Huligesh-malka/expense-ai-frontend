@@ -10,6 +10,17 @@ export default function BillingPOS() {
   const [search, setSearch] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("Cash");
 
+  // Dashboard state
+  const [dashboard, setDashboard] = useState({
+    todaySales: 0,
+    todayBills: 0,
+    monthSales: 0,
+    totalSales: 0,
+    totalCustomers: 0,
+    totalProducts: 0,
+    lowStock: 0,
+  });
+
   // Scanner state
   const [showScanner, setShowScanner] = useState(false);
   const [scanMode, setScanMode] = useState("quick"); // "quick" or "ask"
@@ -200,10 +211,26 @@ export default function BillingPOS() {
     }
   };
 
+  // Load dashboard data
+  const loadDashboard = async () => {
+    try {
+      const res = await API.get(
+        `/dashboard?business_id=${businessId}`
+      );
+
+      if (res.data.success) {
+        setDashboard(res.data);
+      }
+    } catch (err) {
+      console.log("Dashboard Error:", err);
+    }
+  };
+
   useEffect(() => {
     loadProducts();
     generateInvoiceNo();
     extractCategories();
+    loadDashboard();
   }, []);
 
   const generateInvoiceNo = () => {
@@ -474,6 +501,7 @@ export default function BillingPOS() {
       setSaleComplete(true);
       setCart([]);
       loadProducts();
+      loadDashboard(); // Refresh dashboard data after sale
       generateInvoiceNo();
 
       setCustomerName("");
@@ -604,6 +632,21 @@ export default function BillingPOS() {
           color: #8C93A0;
           font-family: 'JetBrains Mono', monospace;
           font-size: 11px;
+        }
+        .status-data {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+        .status-data .label {
+          color: #6B7178;
+        }
+        .status-data .value {
+          color: #E8EAEE;
+          font-weight: 600;
+        }
+        .status-data .value.gold {
+          color: var(--brass-bright);
         }
 
         .pos-layout {
@@ -1467,7 +1510,7 @@ export default function BillingPOS() {
       `}</style>
 
       <div className="pos-wrap">
-        {/* Status Bar */}
+        {/* Status Bar - Now using real dashboard data */}
         <div className="status-bar">
           <div className="status-left">
             <span className="status-brand">₹ LAABHA COUNTER</span>
@@ -1475,8 +1518,19 @@ export default function BillingPOS() {
             <span style={{ color: '#6B7178' }}>Cashier: Admin</span>
           </div>
           <div className="status-right">
-            <span>Today: ₹24,580</span>
-            <span>Bills: 86</span>
+            <span className="status-data">
+              <span className="label">Today:</span>
+              <span className="value gold">
+                ₹{Number(dashboard.todaySales).toLocaleString("en-IN", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
+                })}
+              </span>
+            </span>
+            <span className="status-data">
+              <span className="label">Bills:</span>
+              <span className="value">{dashboard.todayBills || 0}</span>
+            </span>
             <span>{currentTime.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
             <span style={{ color: 'var(--led-amber)' }}>
               {currentTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
