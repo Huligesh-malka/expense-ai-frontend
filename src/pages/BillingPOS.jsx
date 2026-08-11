@@ -12,8 +12,9 @@ export default function BillingPOS() {
 
   // Scanner state
   const [showScanner, setShowScanner] = useState(false);
+  const [scanMode, setScanMode] = useState("quick"); // "quick" or "ask"
 
-  // Customer fields – only phone is required
+  // Customer fields – phone is now optional
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [customerId, setCustomerId] = useState(null);
@@ -27,12 +28,65 @@ export default function BillingPOS() {
   const [invoiceNo, setInvoiceNo] = useState("");
   const [saleComplete, setSaleComplete] = useState(false);
 
+  // Cash received for change calculation
+  const [cashReceived, setCashReceived] = useState("");
+
+  // Category filter
+  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [categories, setCategories] = useState([]);
+
   // Quantity input refs
   const quantityInputRef = useRef(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showQtyModal, setShowQtyModal] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [selectedUnit, setSelectedUnit] = useState("pcs");
+
+  // Current time
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // F2 - Focus search
+      if (e.key === "F2") {
+        e.preventDefault();
+        document.getElementById("search-input")?.focus();
+      }
+      // F4 - Open scanner
+      if (e.key === "F4") {
+        e.preventDefault();
+        setShowScanner(true);
+      }
+      // F8 - Focus payment
+      if (e.key === "F8") {
+        e.preventDefault();
+        document.getElementById("cash-received")?.focus();
+      }
+      // Ctrl+Enter - Complete bill
+      if (e.key === "Enter" && e.ctrlKey) {
+        e.preventDefault();
+        if (cart.length > 0) saveSale();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [cart]);
+
+  // Update time every second
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Auto-dismiss the "bill settled" confirmation banner
+  useEffect(() => {
+    if (saleComplete) {
+      const t = setTimeout(() => setSaleComplete(false), 2600);
+      return () => clearTimeout(t);
+    }
+  }, [saleComplete]);
 
   // Get compatible units based on product's base unit
   const getCompatibleUnits = (priceUnit) => {
@@ -67,7 +121,7 @@ export default function BillingPOS() {
     feet: "Feet",
   };
 
-  // Convert quantity from one unit to another (for display purposes)
+  // Convert quantity from one unit to another
   const convertDisplayUnit = (quantity, fromUnit, toUnit) => {
     if (fromUnit === toUnit) return quantity;
 
@@ -135,15 +189,8 @@ export default function BillingPOS() {
   useEffect(() => {
     loadProducts();
     generateInvoiceNo();
+    extractCategories();
   }, []);
-
-  // Auto-dismiss the "bill settled" confirmation banner
-  useEffect(() => {
-    if (saleComplete) {
-      const t = setTimeout(() => setSaleComplete(false), 2600);
-      return () => clearTimeout(t);
-    }
-  }, [saleComplete]);
 
   const generateInvoiceNo = () => {
     const prefix = "INV";
@@ -160,6 +207,12 @@ export default function BillingPOS() {
     }
   };
 
+  const extractCategories = () => {
+    // Extract unique categories from products (you may need to adjust based on your data structure)
+    const uniqueCategories = ["All", "Grocery", "Medical", "Drinks", "Snacks", "Other"];
+    setCategories(uniqueCategories);
+  };
+
   const openQuantityModal = (product) => {
     setSelectedProduct(product);
     setQuantity(1);
@@ -173,20 +226,59 @@ export default function BillingPOS() {
     }, 100);
   };
 
-  const calculateLivePrice = () => {
-    if (!selectedProduct)
-      return {
-        total: 0,
-        convertedQuantity: 0,
-        displayQuantity: 0,
-        displayUnit: selectedProduct?.price_unit || "pcs",
-        baseUnit: selectedProduct?.price_unit || "pcs",
-        pricePerUnit: 0,
-      };
+  // Quick add mode - automatically add product with quantity 1
+  const quickAddToCart = (product) => {
+    const unit = product.price_unit || "pcs";
+    const priceData = calculateLivePriceForProduct(product, 1, unit);
 
-    const baseUnit = selectedProduct.price_unit || "pcs";
-    const convertedQuantity = convertDisplayUnit(quantity, selectedUnit, baseUnit);
-    const pricePerUnit = selectedProduct.selling_price / (selectedProduct.price_per || 1);
+    if (product.stock < priceData.convertedQuantity) {
+      alert(`Only ${product.stock} ${product.price_unit} available in stock`);
+      return;
+    }
+
+    const exist = cart.find(
+      (item) => item.id === product.id && item.unit === unit
+    );
+
+    if (exist) {
+      setCart(
+        cart.map((item) =>
+          item.id === product.id && item.unit === unit
+            ? {
+                ...item,
+                quantity: item.quantity + 1,
+                convertedQuantity: item.convertedQuantity + priceData.convertedQuantity,
+                displayQuantity: item.displayQuantity + priceData.displayQuantity,
+                totalPrice:
+                  (item.convertedQuantity + priceData.convertedQuantity) *
+                  item.price_per_unit,
+              }
+            : item
+        )
+      );
+    } else {
+      setCart([
+        ...cart,
+        {
+          id: product.id,
+          product_name: product.product_name,
+          price_per_unit: priceData.pricePerUnit,
+          base_unit: product.price_unit || "pcs",
+          quantity: 1,
+          unit: unit,
+          convertedQuantity: priceData.convertedQuantity,
+          displayQuantity: priceData.displayQuantity,
+          displayUnit: priceData.displayUnit,
+          totalPrice: priceData.total,
+        },
+      ]);
+    }
+  };
+
+  const calculateLivePriceForProduct = (product, qty, unit) => {
+    const baseUnit = product.price_unit || "pcs";
+    const convertedQuantity = convertDisplayUnit(qty, unit, baseUnit);
+    const pricePerUnit = product.selling_price / (product.price_per || 1);
     const total = convertedQuantity * pricePerUnit;
 
     let displayQuantity = convertedQuantity;
@@ -214,6 +306,20 @@ export default function BillingPOS() {
       baseUnit,
       pricePerUnit,
     };
+  };
+
+  const calculateLivePrice = () => {
+    if (!selectedProduct)
+      return {
+        total: 0,
+        convertedQuantity: 0,
+        displayQuantity: 0,
+        displayUnit: selectedProduct?.price_unit || "pcs",
+        baseUnit: selectedProduct?.price_unit || "pcs",
+        pricePerUnit: 0,
+      };
+
+    return calculateLivePriceForProduct(selectedProduct, quantity, selectedUnit);
   };
 
   const addToCartWithQuantity = () => {
@@ -287,25 +393,29 @@ export default function BillingPOS() {
     }
   };
 
-  const changeQty = (id, qty, unit) => {
-    if (qty <= 0) {
-      setCart(cart.filter((item) => !(item.id === id && item.unit === unit)));
+  const changeQty = (id, delta, unit) => {
+    const item = cart.find((i) => i.id === id && i.unit === unit);
+    if (!item) return;
+
+    const newQty = item.quantity + delta;
+    if (newQty <= 0) {
+      setCart(cart.filter((i) => !(i.id === id && i.unit === unit)));
       return;
     }
 
+    const ratio = newQty / item.quantity;
     setCart(
-      cart.map((item) => {
-        if (item.id === id && item.unit === unit) {
-          const ratio = qty / item.quantity;
+      cart.map((i) => {
+        if (i.id === id && i.unit === unit) {
           return {
-            ...item,
-            quantity: qty,
-            convertedQuantity: item.convertedQuantity * ratio,
-            displayQuantity: item.displayQuantity * ratio,
-            totalPrice: item.price_per_unit * item.convertedQuantity * ratio,
+            ...i,
+            quantity: newQty,
+            convertedQuantity: i.convertedQuantity * ratio,
+            displayQuantity: i.displayQuantity * ratio,
+            totalPrice: i.price_per_unit * i.convertedQuantity * ratio,
           };
         }
-        return item;
+        return i;
       })
     );
   };
@@ -319,8 +429,12 @@ export default function BillingPOS() {
   const sgst = taxAmount / 2;
   const grandTotal = taxableAmount + taxAmount;
 
-  // Validate phone number
-  const isPhoneValid = customerPhone.length === 10 && /^\d{10}$/.test(customerPhone);
+  // Validate phone number (optional now)
+  const isPhoneValid = customerPhone.length === 0 || (customerPhone.length === 10 && /^\d{10}$/.test(customerPhone));
+
+  // Calculate change
+  const change = cashReceived ? Number(cashReceived) - grandTotal : 0;
+  const showChange = paymentMethod === "Cash" && cashReceived && change >= 0;
 
   const saveSale = async () => {
     try {
@@ -353,6 +467,7 @@ export default function BillingPOS() {
       setIsCustomerFound(false);
       setDiscount(0);
       setGst(18);
+      setCashReceived("");
     } catch (err) {
       console.log(err);
       alert(err.response?.data?.message || "Error creating sale");
@@ -379,6 +494,15 @@ export default function BillingPOS() {
   };
 
   const liveTotalDigits = showQtyModal ? calculateLivePrice().total.toFixed(2) : null;
+
+  // Filter products by search and category
+  const filteredProducts = products.filter((p) => {
+    const matchesSearch = p.product_name.toLowerCase().includes(search.toLowerCase()) ||
+                          (p.barcode && p.barcode.includes(search)) ||
+                          (p.sku && p.sku.includes(search));
+    const matchesCategory = selectedCategory === "All" || p.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
 
   return (
     <>
@@ -413,6 +537,55 @@ export default function BillingPOS() {
             var(--steel-bg);
           min-height: 100vh;
           padding: 26px;
+        }
+
+        /* Top Status Bar */
+        .status-bar {
+          max-width: 1620px;
+          margin: 0 auto 16px;
+          background: var(--charcoal);
+          border-radius: 12px;
+          padding: 10px 20px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          color: #fff;
+          font-size: 12px;
+        }
+        .status-left { display: flex; align-items: center; gap: 16px; }
+        .status-brand {
+          font-family: 'Big Shoulders Display', sans-serif;
+          font-weight: 800;
+          font-size: 18px;
+          color: var(--brass-bright);
+        }
+        .status-online {
+          color: #5FE0A0;
+          font-weight: 600;
+          font-size: 11px;
+          display: flex;
+          align-items: center;
+          gap: 5px;
+        }
+        .status-online::before {
+          content: '';
+          width: 7px;
+          height: 7px;
+          background: #5FE0A0;
+          border-radius: 50%;
+          display: inline-block;
+          animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.3; }
+        }
+        .status-right {
+          display: flex;
+          gap: 20px;
+          color: #8C93A0;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 11px;
         }
 
         .pos-layout {
@@ -479,7 +652,7 @@ export default function BillingPOS() {
         .shelf-search-row {
           display: flex;
           gap: 10px;
-          margin-bottom: 18px;
+          margin-bottom: 12px;
         }
         .shelf-search {
           flex: 1;
@@ -510,23 +683,49 @@ export default function BillingPOS() {
         .shelf-scan:hover { background: var(--charcoal-soft); }
         .shelf-scan:active { transform: scale(0.96); }
 
+        /* Category Filters */
+        .category-filters {
+          display: flex;
+          gap: 6px;
+          margin-bottom: 16px;
+          flex-wrap: wrap;
+        }
+        .cat-btn {
+          padding: 5px 14px;
+          border: 1.5px solid var(--line);
+          background: transparent;
+          border-radius: 20px;
+          font-family: 'Manrope', sans-serif;
+          font-size: 12px;
+          font-weight: 600;
+          color: var(--ink-soft);
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+        .cat-btn:hover { border-color: var(--brass); color: var(--charcoal); }
+        .cat-btn.active {
+          background: var(--charcoal);
+          color: var(--brass-bright);
+          border-color: var(--charcoal);
+        }
+
         .tag-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(216px, 1fr));
-          gap: 14px;
-          max-height: calc(100vh - 240px);
+          grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+          gap: 12px;
+          max-height: calc(100vh - 280px);
           overflow-y: auto;
           padding: 4px 6px 12px 2px;
         }
         .tag-grid::-webkit-scrollbar { width: 6px; }
         .tag-grid::-webkit-scrollbar-thumb { background: #B9C0C7; border-radius: 6px; }
 
-        /* ===== steel shelf tag card ===== */
+        /* ===== Compact product card ===== */
         .price-tag {
           position: relative;
           background: var(--steel-panel);
-          border-radius: 10px;
-          padding: 0 0 12px;
+          border-radius: 8px;
+          padding: 0 0 10px;
           box-shadow: 0 1px 2px rgba(20,22,26,0.06), 0 6px 16px rgba(20,22,26,0.05);
           border: 1px solid var(--line);
           display: flex;
@@ -535,63 +734,62 @@ export default function BillingPOS() {
           transition: transform 0.14s, box-shadow 0.14s, border-color 0.14s;
         }
         .price-tag:hover {
-          transform: translateY(-3px);
-          box-shadow: 0 14px 26px rgba(20,22,26,0.14);
+          transform: translateY(-2px);
+          box-shadow: 0 10px 20px rgba(20,22,26,0.12);
           border-color: var(--brass);
         }
         .tag-brass-strip {
-          height: 5px;
+          height: 3px;
           background: linear-gradient(90deg, var(--brass-deep), var(--brass-bright) 45%, var(--brass-deep));
         }
 
-        .tag-body { padding: 13px 14px 0; display: flex; flex-direction: column; flex: 1; }
+        .tag-body { padding: 10px 12px 0; display: flex; flex-direction: column; flex: 1; }
 
         .tag-name {
           font-family: 'Manrope', sans-serif;
           font-weight: 700;
-          font-size: 14.5px;
-          line-height: 1.28;
+          font-size: 13px;
+          line-height: 1.25;
           color: var(--ink);
-          margin: 0 0 10px;
+          margin: 0 0 6px;
           display: -webkit-box;
           -webkit-line-clamp: 2;
           -webkit-box-orient: vertical;
           overflow: hidden;
-          min-height: 37px;
+          min-height: 32px;
         }
 
-        /* LED chip, echo of the big counter display */
         .led-chip {
           background: var(--charcoal);
-          border-radius: 7px;
-          padding: 8px 10px;
+          border-radius: 6px;
+          padding: 5px 8px;
           display: flex;
           align-items: baseline;
           justify-content: space-between;
           gap: 6px;
-          margin-bottom: 9px;
+          margin-bottom: 6px;
         }
         .led-chip .amt {
           font-family: 'Orbitron', sans-serif;
           font-weight: 700;
-          font-size: 18px;
+          font-size: 15px;
           color: var(--led-amber);
           text-shadow: 0 0 8px rgba(255,176,32,0.55);
           white-space: nowrap;
         }
         .led-chip .per {
           font-family: 'JetBrains Mono', monospace;
-          font-size: 9.5px;
+          font-size: 8.5px;
           color: #8C93A0;
           text-align: right;
-          line-height: 1.3;
+          line-height: 1.2;
         }
 
         .tag-stock {
-          font-size: 11px;
+          font-size: 10px;
           font-weight: 600;
           color: var(--muted);
-          margin-bottom: 10px;
+          margin-bottom: 6px;
         }
         .tag-stock.low { color: var(--led-red); }
         .tag-stock.mid { color: var(--brass-deep); }
@@ -599,15 +797,15 @@ export default function BillingPOS() {
         .tag-add-btn {
           margin-top: auto;
           width: 100%;
-          padding: 10px 0;
+          padding: 7px 0;
           background: var(--charcoal);
           color: var(--brass-bright);
           border: none;
-          border-radius: 8px;
+          border-radius: 6px;
           font-weight: 700;
-          font-size: 12.5px;
+          font-size: 11px;
           text-transform: uppercase;
-          letter-spacing: 0.6px;
+          letter-spacing: 0.5px;
           cursor: pointer;
           transition: background 0.15s, transform 0.1s;
         }
@@ -625,6 +823,13 @@ export default function BillingPOS() {
           padding: 60px 0;
           color: var(--muted);
           font-weight: 500;
+        }
+
+        .search-result-count {
+          font-size: 12px;
+          color: var(--ink-soft);
+          margin-bottom: 12px;
+          font-family: 'JetBrains Mono', monospace;
         }
 
         /* ============ RIGHT: COUNTER DISPLAY PANEL ============ */
@@ -664,7 +869,7 @@ export default function BillingPOS() {
           letter-spacing: 0.5px;
         }
 
-        /* the digital weighing-scale total display: signature element */
+        /* the digital weighing-scale total display */
         .scale-display {
           margin-top: 14px;
           background: #0F1114;
@@ -756,6 +961,19 @@ export default function BillingPOS() {
         .status-searching { color: var(--led-amber); }
         .status-invalid { color: var(--led-red); }
 
+        .walkin-badge {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 6px 10px;
+          background: #0F1114;
+          border-radius: 6px;
+          margin-top: 6px;
+          font-size: 13px;
+          color: #8C93A0;
+        }
+        .walkin-badge .icon { font-size: 18px; }
+
         .items-zone {
           min-height: 84px;
           max-height: 190px;
@@ -766,10 +984,10 @@ export default function BillingPOS() {
         .items-zone::-webkit-scrollbar-thumb { background: var(--charcoal-line); border-radius: 6px; }
         .item-line {
           display: flex;
-          justify-content: space-between;
-          gap: 8px;
-          font-size: 12.5px;
-          padding: 7px 0;
+          align-items: center;
+          gap: 6px;
+          font-size: 12px;
+          padding: 6px 0;
           border-bottom: 1px solid rgba(255,255,255,0.05);
         }
         .item-line:last-child { border-bottom: none; }
@@ -784,14 +1002,45 @@ export default function BillingPOS() {
         }
         .item-line .name-block .qty {
           font-family: 'JetBrains Mono', monospace;
-          font-size: 10.5px;
+          font-size: 10px;
           color: #8C93A0;
+        }
+        .item-line .qty-controls {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+        .item-line .qty-btn {
+          background: #0F1114;
+          border: 1px solid var(--charcoal-line);
+          color: #E8EAEE;
+          border-radius: 4px;
+          width: 22px;
+          height: 22px;
+          font-size: 14px;
+          font-weight: 700;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: background 0.15s;
+        }
+        .item-line .qty-btn:hover { background: var(--charcoal-soft); }
+        .item-line .qty-val {
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 12px;
+          font-weight: 600;
+          min-width: 24px;
+          text-align: center;
         }
         .item-line .amt {
           font-family: 'JetBrains Mono', monospace;
           font-weight: 700;
           color: var(--led-amber);
           white-space: nowrap;
+          font-size: 12px;
+          min-width: 60px;
+          text-align: right;
         }
         .item-line .rm {
           background: none;
@@ -801,6 +1050,7 @@ export default function BillingPOS() {
           cursor: pointer;
           padding: 0 0 0 6px;
           opacity: 0.75;
+          font-size: 14px;
         }
         .item-line .rm:hover { opacity: 1; }
         .empty-receipt {
@@ -843,7 +1093,7 @@ export default function BillingPOS() {
         }
         .field-pair input:focus { border-bottom-color: var(--brass); }
 
-        .pay-row { display: flex; gap: 6px; margin-bottom: 16px; }
+        .pay-row { display: flex; gap: 6px; margin-bottom: 12px; }
         .pay-opt {
           flex: 1;
           padding: 8px 0;
@@ -857,12 +1107,46 @@ export default function BillingPOS() {
           cursor: pointer;
           color: #8C93A0;
           transition: all 0.15s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
         }
         .pay-opt.active {
           border-color: var(--brass);
           background: linear-gradient(135deg, var(--brass-bright), var(--brass-deep));
           color: var(--charcoal);
         }
+
+        .cash-change {
+          background: #0F1114;
+          border-radius: 8px;
+          padding: 10px 14px;
+          margin-bottom: 12px;
+          border: 1px solid #33383F;
+        }
+        .cash-change-row {
+          display: flex;
+          justify-content: space-between;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 12px;
+          padding: 2px 0;
+        }
+        .cash-change-row .lbl { color: #8C93A0; }
+        .cash-change-row .val { color: #E8EAEE; font-weight: 600; }
+        .cash-change-row .val.change { color: var(--led-amber); }
+        .cash-input {
+          width: 100%;
+          border: none;
+          border-bottom: 1.5px solid var(--charcoal-line);
+          background: transparent;
+          color: #fff;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 14px;
+          padding: 4px 2px;
+          outline: none;
+        }
+        .cash-input:focus { border-bottom-color: var(--brass); }
 
         .receipt-actions { display: flex; gap: 8px; }
         .btn-clear {
@@ -893,6 +1177,55 @@ export default function BillingPOS() {
         }
         .btn-settle:hover:not(:disabled) { filter: brightness(1.06); }
         .btn-settle:disabled { background: #3B4048; color: #6B7178; box-shadow: none; cursor: not-allowed; }
+
+        /* Scanner mode toggle */
+        .scan-mode-toggle {
+          display: flex;
+          gap: 6px;
+          margin-bottom: 12px;
+          background: #0F1114;
+          padding: 4px;
+          border-radius: 8px;
+          border: 1px solid #33383F;
+        }
+        .scan-mode-btn {
+          flex: 1;
+          padding: 5px 10px;
+          border: none;
+          border-radius: 6px;
+          background: transparent;
+          color: #8C93A0;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 10px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+        .scan-mode-btn.active {
+          background: var(--brass);
+          color: var(--charcoal);
+        }
+        .scan-mode-btn:hover:not(.active) { background: var(--charcoal-soft); }
+
+        /* Keyboard shortcuts hint */
+        .shortcuts-hint {
+          display: flex;
+          gap: 12px;
+          flex-wrap: wrap;
+          margin-top: 10px;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 9px;
+          color: #565C64;
+          justify-content: center;
+        }
+        .shortcuts-hint kbd {
+          background: #0F1114;
+          padding: 2px 6px;
+          border-radius: 3px;
+          border: 1px solid #33383F;
+          font-size: 9px;
+          color: #8C93A0;
+        }
 
         /* ============ QTY MODAL ============ */
         .modal-overlay {
@@ -1061,10 +1394,28 @@ export default function BillingPOS() {
           .tag-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
           .shelf-heading { font-size: 26px; }
           .scale-display .scale-total { font-size: 32px; }
+          .status-right { display: none; }
         }
       `}</style>
 
       <div className="pos-wrap">
+        {/* Status Bar */}
+        <div className="status-bar">
+          <div className="status-left">
+            <span className="status-brand">₹ LAABHA COUNTER</span>
+            <span className="status-online">ONLINE</span>
+            <span style={{ color: '#6B7178' }}>Cashier: Admin</span>
+          </div>
+          <div className="status-right">
+            <span>Today: ₹24,580</span>
+            <span>Bills: 86</span>
+            <span>{currentTime.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+            <span style={{ color: 'var(--led-amber)' }}>
+              {currentTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
+            </span>
+          </div>
+        </div>
+
         <div className="pos-layout">
           {/* LEFT: product shelf */}
           <div className="shelf-col">
@@ -1076,62 +1427,79 @@ export default function BillingPOS() {
                   <span className="sub">Counter Billing</span>
                 </div>
               </div>
-              <div className="shelf-count">{products.length} items on shelf</div>
+              <div className="shelf-count">
+                {products.length} PRODUCTS
+                {search && ` · Showing ${filteredProducts.length} results`}
+              </div>
             </div>
 
             <div className="shelf-search-row">
               <input
+                id="search-input"
                 className="shelf-search"
-                placeholder="Search products..."
+                placeholder="🔍 Search product / barcode / SKU..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
               <button className="shelf-scan" onClick={() => setShowScanner(true)}>
-                Scan
+                📷 SCAN
               </button>
             </div>
 
+            {/* Category Filters */}
+            <div className="category-filters">
+              {categories.map((cat) => (
+                <button
+                  key={cat}
+                  className={`cat-btn ${selectedCategory === cat ? 'active' : ''}`}
+                  onClick={() => setSelectedCategory(cat)}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+
             <div className="tag-grid">
-              {products
-                .filter((p) =>
-                  p.product_name.toLowerCase().includes(search.toLowerCase())
-                )
-                .map((product) => {
-                  const stockStatus = getStockStatus(product);
-                  const unit = product.price_unit || "pcs";
-                  return (
-                    <div key={product.id} className="price-tag">
-                      <div className="tag-brass-strip" />
-                      <div className="tag-body">
-                        <div className="tag-name">{product.product_name}</div>
+              {filteredProducts.map((product) => {
+                const stockStatus = getStockStatus(product);
+                const unit = product.price_unit || "pcs";
+                return (
+                  <div key={product.id} className="price-tag">
+                    <div className="tag-brass-strip" />
+                    <div className="tag-body">
+                      <div className="tag-name">{product.product_name}</div>
 
-                        <div className="led-chip">
-                          <span className="amt">₹{product.selling_price}</span>
-                          <span className="per">
-                            per {product.price_per || 1}<br />{formatUnitDisplay(unit)}
-                          </span>
-                        </div>
-
-                        {stockStatus ? (
-                          <div className={`tag-stock ${stockStatus.tone}`}>{stockStatus.text}</div>
-                        ) : (
-                          <div className="tag-stock">{product.stock} {formatUnitDisplay(unit)} in stock</div>
-                        )}
-
-                        <button
-                          className="tag-add-btn"
-                          onClick={() => openQuantityModal(product)}
-                          disabled={product.stock <= 0}
-                        >
-                          {product.stock > 0 ? "Add to bill" : "Sold out"}
-                        </button>
+                      <div className="led-chip">
+                        <span className="amt">₹{product.selling_price}</span>
+                        <span className="per">
+                          / {product.price_per || 1} {formatUnitDisplay(unit)}
+                        </span>
                       </div>
+
+                      {stockStatus ? (
+                        <div className={`tag-stock ${stockStatus.tone}`}>{stockStatus.text}</div>
+                      ) : (
+                        <div className="tag-stock">{product.stock} {formatUnitDisplay(unit)} in stock</div>
+                      )}
+
+                      <button
+                        className="tag-add-btn"
+                        onClick={() => {
+                          if (scanMode === "quick") {
+                            quickAddToCart(product);
+                          } else {
+                            openQuantityModal(product);
+                          }
+                        }}
+                        disabled={product.stock <= 0}
+                      >
+                        {product.stock > 0 ? "+ ADD" : "Sold out"}
+                      </button>
                     </div>
-                  );
-                })}
-              {products.filter((p) =>
-                p.product_name.toLowerCase().includes(search.toLowerCase())
-              ).length === 0 && <div className="no-products">No products found</div>}
+                  </div>
+                );
+              })}
+              {filteredProducts.length === 0 && <div className="no-products">No products found</div>}
             </div>
           </div>
 
@@ -1145,8 +1513,13 @@ export default function BillingPOS() {
 
               <div className="scale-display">
                 <div className="scale-label">
-                  <span>Bill Total</span>
-                  <span>{new Date().toLocaleDateString("en-IN")}</span>
+                  <span>BILL TOTAL</span>
+                  <span>
+                    {currentTime.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    <span style={{ marginLeft: '8px', color: 'var(--led-amber)' }}>
+                      {currentTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
+                    </span>
+                  </span>
                 </div>
                 <div className="scale-total">
                   <span className="rupee">₹</span>{grandTotal.toFixed(2)}
@@ -1162,10 +1535,10 @@ export default function BillingPOS() {
               <hr className="receipt-dash" />
 
               <div className="customer-line">
-                <label>Customer phone</label>
+                <label>Customer Phone <span style={{ fontWeight: 'normal', color: '#6B7178' }}>(optional)</span></label>
                 <input
                   className="customer-input"
-                  placeholder="10-digit number"
+                  placeholder="10-digit number or leave blank"
                   value={customerPhone}
                   onChange={(e) => {
                     const phone = e.target.value.replace(/\D/g, "");
@@ -1181,7 +1554,7 @@ export default function BillingPOS() {
                   type="tel"
                   maxLength="10"
                 />
-                {customerPhone.length > 0 && (
+                {customerPhone.length > 0 ? (
                   <div className="customer-status">
                     {isSearching ? (
                       <span className="status-searching">checking...</span>
@@ -1193,20 +1566,30 @@ export default function BillingPOS() {
                       <span className="status-invalid">enter 10 digits</span>
                     )}
                   </div>
+                ) : (
+                  <div className="walkin-badge">
+                    <span className="icon">👤</span>
+                    Walk-in Customer
+                  </div>
                 )}
               </div>
 
               <div className="items-zone">
                 {cart.length === 0 ? (
-                  <div className="empty-receipt">no items added yet</div>
+                  <div className="empty-receipt">No items added yet</div>
                 ) : (
                   cart.map((item, index) => (
                     <div key={`${item.id}-${index}`} className="item-line">
                       <div className="name-block">
                         <span className="nm">{item.product_name}</span>
                         <span className="qty">
-                          {item.quantity} {formatUnitDisplay(item.unit)} · ₹{item.price_per_unit.toFixed(2)}/{formatUnitDisplay(item.base_unit)}
+                          {formatUnitDisplay(item.unit)} · ₹{item.price_per_unit.toFixed(2)}/{formatUnitDisplay(item.base_unit)}
                         </span>
+                      </div>
+                      <div className="qty-controls">
+                        <button className="qty-btn" onClick={() => changeQty(item.id, -1, item.unit)}>−</button>
+                        <span className="qty-val">{item.quantity}</span>
+                        <button className="qty-btn" onClick={() => changeQty(item.id, 1, item.unit)}>+</button>
                       </div>
                       <span className="amt">₹{item.totalPrice.toFixed(2)}</span>
                       <button className="rm" onClick={() => changeQty(item.id, 0, item.unit)}>✕</button>
@@ -1237,15 +1620,67 @@ export default function BillingPOS() {
               </div>
 
               <div className="pay-row">
-                {["Cash", "UPI", "Card"].map((method) => (
-                  <button
-                    key={method}
-                    className={`pay-opt ${paymentMethod === method ? "active" : ""}`}
-                    onClick={() => setPaymentMethod(method)}
-                  >
-                    {method}
-                  </button>
-                ))}
+                <button
+                  className={`pay-opt ${paymentMethod === "Cash" ? "active" : ""}`}
+                  onClick={() => setPaymentMethod("Cash")}
+                >
+                  💵 Cash
+                </button>
+                <button
+                  className={`pay-opt ${paymentMethod === "UPI" ? "active" : ""}`}
+                  onClick={() => setPaymentMethod("UPI")}
+                >
+                  📱 UPI
+                </button>
+                <button
+                  className={`pay-opt ${paymentMethod === "Card" ? "active" : ""}`}
+                  onClick={() => setPaymentMethod("Card")}
+                >
+                  💳 Card
+                </button>
+              </div>
+
+              {paymentMethod === "Cash" && (
+                <div className="cash-change">
+                  <div className="cash-change-row">
+                    <span className="lbl">Bill Total</span>
+                    <span className="val">₹{grandTotal.toFixed(2)}</span>
+                  </div>
+                  <div className="cash-change-row" style={{ marginTop: '4px' }}>
+                    <span className="lbl">Cash Received</span>
+                    <input
+                      id="cash-received"
+                      className="cash-input"
+                      type="number"
+                      placeholder="0.00"
+                      value={cashReceived}
+                      onChange={(e) => setCashReceived(e.target.value)}
+                      style={{ width: '120px', textAlign: 'right', display: 'inline-block' }}
+                    />
+                  </div>
+                  {showChange && (
+                    <div className="cash-change-row" style={{ marginTop: '4px', borderTop: '1px dashed #33383F', paddingTop: '4px' }}>
+                      <span className="lbl">Change</span>
+                      <span className="val change">₹{change.toFixed(2)}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Scan Mode Toggle */}
+              <div className="scan-mode-toggle">
+                <button
+                  className={`scan-mode-btn ${scanMode === "quick" ? "active" : ""}`}
+                  onClick={() => setScanMode("quick")}
+                >
+                  ⚡ Quick Add
+                </button>
+                <button
+                  className={`scan-mode-btn ${scanMode === "ask" ? "active" : ""}`}
+                  onClick={() => setScanMode("ask")}
+                >
+                  📋 Ask Quantity
+                </button>
               </div>
 
               <div className="receipt-actions">
@@ -1257,6 +1692,13 @@ export default function BillingPOS() {
                 >
                   Settle ₹{grandTotal.toFixed(2)}
                 </button>
+              </div>
+
+              <div className="shortcuts-hint">
+                <span><kbd>F2</kbd> Search</span>
+                <span><kbd>F4</kbd> Scan</span>
+                <span><kbd>F8</kbd> Cash</span>
+                <span><kbd>Ctrl+Enter</kbd> Complete</span>
               </div>
             </div>
           </div>
@@ -1370,7 +1812,7 @@ export default function BillingPOS() {
                 Add to Bill
               </button>
             </div>
-            <div className="qty-hint">Enter to add · Esc to cancel</div>
+            <div className="qty-hint"><kbd>Enter</kbd> to add · <kbd>Esc</kbd> to cancel</div>
           </div>
         </div>
       )}
@@ -1382,7 +1824,11 @@ export default function BillingPOS() {
           onClose={() => setShowScanner(false)}
           onProductFound={(product) => {
             setShowScanner(false);
-            openQuantityModal(product);
+            if (scanMode === "quick") {
+              quickAddToCart(product);
+            } else {
+              openQuantityModal(product);
+            }
           }}
         />
       )}
