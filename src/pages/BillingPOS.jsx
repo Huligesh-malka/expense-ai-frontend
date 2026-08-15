@@ -28,6 +28,12 @@ export default function BillingPOS() {
   const [showScanner, setShowScanner] = useState(false);
   const [scanMode, setScanMode] = useState("quick"); // "quick" or "ask"
 
+  // Voice billing states
+  const [isListening, setIsListening] = useState(false);
+  const [voiceText, setVoiceText] = useState("");
+  const [voiceMessage, setVoiceMessage] = useState("");
+  const recognitionRef = useRef(null);
+
   // Customer fields – phone is now optional
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerName, setCustomerName] = useState("");
@@ -573,6 +579,253 @@ export default function BillingPOS() {
     return matchesSearch && matchesCategory;
   });
 
+  // ===============================
+  // VOICE BILLING FUNCTIONS
+  // ===============================
+
+  const startVoiceBilling = () => {
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      alert(
+        "Voice recognition is not supported in this browser. Please use Google Chrome."
+      );
+      return;
+    }
+
+    // Stop if already listening
+    if (isListening && recognitionRef.current) {
+      recognitionRef.current.stop();
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+
+    recognition.lang = "en-IN";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 3;
+
+    recognitionRef.current = recognition;
+
+    setIsListening(true);
+    setVoiceText("");
+    setVoiceMessage("Listening... Speak product name");
+
+    recognition.onstart = () => {
+      setIsListening(true);
+      setVoiceMessage("🎤 Listening...");
+    };
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript.trim();
+
+      setVoiceText(transcript);
+      setVoiceMessage(`Heard: "${transcript}"`);
+
+      processVoiceCommand(transcript);
+    };
+
+    recognition.onerror = (event) => {
+      console.log("Voice error:", event.error);
+
+      setIsListening(false);
+
+      if (event.error === "not-allowed") {
+        setVoiceMessage("Microphone permission denied");
+      } else if (event.error === "no-speech") {
+        setVoiceMessage("No speech detected. Try again.");
+      } else {
+        setVoiceMessage("Voice recognition error");
+      }
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+      recognitionRef.current = null;
+    };
+
+    recognition.start();
+  };
+
+  const processVoiceCommand = (text) => {
+    if (!text) return;
+
+    let command = text.toLowerCase().trim();
+
+    console.log("Voice command:", command);
+
+    // ===============================
+    // CLEAR CART
+    // ===============================
+
+    if (
+      command === "clear cart" ||
+      command === "clear the cart" ||
+      command.includes("empty cart")
+    ) {
+      setCart([]);
+
+      setVoiceMessage("🗑️ Cart cleared");
+
+      return;
+    }
+
+    // ===============================
+    // REMOVE PRODUCT
+    // ===============================
+
+    if (
+      command.startsWith("remove ") ||
+      command.startsWith("delete ")
+    ) {
+      let productName = command
+        .replace(/^remove\s+/i, "")
+        .replace(/^delete\s+/i, "")
+        .replace(/\s+from cart$/i, "")
+        .trim();
+
+      const product = findVoiceProduct(productName);
+
+      if (!product) {
+        setVoiceMessage(`❌ Product "${productName}" not found`);
+        return;
+      }
+
+      setCart((prevCart) =>
+        prevCart.filter((item) => item.id !== product.id)
+      );
+
+      setVoiceMessage(`🗑️ Removed ${product.product_name}`);
+
+      return;
+    }
+
+    // ===============================
+    // ADD PRODUCT
+    // ===============================
+
+    let quantity = 1;
+
+    // Example:
+    // "add 2 parle g"
+    // "2 parle g"
+    // "add two parle g"
+
+    const numberWords = {
+      one: 1,
+      two: 2,
+      three: 3,
+      four: 4,
+      five: 5,
+      six: 6,
+      seven: 7,
+      eight: 8,
+      nine: 9,
+      ten: 10,
+    };
+
+    let quantityMatch = command.match(
+      /^(?:add\s+)?(\d+(?:\.\d+)?)\s+(.+)$/
+    );
+
+    if (quantityMatch) {
+      quantity = Number(quantityMatch[1]);
+      command = quantityMatch[2].trim();
+    } else {
+      for (const word in numberWords) {
+        if (
+          command.startsWith(`add ${word} `) ||
+          command.startsWith(`${word} `)
+        ) {
+          quantity = numberWords[word];
+
+          command = command
+            .replace(/^add\s+/i, "")
+            .replace(new RegExp(`^${word}\\s+`, "i"), "")
+            .trim();
+
+          break;
+        }
+      }
+    }
+
+    // Remove common voice words
+    let productName = command
+      .replace(/^add\s+/i, "")
+      .replace(/\s+to\s+cart$/i, "")
+      .replace(/\s+add\s+to\s+cart$/i, "")
+      .replace(/\s+please$/i, "")
+      .trim();
+
+    if (!productName) {
+      setVoiceMessage("❌ Please say a product name");
+      return;
+    }
+
+    const product = findVoiceProduct(productName);
+
+    if (!product) {
+      setVoiceMessage(`❌ Product "${productName}" not found`);
+      return;
+    }
+
+    // Add quantity times
+    for (let i = 0; i < quantity; i++) {
+      quickAddToCart(product);
+    }
+
+    setVoiceMessage(
+      `✅ Added ${quantity} × ${product.product_name}`
+    );
+  };
+
+  const findVoiceProduct = (voiceName) => {
+    if (!voiceName || !products.length) return null;
+
+    const normalize = (value) => {
+      return String(value || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "");
+    };
+
+    const searchName = normalize(voiceName);
+
+    // Exact normalized match
+    let product = products.find((p) => {
+      return normalize(p.product_name) === searchName;
+    });
+
+    if (product) return product;
+
+    // Product name contains voice text
+    product = products.find((p) => {
+      const name = normalize(p.product_name);
+
+      return (
+        name.includes(searchName) ||
+        searchName.includes(name)
+      );
+    });
+
+    if (product) return product;
+
+    // Word-based matching
+    const words = String(voiceName)
+      .toLowerCase()
+      .split(/\s+/)
+      .filter(Boolean);
+
+    product = products.find((p) => {
+      const name = String(p.product_name || "").toLowerCase();
+
+      return words.every((word) => name.includes(word));
+    });
+
+    return product || null;
+  };
+
   return (
     <>
       <style>{`
@@ -759,6 +1012,69 @@ export default function BillingPOS() {
           transition: border-color 0.15s, box-shadow 0.15s;
         }
         .shelf-search:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(255,179,0,0.18); }
+        
+        .voice-button {
+          border: none;
+          border-radius: 12px;
+          padding: 0 18px;
+          min-height: 50px;
+          background: #20242b;
+          color: #ffffff;
+          font-weight: 800;
+          cursor: pointer;
+          transition: 0.2s ease;
+          white-space: nowrap;
+        }
+
+        .voice-button:hover {
+          transform: translateY(-1px);
+        }
+
+        .voice-listening {
+          background: #d93025;
+          animation: voicePulse 1s infinite;
+        }
+
+        @keyframes voicePulse {
+          0% {
+            box-shadow: 0 0 0 0 rgba(217, 48, 37, 0.5);
+          }
+          70% {
+            box-shadow: 0 0 0 10px rgba(217, 48, 37, 0);
+          }
+          100% {
+            box-shadow: 0 0 0 0 rgba(217, 48, 37, 0);
+          }
+        }
+
+        .voice-status {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-top: 10px;
+          padding: 12px 16px;
+          border-radius: 12px;
+          background: #151a21;
+          color: white;
+        }
+
+        .voice-icon {
+          font-size: 25px;
+        }
+
+        .voice-title {
+          font-size: 12px;
+          font-weight: 800;
+          text-transform: uppercase;
+          opacity: 0.7;
+        }
+
+        .voice-result {
+          margin-top: 3px;
+          font-size: 14px;
+          font-weight: 700;
+        }
+
         .shelf-scan {
           padding: 0 22px;
           background: var(--text);
@@ -1587,10 +1903,33 @@ export default function BillingPOS() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
+              <button
+                className={`voice-button ${isListening ? "voice-listening" : ""}`}
+                onClick={startVoiceBilling}
+              >
+                {isListening ? "🔴 LISTENING" : "🎤 VOICE"}
+              </button>
               <button className="shelf-scan" onClick={() => setShowScanner(true)}>
                 📷 SCAN
               </button>
             </div>
+
+            {/* Voice Status Display */}
+            {(isListening || voiceText || voiceMessage) && (
+              <div className="voice-status">
+                <div className="voice-icon">
+                  {isListening ? "🎤" : "🗣️"}
+                </div>
+                <div>
+                  <div className="voice-title">
+                    {isListening ? "Listening..." : "Voice Billing"}
+                  </div>
+                  <div className="voice-result">
+                    {voiceText || voiceMessage}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Category Filters */}
             <div className="category-filters">
