@@ -1,7 +1,7 @@
 // src/pages/PurchaseDetails.jsx
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
+import API from "../services/api";
 
 export default function PurchaseDetails() {
 
@@ -17,8 +17,8 @@ export default function PurchaseDetails() {
 
     const loadPurchase = async () => {
         try {
-            const res = await axios.get(
-                `http://localhost:5000/api/purchases/details/${id}`
+            const res = await API.get(
+                `/purchases/details/${id}`
             );
             setPurchase(res.data.purchase);
             setItems(res.data.items || []);
