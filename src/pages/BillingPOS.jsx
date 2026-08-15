@@ -33,6 +33,7 @@ export default function BillingPOS() {
   const [voiceText, setVoiceText] = useState("");
   const [voiceMessage, setVoiceMessage] = useState("");
   const recognitionRef = useRef(null);
+  const voiceActiveRef = useRef(false);
 
   // Customer fields – phone is now optional
   const [customerPhone, setCustomerPhone] = useState("");
@@ -299,50 +300,88 @@ export default function BillingPOS() {
   // Quick add mode - automatically add product with quantity 1
   const quickAddToCart = (product) => {
     const unit = product.price_unit || "pcs";
-    const priceData = calculateLivePriceForProduct(product, 1, unit);
+
+    const priceData = calculateLivePriceForProduct(
+      product,
+      1,
+      unit
+    );
 
     if (product.stock < priceData.convertedQuantity) {
-      alert(`Only ${product.stock} ${product.price_unit} available in stock`);
+      alert(
+        `Only ${product.stock} ${product.price_unit} available in stock`
+      );
+
       return;
     }
 
-    const exist = cart.find(
-      (item) => item.id === product.id && item.unit === unit
-    );
+    setCart((prevCart) => {
+      const exist = prevCart.find(
+        (item) =>
+          item.id === product.id &&
+          item.unit === unit
+      );
 
-    if (exist) {
-      setCart(
-        cart.map((item) =>
-          item.id === product.id && item.unit === unit
+      if (exist) {
+        return prevCart.map((item) =>
+          item.id === product.id &&
+          item.unit === unit
             ? {
                 ...item,
-                quantity: item.quantity + 1,
-                convertedQuantity: item.convertedQuantity + priceData.convertedQuantity,
-                displayQuantity: item.displayQuantity + priceData.displayQuantity,
+
+                quantity:
+                  item.quantity + 1,
+
+                convertedQuantity:
+                  item.convertedQuantity +
+                  priceData.convertedQuantity,
+
+                displayQuantity:
+                  item.displayQuantity +
+                  priceData.displayQuantity,
+
                 totalPrice:
-                  (item.convertedQuantity + priceData.convertedQuantity) *
+                  (item.convertedQuantity +
+                    priceData.convertedQuantity) *
                   item.price_per_unit,
               }
             : item
-        )
-      );
-    } else {
-      setCart([
-        ...cart,
+        );
+      }
+
+      return [
+        ...prevCart,
+
         {
           id: product.id,
-          product_name: product.product_name,
-          price_per_unit: priceData.pricePerUnit,
-          base_unit: product.price_unit || "pcs",
+
+          product_name:
+            product.product_name,
+
+          price_per_unit:
+            priceData.pricePerUnit,
+
+          base_unit:
+            product.price_unit || "pcs",
+
           quantity: 1,
-          unit: unit,
-          convertedQuantity: priceData.convertedQuantity,
-          displayQuantity: priceData.displayQuantity,
-          displayUnit: priceData.displayUnit,
-          totalPrice: priceData.total,
+
+          unit,
+
+          convertedQuantity:
+            priceData.convertedQuantity,
+
+          displayQuantity:
+            priceData.displayQuantity,
+
+          displayUnit:
+            priceData.displayUnit,
+
+          totalPrice:
+            priceData.total,
         },
-      ]);
-    }
+      ];
+    });
   };
 
   const calculateLivePriceForProduct = (product, qty, unit) => {
@@ -626,6 +665,23 @@ export default function BillingPOS() {
     }
   };
 
+  const stopVoiceBilling = () => {
+    voiceActiveRef.current = false;
+
+    setIsListening(false);
+    setVoiceMessage("🎤 Voice billing stopped");
+
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (error) {
+        console.log("Voice stop error:", error);
+      }
+
+      recognitionRef.current = null;
+    }
+  };
+
   const startVoiceBilling = () => {
     const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -637,59 +693,106 @@ export default function BillingPOS() {
       return;
     }
 
-    // Stop if already listening
-    if (isListening && recognitionRef.current) {
-      recognitionRef.current.stop();
+    // If already active, stop voice mode
+    if (voiceActiveRef.current) {
+      stopVoiceBilling();
       return;
     }
 
-    const recognition = new SpeechRecognition();
-
-    recognition.lang = "en-IN";
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 3;
-
-    recognitionRef.current = recognition;
-
+    voiceActiveRef.current = true;
     setIsListening(true);
     setVoiceText("");
-    setVoiceMessage("Listening... Speak product name");
+    setVoiceMessage("🎤 Voice billing active");
 
-    recognition.onstart = () => {
-      setIsListening(true);
-      setVoiceMessage("🎤 Listening...");
-    };
+    const createRecognition = () => {
+      // Don't start if owner stopped voice mode
+      if (!voiceActiveRef.current) return;
 
-    recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript.trim();
+      const recognition = new SpeechRecognition();
 
-      setVoiceText(transcript);
-      setVoiceMessage(`Heard: "${transcript}"`);
+      recognition.lang = "en-IN";
 
-      processVoiceCommand(transcript);
-    };
+      // IMPORTANT
+      // Recognition can continue listening
+      recognition.continuous = true;
 
-    recognition.onerror = (event) => {
-      console.log("Voice error:", event.error);
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 3;
 
-      setIsListening(false);
+      recognitionRef.current = recognition;
 
-      if (event.error === "not-allowed") {
-        setVoiceMessage("Microphone permission denied");
-      } else if (event.error === "no-speech") {
-        setVoiceMessage("No speech detected. Try again.");
-      } else {
-        setVoiceMessage("Voice recognition error");
+      recognition.onstart = () => {
+        if (!voiceActiveRef.current) return;
+
+        setIsListening(true);
+        setVoiceMessage("🎤 Listening... Say a product");
+      };
+
+      recognition.onresult = (event) => {
+        if (!voiceActiveRef.current) return;
+
+        // Process all new final results
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          if (!event.results[i].isFinal) continue;
+
+          const transcript =
+            event.results[i][0].transcript.trim();
+
+          if (!transcript) continue;
+
+          console.log("🎤 Voice:", transcript);
+
+          setVoiceText(transcript);
+          setVoiceMessage(`🗣️ "${transcript}"`);
+
+          processVoiceCommand(transcript);
+        }
+      };
+
+      recognition.onerror = (event) => {
+        console.log("Voice error:", event.error);
+
+        // These errors can happen normally during continuous recognition
+        if (
+          event.error === "no-speech" ||
+          event.error === "aborted"
+        ) {
+          return;
+        }
+
+        if (event.error === "not-allowed") {
+          voiceActiveRef.current = false;
+          setIsListening(false);
+          setVoiceMessage("❌ Microphone permission denied");
+          return;
+        }
+
+        setVoiceMessage(`⚠️ Voice error: ${event.error}`);
+      };
+
+      recognition.onend = () => {
+        recognitionRef.current = null;
+
+        // Automatically start listening again
+        if (voiceActiveRef.current) {
+          setTimeout(() => {
+            if (voiceActiveRef.current) {
+              createRecognition();
+            }
+          }, 300);
+        } else {
+          setIsListening(false);
+        }
+      };
+
+      try {
+        recognition.start();
+      } catch (error) {
+        console.log("Recognition start error:", error);
       }
     };
 
-    recognition.onend = () => {
-      setIsListening(false);
-      recognitionRef.current = null;
-    };
-
-    recognition.start();
+    createRecognition();
   };
 
   const processVoiceCommand = (text) => {
@@ -746,16 +849,12 @@ export default function BillingPOS() {
     }
 
     // ===============================
-    // ADD PRODUCT
+    // ADVANCED ADD PRODUCT
     // ===============================
 
     let quantity = 1;
 
-    // Example:
-    // "add 2 parle g"
-    // "2 parle g"
-    // "add two parle g"
-
+    // Number words
     const numberWords = {
       one: 1,
       two: 2,
@@ -769,57 +868,66 @@ export default function BillingPOS() {
       ten: 10,
     };
 
-    let quantityMatch = command.match(
-      /^(?:add\s+)?(\d+(?:\.\d+)?)\s+(.+)$/
-    );
-
-    if (quantityMatch) {
-      quantity = Number(quantityMatch[1]);
-      command = quantityMatch[2].trim();
-    } else {
-      for (const word in numberWords) {
-        if (
-          command.startsWith(`add ${word} `) ||
-          command.startsWith(`${word} `)
-        ) {
-          quantity = numberWords[word];
-
-          command = command
-            .replace(/^add\s+/i, "")
-            .replace(new RegExp(`^${word}\\s+`, "i"), "")
-            .trim();
-
-          break;
-        }
-      }
-    }
-
-    // Remove common voice words
+    // Remove common command words first
     let productName = command
       .replace(/^add\s+/i, "")
+      .replace(/^buy\s+/i, "")
+      .replace(/^give\s+/i, "")
+      .replace(/^put\s+/i, "")
+      .replace(/^please\s+/i, "")
       .replace(/\s+to\s+cart$/i, "")
       .replace(/\s+add\s+to\s+cart$/i, "")
       .replace(/\s+please$/i, "")
       .trim();
 
+    // Numeric quantity
+    const quantityMatch = productName.match(
+      /^(\d+(?:\.\d+)?)\s+(.+)$/
+    );
+
+    if (quantityMatch) {
+      quantity = Number(quantityMatch[1]);
+      productName = quantityMatch[2].trim();
+    }
+
+    // Word quantity
+    for (const word in numberWords) {
+      if (productName.startsWith(`${word} `)) {
+        quantity = numberWords[word];
+
+        productName = productName
+          .replace(
+            new RegExp(`^${word}\\s+`, "i"),
+            ""
+          )
+          .trim();
+
+        break;
+      }
+    }
+
     if (!productName) {
-      setVoiceMessage("❌ Please say a product name");
+      setVoiceMessage("🎤 Please say a product name");
       return;
     }
 
+    // Find product
     const product = findVoiceProduct(productName);
 
     if (!product) {
-      setVoiceMessage(`❌ Product "${productName}" not found`);
+      setVoiceMessage(
+        `❌ "${productName}" not found`
+      );
+
       return;
     }
 
-    // Add quantity times
+    // Add product
     for (let i = 0; i < quantity; i++) {
       quickAddToCart(product);
     }
 
-    // 🔊 Successful voice billing beep
+    // 🔊 Success sound
     playSuccessBeep();
 
     setVoiceMessage(
