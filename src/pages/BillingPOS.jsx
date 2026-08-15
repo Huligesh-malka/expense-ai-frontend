@@ -204,52 +204,95 @@ export default function BillingPOS() {
     return Number(quantity);
   };
 
-  // Calculate manual price
+  // ========== FIXED: Calculate manual price ==========
   const calculateManualPrice = () => {
     if (!manualSelectedProduct || !manualQuantity) return 0;
 
     const convertedQuantity = convertToPriceUnit(
-      manualQuantity,
+      Number(manualQuantity),
       manualUnit,
-      manualSelectedProduct.price_unit
+      manualSelectedProduct.price_unit || "pcs"
     );
 
-    return convertedQuantity * Number(manualSelectedProduct.price_per);
+    const sellingPrice = getNumericPrice(
+      manualSelectedProduct.selling_price
+    );
+
+    const pricePer = Number(manualSelectedProduct.price_per || 1);
+
+    const pricePerBaseUnit = sellingPrice / pricePer;
+
+    return convertedQuantity * pricePerBaseUnit;
   };
 
-  // Add manual product to cart
+  // ========== FIXED: Add manual product to cart ==========
   const addManualProductToCart = () => {
     if (!manualSelectedProduct) return;
 
-    const quantity = Number(manualQuantity);
+    const qty = Number(manualQuantity);
 
-    if (!quantity || quantity <= 0) {
+    if (!qty || qty <= 0) {
       alert("Enter a valid quantity");
       return;
     }
 
+    const baseUnit = manualSelectedProduct.price_unit || "pcs";
+
     const convertedQuantity = convertToPriceUnit(
-      quantity,
+      qty,
       manualUnit,
-      manualSelectedProduct.price_unit
+      baseUnit
     );
 
-    const totalPrice = convertedQuantity * Number(manualSelectedProduct.price_per);
+    const sellingPrice = getNumericPrice(
+      manualSelectedProduct.selling_price
+    );
+
+    const pricePer = Number(
+      manualSelectedProduct.price_per || 1
+    );
+
+    const pricePerBaseUnit = sellingPrice / pricePer;
+
+    const totalPrice =
+      convertedQuantity * pricePerBaseUnit;
+
+    if (
+      Number(manualSelectedProduct.stock) <
+      convertedQuantity
+    ) {
+      alert(
+        `Only ${manualSelectedProduct.stock} ${baseUnit} available`
+      );
+      return;
+    }
 
     const cartItem = {
-      ...manualSelectedProduct,
-      quantity: convertedQuantity,
-      displayQuantity: quantity,
+      id: manualSelectedProduct.id,
+      product_name: manualSelectedProduct.product_name,
+
+      price_per_unit: pricePerBaseUnit,
+
+      base_unit: baseUnit,
+
+      quantity: qty,
+      unit: manualUnit,
+
+      convertedQuantity,
+
+      displayQuantity: qty,
       displayUnit: manualUnit,
-      price: Number(manualSelectedProduct.price_per),
-      total: Number(totalPrice.toFixed(2)),
+
+      totalPrice: Number(totalPrice.toFixed(2)),
     };
 
-    setCart((prevCart) => [...prevCart, cartItem]);
+    setCart((prevCart) => [
+      ...prevCart,
+      cartItem,
+    ]);
 
-    // Reset
     setManualQuantity(1);
-    setManualUnit(manualSelectedProduct.price_unit);
+    setManualUnit(baseUnit);
     setManualSelectedProduct(null);
   };
 
@@ -2306,14 +2349,20 @@ export default function BillingPOS() {
                         {isOutOfStock ? '⚠ OUT OF STOCK' : stockStatus.text}
                       </div>
 
+                      {/* ========== FIXED: + ADD button now uses manualSelectedProduct in ask mode ========== */}
                       <button
                         className="tag-add-btn"
                         onClick={(e) => {
                           e.stopPropagation();
+                          if (isOutOfStock) return;
+
                           if (scanMode === "quick") {
                             quickAddToCart(product);
                           } else {
-                            openQuantityModal(product);
+                            // In ask mode, show the manual quantity box
+                            setManualSelectedProduct(product);
+                            setManualQuantity(1);
+                            setManualUnit(product.price_unit || "pcs");
                           }
                         }}
                         disabled={isOutOfStock}
