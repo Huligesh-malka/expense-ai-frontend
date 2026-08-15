@@ -4,7 +4,6 @@ import API from "../services/api"; // Use centralized API service
 import {
   FiPlus,
   FiSearch,
-  FiEdit,
   FiTrash2,
   FiEye,
   FiTruck,
@@ -193,9 +192,6 @@ export default function Suppliers() {
                     <Link to={`/supplier/${supplier.id}`} style={styles.viewButton} title="View Supplier">
                       <FiEye size={14} />
                     </Link>
-                    <Link to={`/edit-supplier/${supplier.id}`} style={styles.editButton} title="Edit Supplier">
-                      <FiEdit size={14} />
-                    </Link>
                     <button
                       onClick={() => deleteSupplier(supplier.id)}
                       style={styles.deleteButton}
@@ -379,19 +375,6 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
     background: "#10b981",
-    color: "#fff",
-    padding: "8px 10px",
-    textDecoration: "none",
-    borderRadius: "6px",
-    transition: "all 0.2s",
-    border: "none",
-    cursor: "pointer"
-  },
-  editButton: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    background: "#f59e0b",
     color: "#fff",
     padding: "8px 10px",
     textDecoration: "none",
