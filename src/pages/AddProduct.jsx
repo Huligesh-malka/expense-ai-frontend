@@ -1,6 +1,31 @@
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import API from "../services/api";
+
+// ─── Static option data ─────────────────────────────────────
+const CATEGORIES = [
+    { value: "electronics", label: "Electronics", icon: "📱" },
+    { value: "clothing", label: "Clothing", icon: "👕" },
+    { value: "food", label: "Food", icon: "🍎" },
+    { value: "medicine", label: "Medicine", icon: "💊" },
+    { value: "grocery", label: "Grocery", icon: "🛒" },
+    { value: "cosmetics", label: "Cosmetics", icon: "🧴" },
+    { value: "other", label: "Other", icon: "📦" },
+];
+
+const UNITS = [
+    { value: "kg", label: "Kilogram (KG)", icon: "⚖️" },
+    { value: "g", label: "Gram (G)", icon: "⚖️" },
+    { value: "pcs", label: "Pieces (PCS)", icon: "📦" },
+    { value: "l", label: "Liter (L)", icon: "🥤" },
+    { value: "ml", label: "Milliliter (ML)", icon: "🥤" },
+    { value: "meter", label: "Meter", icon: "📏" },
+    { value: "feet", label: "Feet", icon: "📏" },
+    { value: "pack", label: "Pack", icon: "📦" },
+    { value: "box", label: "Box", icon: "📦" },
+    { value: "bottle", label: "Bottle", icon: "🧴" },
+    { value: "dozen", label: "Dozen", icon: "📦" },
+];
 
 export default function AddProduct() {
     // ─── State ───────────────────────────────────────────────
@@ -21,7 +46,7 @@ export default function AddProduct() {
         tax: 0,
         image: "",
         description: "",
-        expiry_date: "" // NEW: Product expiry date
+        expiry_date: "",
     });
 
     const [loading, setLoading] = useState(false);
@@ -30,110 +55,59 @@ export default function AddProduct() {
     const [touched, setTouched] = useState({});
 
     // ─── Helpers ──────────────────────────────────────────────
-    const getUnitIcon = (unit) => {
-        const icons = {
-            kg: "⚖️",
-            g: "⚖️",
-            pcs: "📦",
-            l: "🥤",
-            ml: "🥤",
-            meter: "📏",
-            feet: "📏",
-            pack: "📦",
-            box: "📦",
-            bottle: "🧴",
-            dozen: "📦",
-        };
-        return icons[unit] || "📦";
-    };
-
-    const getUnitLabel = (unit) => {
-        const labels = {
-            kg: "Kilogram",
-            g: "Gram",
-            pcs: "Pieces",
-            l: "Liter",
-            ml: "Milliliter",
-            meter: "Meter",
-            feet: "Feet",
-            pack: "Pack",
-            box: "Box",
-            bottle: "Bottle",
-            dozen: "Dozen",
-        };
-        return labels[unit] || unit;
-    };
+    const getUnitIcon = (unit) => UNITS.find((u) => u.value === unit)?.icon || "📦";
+    const getUnitLabel = (unit) => UNITS.find((u) => u.value === unit)?.label || unit;
 
     // ─── Computed fields ──────────────────────────────────────
     const purchaseNum = parseFloat(form.purchase_price) || 0;
     const sellingNum = parseFloat(form.selling_price) || 0;
     const stockNum = parseFloat(form.stock) || 0;
-    const taxNum = parseFloat(form.tax) || 0;
     const minStockNum = parseFloat(form.min_stock) || 0;
 
     const profit = sellingNum - purchaseNum;
-    const profitMargin = purchaseNum > 0 ? ((profit / purchaseNum) * 100) : 0;
+    const profitMargin = purchaseNum > 0 ? (profit / purchaseNum) * 100 : 0;
     const totalValue = stockNum * purchaseNum;
     const totalSellValue = stockNum * sellingNum;
 
     const isProfitPositive = profit >= 0;
     const isLowStock = stockNum > 0 && stockNum <= minStockNum;
     const isOutOfStock = stockNum === 0;
+    const showTag = purchaseNum > 0 && sellingNum > 0;
 
     // ─── Expiry Status ──────────────────────────────────────
     const getExpiryStatus = () => {
         if (!form.expiry_date) return null;
-        
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        
         const expiryDate = new Date(form.expiry_date);
         expiryDate.setHours(0, 0, 0, 0);
-        
-        const diffTime = expiryDate - today;
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
-        if (diffDays < 0) {
-            return { status: "expired", label: "🔴 Expired", color: "#dc2626" };
-        } else if (diffDays <= 7) {
-            return { status: "expiring_soon", label: "🟠 Expiring in " + diffDays + " days", color: "#ea580c" };
-        } else if (diffDays <= 30) {
-            return { status: "expiring", label: "🟡 Expiring in " + diffDays + " days", color: "#ca8a04" };
-        } else {
-            return { status: "good", label: "✅ " + diffDays + " days remaining", color: "#16a34a" };
-        }
-    };
+        const diffDays = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
 
+        if (diffDays < 0) return { status: "expired", label: "EXPIRED", detail: `${Math.abs(diffDays)} days ago`, color: "#A63D2D" };
+        if (diffDays <= 7) return { status: "expiring_soon", label: "EXPIRING SOON", detail: `${diffDays} days left`, color: "#B5721C" };
+        if (diffDays <= 30) return { status: "expiring", label: "WATCH", detail: `${diffDays} days left`, color: "#8A6D1A" };
+        return { status: "good", label: "FRESH", detail: `${diffDays} days left`, color: "#2F5D3A" };
+    };
     const expiryStatus = getExpiryStatus();
 
     // ─── Handlers ─────────────────────────────────────────────
     const handleChange = (e) => {
         const { name, value } = e.target;
-
-        // Sync price_unit ↔ stock_unit
-        if (name === "price_unit") {
-            setForm((prev) => ({
-                ...prev,
-                price_unit: value,
-                stock_unit: value,
-            }));
+        if (name === "price_unit" || name === "stock_unit") {
+            setForm((prev) => ({ ...prev, price_unit: value, stock_unit: value }));
             return;
         }
-        if (name === "stock_unit") {
-            setForm((prev) => ({
-                ...prev,
-                stock_unit: value,
-                price_unit: value,
-            }));
-            return;
-        }
-
         setForm((prev) => ({ ...prev, [name]: value }));
     };
 
     const handleBlur = (e) => {
         const { name } = e.target;
         setTouched((prev) => ({ ...prev, [name]: true }));
+    };
+
+    const selectCategory = (value) => {
+        setForm((prev) => ({ ...prev, category: value }));
+        setTouched((prev) => ({ ...prev, category: true }));
     };
 
     const resetForm = () => {
@@ -154,7 +128,7 @@ export default function AddProduct() {
             tax: 0,
             image: "",
             description: "",
-            expiry_date: "" // Reset expiry date
+            expiry_date: "",
         });
         setTouched({});
     };
@@ -168,10 +142,9 @@ export default function AddProduct() {
         const required = ["product_name", "category", "purchase_price", "selling_price", "stock"];
         const missing = required.filter((field) => !form[field] || form[field] === "");
         if (missing.length > 0) {
-            setMessage(`❌ Please fill in all required fields: ${missing.join(", ")}`);
+            setMessage(`Missing required entries: ${missing.join(", ")}`);
             setMessageType("error");
             setLoading(false);
-            // Mark all as touched to show errors
             const allTouched = required.reduce((acc, f) => ({ ...acc, [f]: true }), {});
             setTouched(allTouched);
             return;
@@ -181,12 +154,12 @@ export default function AddProduct() {
             ...form,
             unit: form.stock_unit,
             price_per: 1,
-            expiry_date: form.expiry_date || null // Send null if empty
+            expiry_date: form.expiry_date || null,
         };
 
         try {
             await API.post("/products/create", submitData);
-            setMessage("✅ Product added successfully!");
+            setMessage("Item entered into the ledger.");
             setMessageType("success");
             resetForm();
             setTimeout(() => {
@@ -195,335 +168,229 @@ export default function AddProduct() {
             }, 5000);
         } catch (err) {
             console.error("Error adding product:", err);
-            const errorMessage = err.response?.data?.message || "Failed to add product. Please try again.";
-            setMessage(`❌ ${errorMessage}`);
+            const errorMessage = err.response?.data?.message || "Could not save this entry. Try again.";
+            setMessage(errorMessage);
             setMessageType("error");
         } finally {
             setLoading(false);
         }
     };
 
-    // ─── Validation helpers ──────────────────────────────────
     const isFieldInvalid = (field) => {
         if (!touched[field]) return false;
         const val = form[field];
         if (field === "product_name" || field === "category") return !val || val === "";
-        if (field === "purchase_price" || field === "selling_price" || field === "stock") {
-            return !val || parseFloat(val) < 0;
-        }
+        if (["purchase_price", "selling_price", "stock"].includes(field)) return !val || parseFloat(val) < 0;
         return false;
     };
 
     // ─── Render ──────────────────────────────────────────────
     return (
         <div style={styles.pageWrapper}>
-            <div style={styles.container}>
+            <div style={styles.sheet}>
+                {/* red ledger margin */}
+                <div style={styles.marginRule} />
+
                 {/* ─── Header ─── */}
                 <div style={styles.header}>
                     <div>
-                        <h1 style={styles.title}>➕ Add Product</h1>
-                        <p style={styles.subtitle}>Create a new inventory item</p>
+                        <span style={styles.eyebrow}>LAABHA · STOCK REGISTER</span>
+                        <h1 style={styles.title}>New Item Entry</h1>
+                        <p style={styles.subtitle}>Fill in the particulars below to add this item to your ledger</p>
                     </div>
-                    <Link to="/products" style={styles.backLink}>
-                        ← Back to Products
+                    <Link to="/products" style={styles.backLink} className="back-link">
+                        ← Register
                     </Link>
                 </div>
 
-                {/* ─── Message ─── */}
                 {message && (
-                    <div
-                        style={{
-                            ...styles.message,
-                            ...(messageType === "success"
-                                ? styles.successMessage
-                                : styles.errorMessage),
-                        }}
-                    >
-                        {message}
+                    <div style={{ ...styles.stamp, ...(messageType === "success" ? styles.stampSuccess : styles.stampError) }}>
+                        <span style={styles.stampMark}>{messageType === "success" ? "✓ ENTERED" : "✕ HOLD"}</span>
+                        <span style={styles.stampText}>{message}</span>
                     </div>
                 )}
 
-                {/* ─── Form ─── */}
                 <form onSubmit={handleSubmit} style={styles.form}>
                     {/* ─── Basic Information ─── */}
                     <div style={styles.section}>
                         <div style={styles.sectionHeader}>
-                            <span style={styles.sectionIcon}>📋</span>
-                            <h3 style={styles.sectionTitle}>Basic Information</h3>
-                            <span style={styles.sectionBadge}>Required</span>
+                            <span style={styles.sectionTitle}>Basic Particulars</span>
+                            <span style={styles.sectionTag}>required</span>
                         </div>
-                        <div style={styles.sectionBody}>
-                            <div style={styles.row}>
-                                <div style={styles.formGroup}>
-                                    <label style={styles.label}>
-                                        Product Name <span style={styles.required}>*</span>
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="product_name"
-                                        placeholder="Enter product name"
-                                        value={form.product_name}
-                                        onChange={handleChange}
-                                        onBlur={handleBlur}
-                                        style={{
-                                            ...styles.input,
-                                            ...(isFieldInvalid("product_name")
-                                                ? styles.inputError
-                                                : {}),
-                                        }}
-                                    />
-                                    {isFieldInvalid("product_name") && (
-                                        <span style={styles.errorText}>Product name is required</span>
-                                    )}
-                                </div>
-                                <div style={styles.formGroup}>
-                                    <label style={styles.label}>
-                                        Category <span style={styles.required}>*</span>
-                                    </label>
-                                    <select
-                                        name="category"
-                                        value={form.category}
-                                        onChange={handleChange}
-                                        onBlur={handleBlur}
-                                        style={{
-                                            ...styles.input,
-                                            ...(isFieldInvalid("category")
-                                                ? styles.inputError
-                                                : {}),
-                                        }}
-                                    >
-                                        <option value="">Select Category</option>
-                                        <option value="electronics">📱 Electronics</option>
-                                        <option value="clothing">👕 Clothing</option>
-                                        <option value="food">🍎 Food</option>
-                                        <option value="medicine">💊 Medicine</option>
-                                        <option value="grocery">🛒 Grocery</option>
-                                        <option value="cosmetics">🧴 Cosmetics</option>
-                                        <option value="other">📦 Other</option>
-                                    </select>
-                                    {isFieldInvalid("category") && (
-                                        <span style={styles.errorText}>Category is required</span>
-                                    )}
-                                </div>
-                            </div>
 
-                            <div style={styles.row}>
-                                <div style={styles.formGroup}>
-                                    <label style={styles.label}>Product Code</label>
-                                    <input
-                                        type="text"
-                                        name="product_code"
-                                        placeholder="e.g., PRD-001"
-                                        value={form.product_code}
-                                        onChange={handleChange}
-                                        style={styles.input}
-                                    />
-                                    <span style={styles.helperText}>Optional internal reference</span>
-                                </div>
-                                <div style={styles.formGroup}>
-                                    <label style={styles.label}>Barcode</label>
-                                    <input
-                                        type="text"
-                                        name="barcode"
-                                        placeholder="Enter barcode"
-                                        value={form.barcode}
-                                        onChange={handleChange}
-                                        style={styles.input}
-                                    />
-                                    <span style={styles.helperText}>Scan or enter manually</span>
-                                </div>
+                        <div style={styles.formGroup}>
+                            <label style={styles.label}>Product Name <span style={styles.required}>*</span></label>
+                            <input
+                                type="text"
+                                name="product_name"
+                                placeholder="e.g., Tata Salt 1kg"
+                                value={form.product_name}
+                                onChange={handleChange}
+                                onBlur={handleBlur}
+                                style={{ ...styles.input, ...(isFieldInvalid("product_name") ? styles.inputError : {}) }}
+                            />
+                            {isFieldInvalid("product_name") && <span style={styles.errorText}>Name this item before saving</span>}
+                        </div>
+
+                        <div style={styles.formGroup}>
+                            <label style={styles.label}>Category <span style={styles.required}>*</span></label>
+                            <div style={styles.chipRow}>
+                                {CATEGORIES.map((c) => (
+                                    <button
+                                        type="button"
+                                        key={c.value}
+                                        onClick={() => selectCategory(c.value)}
+                                        style={{ ...styles.chip, ...(form.category === c.value ? styles.chipActive : {}) }}
+                                    >
+                                        <span style={{ marginRight: 6 }}>{c.icon}</span>{c.label}
+                                    </button>
+                                ))}
+                            </div>
+                            {isFieldInvalid("category") && <span style={styles.errorText}>Pick a category above</span>}
+                        </div>
+
+                        <div style={styles.row}>
+                            <div style={styles.formGroup}>
+                                <label style={styles.label}>Product Code</label>
+                                <input
+                                    type="text"
+                                    name="product_code"
+                                    placeholder="PRD-001"
+                                    value={form.product_code}
+                                    onChange={handleChange}
+                                    style={{ ...styles.input, ...styles.inputMono }}
+                                />
+                                <span style={styles.helperText}>Optional internal reference</span>
+                            </div>
+                            <div style={styles.formGroup}>
+                                <label style={styles.label}>Barcode</label>
+                                <input
+                                    type="text"
+                                    name="barcode"
+                                    placeholder="Scan or type"
+                                    value={form.barcode}
+                                    onChange={handleChange}
+                                    style={{ ...styles.input, ...styles.inputMono }}
+                                />
+                                <span style={styles.helperText}>Scan or enter manually</span>
                             </div>
                         </div>
                     </div>
 
                     {/* ─── Pricing & Stock ─── */}
-                    <div style={styles.section}>
+                    <div style={{ ...styles.section, position: "relative" }}>
                         <div style={styles.sectionHeader}>
-                            <span style={styles.sectionIcon}>💰</span>
-                            <h3 style={styles.sectionTitle}>Pricing & Stock</h3>
-                            <span style={{ ...styles.sectionBadge, background: "#dbeafe", color: "#1e40af" }}>
-                                Critical
-                            </span>
+                            <span style={styles.sectionTitle}>Pricing &amp; Stock</span>
+                            <span style={{ ...styles.sectionTag, ...styles.sectionTagIndigo }}>critical</span>
                         </div>
-                        <div style={styles.sectionBody}>
-                            {/* Purchase / Sell */}
-                            <div style={styles.row}>
-                                <div style={styles.formGroup}>
-                                    <label style={styles.label}>
-                                        Purchase Price <span style={styles.required}>*</span>
-                                    </label>
-                                    <div style={styles.inputWithSymbol}>
-                                        <span style={styles.inputSymbol}>₹</span>
-                                        <input
-                                            type="number"
-                                            name="purchase_price"
-                                            placeholder="0.00"
-                                            value={form.purchase_price}
-                                            onChange={handleChange}
-                                            onBlur={handleBlur}
-                                            min="0"
-                                            step="0.01"
-                                            style={{
-                                                ...styles.input,
-                                                ...styles.inputWithSymbolField,
-                                                ...(isFieldInvalid("purchase_price")
-                                                    ? styles.inputError
-                                                    : {}),
-                                            }}
-                                        />
-                                    </div>
-                                    {isFieldInvalid("purchase_price") && (
-                                        <span style={styles.errorText}>Valid purchase price required</span>
-                                    )}
-                                </div>
-                                <div style={styles.formGroup}>
-                                    <label style={styles.label}>
-                                        Selling Price <span style={styles.required}>*</span>
-                                    </label>
-                                    <div style={styles.inputWithSymbol}>
-                                        <span style={styles.inputSymbol}>₹</span>
-                                        <input
-                                            type="number"
-                                            name="selling_price"
-                                            placeholder="0.00"
-                                            value={form.selling_price}
-                                            onChange={handleChange}
-                                            onBlur={handleBlur}
-                                            min="0"
-                                            step="0.01"
-                                            style={{
-                                                ...styles.input,
-                                                ...styles.inputWithSymbolField,
-                                                ...(isFieldInvalid("selling_price")
-                                                    ? styles.inputError
-                                                    : {}),
-                                            }}
-                                        />
-                                    </div>
-                                    {isFieldInvalid("selling_price") && (
-                                        <span style={styles.errorText}>Valid selling price required</span>
-                                    )}
-                                </div>
-                            </div>
 
-                            {/* Unit (Price Per fixed to 1) */}
-                            <div style={styles.row}>
-                                <div style={styles.formGroup}>
-                                    <label style={styles.label}>
-                                        Price Per <span style={styles.required}>*</span>
-                                    </label>
-                                    <div style={styles.fixedValue}>
-                                        <span style={styles.fixedNumber}>1</span>
-                                        <span style={styles.fixedLabel}>unit (fixed)</span>
-                                    </div>
-                                    <span style={styles.helperText}>
-                                        Price is always per <strong>1</strong> unit
+                        {/* Signature element: swing price tag */}
+                        {showTag && (
+                            <div style={{ ...styles.priceTag, borderColor: isProfitPositive ? "#2F5D3A" : "#A63D2D" }}>
+                                <div style={styles.priceTagString} />
+                                <div style={styles.priceTagHole} />
+                                <div style={styles.priceTagMrp}>₹{sellingNum.toFixed(2)}</div>
+                                <div style={styles.priceTagRow}>
+                                    <span>cost ₹{purchaseNum.toFixed(2)}</span>
+                                    <span style={{ color: isProfitPositive ? "#2F5D3A" : "#A63D2D", fontWeight: 700 }}>
+                                        {isProfitPositive ? "+" : ""}{profitMargin.toFixed(0)}%
                                     </span>
                                 </div>
-                                <div style={styles.formGroup}>
-                                    <label style={styles.label}>
-                                        Unit <span style={styles.required}>*</span>
-                                    </label>
-                                    <select
-                                        name="price_unit"
-                                        value={form.price_unit}
-                                        onChange={handleChange}
-                                        style={styles.input}
-                                    >
-                                        <option value="kg">⚖️ Kilogram (KG)</option>
-                                        <option value="g">⚖️ Gram (G)</option>
-                                        <option value="pcs">📦 Pieces (PCS)</option>
-                                        <option value="l">🥤 Liter (L)</option>
-                                        <option value="ml">🥤 Milliliter (ML)</option>
-                                        <option value="meter">📏 Meter</option>
-                                        <option value="feet">📏 Feet</option>
-                                        <option value="pack">📦 Pack</option>
-                                        <option value="box">📦 Box</option>
-                                        <option value="bottle">🧴 Bottle</option>
-                                        <option value="dozen">📦 Dozen</option>
-                                    </select>
-                                </div>
                             </div>
+                        )}
 
-                            {/* Stock */}
-                            <div style={styles.row}>
-                                <div style={styles.formGroup}>
-                                    <label style={styles.label}>
-                                        Stock Quantity <span style={styles.required}>*</span>
-                                    </label>
+                        <div style={styles.row}>
+                            <div style={styles.formGroup}>
+                                <label style={styles.label}>Purchase Price <span style={styles.required}>*</span></label>
+                                <div style={styles.inputWithSymbol}>
+                                    <span style={styles.inputSymbol}>₹</span>
                                     <input
                                         type="number"
-                                        name="stock"
-                                        placeholder="0"
-                                        value={form.stock}
+                                        name="purchase_price"
+                                        placeholder="0.00"
+                                        value={form.purchase_price}
                                         onChange={handleChange}
                                         onBlur={handleBlur}
                                         min="0"
                                         step="0.01"
-                                        style={{
-                                            ...styles.input,
-                                            ...(isFieldInvalid("stock") ? styles.inputError : {}),
-                                        }}
+                                        style={{ ...styles.input, ...styles.inputMono, ...styles.inputWithSymbolField, ...(isFieldInvalid("purchase_price") ? styles.inputError : {}) }}
                                     />
-                                    {isFieldInvalid("stock") && (
-                                        <span style={styles.errorText}>Stock quantity required</span>
-                                    )}
                                 </div>
-                                <div style={styles.formGroup}>
-                                    <label style={styles.label}>
-                                        Stock Unit <span style={styles.required}>*</span>
-                                    </label>
-                                    <select
-                                        name="stock_unit"
-                                        value={form.stock_unit}
-                                        onChange={handleChange}
-                                        style={styles.input}
-                                    >
-                                        <option value="kg">⚖️ Kilogram (KG)</option>
-                                        <option value="g">⚖️ Gram (G)</option>
-                                        <option value="pcs">📦 Pieces (PCS)</option>
-                                        <option value="l">🥤 Liter (L)</option>
-                                        <option value="ml">🥤 Milliliter (ML)</option>
-                                        <option value="meter">📏 Meter</option>
-                                        <option value="feet">📏 Feet</option>
-                                        <option value="pack">📦 Pack</option>
-                                        <option value="box">📦 Box</option>
-                                        <option value="bottle">🧴 Bottle</option>
-                                        <option value="dozen">📦 Dozen</option>
-                                    </select>
-                                </div>
+                                {isFieldInvalid("purchase_price") && <span style={styles.errorText}>Enter what you paid</span>}
                             </div>
-
-                            {/* Min Stock & Tax */}
-                            <div style={styles.row}>
-                                <div style={styles.formGroup}>
-                                    <label style={styles.label}>Minimum Stock</label>
+                            <div style={styles.formGroup}>
+                                <label style={styles.label}>Selling Price <span style={styles.required}>*</span></label>
+                                <div style={styles.inputWithSymbol}>
+                                    <span style={styles.inputSymbol}>₹</span>
                                     <input
                                         type="number"
-                                        name="min_stock"
-                                        placeholder="5"
-                                        value={form.min_stock}
+                                        name="selling_price"
+                                        placeholder="0.00"
+                                        value={form.selling_price}
                                         onChange={handleChange}
+                                        onBlur={handleBlur}
                                         min="0"
-                                        style={styles.input}
-                                    />
-                                    <span style={styles.helperText}>Alert when stock falls below</span>
-                                </div>
-                                <div style={styles.formGroup}>
-                                    <label style={styles.label}>Tax Rate (%)</label>
-                                    <input
-                                        type="number"
-                                        name="tax"
-                                        placeholder="0"
-                                        value={form.tax}
-                                        onChange={handleChange}
-                                        min="0"
-                                        max="100"
                                         step="0.01"
-                                        style={styles.input}
+                                        style={{ ...styles.input, ...styles.inputMono, ...styles.inputWithSymbolField, ...(isFieldInvalid("selling_price") ? styles.inputError : {}) }}
                                     />
-                                    <span style={styles.helperText}>Applicable tax percentage</span>
                                 </div>
+                                {isFieldInvalid("selling_price") && <span style={styles.errorText}>Enter your counter price</span>}
+                            </div>
+                        </div>
+
+                        <div style={styles.row}>
+                            <div style={styles.formGroup}>
+                                <label style={styles.label}>Unit <span style={styles.required}>*</span></label>
+                                <select name="price_unit" value={form.price_unit} onChange={handleChange} style={styles.select}>
+                                    {UNITS.map((u) => (
+                                        <option key={u.value} value={u.value}>{u.icon} {u.label}</option>
+                                    ))}
+                                </select>
+                                <span style={styles.helperText}>Price and stock are tracked per 1 {form.price_unit}</span>
+                            </div>
+                            <div style={styles.formGroup}>
+                                <label style={styles.label}>Stock Quantity <span style={styles.required}>*</span></label>
+                                <input
+                                    type="number"
+                                    name="stock"
+                                    placeholder="0"
+                                    value={form.stock}
+                                    onChange={handleChange}
+                                    onBlur={handleBlur}
+                                    min="0"
+                                    step="0.01"
+                                    style={{ ...styles.input, ...styles.inputMono, ...(isFieldInvalid("stock") ? styles.inputError : {}) }}
+                                />
+                                {isFieldInvalid("stock") && <span style={styles.errorText}>How many are on the shelf?</span>}
+                            </div>
+                        </div>
+
+                        <div style={styles.row}>
+                            <div style={styles.formGroup}>
+                                <label style={styles.label}>Minimum Stock</label>
+                                <input
+                                    type="number"
+                                    name="min_stock"
+                                    value={form.min_stock}
+                                    onChange={handleChange}
+                                    min="0"
+                                    style={{ ...styles.input, ...styles.inputMono }}
+                                />
+                                <span style={styles.helperText}>Alert when stock falls below this</span>
+                            </div>
+                            <div style={styles.formGroup}>
+                                <label style={styles.label}>Tax Rate (%)</label>
+                                <input
+                                    type="number"
+                                    name="tax"
+                                    value={form.tax}
+                                    onChange={handleChange}
+                                    min="0"
+                                    max="100"
+                                    step="0.01"
+                                    style={{ ...styles.input, ...styles.inputMono }}
+                                />
+                                <span style={styles.helperText}>Applicable GST / tax percentage</span>
                             </div>
                         </div>
                     </div>
@@ -531,643 +398,464 @@ export default function AddProduct() {
                     {/* ─── Expiry Date Section ─── */}
                     <div style={styles.section}>
                         <div style={styles.sectionHeader}>
-                            <span style={styles.sectionIcon}>📅</span>
-                            <h3 style={styles.sectionTitle}>Expiry & Shelf Life</h3>
-                            <span style={{ ...styles.sectionBadge, background: "#fef3c7", color: "#92400e" }}>
-                                Optional
-                            </span>
+                            <span style={styles.sectionTitle}>Shelf Life</span>
+                            <span style={styles.sectionTag}>optional</span>
                         </div>
-                        <div style={styles.sectionBody}>
-                            <div style={styles.row}>
-                                <div style={styles.formGroup}>
-                                    <label style={styles.label}>Expiry Date</label>
-                                    <input
-                                        type="date"
-                                        name="expiry_date"
-                                        value={form.expiry_date}
-                                        onChange={handleChange}
-                                        style={styles.input}
-                                    />
-                                    <span style={styles.helperText}>
-                                        Useful for medicine, food, grocery & cosmetics
-                                    </span>
-                                    
-                                    {/* Expiry Status Preview */}
-                                    {expiryStatus && (
-                                        <div style={{
-                                            marginTop: "10px",
-                                            padding: "10px 14px",
-                                            borderRadius: "8px",
-                                            background: expiryStatus.status === "expired" ? "#fef2f2" :
-                                                      expiryStatus.status === "expiring_soon" ? "#fff7ed" :
-                                                      expiryStatus.status === "expiring" ? "#fefce8" : "#f0fdf4",
-                                            border: `1px solid ${expiryStatus.color}30`,
-                                            display: "flex",
-                                            alignItems: "center",
-                                            gap: "8px"
-                                        }}>
-                                            <span style={{ fontSize: "18px" }}>
-                                                {expiryStatus.status === "expired" ? "🔴" :
-                                                 expiryStatus.status === "expiring_soon" ? "🟠" :
-                                                 expiryStatus.status === "expiring" ? "🟡" : "✅"}
-                                            </span>
-                                            <span style={{
-                                                fontWeight: "600",
-                                                color: expiryStatus.color,
-                                                fontSize: "14px"
-                                            }}>
-                                                {expiryStatus.label}
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
-                                <div style={styles.formGroup}>
-                                    <label style={styles.label}>Shelf Life (Days)</label>
-                                    <input
-                                        type="number"
-                                        name="shelf_life"
-                                        placeholder="e.g., 365"
-                                        min="0"
-                                        style={styles.input}
-                                        onChange={(e) => {
-                                            const days = parseInt(e.target.value);
-                                            if (days > 0) {
-                                                const date = new Date();
-                                                date.setDate(date.getDate() + days);
-                                                setForm(prev => ({
-                                                    ...prev,
-                                                    expiry_date: date.toISOString().split('T')[0]
-                                                }));
-                                            }
-                                        }}
-                                    />
-                                    <span style={styles.helperText}>
-                                        Auto-calculate expiry from today
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                        <div style={styles.row}>
+                            <div style={styles.formGroup}>
+                                <label style={styles.label}>Expiry Date</label>
+                                <input
+                                    type="date"
+                                    name="expiry_date"
+                                    value={form.expiry_date}
+                                    onChange={handleChange}
+                                    style={{ ...styles.input, ...styles.inputMono }}
+                                />
+                                <span style={styles.helperText}>Useful for medicine, food, grocery &amp; cosmetics</span>
 
-                    {/* ─── Profit Preview ─── */}
-                    {(purchaseNum > 0 && sellingNum > 0) || expiryStatus ? (
-                        <div style={styles.previewCard}>
-                            <div style={styles.previewHeader}>
-                                <span style={styles.previewIcon}>📊</span>
-                                <span style={styles.previewTitle}>Product Summary</span>
-                            </div>
-                            <div style={styles.previewGrid}>
-                                {purchaseNum > 0 && sellingNum > 0 && (
-                                    <>
-                                        <div style={styles.previewItem}>
-                                            <span style={styles.previewLabel}>Profit per unit</span>
-                                            <span
-                                                style={{
-                                                    ...styles.previewValue,
-                                                    color: isProfitPositive ? "#16a34a" : "#dc2626",
-                                                }}
-                                            >
-                                                {isProfitPositive ? "+" : ""}
-                                                ₹{profit.toFixed(2)}
-                                            </span>
-                                        </div>
-                                        <div style={styles.previewItem}>
-                                            <span style={styles.previewLabel}>Margin</span>
-                                            <span
-                                                style={{
-                                                    ...styles.previewValue,
-                                                    color: isProfitPositive ? "#16a34a" : "#dc2626",
-                                                }}
-                                            >
-                                                {profitMargin.toFixed(1)}%
-                                            </span>
-                                        </div>
-                                        <div style={styles.previewItem}>
-                                            <span style={styles.previewLabel}>Stock Value (cost)</span>
-                                            <span style={styles.previewValue}>
-                                                ₹{totalValue.toFixed(2)}
-                                            </span>
-                                        </div>
-                                        <div style={styles.previewItem}>
-                                            <span style={styles.previewLabel}>Stock Value (sell)</span>
-                                            <span style={styles.previewValue}>
-                                                ₹{totalSellValue.toFixed(2)}
-                                            </span>
-                                        </div>
-                                        <div style={styles.previewItem}>
-                                            <span style={styles.previewLabel}>Stock Status</span>
-                                            <span
-                                                style={{
-                                                    ...styles.previewStatus,
-                                                    ...(isOutOfStock
-                                                        ? styles.previewStatusDanger
-                                                        : isLowStock
-                                                            ? styles.previewStatusWarning
-                                                            : styles.previewStatusSuccess),
-                                                }}
-                                            >
-                                                {isOutOfStock
-                                                    ? "🚫 Out of Stock"
-                                                    : isLowStock
-                                                        ? "⚠️ Low Stock"
-                                                        : "✅ In Stock"}
-                                            </span>
-                                        </div>
-                                        <div style={styles.previewItem}>
-                                            <span style={styles.previewLabel}>Unit</span>
-                                            <span style={styles.previewValue}>
-                                                {getUnitIcon(form.price_unit)} {getUnitLabel(form.price_unit)}
-                                            </span>
-                                        </div>
-                                    </>
-                                )}
-                                
-                                {/* Expiry Status in Summary */}
                                 {expiryStatus && (
-                                    <div style={styles.previewItem}>
-                                        <span style={styles.previewLabel}>Expiry Status</span>
-                                        <span
-                                            style={{
-                                                ...styles.previewValue,
-                                                fontSize: "14px",
-                                                color: expiryStatus.color,
-                                            }}
-                                        >
-                                            {expiryStatus.label}
-                                        </span>
+                                    <div style={{ ...styles.expiryStamp, borderColor: expiryStatus.color, color: expiryStatus.color }}>
+                                        {expiryStatus.label} · {expiryStatus.detail}
                                     </div>
                                 )}
                             </div>
+                            <div style={styles.formGroup}>
+                                <label style={styles.label}>Shelf Life (Days)</label>
+                                <input
+                                    type="number"
+                                    name="shelf_life"
+                                    placeholder="e.g., 365"
+                                    min="0"
+                                    style={{ ...styles.input, ...styles.inputMono }}
+                                    onChange={(e) => {
+                                        const days = parseInt(e.target.value);
+                                        if (days > 0) {
+                                            const date = new Date();
+                                            date.setDate(date.getDate() + days);
+                                            setForm((prev) => ({ ...prev, expiry_date: date.toISOString().split("T")[0] }));
+                                        }
+                                    }}
+                                />
+                                <span style={styles.helperText}>Auto-calculates expiry from today</span>
+                            </div>
                         </div>
-                    ) : null}
+                    </div>
 
                     {/* ─── Additional Details ─── */}
                     <div style={styles.section}>
                         <div style={styles.sectionHeader}>
-                            <span style={styles.sectionIcon}>📝</span>
-                            <h3 style={styles.sectionTitle}>Additional Details</h3>
-                            <span style={{ ...styles.sectionBadge, background: "#f3f4f6", color: "#6b7280" }}>
-                                Optional
-                            </span>
+                            <span style={styles.sectionTitle}>Notes</span>
+                            <span style={styles.sectionTag}>optional</span>
                         </div>
-                        <div style={styles.sectionBody}>
-                            <div style={styles.formGroup}>
-                                <label style={styles.label}>Description</label>
-                                <textarea
-                                    name="description"
-                                    placeholder="Enter product description (e.g., brand, features, specifications…)"
-                                    rows="3"
-                                    value={form.description}
-                                    onChange={handleChange}
-                                    style={styles.textarea}
-                                />
-                            </div>
-
-                            <div style={styles.formGroup}>
-                                <label style={styles.label}>Image URL</label>
-                                <input
-                                    type="text"
-                                    name="image"
-                                    placeholder="https://example.com/product-image.jpg"
-                                    value={form.image}
-                                    onChange={handleChange}
-                                    style={styles.input}
-                                />
-                                <span style={styles.helperText}>Paste a direct image URL</span>
-                            </div>
+                        <div style={styles.formGroup}>
+                            <label style={styles.label}>Description</label>
+                            <textarea
+                                name="description"
+                                placeholder="Brand, features, specifications…"
+                                rows="3"
+                                value={form.description}
+                                onChange={handleChange}
+                                style={styles.textarea}
+                            />
+                        </div>
+                        <div style={styles.formGroup}>
+                            <label style={styles.label}>Image URL</label>
+                            <input
+                                type="text"
+                                name="image"
+                                placeholder="https://example.com/product-image.jpg"
+                                value={form.image}
+                                onChange={handleChange}
+                                style={styles.input}
+                            />
+                            <span style={styles.helperText}>Paste a direct image URL</span>
                         </div>
                     </div>
 
-                    {/* ─── Submit ─── */}
+                    {/* ─── Ledger totals strip ─── */}
+                    {showTag && (
+                        <div style={styles.totalsStrip}>
+                            <div style={styles.totalsRow}>
+                                <span>Stock value (cost)</span>
+                                <span style={styles.totalsMono}>₹{totalValue.toFixed(2)}</span>
+                            </div>
+                            <div style={styles.totalsRow}>
+                                <span>Stock value (sell)</span>
+                                <span style={styles.totalsMono}>₹{totalSellValue.toFixed(2)}</span>
+                            </div>
+                            <div style={{ ...styles.totalsRow, borderTop: "2px double #2A2420", paddingTop: 8, marginTop: 4 }}>
+                                <span>Shelf status</span>
+                                <span style={{
+                                    ...styles.totalsMono,
+                                    color: isOutOfStock ? "#A63D2D" : isLowStock ? "#B5721C" : "#2F5D3A",
+                                }}>
+                                    {isOutOfStock ? "OUT OF STOCK" : isLowStock ? "LOW STOCK" : "IN STOCK"} · {getUnitIcon(form.price_unit)} {getUnitLabel(form.price_unit)}
+                                </span>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ─── Actions ─── */}
                     <div style={styles.actions}>
-                        <button
-                            type="button"
-                            onClick={resetForm}
-                            style={styles.resetButton}
-                            className="reset-button"
-                        >
-                            Reset
+                        <button type="button" onClick={resetForm} style={styles.resetButton} className="reset-button">
+                            Clear Entry
                         </button>
                         <button
                             type="submit"
                             disabled={loading}
-                            style={{
-                                ...styles.submitButton,
-                                ...(loading ? styles.submitButtonDisabled : {}),
-                            }}
+                            style={{ ...styles.submitButton, ...(loading ? styles.submitButtonDisabled : {}) }}
                             className="submit-button"
                         >
                             {loading ? (
                                 <>
                                     <span style={styles.spinner}></span>
-                                    Adding Product…
+                                    Saving…
                                 </>
                             ) : (
-                                "➕ Add Product"
+                                "Add to Ledger"
                             )}
                         </button>
                     </div>
                 </form>
             </div>
 
-            {/* ─── Inline keyframes ─── */}
             <style>{`
-                @keyframes spin {
-                    0% { transform: rotate(0deg); }
-                    100% { transform: rotate(360deg); }
+                @import url('https://fonts.googleapis.com/css2?family=Rozha+One&family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
+                @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                @keyframes swingIn {
+                    from { opacity: 0; transform: rotate(-2deg) translateY(-6px); }
+                    to { opacity: 1; transform: rotate(6deg) translateY(0); }
                 }
-                @keyframes fadeSlideUp {
-                    from { opacity: 0; transform: translateY(8px); }
-                    to { opacity: 1; transform: translateY(0); }
+                .back-link:hover { background: #1F3A5F !important; color: #F6F0E4 !important; }
+                input:focus, textarea:focus, select:focus {
+                    border-color: #1F3A5F !important;
+                    box-shadow: 0 0 0 3px rgba(31, 58, 95, 0.10) !important;
                 }
-                .preview-card {
-                    animation: fadeSlideUp 0.35s ease;
+                .reset-button:hover { background: #EDE4D0 !important; }
+                .submit-button:hover:not(:disabled) {
+                    background: #16304F !important;
+                    transform: translateY(-1px);
                 }
+                .submit-button:active:not(:disabled) { transform: scale(0.98); }
             `}</style>
         </div>
     );
 }
 
 // ─── Styles ──────────────────────────────────────────────────
+const FONT_DISPLAY = "'Rozha One', serif";
+const FONT_MONO = "'JetBrains Mono', 'IBM Plex Mono', monospace";
+const FONT_BODY = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+
 const styles = {
     pageWrapper: {
-        background: "#f8fafc",
+        background: "#EDE4D0",
+        backgroundImage:
+            "radial-gradient(circle at 1px 1px, rgba(42,36,32,0.05) 1px, transparent 0)",
+        backgroundSize: "18px 18px",
         minHeight: "100vh",
-        padding: "32px 16px",
-        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+        padding: "40px 16px",
+        fontFamily: FONT_BODY,
     },
 
-    container: {
+    sheet: {
         maxWidth: "820px",
         margin: "0 auto",
-        background: "#ffffff",
-        borderRadius: "20px",
-        padding: "36px 40px",
-        boxShadow: "0 10px 40px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04)",
-        border: "1px solid #eef2f6",
-        transition: "all 0.2s",
+        background: "#F6F0E4",
+        borderRadius: "4px",
+        padding: "40px 44px 40px 56px",
+        boxShadow: "0 18px 46px rgba(42,36,32,0.14), 0 1px 0 rgba(42,36,32,0.06)",
+        border: "1px solid #DCD0B4",
+        position: "relative",
+        overflow: "visible",
+    },
+    marginRule: {
+        position: "absolute",
+        top: 0,
+        bottom: 0,
+        left: "40px",
+        width: "2px",
+        background: "#C0453A",
+        opacity: 0.55,
     },
 
-    // ─── Header ───
     header: {
         display: "flex",
         justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: "28px",
+        alignItems: "flex-end",
+        marginBottom: "22px",
         flexWrap: "wrap",
         gap: "12px",
+        borderBottom: "1px solid #DCD0B4",
+        paddingBottom: "18px",
+    },
+    eyebrow: {
+        fontFamily: FONT_MONO,
+        fontSize: "11px",
+        fontWeight: 700,
+        letterSpacing: "1.6px",
+        color: "#B5721C",
     },
     title: {
-        fontSize: "26px",
-        fontWeight: "700",
-        color: "#0f172a",
-        margin: 0,
-        letterSpacing: "-0.4px",
-    },
-    subtitle: {
-        fontSize: "14px",
-        color: "#64748b",
+        fontFamily: FONT_DISPLAY,
+        fontSize: "34px",
+        fontWeight: 400,
+        color: "#1F3A5F",
         margin: "4px 0 0 0",
     },
+    subtitle: {
+        fontSize: "13.5px",
+        color: "#6B6154",
+        margin: "6px 0 0 0",
+    },
     backLink: {
-        color: "#2563eb",
+        color: "#1F3A5F",
         textDecoration: "none",
-        fontSize: "14px",
-        fontWeight: "500",
+        fontSize: "12.5px",
+        fontWeight: "600",
+        fontFamily: FONT_MONO,
         padding: "8px 16px",
-        borderRadius: "8px",
-        background: "#eff6ff",
-        transition: "all 0.2s",
+        borderRadius: "3px",
+        border: "1px solid #1F3A5F",
+        transition: "all 0.15s",
         whiteSpace: "nowrap",
     },
 
-    // ─── Message ───
-    message: {
-        padding: "14px 20px",
-        marginBottom: "24px",
-        borderRadius: "12px",
-        fontSize: "14px",
-        fontWeight: "500",
+    stamp: {
         display: "flex",
-        alignItems: "center",
-        gap: "8px",
+        alignItems: "baseline",
+        gap: "10px",
+        padding: "10px 16px",
+        marginBottom: "22px",
+        borderRadius: "3px",
+        border: "2px dashed",
+        fontSize: "13.5px",
     },
-    successMessage: {
-        background: "#f0fdf4",
-        color: "#166534",
-        border: "1px solid #bbf7d0",
-    },
-    errorMessage: {
-        background: "#fef2f2",
-        color: "#991b1b",
-        border: "1px solid #fecaca",
-    },
+    stampSuccess: { borderColor: "#2F5D3A", background: "#EEF3EA", color: "#2F5D3A" },
+    stampError: { borderColor: "#A63D2D", background: "#F7EAE6", color: "#A63D2D" },
+    stampMark: { fontFamily: FONT_MONO, fontWeight: 700, letterSpacing: "0.5px" },
+    stampText: { color: "#2A2420" },
 
-    // ─── Form ───
-    form: {
-        display: "flex",
-        flexDirection: "column",
-        gap: "28px",
-    },
+    form: { display: "flex", flexDirection: "column", gap: "26px" },
 
-    // ─── Sections ───
     section: {
-        border: "1px solid #eef2f6",
-        borderRadius: "14px",
-        overflow: "hidden",
-        background: "#fafcff",
-        transition: "border-color 0.2s",
+        borderTop: "1px solid #DCD0B4",
+        paddingTop: "16px",
     },
     sectionHeader: {
         display: "flex",
-        alignItems: "center",
+        alignItems: "baseline",
         gap: "10px",
-        padding: "14px 20px",
-        background: "#f8fafc",
-        borderBottom: "1px solid #eef2f6",
-    },
-    sectionIcon: {
-        fontSize: "18px",
-        lineHeight: 1,
+        marginBottom: "14px",
     },
     sectionTitle: {
-        fontSize: "15px",
-        fontWeight: "600",
-        color: "#0f172a",
-        margin: 0,
-        flex: 1,
+        fontFamily: FONT_DISPLAY,
+        fontSize: "19px",
+        color: "#1F3A5F",
+        fontWeight: 400,
     },
-    sectionBadge: {
-        fontSize: "11px",
-        fontWeight: "600",
-        padding: "2px 12px",
-        borderRadius: "20px",
-        background: "#fef2f2",
-        color: "#991b1b",
+    sectionTag: {
+        fontFamily: FONT_MONO,
+        fontSize: "10px",
+        fontWeight: 700,
+        letterSpacing: "0.8px",
         textTransform: "uppercase",
-        letterSpacing: "0.3px",
+        color: "#8A7A5C",
+        border: "1px solid #C7B98F",
+        borderRadius: "20px",
+        padding: "1px 9px",
     },
-    sectionBody: {
-        padding: "20px 20px 18px",
-        display: "flex",
-        flexDirection: "column",
-        gap: "18px",
-    },
+    sectionTagIndigo: { color: "#1F3A5F", borderColor: "#1F3A5F" },
 
-    // ─── Form Groups ───
-    row: {
-        display: "flex",
-        gap: "18px",
-        flexWrap: "wrap",
-    },
-    formGroup: {
-        display: "flex",
-        flexDirection: "column",
-        gap: "5px",
-        flex: "1 1 200px",
-        minWidth: "160px",
-    },
-    label: {
-        fontSize: "13px",
-        fontWeight: "600",
-        color: "#1e293b",
-        letterSpacing: "0.2px",
-    },
-    required: {
-        color: "#ef4444",
-        marginLeft: "2px",
-    },
+    row: { display: "flex", gap: "18px", flexWrap: "wrap", marginBottom: "16px" },
+    formGroup: { display: "flex", flexDirection: "column", gap: "6px", flex: "1 1 200px", minWidth: "160px", marginBottom: "16px" },
+
+    label: { fontSize: "12.5px", fontWeight: "600", color: "#3B342C", letterSpacing: "0.15px" },
+    required: { color: "#A63D2D", marginLeft: "2px" },
+
     input: {
-        padding: "10px 14px",
-        border: "1px solid #e2e8f0",
-        borderRadius: "10px",
+        padding: "10px 13px",
+        border: "1px solid #CBBE9C",
+        borderRadius: "3px",
         fontSize: "14px",
         width: "100%",
         boxSizing: "border-box",
-        transition: "all 0.2s",
-        backgroundColor: "#ffffff",
-        color: "#0f172a",
+        backgroundColor: "#FFFDF8",
+        color: "#2A2420",
         outline: "none",
-        fontFamily: "inherit",
+        fontFamily: FONT_BODY,
+        transition: "all 0.15s",
     },
-    inputError: {
-        borderColor: "#ef4444",
-        backgroundColor: "#fef2f2",
-    },
-    inputWithSymbol: {
-        position: "relative",
-        display: "flex",
-        alignItems: "center",
-    },
-    inputSymbol: {
-        position: "absolute",
-        left: "12px",
+    inputMono: { fontFamily: FONT_MONO },
+    inputError: { borderColor: "#A63D2D", backgroundColor: "#F7EAE6" },
+    select: {
+        padding: "10px 13px",
+        border: "1px solid #CBBE9C",
+        borderRadius: "3px",
         fontSize: "14px",
-        fontWeight: "600",
-        color: "#94a3b8",
-        pointerEvents: "none",
+        width: "100%",
+        boxSizing: "border-box",
+        backgroundColor: "#FFFDF8",
+        color: "#2A2420",
+        outline: "none",
+        fontFamily: FONT_BODY,
     },
-    inputWithSymbolField: {
-        paddingLeft: "30px",
-    },
+    inputWithSymbol: { position: "relative", display: "flex", alignItems: "center" },
+    inputSymbol: { position: "absolute", left: "12px", fontSize: "14px", fontWeight: "700", color: "#8A7A5C", pointerEvents: "none" },
+    inputWithSymbolField: { paddingLeft: "28px" },
     textarea: {
-        padding: "10px 14px",
-        border: "1px solid #e2e8f0",
-        borderRadius: "10px",
+        padding: "10px 13px",
+        border: "1px solid #CBBE9C",
+        borderRadius: "3px",
         fontSize: "14px",
         width: "100%",
         boxSizing: "border-box",
         resize: "vertical",
         minHeight: "82px",
-        fontFamily: "inherit",
-        backgroundColor: "#ffffff",
-        color: "#0f172a",
+        fontFamily: FONT_BODY,
+        backgroundColor: "#FFFDF8",
+        color: "#2A2420",
         outline: "none",
-        transition: "all 0.2s",
     },
-    errorText: {
-        fontSize: "12px",
-        color: "#ef4444",
-        fontWeight: "500",
-        marginTop: "2px",
-    },
-    helperText: {
-        fontSize: "12px",
-        color: "#94a3b8",
-        fontWeight: "400",
-        marginTop: "2px",
-    },
+    errorText: { fontSize: "11.5px", color: "#A63D2D", fontWeight: "500" },
+    helperText: { fontSize: "11.5px", color: "#8A7A5C" },
 
-    // ─── Fixed Price Per ───
-    fixedValue: {
-        padding: "10px 14px",
-        border: "1px solid #e2e8f0",
-        borderRadius: "10px",
-        backgroundColor: "#f8fafc",
-        display: "flex",
-        alignItems: "center",
-        gap: "8px",
-        cursor: "default",
-    },
-    fixedNumber: {
-        fontSize: "16px",
-        fontWeight: "700",
-        color: "#0f172a",
-    },
-    fixedLabel: {
+    chipRow: { display: "flex", gap: "8px", flexWrap: "wrap" },
+    chip: {
+        fontFamily: FONT_BODY,
         fontSize: "13px",
-        color: "#94a3b8",
-        fontWeight: "400",
-    },
-
-    // ─── Preview Card ───
-    previewCard: {
-        background: "linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)",
-        border: "1px solid #e2e8f0",
-        borderRadius: "14px",
-        padding: "18px 22px 20px",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
-    },
-    previewHeader: {
-        display: "flex",
-        alignItems: "center",
-        gap: "8px",
-        marginBottom: "14px",
-    },
-    previewIcon: {
-        fontSize: "18px",
-    },
-    previewTitle: {
-        fontSize: "14px",
-        fontWeight: "600",
-        color: "#0f172a",
-    },
-    previewGrid: {
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-        gap: "12px",
-    },
-    previewItem: {
-        display: "flex",
-        flexDirection: "column",
-        gap: "2px",
-        padding: "8px 12px",
-        background: "#ffffff",
-        borderRadius: "10px",
-        border: "1px solid #f1f5f9",
-    },
-    previewLabel: {
-        fontSize: "11px",
         fontWeight: "500",
-        color: "#94a3b8",
-        textTransform: "uppercase",
-        letterSpacing: "0.3px",
-    },
-    previewValue: {
-        fontSize: "17px",
-        fontWeight: "700",
-        color: "#0f172a",
-    },
-    previewStatus: {
-        fontSize: "13px",
-        fontWeight: "600",
-        padding: "2px 10px",
+        padding: "7px 14px",
         borderRadius: "20px",
+        border: "1px solid #CBBE9C",
+        background: "#FFFDF8",
+        color: "#3B342C",
+        cursor: "pointer",
+        transition: "all 0.15s",
+    },
+    chipActive: {
+        background: "#1F3A5F",
+        borderColor: "#1F3A5F",
+        color: "#F6F0E4",
+        transform: "rotate(-1deg)",
+        boxShadow: "0 2px 6px rgba(31,58,95,0.3)",
+    },
+
+    // ─── Signature: swing price tag ───
+    priceTag: {
+        position: "absolute",
+        top: "-14px",
+        right: "18px",
+        width: "128px",
+        background: "#FFFDF8",
+        border: "2px solid",
+        borderRadius: "6px",
+        padding: "16px 10px 10px",
+        textAlign: "center",
+        boxShadow: "0 8px 18px rgba(42,36,32,0.18)",
+        transform: "rotate(6deg)",
+        animation: "swingIn 0.4s ease",
+        zIndex: 2,
+    },
+    priceTagString: {
+        position: "absolute",
+        top: "-14px",
+        left: "50%",
+        width: "1px",
+        height: "16px",
+        background: "#8A7A5C",
+    },
+    priceTagHole: {
+        position: "absolute",
+        top: "4px",
+        left: "50%",
+        marginLeft: "-4px",
+        width: "8px",
+        height: "8px",
+        borderRadius: "50%",
+        background: "#EDE4D0",
+        border: "1px solid #CBBE9C",
+    },
+    priceTagMrp: { fontFamily: FONT_MONO, fontSize: "20px", fontWeight: 700, color: "#1F3A5F" },
+    priceTagRow: {
+        display: "flex",
+        justifyContent: "space-between",
+        fontFamily: FONT_MONO,
+        fontSize: "10.5px",
+        color: "#6B6154",
+        marginTop: "4px",
+    },
+
+    expiryStamp: {
+        marginTop: "6px",
         display: "inline-block",
+        fontFamily: FONT_MONO,
+        fontSize: "11px",
+        fontWeight: 700,
+        letterSpacing: "0.5px",
+        padding: "4px 10px",
+        border: "2px dashed",
+        borderRadius: "3px",
         alignSelf: "flex-start",
     },
-    previewStatusSuccess: {
-        background: "#dcfce7",
-        color: "#166534",
-    },
-    previewStatusWarning: {
-        background: "#fef3c7",
-        color: "#92400e",
-    },
-    previewStatusDanger: {
-        background: "#fee2e2",
-        color: "#991b1b",
-    },
 
-    // ─── Actions ───
-    actions: {
-        display: "flex",
-        gap: "14px",
-        marginTop: "6px",
-        flexWrap: "wrap",
+    totalsStrip: {
+        background: "#FFFDF8",
+        border: "1px solid #DCD0B4",
+        borderRadius: "4px",
+        padding: "16px 20px",
     },
+    totalsRow: {
+        display: "flex",
+        justifyContent: "space-between",
+        fontSize: "13px",
+        color: "#3B342C",
+        padding: "4px 0",
+    },
+    totalsMono: { fontFamily: FONT_MONO, fontWeight: 600 },
+
+    actions: { display: "flex", gap: "14px", marginTop: "4px", flexWrap: "wrap" },
     resetButton: {
-        padding: "12px 28px",
-        background: "#f1f5f9",
-        color: "#475569",
-        border: "1px solid #e2e8f0",
-        borderRadius: "10px",
-        fontSize: "14px",
+        padding: "12px 26px",
+        background: "#F6F0E4",
+        color: "#3B342C",
+        border: "1px solid #CBBE9C",
+        borderRadius: "3px",
+        fontSize: "13.5px",
         fontWeight: "600",
+        fontFamily: FONT_MONO,
         cursor: "pointer",
-        transition: "all 0.2s",
         flex: "1 1 auto",
+        transition: "all 0.15s",
     },
     submitButton: {
-        padding: "12px 36px",
-        background: "#0f172a",
-        color: "#ffffff",
+        padding: "12px 34px",
+        background: "#1F3A5F",
+        color: "#F6F0E4",
         border: "none",
-        borderRadius: "10px",
-        fontSize: "15px",
-        fontWeight: "600",
+        borderRadius: "3px",
+        fontSize: "14.5px",
+        fontWeight: "700",
+        fontFamily: FONT_MONO,
+        letterSpacing: "0.3px",
         cursor: "pointer",
-        transition: "all 0.2s",
         flex: "2 1 auto",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         gap: "8px",
-        boxShadow: "0 4px 14px rgba(15, 23, 42, 0.15)",
+        boxShadow: "0 4px 14px rgba(31,58,95,0.25)",
+        transition: "all 0.15s",
     },
-    submitButtonDisabled: {
-        background: "#94a3b8",
-        cursor: "not-allowed",
-        opacity: 0.7,
-        boxShadow: "none",
-    },
+    submitButtonDisabled: { background: "#9AA6B4", cursor: "not-allowed", boxShadow: "none" },
     spinner: {
         display: "inline-block",
-        width: "18px",
-        height: "18px",
-        border: "2px solid rgba(255,255,255,0.3)",
-        borderTop: "2px solid #ffffff",
+        width: "16px",
+        height: "16px",
+        border: "2px solid rgba(246,240,228,0.4)",
+        borderTop: "2px solid #F6F0E4",
         borderRadius: "50%",
         animation: "spin 0.7s linear infinite",
     },
 };
-
-// ─── Inject hover styles ─────────────────────────────────────
-const styleSheet = document.createElement("style");
-styleSheet.textContent = `
-    .back-link:hover {
-        background: #dbeafe !important;
-        color: #1d4ed8 !important;
-    }
-    .input:focus, .textarea:focus {
-        border-color: #0f172a !important;
-        box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.06) !important;
-        background: #ffffff !important;
-    }
-    .reset-button:hover {
-        background: #e2e8f0 !important;
-        border-color: #cbd5e1 !important;
-    }
-    .submit-button:hover:not(:disabled) {
-        background: #1e293b !important;
-        transform: translateY(-1px);
-        box-shadow: 0 6px 20px rgba(15, 23, 42, 0.2) !important;
-    }
-    .section:hover {
-        border-color: #d1d9e6 !important;
-    }
-    .preview-item:hover {
-        background: #f8fafc !important;
-    }
-`;
-document.head.appendChild(styleSheet);
