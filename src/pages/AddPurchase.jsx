@@ -1,6 +1,7 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import API from "../services/api";
 
 export default function AddPurchase() {
 
@@ -60,9 +61,9 @@ export default function AddPurchase() {
 
         try {
 
-            const res = await axios.get(
+            const res = await API.get(
 
-                `http://localhost:5000/api/suppliers?business_id=${businessId}`
+                `/suppliers?business_id=${businessId}`
 
             );
 
@@ -80,9 +81,9 @@ export default function AddPurchase() {
 
         try {
 
-            const res = await axios.get(
+            const res = await API.get(
 
-                `http://localhost:5000/api/products?business_id=${businessId}`
+                `/products?business_id=${businessId}`
 
             );
 
@@ -200,9 +201,9 @@ export default function AddPurchase() {
 
             setLoading(true);
 
-            await axios.post(
+            await API.post(
 
-                "http://localhost:5000/api/purchases",
+                "/purchases",
 
                 {
 
@@ -235,7 +236,7 @@ export default function AddPurchase() {
 
             alert("Purchase Saved Successfully");
 
-            navigate("/purchase");
+            navigate("/purchases");
 
         } catch (err) {
 
@@ -968,7 +969,7 @@ export default function AddPurchase() {
 
                         type="button"
 
-                        onClick={() => navigate("/purchase")}
+                        onClick={() => navigate("/purchases")}
 
                         style={{
 
