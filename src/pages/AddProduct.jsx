@@ -93,12 +93,10 @@ export default function AddProduct() {
     const getUnitLabel = (unit) => UNITS.find((u) => u.value === unit)?.label || unit;
 
     // ─── Live "already exists / new" checks ────────────────────
-    // NOTE: assumes a GET /products/check endpoint that accepts
-    // business_id + (name or barcode) and returns { exists: boolean }.
-    // Point this at whatever your backend actually exposes.
+    // Check if product name exists using getProducts endpoint
     useEffect(() => {
         const name = form.product_name.trim();
-        if (name.length < 2) {
+        if (name.length < 2 || !form.business_id) {
             setNameCheck({ status: "idle" });
             return;
         }
@@ -106,12 +104,16 @@ export default function AddProduct() {
         let cancelled = false;
         const handle = setTimeout(async () => {
             try {
-                const res = await API.get("/products/check", {
-                    params: { business_id: form.business_id, name },
+                // Check if product with this name exists
+                const res = await API.get("/products", {
+                    params: { business_id: form.business_id }
                 });
-                if (!cancelled) {
+                if (!cancelled && res.data?.success) {
+                    const exists = res.data.data.some(
+                        product => product.product_name.toLowerCase() === name.toLowerCase()
+                    );
                     setNameCheck(
-                        res.data?.exists
+                        exists
                             ? { status: "exists" }
                             : { status: "new" }
                     );
@@ -126,9 +128,10 @@ export default function AddProduct() {
         };
     }, [form.product_name, form.business_id]);
 
+    // Check if barcode exists using getProductByBarcode endpoint
     useEffect(() => {
         const barcode = form.barcode.trim();
-        if (!barcode) {
+        if (!barcode || !form.business_id) {
             setBarcodeCheck({ status: "idle" });
             return;
         }
@@ -136,18 +139,26 @@ export default function AddProduct() {
         let cancelled = false;
         const handle = setTimeout(async () => {
             try {
-                const res = await API.get("/products/check", {
-                    params: { business_id: form.business_id, barcode },
+                // Try to get product by barcode
+                const res = await API.get(`/products/barcode/${encodeURIComponent(barcode)}`, {
+                    params: { business_id: form.business_id }
                 });
                 if (!cancelled) {
                     setBarcodeCheck(
-                        res.data?.exists
+                        res.data?.success && res.data?.data
                             ? { status: "exists" }
                             : { status: "new" }
                     );
                 }
             } catch (err) {
-                if (!cancelled) setBarcodeCheck({ status: "idle" });
+                // If 404, barcode is new; if other error, reset
+                if (!cancelled) {
+                    if (err.response?.status === 404) {
+                        setBarcodeCheck({ status: "new" });
+                    } else {
+                        setBarcodeCheck({ status: "idle" });
+                    }
+                }
             }
         }, 450);
         return () => {
@@ -227,6 +238,8 @@ export default function AddProduct() {
         });
         setTouched({});
         setStep(0);
+        setNameCheck({ status: "idle" });
+        setBarcodeCheck({ status: "idle" });
     };
 
     // ─── Per-step validation ──────────────────────────────────
@@ -258,6 +271,26 @@ export default function AddProduct() {
             setMessageType("error");
             setLoading(false);
             return;
+        }
+
+        // Check if product name already exists (final check before submit)
+        try {
+            const checkRes = await API.get("/products", {
+                params: { business_id: form.business_id }
+            });
+            if (checkRes.data?.success) {
+                const exists = checkRes.data.data.some(
+                    product => product.product_name.toLowerCase() === form.product_name.trim().toLowerCase()
+                );
+                if (exists) {
+                    setMessage("Product with this name already exists in your shop!");
+                    setMessageType("error");
+                    setLoading(false);
+                    return;
+                }
+            }
+        } catch (err) {
+            console.error("Error checking product existence:", err);
         }
 
         const submitData = {
