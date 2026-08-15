@@ -1,7 +1,7 @@
 // src/pages/EditPurchase.jsx
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import axios from "axios";
+import API from "../services/api";
 
 export default function EditPurchase() {
     const { id } = useParams();
@@ -32,9 +32,9 @@ export default function EditPurchase() {
     const loadData = async () => {
         try {
             const [supplierRes, productRes, purchaseRes] = await Promise.all([
-                axios.get(`http://localhost:5000/api/suppliers?business_id=${businessId}`),
-                axios.get(`http://localhost:5000/api/products?business_id=${businessId}`),
-                axios.get(`http://localhost:5000/api/purchases/details/${id}`)
+                API.get(`/suppliers?business_id=${businessId}`),
+                API.get(`/products?business_id=${businessId}`),
+                API.get(`/purchases/details/${id}`)
             ]);
 
             setSuppliers(supplierRes.data.data || []);
@@ -70,8 +70,8 @@ export default function EditPurchase() {
     const updatePurchase = async () => {
         try {
             setSaving(true);
-            await axios.put(
-                `http://localhost:5000/api/purchases/${id}`,
+            await API.put(
+                `/purchases/${id}`,
                 {
                     supplier_id: form.supplier_id,
                     discount: Number(form.discount),
