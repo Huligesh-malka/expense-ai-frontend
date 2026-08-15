@@ -72,22 +72,6 @@ export default function ViewSupplier() {
     }
   };
 
-  const deleteSupplier = async () => {
-    const ok = window.confirm(
-      "Are you sure you want to delete this supplier?"
-    );
-    if (!ok) return;
-
-    try {
-      await API.delete(`/suppliers/${id}`);
-      alert("Supplier deleted successfully.");
-      navigate("/suppliers");
-    } catch (err) {
-      console.log(err);
-      alert(err.response?.data?.message || "Failed to delete supplier.");
-    }
-  };
-
   const openPaymentModal = (purchase) => {
     const balance = Number(purchase.due_amount || 0);
 
@@ -393,30 +377,6 @@ export default function ViewSupplier() {
               Edit Supplier
             </button>
           </Link>
-          <button
-            onClick={deleteSupplier}
-            style={{
-              background: "#ef4444",
-              color: "#fff",
-              border: "none",
-              padding: "10px 20px",
-              borderRadius: 10,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              transition: "background 0.2s"
-            }}
-            onMouseEnter={(e) =>
-              (e.target.style.background = "#dc2626")
-            }
-            onMouseLeave={(e) =>
-              (e.target.style.background = "#ef4444")
-            }
-          >
-            <FiTrash2 />
-            Delete
-          </button>
         </div>
       </div>
 
@@ -491,28 +451,6 @@ export default function ViewSupplier() {
                 >
                   ID: #{supplier.id}
                 </span>
-              </div>
-            </div>
-            <div style={{ textAlign: "right" }}>
-              <div
-                style={{
-                  fontSize: 14,
-                  color: "#6b7280"
-                }}
-              >
-                Opening Balance
-              </div>
-              <div
-                style={{
-                  fontSize: 24,
-                  fontWeight: 700,
-                  color:
-                    supplier.opening_balance < 0
-                      ? "#ef4444"
-                      : "#22c55e"
-                }}
-              >
-                ₹{Number(supplier.opening_balance || 0).toFixed(2)}
               </div>
             </div>
           </div>
