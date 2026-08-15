@@ -2323,14 +2323,7 @@ export default function BillingPOS() {
                 return (
                   <div 
                     key={product.id} 
-                    className={`price-tag ${scanMode === "ask" ? "product-clickable" : ""}`}
-                    onClick={() => {
-                      if (scanMode === "ask") {
-                        setManualSelectedProduct(product);
-                        setManualQuantity(1);
-                        setManualUnit(product.price_unit || "pcs");
-                      }
-                    }}
+                    className="price-tag"
                   >
                     <div className="tag-brass-strip" />
                     <div className="tag-body">
@@ -2349,21 +2342,13 @@ export default function BillingPOS() {
                         {isOutOfStock ? '⚠ OUT OF STOCK' : stockStatus.text}
                       </div>
 
-                      {/* ========== FIXED: + ADD button now uses manualSelectedProduct in ask mode ========== */}
+                      {/* ========== ALWAYS SHOW POPUP ========== */}
                       <button
                         className="tag-add-btn"
                         onClick={(e) => {
                           e.stopPropagation();
                           if (isOutOfStock) return;
-
-                          if (scanMode === "quick") {
-                            quickAddToCart(product);
-                          } else {
-                            // In ask mode, show the manual quantity box
-                            setManualSelectedProduct(product);
-                            setManualQuantity(1);
-                            setManualUnit(product.price_unit || "pcs");
-                          }
+                          openQuantityModal(product);
                         }}
                         disabled={isOutOfStock}
                       >
@@ -2451,50 +2436,6 @@ export default function BillingPOS() {
                   </div>
                 )}
               </div>
-
-              {/* Manual Quantity Box - shown when a product is selected in ask mode */}
-              {manualSelectedProduct && (
-                <div className="manual-quantity-box">
-                  <h3>{manualSelectedProduct.product_name}</h3>
-                  <p>
-                    Price: <b>₹{Number(manualSelectedProduct.price_per).toFixed(2)}</b> / {manualSelectedProduct.price_unit}
-                  </p>
-                  <div className="manual-input-group">
-                    <input
-                      type="number"
-                      min="0.001"
-                      step="0.001"
-                      value={manualQuantity}
-                      onChange={(e) => {
-                        setManualQuantity(e.target.value);
-                      }}
-                      placeholder="Quantity"
-                      autoFocus
-                    />
-                    <select
-                      value={manualUnit}
-                      onChange={(e) => setManualUnit(e.target.value)}
-                    >
-                      {getSupportedUnits(manualSelectedProduct.price_unit).map((unit) => (
-                        <option key={unit} value={unit}>
-                          {unit}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <h2>
-                    ₹{calculateManualPrice().toFixed(2)}
-                  </h2>
-                  <button
-                    className="manual-add-btn"
-                    onClick={() => {
-                      addManualProductToCart();
-                    }}
-                  >
-                    Add to Cart
-                  </button>
-                </div>
-              )}
 
               <div className="items-zone">
                 {cart.length === 0 ? (
@@ -2748,11 +2689,7 @@ export default function BillingPOS() {
           onClose={() => setShowScanner(false)}
           onProductFound={(product) => {
             setShowScanner(false);
-            if (scanMode === "quick") {
-              quickAddToCart(product);
-            } else {
-              openQuantityModal(product);
-            }
+            openQuantityModal(product);
           }}
         />
       )}
