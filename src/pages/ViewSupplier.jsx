@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
+import jsPDF from "jspdf";
 import API from "../services/api";
 import {
   FiArrowLeft,
@@ -19,7 +20,8 @@ import {
   FiAlertCircle,
   FiCheckCircle,
   FiXCircle,
-  FiX
+  FiX,
+  FiDownload
 } from "react-icons/fi";
 
 /* ============================================================
@@ -96,6 +98,56 @@ const themeToCssVars = (t) => ({
   "--marigold": t.accent2, "--green": t.green, "--green-bg": t.greenBg,
   "--red": t.red, "--red-bg": t.redBg, "--indigo": t.indigo
 });
+
+/* ---- PDF receipt helpers ---- */
+const hexToRgb = (hex) => {
+  const h = (hex || "#000000").replace("#", "");
+  const n = parseInt(h, 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+};
+
+const ONES = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten",
+  "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+const TENS = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+
+const twoDigitWords = (num) => {
+  if (num < 20) return ONES[num];
+  const t = Math.floor(num / 10);
+  const o = num % 10;
+  return TENS[t] + (o ? " " + ONES[o] : "");
+};
+const threeDigitWords = (num) => {
+  const h = Math.floor(num / 100);
+  const rest = num % 100;
+  let s = "";
+  if (h) s += ONES[h] + " Hundred" + (rest ? " " : "");
+  if (rest) s += twoDigitWords(rest);
+  return s;
+};
+
+// Indian numbering (crore / lakh / thousand) — the register used on
+// Indian receipts and cheques.
+const rupeesInWords = (amount) => {
+  const rupees = Math.floor(Math.abs(amount));
+  const paise = Math.round((Math.abs(amount) - rupees) * 100);
+  if (rupees === 0 && paise === 0) return "Zero Rupees Only";
+
+  let n = rupees;
+  const crore = Math.floor(n / 10000000); n %= 10000000;
+  const lakh = Math.floor(n / 100000); n %= 100000;
+  const thousand = Math.floor(n / 1000); n %= 1000;
+  const hundred = n;
+
+  const parts = [];
+  if (crore) parts.push(threeDigitWords(crore) + " Crore");
+  if (lakh) parts.push(threeDigitWords(lakh) + " Lakh");
+  if (thousand) parts.push(threeDigitWords(thousand) + " Thousand");
+  if (hundred) parts.push(threeDigitWords(hundred));
+
+  let words = (parts.join(" ") || "Zero") + " Rupees";
+  if (paise) words += " and " + twoDigitWords(paise) + " Paise";
+  return words + " Only";
+};
 
 const GLOBAL_STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Rozha+One&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
@@ -605,6 +657,25 @@ const GLOBAL_STYLES = `
     margin-right: 8px;
   }
 
+  .vs-btn-download {
+    border: 1px solid var(--brass);
+    background: transparent;
+    color: var(--brass-dark);
+    padding: 5px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: 'JetBrains Mono', monospace;
+    white-space: nowrap;
+    transition: background .15s ease, color .15s ease;
+  }
+  .vs-btn-download:hover { background: var(--brass); color: #fff; }
+  .vs-btn-download:disabled { opacity: .5; cursor: not-allowed; }
+
   .vs-theme-picker {
     display: flex;
     align-items: center;
@@ -776,6 +847,119 @@ export default function ViewSupplier() {
     } finally {
       setHistoryLoading(false);
     }
+  };
+
+  const downloadReceipt = (payment) => {
+    if (!historyPurchase) return;
+
+    const doc = new jsPDF({ unit: "pt", format: "a5" });
+    const W = doc.internal.pageSize.getWidth();
+    const H = doc.internal.pageSize.getHeight();
+    const [ar, ag, ab] = hexToRgb(theme.accent);
+    const [ir, ig, ib] = hexToRgb(theme.ink);
+    const [sr, sg, sb] = hexToRgb(theme.inkSoft);
+    const [mr, mg, mb] = hexToRgb(theme.muted);
+    const [rr, rg, rb] = hexToRgb(theme.rule);
+    const [gr, gg, gb] = hexToRgb(theme.green);
+    const [gbr, gbg, gbb] = hexToRgb(theme.greenBg);
+
+    // header band
+    doc.setFillColor(ar, ag, ab);
+    doc.rect(0, 0, W, 74, "F");
+    doc.setTextColor(255, 253, 247);
+    doc.setFont("times", "bold");
+    doc.setFontSize(20);
+    doc.text("Payment Receipt", 32, 38);
+    doc.setFont("courier", "normal");
+    doc.setFontSize(8.5);
+    doc.text("VENDOR KHATA  ·  LAABHA", 32, 54);
+
+    let y = 100;
+
+    doc.setFont("courier", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(ir, ig, ib);
+    doc.text(`Receipt No.  PAY-${String(payment.id || Date.now()).slice(-6)}`, 32, y);
+    doc.text(formatDate(payment.payment_date), W - 32, y, { align: "right" });
+
+    y += 20;
+    doc.setDrawColor(rr, rg, rb);
+    doc.setLineDashPattern([2, 2], 0);
+    doc.line(32, y, W - 32, y);
+    doc.setLineDashPattern([], 0);
+
+    y += 26;
+    doc.setFont("times", "bold");
+    doc.setFontSize(11);
+    doc.text("Paid To", 32, y);
+    y += 16;
+    doc.setFont("times", "normal");
+    doc.setFontSize(13);
+    doc.text(supplier?.supplier_name || "-", 32, y);
+    if (supplier?.company_name) {
+      y += 15;
+      doc.setFontSize(10);
+      doc.setTextColor(sr, sg, sb);
+      doc.text(supplier.company_name, 32, y);
+      doc.setTextColor(ir, ig, ib);
+    }
+
+    y += 26;
+    doc.setFont("times", "bold");
+    doc.setFontSize(11);
+    doc.text("Against Invoice", 32, y);
+    y += 16;
+    doc.setFont("courier", "normal");
+    doc.setFontSize(10);
+    doc.text(`Invoice No.   ${historyPurchase.invoice_no}`, 32, y);
+    y += 14;
+    doc.text(`Invoice Total  Rs. ${Number(historyPurchase.total_amount || 0).toFixed(2)}`, 32, y);
+
+    y += 30;
+    doc.setFillColor(gbr, gbg, gbb);
+    doc.roundedRect(32, y, W - 64, 58, 6, 6, "F");
+    doc.setTextColor(gr, gg, gb);
+    doc.setFont("times", "bold");
+    doc.setFontSize(22);
+    doc.text(`Rs. ${Number(payment.amount || 0).toFixed(2)}`, W / 2, y + 36, { align: "center" });
+    doc.setTextColor(ir, ig, ib);
+
+    y += 78;
+    doc.setFont("courier", "normal");
+    doc.setFontSize(9.5);
+    doc.text(`Method     ${payment.payment_method || "-"}`, 32, y);
+    if (payment.reference_no) {
+      y += 14;
+      doc.text(`Reference  ${payment.reference_no}`, 32, y);
+    }
+
+    y += 22;
+    doc.setFont("times", "italic");
+    doc.setFontSize(9);
+    doc.setTextColor(sr, sg, sb);
+    const words = doc.splitTextToSize(rupeesInWords(Number(payment.amount || 0)), W - 64);
+    doc.text(words, 32, y);
+    y += words.length * 12 + 6;
+
+    if (payment.notes) {
+      doc.setFont("times", "normal");
+      doc.setFontSize(9.5);
+      doc.setTextColor(ir, ig, ib);
+      const noteLines = doc.splitTextToSize(`Note: ${payment.notes}`, W - 64);
+      doc.text(noteLines, 32, y);
+    }
+
+    doc.setDrawColor(rr, rg, rb);
+    doc.setLineDashPattern([2, 2], 0);
+    doc.line(32, H - 46, W - 32, H - 46);
+    doc.setLineDashPattern([], 0);
+
+    doc.setFont("courier", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(mr, mg, mb);
+    doc.text("Computer-generated receipt — no signature required.", W / 2, H - 30, { align: "center" });
+
+    doc.save(`receipt-${historyPurchase.invoice_no || "payment"}-${payment.id || ""}.pdf`);
   };
 
   const stampVariant = (status) => {
@@ -1200,9 +1384,14 @@ export default function ViewSupplier() {
                         )}
                       </div>
                     </div>
-                    <strong className="vs-mono" style={{ color: "var(--green)", fontSize: 15, whiteSpace: "nowrap" }}>
-                      ₹{Number(payment.amount || 0).toFixed(2)}
-                    </strong>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 7 }}>
+                      <strong className="vs-mono" style={{ color: "var(--green)", fontSize: 15, whiteSpace: "nowrap" }}>
+                        ₹{Number(payment.amount || 0).toFixed(2)}
+                      </strong>
+                      <button className="vs-btn-download" onClick={() => downloadReceipt(payment)}>
+                        <FiDownload size={11} /> Receipt
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
