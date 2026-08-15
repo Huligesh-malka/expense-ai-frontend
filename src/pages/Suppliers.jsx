@@ -152,7 +152,7 @@ export default function Suppliers() {
               <th style={styles.th}>Supplier</th>
               <th style={styles.th}>Phone</th>
               <th style={styles.th}>Email</th>
-              <th style={styles.th}>Opening Balance</th>
+              <th style={styles.th}>Balance Due</th>
               <th style={styles.th}>Status</th>
               <th style={{...styles.th, textAlign: "center"}}>Action</th>
             </tr>
@@ -203,8 +203,13 @@ export default function Suppliers() {
                   </div>
                 </td>
                 <td>
-                  <span style={styles.balance}>
-                    ₹{Number(supplier.opening_balance || 0).toFixed(2)}
+                  <span
+                    style={{
+                      ...styles.balance,
+                      color: Number(supplier.balance_due || 0) > 0 ? "#dc2626" : "#16a34a"
+                    }}
+                  >
+                    ₹{Number(supplier.balance_due || 0).toFixed(2)}
                   </span>
                 </td>
                 <td>
