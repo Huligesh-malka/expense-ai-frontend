@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import axios from "axios";
+import API from "../services/api";
 import {
   FiArrowLeft,
   FiEdit,
@@ -34,8 +34,8 @@ export default function ViewSupplier() {
 
   const loadSupplier = async () => {
     try {
-      const res = await axios.get(
-        `http://localhost:5000/api/suppliers/${id}`
+      const res = await API.get(
+        `/suppliers/${id}`
       );
       setSupplier(res.data.data);
     } catch (err) {
@@ -54,7 +54,7 @@ export default function ViewSupplier() {
     if (!ok) return;
 
     try {
-      await axios.delete(`http://localhost:5000/api/suppliers/${id}`);
+      await API.delete(`/suppliers/${id}`);
       alert("Supplier deleted successfully.");
       navigate("/suppliers");
     } catch (err) {
