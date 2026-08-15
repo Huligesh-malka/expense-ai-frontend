@@ -5,11 +5,12 @@ import {
   FiPlus,
   FiSearch,
   FiEdit,
-  FiTrash2,
   FiEye,
   FiTruck,
   FiPhone,
-  FiMail
+  FiMail,
+  FiCheckCircle,
+  FiXCircle
 } from "react-icons/fi";
 
 export default function Suppliers() {
@@ -34,21 +35,48 @@ export default function Suppliers() {
     }
   };
 
-  const deleteSupplier = async (id) => {
-    const ok = window.confirm(
-      "Are you sure you want to delete this supplier?"
-    );
+  const updateSupplierStatus = async (supplier) => {
+    const currentStatus =
+      supplier.status?.toLowerCase() === "inactive"
+        ? "inactive"
+        : "active";
+
+    const newStatus =
+      currentStatus === "active"
+        ? "inactive"
+        : "active";
+
+    const message =
+      newStatus === "inactive"
+        ? `Make ${supplier.supplier_name} inactive?`
+        : `Activate ${supplier.supplier_name}?`;
+
+    const ok = window.confirm(message);
+
     if (!ok) return;
 
     try {
-      await API.delete(`/suppliers/${id}`);
-      alert("Supplier deleted successfully.");
-      loadSuppliers();
+      await API.put(
+        `/suppliers/${supplier.id}/status`,
+        {
+          status: newStatus
+        }
+      );
+
+      alert(
+        newStatus === "inactive"
+          ? "Supplier made inactive successfully."
+          : "Supplier activated successfully."
+      );
+
+      await loadSuppliers();
+
     } catch (err) {
-      console.error("Error deleting supplier:", err);
+      console.error("Error updating supplier status:", err);
+
       alert(
         err.response?.data?.message ||
-        "Failed to delete supplier."
+        "Failed to update supplier status."
       );
     }
   };
@@ -185,7 +213,9 @@ export default function Suppliers() {
                     background: getStatusColor(supplier.status),
                     color: "#fff"
                   }}>
-                    {supplier.status || "Active"}
+                    {supplier.status?.toLowerCase() === "inactive"
+                      ? "Inactive"
+                      : "Active"}
                   </span>
                 </td>
                 <td>
@@ -197,11 +227,23 @@ export default function Suppliers() {
                       <FiEdit size={14} />
                     </Link>
                     <button
-                      onClick={() => deleteSupplier(supplier.id)}
-                      style={styles.deleteButton}
-                      title="Delete Supplier"
+                      onClick={() => updateSupplierStatus(supplier)}
+                      style={
+                        supplier.status?.toLowerCase() === "inactive"
+                          ? styles.activateButton
+                          : styles.inactiveButton
+                      }
+                      title={
+                        supplier.status?.toLowerCase() === "inactive"
+                          ? "Activate Supplier"
+                          : "Make Supplier Inactive"
+                      }
                     >
-                      <FiTrash2 size={14} />
+                      {supplier.status?.toLowerCase() === "inactive" ? (
+                        <FiCheckCircle size={14} />
+                      ) : (
+                        <FiXCircle size={14} />
+                      )}
                     </button>
                   </div>
                 </td>
@@ -400,12 +442,24 @@ const styles = {
     border: "none",
     cursor: "pointer"
   },
-  deleteButton: {
+  inactiveButton: {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     background: "#fee2e2",
     color: "#dc2626",
+    padding: "8px 10px",
+    border: "none",
+    borderRadius: "6px",
+    cursor: "pointer",
+    transition: "all 0.2s"
+  },
+  activateButton: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "#dcfce7",
+    color: "#16a34a",
     padding: "8px 10px",
     border: "none",
     borderRadius: "6px",
