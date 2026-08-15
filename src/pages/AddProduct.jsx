@@ -244,15 +244,37 @@ export default function AddProduct() {
 
     // ─── Per-step validation ──────────────────────────────────
     const stepErrors = {
-        0: !form.product_name || !form.category,
+        0: !form.product_name || !form.category || nameCheck.status === "exists",
         1: !form.purchase_price || !form.selling_price || purchaseNum < 0 || sellingNum < 0,
         2: !form.stock || stockNum < 0,
         3: false,
         4: false,
     };
 
+    // Check if Next button should be disabled for step 0
+    const isNextDisabled = (step) => {
+        if (step === 0) {
+            return !form.product_name || !form.category || nameCheck.status === "exists" || nameCheck.status === "checking";
+        }
+        if (step === 1) {
+            return !form.purchase_price || !form.selling_price || purchaseNum < 0 || sellingNum < 0;
+        }
+        if (step === 2) {
+            return !form.stock || stockNum < 0;
+        }
+        return false;
+    };
+
     const goNext = () => {
         setTouched((prev) => ({ ...prev, [`step${step}`]: true }));
+        
+        // Check if name already exists - prevent moving forward
+        if (step === 0 && nameCheck.status === "exists") {
+            setMessage("This product name already exists in your shop! Please use a different name.");
+            setMessageType("error");
+            return;
+        }
+        
         if (stepErrors[step]) return;
         setStep((s) => Math.min(STEPS.length - 1, s + 1));
     };
@@ -273,24 +295,20 @@ export default function AddProduct() {
             return;
         }
 
-        // Check if product name already exists (final check before submit)
-        try {
-            const checkRes = await API.get("/products", {
-                params: { business_id: form.business_id }
-            });
-            if (checkRes.data?.success) {
-                const exists = checkRes.data.data.some(
-                    product => product.product_name.toLowerCase() === form.product_name.trim().toLowerCase()
-                );
-                if (exists) {
-                    setMessage("Product with this name already exists in your shop!");
-                    setMessageType("error");
-                    setLoading(false);
-                    return;
-                }
-            }
-        } catch (err) {
-            console.error("Error checking product existence:", err);
+        // Final check - product name should not exist
+        if (nameCheck.status === "exists") {
+            setMessage("This product name already exists in your shop!");
+            setMessageType("error");
+            setLoading(false);
+            return;
+        }
+
+        // Check if barcode already exists (if provided)
+        if (form.barcode && barcodeCheck.status === "exists") {
+            setMessage("This barcode is already used in your shop!");
+            setMessageType("error");
+            setLoading(false);
+            return;
         }
 
         const submitData = {
@@ -358,10 +376,26 @@ export default function AddProduct() {
                             autoFocus
                             placeholder="Product name"
                             value={form.product_name}
-                            onChange={(e) => setForm((p) => ({ ...p, product_name: e.target.value }))}
-                            style={styles.bigInput}
+                            onChange={(e) => {
+                                setForm((p) => ({ ...p, product_name: e.target.value }));
+                                // Clear any previous error message when user types
+                                if (message && messageType === "error") {
+                                    setMessage("");
+                                    setMessageType("");
+                                }
+                            }}
+                            style={{
+                                ...styles.bigInput,
+                                ...(nameCheck.status === "exists" ? { borderColor: "#E4572E", background: "#FDF5F3" } : {})
+                            }}
                         />
                         <CheckBadge check={nameCheck} newLabel="New product" existsLabel="Already in your shop" />
+                        
+                        {nameCheck.status === "exists" && (
+                            <span style={{ ...styles.stepError, marginTop: "-8px" }}>
+                                ⚠️ This product name already exists. Please use a different name.
+                            </span>
+                        )}
 
                         <div style={styles.gridGrid}>
                             {CATEGORIES.map((c) => (
@@ -378,7 +412,11 @@ export default function AddProduct() {
                         </div>
 
                         {touched.step0 && stepErrors[0] && (
-                            <span style={styles.stepError}>Add a name and pick a category to continue</span>
+                            <span style={styles.stepError}>
+                                {nameCheck.status === "exists" 
+                                    ? "Product name already exists! Please use a different name." 
+                                    : "Add a name and pick a category to continue"}
+                            </span>
                         )}
                     </div>
                 )}
@@ -493,8 +531,26 @@ export default function AddProduct() {
 
                         <div style={styles.formGroup}>
                             <label style={styles.label}>Barcode</label>
-                            <input type="text" placeholder="Scan or type" value={form.barcode} onChange={(e) => setForm((p) => ({ ...p, barcode: e.target.value }))} style={styles.input} />
+                            <input 
+                                type="text" 
+                                placeholder="Scan or type" 
+                                value={form.barcode} 
+                                onChange={(e) => {
+                                    setForm((p) => ({ ...p, barcode: e.target.value }));
+                                    // Clear any previous error message when user types
+                                    if (message && messageType === "error") {
+                                        setMessage("");
+                                        setMessageType("");
+                                    }
+                                }} 
+                                style={styles.input} 
+                            />
                             <CheckBadge check={barcodeCheck} newLabel="New barcode" existsLabel="Barcode already used" />
+                            {barcodeCheck.status === "exists" && (
+                                <span style={{ ...styles.stepError, fontSize: "11px" }}>
+                                    ⚠️ This barcode is already used for another product
+                                </span>
+                            )}
                         </div>
                         <div style={styles.formGroup}>
                             <label style={styles.label}>Product code</label>
@@ -609,11 +665,27 @@ export default function AddProduct() {
                     )}
 
                     {step < 4 ? (
-                        <button type="button" style={styles.nextBtn} onClick={goNext}>
+                        <button 
+                            type="button" 
+                            style={{
+                                ...styles.nextBtn,
+                                ...(isNextDisabled(step) ? styles.nextBtnDisabled : {})
+                            }} 
+                            disabled={isNextDisabled(step)} 
+                            onClick={goNext}
+                        >
                             {step === 3 ? "Continue" : "Next"}
                         </button>
                     ) : (
-                        <button type="button" style={{ ...styles.nextBtn, ...(loading ? styles.nextBtnDisabled : {}) }} disabled={loading} onClick={handleSubmit}>
+                        <button 
+                            type="button" 
+                            style={{ 
+                                ...styles.nextBtn, 
+                                ...(loading || nameCheck.status === "exists" || barcodeCheck.status === "exists" ? styles.nextBtnDisabled : {}) 
+                            }} 
+                            disabled={loading || nameCheck.status === "exists" || barcodeCheck.status === "exists"} 
+                            onClick={handleSubmit}
+                        >
                             {loading ? "Saving…" : "Add Product"}
                         </button>
                     )}
