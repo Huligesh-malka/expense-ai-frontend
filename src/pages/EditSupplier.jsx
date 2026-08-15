@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import axios from "axios";
+import API from "../services/api";
 import {
   FiArrowLeft,
   FiSave,
@@ -47,8 +47,8 @@ export default function EditSupplier() {
 
   const loadSupplier = async () => {
     try {
-      const res = await axios.get(
-        `http://localhost:5000/api/suppliers/${id}`
+      const res = await API.get(
+        `/suppliers/${id}`
       );
       const data = res.data.data;
       setFormData({
@@ -138,8 +138,8 @@ export default function EditSupplier() {
         opening_balance: parseFloat(formData.opening_balance) || 0
       };
 
-      await axios.put(
-        `http://localhost:5000/api/suppliers/${id}`,
+      await API.put(
+        `/suppliers/${id}`,
         dataToSend
       );
 

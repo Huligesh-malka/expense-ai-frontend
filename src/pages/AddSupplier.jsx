@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import API from "../services/api";
 
 export default function AddSupplier() {
 
@@ -68,8 +68,8 @@ export default function AddSupplier() {
 
             setLoading(true);
 
-            await axios.post(
-                "http://localhost:5000/api/suppliers",
+            await API.post(
+                "/suppliers",
                 {
                     business_id: businessId,
                     ...form,
