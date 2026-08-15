@@ -6,29 +6,14 @@ import {
     FiPlus,
     FiSearch,
     FiEye,
+    FiEdit,
+    FiTrash2,
     FiShoppingCart,
     FiDollarSign,
     FiClock,
     FiCheckCircle,
-    FiChevronDown,
-    FiX,
+    FiAlertCircle
 } from "react-icons/fi";
-
-/* ---------------------------------------------------
-   Design concept: "Dispatch Board"
-   A warehouse-clipboard control panel — dark charcoal
-   background, purchases rendered as clipped dockets
-   grouped into three columns by payment status
-   (Not Paid / Partially Paid / Fully Paid), like tickets
-   pinned to a dispatch board. Saffron/coral accent for
-   money owed, teal for settled.
---------------------------------------------------- */
-
-const COLUMN_DEF = [
-    { key: "Not Paid", label: "Not Paid", accent: "#ff6b4a", glow: "rgba(255,107,74,0.18)" },
-    { key: "Partially Paid", label: "Partially Paid", accent: "#ffb84d", glow: "rgba(255,184,77,0.16)" },
-    { key: "Fully Paid", label: "Fully Paid", accent: "#3ddc97", glow: "rgba(61,220,151,0.14)" },
-];
 
 export default function Purchase() {
 
@@ -37,11 +22,11 @@ export default function Purchase() {
     const [purchases, setPurchases] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
+    const [filterStatus, setFilterStatus] = useState("All");
     const [filterSupplier, setFilterSupplier] = useState("All");
     const [filterDate, setFilterDate] = useState("All");
-    const [supplierOpen, setSupplierOpen] = useState(false);
-    const [dateOpen, setDateOpen] = useState(false);
 
+    // Summary calculations
     const [summary, setSummary] = useState({
         totalPurchases: 0,
         totalBought: 0,
@@ -55,7 +40,9 @@ export default function Purchase() {
 
     const loadPurchases = async () => {
         try {
-            const res = await API.get(`/purchases?business_id=${businessId}`);
+            const res = await API.get(
+                `/purchases?business_id=${businessId}`
+            );
             const data = res.data.data || [];
             setPurchases(data);
             calculateSummary(data);
@@ -71,299 +58,152 @@ export default function Purchase() {
         const totalPurchases = data.length;
         const totalBought = data.reduce((sum, p) => sum + Number(p.total_amount), 0);
         const totalPaid = data.reduce((sum, p) => sum + Number(p.paid_amount), 0);
+        const totalDue = totalBought - totalPaid;
+
         setSummary({
             totalPurchases,
             totalBought,
             totalPaid,
-            totalDue: totalBought - totalPaid
+            totalDue
         });
     };
 
     const getStatus = (purchase) => {
         const total = Number(purchase.total_amount);
         const paid = Number(purchase.paid_amount);
+
         if (paid === total) return "Fully Paid";
         if (paid > 0 && paid < total) return "Partially Paid";
         return "Not Paid";
     };
 
-    const getUniqueSuppliers = () => ["All", ...new Set(purchases.map(p => p.supplier_name))];
+    const getStatusColor = (status) => {
+        switch(status) {
+            case "Fully Paid": return { bg: "#dcfce7", color: "#15803d", icon: "🟢" };
+            case "Partially Paid": return { bg: "#fef3c7", color: "#b45309", icon: "🟠" };
+            case "Not Paid": return { bg: "#fee2e2", color: "#dc2626", icon: "🔴" };
+            default: return { bg: "#f3f4f6", color: "#6b7280", icon: "⚪" };
+        }
+    };
+
+    const getUniqueSuppliers = () => {
+        const suppliers = purchases.map(p => p.supplier_name);
+        return ["All", ...new Set(suppliers)];
+    };
 
     const getFilteredPurchases = () => {
         let filtered = purchases;
 
+        // Search filter
         if (search) {
             filtered = filtered.filter((item) =>
                 item.invoice_no.toLowerCase().includes(search.toLowerCase()) ||
                 item.supplier_name.toLowerCase().includes(search.toLowerCase())
             );
         }
+
+        // Status filter
+        if (filterStatus !== "All") {
+            filtered = filtered.filter(item => getStatus(item) === filterStatus);
+        }
+
+        // Supplier filter
         if (filterSupplier !== "All") {
             filtered = filtered.filter(item => item.supplier_name === filterSupplier);
         }
+
+        // Date filter (last 7 days, 30 days, etc.)
         if (filterDate !== "All") {
             const now = new Date();
             const filterDays = parseInt(filterDate);
             const cutoffDate = new Date(now.setDate(now.getDate() - filterDays));
-            filtered = filtered.filter(item => new Date(item.created_at) >= cutoffDate);
+            filtered = filtered.filter(item => 
+                new Date(item.created_at) >= cutoffDate
+            );
         }
+
         return filtered;
+    };
+
+    const deletePurchase = async (id) => {
+        const ok = window.confirm("Delete this purchase?");
+        if (!ok) return;
+
+        try {
+            await API.delete(`/purchases/${id}`);
+            alert("Purchase Deleted");
+            loadPurchases();
+        } catch (err) {
+            console.log(err);
+            alert(err.response?.data?.message || "Delete Failed");
+        }
     };
 
     const filteredPurchases = getFilteredPurchases();
     const suppliers = getUniqueSuppliers();
-    const rupee = (n) => `\u20B9${Number(n).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-
-    const grouped = COLUMN_DEF.reduce((acc, col) => {
-        acc[col.key] = filteredPurchases.filter(p => getStatus(p) === col.key);
-        return acc;
-    }, {});
 
     if (loading) {
         return (
-            <div style={{
-                minHeight: "100vh",
-                background: "#14161c",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#8b93a7",
-                fontFamily: "'IBM Plex Mono', monospace",
-                letterSpacing: 1
-            }}>
-                LOADING DISPATCH BOARD…
+            <div style={{ padding: 40, textAlign: "center", fontSize: 18 }}>
+                Loading Purchases...
             </div>
         );
     }
 
-    const StatChip = ({ icon, label, value, accent }) => (
+    // Summary Card Component
+    const SummaryCard = ({ icon, title, value, color = "#2563eb" }) => (
         <div style={{
-            background: "#1b1e27",
-            border: "1px solid #2a2e3a",
+            background: "#fff",
+            padding: "20px 24px",
             borderRadius: 12,
-            padding: "14px 18px",
-            flex: "1 1 160px",
-            display: "flex",
-            alignItems: "center",
-            gap: 12
+            boxShadow: "0 2px 8px rgba(0,0,0,.06)",
+            flex: 1,
+            minWidth: "180px",
+            borderLeft: `4px solid ${color}`
         }}>
-            <div style={{
-                width: 38, height: 38, borderRadius: 10,
-                background: `${accent}22`,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                color: accent, flexShrink: 0
-            }}>
-                {icon}
-            </div>
-            <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <div style={{
-                    fontSize: 10, color: "#7d8496", letterSpacing: 1,
-                    textTransform: "uppercase", fontFamily: "'IBM Plex Mono', monospace"
-                }}>{label}</div>
-                <div style={{
-                    fontSize: 19, color: "#f1f3f8", fontWeight: 700,
-                    fontFamily: "'IBM Plex Mono', monospace", marginTop: 2
-                }}>{value}</div>
+                    background: `${color}20`,
+                    padding: 10,
+                    borderRadius: 10,
+                    color: color
+                }}>
+                    {icon}
+                </div>
+                <div>
+                    <div style={{ fontSize: 13, color: "#6b7280" }}>{title}</div>
+                    <div style={{ fontSize: 22, fontWeight: "bold", color: "#1f2937" }}>
+                        {typeof value === 'number' ? `₹${value.toLocaleString('en-IN')}` : value}
+                    </div>
+                </div>
             </div>
         </div>
     );
-
-    const Dropdown = ({ label, value, options, open, setOpen, onSelect }) => (
-        <div style={{ position: "relative" }}>
-            <button
-                onClick={() => setOpen(!open)}
-                style={{
-                    background: "#1b1e27",
-                    border: "1px solid #2a2e3a",
-                    color: value === "All" ? "#8b93a7" : "#f1f3f8",
-                    padding: "10px 14px",
-                    borderRadius: 9,
-                    fontSize: 13,
-                    fontFamily: "'IBM Plex Mono', monospace",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    minWidth: 150,
-                    justifyContent: "space-between"
-                }}
-            >
-                <span>{value === "All" ? label : value}</span>
-                <FiChevronDown size={14} style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
-            </button>
-            {open && (
-                <>
-                    <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 10 }} />
-                    <div style={{
-                        position: "absolute", top: "110%", left: 0, zIndex: 20,
-                        background: "#1b1e27", border: "1px solid #2a2e3a", borderRadius: 9,
-                        minWidth: 180, maxHeight: 240, overflowY: "auto",
-                        boxShadow: "0 12px 30px rgba(0,0,0,0.5)"
-                    }}>
-                        {options.map((opt) => {
-                            const [val, lbl] = Array.isArray(opt) ? opt : [opt, opt];
-                            return (
-                                <div
-                                    key={val}
-                                    onClick={() => { onSelect(val); setOpen(false); }}
-                                    style={{
-                                        padding: "10px 14px",
-                                        fontSize: 13,
-                                        fontFamily: "'IBM Plex Mono', monospace",
-                                        color: val === value ? "#3ddc97" : "#c7cbd6",
-                                        cursor: "pointer",
-                                        background: val === value ? "#22262f" : "transparent"
-                                    }}
-                                    onMouseEnter={(e) => e.currentTarget.style.background = "#22262f"}
-                                    onMouseLeave={(e) => e.currentTarget.style.background = val === value ? "#22262f" : "transparent"}
-                                >
-                                    {lbl}
-                                </div>
-                            );
-                        })}
-                    </div>
-                </>
-            )}
-        </div>
-    );
-
-    const Docket = ({ purchase, accent }) => {
-        const status = getStatus(purchase);
-        const due = Number(purchase.total_amount) - Number(purchase.paid_amount);
-        const isFullyPaid = status === "Fully Paid";
-        const paidPct = Math.min(100, (Number(purchase.paid_amount) / Number(purchase.total_amount)) * 100 || 0);
-
-        return (
-            <div style={{
-                background: "#1b1e27",
-                border: "1px solid #2a2e3a",
-                borderRadius: 12,
-                padding: 16,
-                marginBottom: 14,
-                position: "relative",
-                overflow: "hidden"
-            }}>
-                {/* clip notch */}
-                <div style={{
-                    position: "absolute", top: 0, left: 20,
-                    width: 28, height: 10,
-                    background: accent,
-                    borderRadius: "0 0 6px 6px"
-                }} />
-
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginTop: 6 }}>
-                    <div>
-                        <div style={{
-                            fontFamily: "'IBM Plex Mono', monospace",
-                            fontWeight: 700, fontSize: 15, color: "#f1f3f8"
-                        }}>
-                            {purchase.invoice_no}
-                        </div>
-                        <div style={{ fontSize: 12, color: "#8b93a7", marginTop: 2 }}>
-                            {purchase.supplier_name}
-                        </div>
-                    </div>
-                    <div style={{
-                        fontSize: 11, color: "#5f6579",
-                        fontFamily: "'IBM Plex Mono', monospace", textAlign: "right"
-                    }}>
-                        {new Date(purchase.created_at).toLocaleDateString('en-IN', {
-                            day: '2-digit', month: 'short'
-                        })}
-                    </div>
-                </div>
-
-                <div style={{ display: "flex", justifyContent: "space-between", margin: "14px 0 6px", fontFamily: "'IBM Plex Mono', monospace" }}>
-                    <div>
-                        <div style={{ fontSize: 10, color: "#5f6579", textTransform: "uppercase" }}>Total</div>
-                        <div style={{ fontSize: 16, color: "#f1f3f8", fontWeight: 700 }}>{rupee(purchase.total_amount)}</div>
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                        <div style={{ fontSize: 10, color: "#5f6579", textTransform: "uppercase" }}>Due</div>
-                        <div style={{ fontSize: 16, color: due > 0 ? accent : "#3ddc97", fontWeight: 700 }}>{rupee(due)}</div>
-                    </div>
-                </div>
-
-                {/* progress bar */}
-                <div style={{ height: 5, background: "#2a2e3a", borderRadius: 4, overflow: "hidden", marginBottom: 14 }}>
-                    <div style={{
-                        width: `${paidPct}%`, height: "100%",
-                        background: accent, borderRadius: 4, transition: "width 0.3s"
-                    }} />
-                </div>
-
-                <div style={{ display: "flex", gap: 8 }}>
-                    <Link to={`/purchase/${purchase.id}`} style={{ flex: 1, textDecoration: "none" }}>
-                        <button style={{
-                            width: "100%",
-                            background: "#22262f",
-                            color: "#c7cbd6",
-                            border: "1px solid #2a2e3a",
-                            padding: "9px 0",
-                            borderRadius: 8,
-                            cursor: "pointer",
-                            fontSize: 12,
-                            fontFamily: "'IBM Plex Mono', monospace",
-                            fontWeight: 600,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            gap: 6
-                        }}>
-                            <FiEye size={13} /> VIEW
-                        </button>
-                    </Link>
-                    {!isFullyPaid && (
-                        <Link to={`/purchase/${purchase.id}/pay`} style={{ flex: 1, textDecoration: "none" }}>
-                            <button style={{
-                                width: "100%",
-                                background: accent,
-                                color: "#14161c",
-                                border: "none",
-                                padding: "9px 0",
-                                borderRadius: 8,
-                                cursor: "pointer",
-                                fontSize: 12,
-                                fontFamily: "'IBM Plex Mono', monospace",
-                                fontWeight: 700,
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                gap: 6
-                            }}>
-                                <FiDollarSign size={13} /> PAY NOW
-                            </button>
-                        </Link>
-                    )}
-                </div>
-            </div>
-        );
-    };
 
     return (
         <div style={{
-            background: "#14161c",
+            background: "#f5f7fb",
             minHeight: "100vh",
-            padding: "26px 24px 60px",
-            fontFamily: "'IBM Plex Mono', monospace"
+            padding: 30
         }}>
+
             {/* Header */}
             <div style={{
-                display: "flex", justifyContent: "space-between", alignItems: "center",
-                flexWrap: "wrap", gap: 16, marginBottom: 22
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 25,
+                flexWrap: "wrap",
+                gap: 15
             }}>
                 <div>
-                    <div style={{ fontSize: 22, fontWeight: 700, color: "#f1f3f8", letterSpacing: 0.5 }}>
-                        Dispatch Board
-                    </div>
-                    <div style={{ fontSize: 12, color: "#7d8496", marginTop: 2 }}>
-                        Purchases tracked by payment status
-                    </div>
+                    <h1 style={{ margin: 0, color: "#1f2937" }}>Purchases</h1>
+                    <p style={{ color: "#6b7280" }}>Manage Purchase Invoices</p>
                 </div>
-                <Link to="/add-purchase" style={{ textDecoration: "none" }}>
+                <Link to="/add-purchase">
                     <button style={{
-                        background: "#3ddc97",
-                        color: "#14161c",
+                        background: "#2563eb",
+                        color: "#fff",
                         border: "none",
                         padding: "12px 20px",
                         borderRadius: 10,
@@ -371,125 +211,494 @@ export default function Purchase() {
                         display: "flex",
                         alignItems: "center",
                         gap: 8,
-                        fontFamily: "'IBM Plex Mono', monospace",
-                        fontSize: 14,
-                        fontWeight: 700
-                    }}>
-                        <FiPlus /> NEW PURCHASE
+                        transition: "background 0.2s"
+                    }}
+                    onMouseEnter={(e) => e.target.style.background = "#1d4ed8"}
+                    onMouseLeave={(e) => e.target.style.background = "#2563eb"}>
+                        <FiPlus />
+                        New Purchase
                     </button>
                 </Link>
             </div>
 
-            {/* Stats */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 22 }}>
-                <StatChip icon={<FiShoppingCart size={17} />} label="Bills" value={summary.totalPurchases} accent="#7d9bff" />
-                <StatChip icon={<FiDollarSign size={17} />} label="Total Bought" value={rupee(summary.totalBought)} accent="#3ddc97" />
-                <StatChip icon={<FiCheckCircle size={17} />} label="Already Paid" value={rupee(summary.totalPaid)} accent="#ffb84d" />
-                <StatChip icon={<FiClock size={17} />} label="You Need to Pay" value={rupee(summary.totalDue)} accent="#ff6b4a" />
-            </div>
-
-            {/* Controls */}
+            {/* Summary Cards */}
             <div style={{
-                display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 26,
-                alignItems: "center"
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 16,
+                marginBottom: 25
             }}>
-                <div style={{ position: "relative", flex: "1 1 220px" }}>
-                    <FiSearch style={{ position: "absolute", top: 12, left: 12, color: "#5f6579" }} size={15} />
-                    <input
-                        type="text"
-                        placeholder="Search bill no. or supplier…"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        style={{
-                            width: "100%", boxSizing: "border-box",
-                            background: "#1b1e27", border: "1px solid #2a2e3a",
-                            color: "#f1f3f8", padding: "10px 12px 10px 34px",
-                            borderRadius: 9, fontSize: 13, outline: "none",
-                            fontFamily: "'IBM Plex Mono', monospace"
-                        }}
-                    />
-                    {search && (
-                        <FiX
-                            size={14}
-                            onClick={() => setSearch("")}
-                            style={{ position: "absolute", top: 12, right: 12, color: "#5f6579", cursor: "pointer" }}
-                        />
-                    )}
-                </div>
-
-                <Dropdown
-                    label="Supplier"
-                    value={filterSupplier}
-                    options={suppliers}
-                    open={supplierOpen}
-                    setOpen={setSupplierOpen}
-                    onSelect={setFilterSupplier}
+                <SummaryCard
+                    icon={<FiShoppingCart size={22} />}
+                    title="Total Purchases"
+                    value={summary.totalPurchases}
+                    color="#2563eb"
                 />
-                <Dropdown
-                    label="Date"
-                    value={filterDate === "All" ? "All" : filterDate}
-                    options={[["All", "All Dates"], ["7", "Last 7 Days"], ["30", "Last 30 Days"], ["90", "Last 90 Days"]]}
-                    open={dateOpen}
-                    setOpen={setDateOpen}
-                    onSelect={setFilterDate}
+                <SummaryCard
+                    icon={<FiDollarSign size={22} />}
+                    title="Total Bought"
+                    value={summary.totalBought}
+                    color="#059669"
+                />
+                <SummaryCard
+                    icon={<FiCheckCircle size={22} />}
+                    title="Already Paid"
+                    value={summary.totalPaid}
+                    color="#7c3aed"
+                />
+                <SummaryCard
+                    icon={<FiClock size={22} />}
+                    title="You Need to Pay"
+                    value={summary.totalDue}
+                    color="#dc2626"
                 />
             </div>
 
-            {/* Board columns */}
-            {filteredPurchases.length === 0 ? (
+            {/* Search & Filters */}
+            <div style={{
+                background: "#fff",
+                padding: 20,
+                borderRadius: 12,
+                marginBottom: 20
+            }}>
                 <div style={{
-                    background: "#1b1e27", border: "1px solid #2a2e3a", borderRadius: 12,
-                    padding: 50, textAlign: "center", color: "#5f6579", fontSize: 13
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 12
                 }}>
-                    No purchases match these filters
+                    <div style={{ flex: 1, minWidth: "200px", position: "relative" }}>
+                        <FiSearch style={{
+                            position: "absolute",
+                            top: 14,
+                            left: 15,
+                            color: "#999"
+                        }} />
+                        <input
+                            type="text"
+                            placeholder="Search bill or supplier..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            style={{
+                                width: "100%",
+                                padding: "12px 45px",
+                                border: "1px solid #ddd",
+                                borderRadius: 8,
+                                outline: "none",
+                                fontSize: 14
+                            }}
+                        />
+                    </div>
+
+                    <select
+                        value={filterStatus}
+                        onChange={(e) => setFilterStatus(e.target.value)}
+                        style={{
+                            padding: "12px 16px",
+                            border: "1px solid #ddd",
+                            borderRadius: 8,
+                            outline: "none",
+                            fontSize: 14,
+                            background: "#fff",
+                            minWidth: "150px"
+                        }}
+                    >
+                        <option value="All">All Payments</option>
+                        <option value="Fully Paid">Fully Paid</option>
+                        <option value="Partially Paid">Partially Paid</option>
+                        <option value="Not Paid">Not Paid</option>
+                    </select>
+
+                    <select
+                        value={filterSupplier}
+                        onChange={(e) => setFilterSupplier(e.target.value)}
+                        style={{
+                            padding: "12px 16px",
+                            border: "1px solid #ddd",
+                            borderRadius: 8,
+                            outline: "none",
+                            fontSize: 14,
+                            background: "#fff",
+                            minWidth: "150px"
+                        }}
+                    >
+                        {suppliers.map(supplier => (
+                            <option key={supplier} value={supplier}>{supplier}</option>
+                        ))}
+                    </select>
+
+                    <select
+                        value={filterDate}
+                        onChange={(e) => setFilterDate(e.target.value)}
+                        style={{
+                            padding: "12px 16px",
+                            border: "1px solid #ddd",
+                            borderRadius: 8,
+                            outline: "none",
+                            fontSize: 14,
+                            background: "#fff",
+                            minWidth: "150px"
+                        }}
+                    >
+                        <option value="All">All Dates</option>
+                        <option value="7">Last 7 Days</option>
+                        <option value="30">Last 30 Days</option>
+                        <option value="90">Last 90 Days</option>
+                    </select>
                 </div>
-            ) : (
-                <div style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-                    gap: 18,
-                    alignItems: "start"
+            </div>
+
+            {/* Desktop Table View */}
+            <div style={{
+                background: "#fff",
+                borderRadius: 12,
+                overflow: "hidden",
+                boxShadow: "0 2px 8px rgba(0,0,0,.08)",
+                overflowX: "auto",
+                display: window.innerWidth < 768 ? "none" : "block"
+            }}>
+                <table width="100%" cellPadding="15" style={{
+                    borderCollapse: "collapse",
+                    minWidth: "900px"
                 }}>
-                    {COLUMN_DEF.map((col) => (
-                        <div key={col.key}>
+                    <thead>
+                        <tr style={{ background: "#2563eb", color: "#fff" }}>
+                            <th align="left">Bill No.</th>
+                            <th align="left">Supplier</th>
+                            <th align="left">Date</th>
+                            <th align="left">Total</th>
+                            <th align="left">Paid</th>
+                            <th align="left">You Need to Pay</th>
+                            <th align="left">Status</th>
+                            <th align="center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {filteredPurchases.length === 0 && (
+                            <tr>
+                                <td colSpan="8" align="center" style={{ padding: 40 }}>
+                                    No Purchases Found
+                                </td>
+                            </tr>
+                        )}
+                        {filteredPurchases.map((purchase) => {
+                            const status = getStatus(purchase);
+                            const statusStyle = getStatusColor(status);
+                            const due = Number(purchase.total_amount) - Number(purchase.paid_amount);
+                            const isFullyPaid = status === "Fully Paid";
+
+                            return (
+                                <tr
+                                    key={purchase.id}
+                                    style={{
+                                        borderBottom: "1px solid #eee",
+                                        transition: "background 0.2s"
+                                    }}
+                                    onMouseEnter={(e) => e.target.style.background = "#f8fafc"}
+                                    onMouseLeave={(e) => e.target.style.background = "transparent"}
+                                >
+                                    <td>
+                                        <div style={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: 10
+                                        }}>
+                                            <div style={{
+                                                width: 45,
+                                                height: 45,
+                                                borderRadius: "50%",
+                                                background: "#dbeafe",
+                                                display: "flex",
+                                                justifyContent: "center",
+                                                alignItems: "center",
+                                                flexShrink: 0
+                                            }}>
+                                                <FiShoppingCart color="#2563eb" />
+                                            </div>
+                                            <div>
+                                                <div style={{ fontWeight: "bold" }}>
+                                                    {purchase.invoice_no}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div style={{ fontWeight: 600 }}>
+                                            {purchase.supplier_name}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {new Date(purchase.created_at).toLocaleDateString('en-IN', {
+                                            day: '2-digit',
+                                            month: 'short',
+                                            year: 'numeric'
+                                        })}
+                                    </td>
+                                    <td>₹{Number(purchase.total_amount).toFixed(2)}</td>
+                                    <td>₹{Number(purchase.paid_amount).toFixed(2)}</td>
+                                    <td style={{ fontWeight: "bold", color: due > 0 ? "#dc2626" : "#15803d" }}>
+                                        ₹{due.toFixed(2)}
+                                    </td>
+                                    <td>
+                                        <span style={{
+                                            background: statusStyle.bg,
+                                            color: statusStyle.color,
+                                            padding: "6px 14px",
+                                            borderRadius: 30,
+                                            fontSize: 13,
+                                            fontWeight: 600,
+                                            display: "inline-block"
+                                        }}>
+                                            {statusStyle.icon} {status}
+                                        </span>
+                                    </td>
+                                    <td align="center">
+                                        <div style={{
+                                            display: "flex",
+                                            justifyContent: "center",
+                                            gap: 6,
+                                            flexWrap: "wrap"
+                                        }}>
+                                            <Link to={`/purchase/${purchase.id}`}>
+                                                <button style={{
+                                                    background: "#0ea5e9",
+                                                    color: "#fff",
+                                                    border: "none",
+                                                    padding: "8px 10px",
+                                                    borderRadius: 8,
+                                                    cursor: "pointer",
+                                                    transition: "transform 0.1s, background 0.2s",
+                                                    display: "inline-flex",
+                                                    alignItems: "center"
+                                                }}
+                                                title="View Purchase"
+                                                onMouseEnter={(e) => {
+                                                    e.target.style.background = "#0284c7";
+                                                    e.target.style.transform = "scale(1.05)";
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.target.style.background = "#0ea5e9";
+                                                    e.target.style.transform = "scale(1)";
+                                                }}>
+                                                    <FiEye />
+                                                </button>
+                                            </Link>
+
+                                            {!isFullyPaid && (
+                                                <Link to={`/purchase/${purchase.id}/pay`}>
+                                                    <button style={{
+                                                        background: "#22c55e",
+                                                        color: "#fff",
+                                                        border: "none",
+                                                        padding: "8px 12px",
+                                                        borderRadius: 8,
+                                                        cursor: "pointer",
+                                                        transition: "transform 0.1s, background 0.2s",
+                                                        display: "inline-flex",
+                                                        alignItems: "center",
+                                                        gap: 4,
+                                                        fontWeight: 600,
+                                                        fontSize: 13
+                                                    }}
+                                                    title="Pay Now"
+                                                    onMouseEnter={(e) => {
+                                                        e.target.style.background = "#16a34a";
+                                                        e.target.style.transform = "scale(1.05)";
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        e.target.style.background = "#22c55e";
+                                                        e.target.style.transform = "scale(1)";
+                                                    }}>
+                                                        <FiDollarSign size={14} /> Pay Now
+                                                    </button>
+                                                </Link>
+                                            )}
+
+                                            <Link to={`/edit-purchase/${purchase.id}`}>
+                                                <button style={{
+                                                    background: "#f59e0b",
+                                                    color: "#fff",
+                                                    border: "none",
+                                                    padding: "8px 10px",
+                                                    borderRadius: 8,
+                                                    cursor: "pointer",
+                                                    transition: "transform 0.1s, background 0.2s",
+                                                    display: "inline-flex",
+                                                    alignItems: "center"
+                                                }}
+                                                title="Edit Purchase"
+                                                onMouseEnter={(e) => {
+                                                    e.target.style.background = "#d97706";
+                                                    e.target.style.transform = "scale(1.05)";
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.target.style.background = "#f59e0b";
+                                                    e.target.style.transform = "scale(1)";
+                                                }}>
+                                                    <FiEdit />
+                                                </button>
+                                            </Link>
+
+                                            <button
+                                                onClick={() => deletePurchase(purchase.id)}
+                                                style={{
+                                                    background: "#ef4444",
+                                                    color: "#fff",
+                                                    border: "none",
+                                                    padding: "8px 10px",
+                                                    borderRadius: 8,
+                                                    cursor: "pointer",
+                                                    transition: "transform 0.1s, background 0.2s",
+                                                    display: "inline-flex",
+                                                    alignItems: "center"
+                                                }}
+                                                title="Delete Purchase"
+                                                onMouseEnter={(e) => {
+                                                    e.target.style.background = "#dc2626";
+                                                    e.target.style.transform = "scale(1.05)";
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.target.style.background = "#ef4444";
+                                                    e.target.style.transform = "scale(1)";
+                                                }}>
+                                                    <FiTrash2 />
+                                                </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div style={{
+                display: window.innerWidth < 768 ? "block" : "none"
+            }}>
+                {filteredPurchases.length === 0 && (
+                    <div style={{
+                        background: "#fff",
+                        padding: 40,
+                        borderRadius: 12,
+                        textAlign: "center",
+                        color: "#6b7280"
+                    }}>
+                        No Purchases Found
+                    </div>
+                )}
+                {filteredPurchases.map((purchase) => {
+                    const status = getStatus(purchase);
+                    const statusStyle = getStatusColor(status);
+                    const due = Number(purchase.total_amount) - Number(purchase.paid_amount);
+                    const isFullyPaid = status === "Fully Paid";
+
+                    return (
+                        <div key={purchase.id} style={{
+                            background: "#fff",
+                            borderRadius: 12,
+                            padding: 16,
+                            marginBottom: 12,
+                            boxShadow: "0 2px 8px rgba(0,0,0,.06)"
+                        }}>
                             <div style={{
-                                display: "flex", alignItems: "center", gap: 8,
-                                marginBottom: 14, padding: "8px 12px",
-                                background: col.glow, borderRadius: 9,
-                                border: `1px solid ${col.accent}33`
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                marginBottom: 8
                             }}>
-                                <span style={{
-                                    width: 8, height: 8, borderRadius: "50%", background: col.accent
-                                }} />
-                                <span style={{
-                                    fontSize: 12, fontWeight: 700, color: col.accent,
-                                    letterSpacing: 0.5, textTransform: "uppercase"
-                                }}>
-                                    {col.label}
-                                </span>
-                                <span style={{
-                                    marginLeft: "auto", fontSize: 11, color: "#7d8496",
-                                    background: "#14161c", padding: "2px 8px", borderRadius: 20
-                                }}>
-                                    {grouped[col.key].length}
-                                </span>
+                                <div style={{ fontWeight: "bold", fontSize: 16 }}>
+                                    {purchase.invoice_no}
+                                </div>
+                                <div style={{ fontSize: 13, color: "#6b7280" }}>
+                                    {new Date(purchase.created_at).toLocaleDateString('en-IN', {
+                                        day: '2-digit',
+                                        month: 'short',
+                                        year: 'numeric'
+                                    })}
+                                </div>
                             </div>
 
-                            {grouped[col.key].length === 0 ? (
-                                <div style={{
-                                    color: "#3f4351", fontSize: 12, padding: "10px 4px", fontStyle: "italic"
-                                }}>
-                                    Nothing here
+                            <div style={{ marginBottom: 8 }}>
+                                <span style={{ color: "#6b7280" }}>Supplier: </span>
+                                <span style={{ fontWeight: 600 }}>{purchase.supplier_name}</span>
+                            </div>
+
+                            <div style={{
+                                display: "grid",
+                                gridTemplateColumns: "1fr 1fr",
+                                gap: 6,
+                                marginBottom: 10
+                            }}>
+                                <div>
+                                    <div style={{ fontSize: 12, color: "#6b7280" }}>Total</div>
+                                    <div style={{ fontWeight: "bold" }}>₹{Number(purchase.total_amount).toFixed(2)}</div>
                                 </div>
-                            ) : (
-                                grouped[col.key].map((purchase) => (
-                                    <Docket key={purchase.id} purchase={purchase} accent={col.accent} />
-                                ))
-                            )}
+                                <div>
+                                    <div style={{ fontSize: 12, color: "#6b7280" }}>Paid</div>
+                                    <div>₹{Number(purchase.paid_amount).toFixed(2)}</div>
+                                </div>
+                                <div style={{ gridColumn: "1 / -1" }}>
+                                    <div style={{ fontSize: 12, color: "#6b7280" }}>You Need to Pay</div>
+                                    <div style={{ fontWeight: "bold", color: due > 0 ? "#dc2626" : "#15803d" }}>
+                                        ₹{due.toFixed(2)}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style={{
+                                marginBottom: 12,
+                                padding: "4px 12px",
+                                background: statusStyle.bg,
+                                color: statusStyle.color,
+                                borderRadius: 20,
+                                fontSize: 13,
+                                fontWeight: 600,
+                                display: "inline-block"
+                            }}>
+                                {statusStyle.icon} {status}
+                            </div>
+
+                            <div style={{
+                                display: "flex",
+                                gap: 8,
+                                flexWrap: "wrap"
+                            }}>
+                                <Link to={`/purchase/${purchase.id}`}>
+                                    <button style={{
+                                        background: "#0ea5e9",
+                                        color: "#fff",
+                                        border: "none",
+                                        padding: "8px 16px",
+                                        borderRadius: 8,
+                                        cursor: "pointer",
+                                        fontSize: 13
+                                    }}>
+                                        View
+                                    </button>
+                                </Link>
+                                {!isFullyPaid && (
+                                    <Link to={`/purchase/${purchase.id}/pay`}>
+                                        <button style={{
+                                            background: "#22c55e",
+                                            color: "#fff",
+                                            border: "none",
+                                            padding: "8px 16px",
+                                            borderRadius: 8,
+                                            cursor: "pointer",
+                                            fontWeight: 600,
+                                            fontSize: 13
+                                        }}>
+                                            Pay Now
+                                        </button>
+                                    </Link>
+                                )}
+                            </div>
                         </div>
-                    ))}
-                </div>
-            )}
+                    );
+                })}
+            </div>
+
         </div>
     );
+
 }
