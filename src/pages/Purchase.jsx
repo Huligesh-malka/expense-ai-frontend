@@ -6,8 +6,6 @@ import {
     FiPlus,
     FiSearch,
     FiEye,
-    FiEdit,
-    FiTrash2,
     FiShoppingCart,
     FiDollarSign,
     FiClock,
@@ -125,20 +123,6 @@ export default function Purchase() {
         return filtered;
     };
 
-    const deletePurchase = async (id) => {
-        const ok = window.confirm("Delete this purchase?");
-        if (!ok) return;
-
-        try {
-            await API.delete(`/purchases/${id}`);
-            alert("Purchase Deleted");
-            loadPurchases();
-        } catch (err) {
-            console.log(err);
-            alert(err.response?.data?.message || "Delete Failed");
-        }
-    };
-
     const filteredPurchases = getFilteredPurchases();
     const suppliers = getUniqueSuppliers();
 
@@ -197,8 +181,8 @@ export default function Purchase() {
                 gap: 15
             }}>
                 <div>
-                    <h1 style={{ margin: 0, color: "#1f2937" }}>Purchases</h1>
-                    <p style={{ color: "#6b7280" }}>Manage Purchase Invoices</p>
+                    <h1 style={{ margin: 0, color: "#1f2937" }}>Purchase History</h1>
+                    <p style={{ color: "#6b7280" }}>View and manage all purchase invoices</p>
                 </div>
                 <Link to="/add-purchase">
                     <button style={{
@@ -463,14 +447,17 @@ export default function Purchase() {
                                                     background: "#0ea5e9",
                                                     color: "#fff",
                                                     border: "none",
-                                                    padding: "8px 10px",
+                                                    padding: "8px 14px",
                                                     borderRadius: 8,
                                                     cursor: "pointer",
                                                     transition: "transform 0.1s, background 0.2s",
                                                     display: "inline-flex",
-                                                    alignItems: "center"
+                                                    alignItems: "center",
+                                                    gap: 6,
+                                                    fontWeight: 500,
+                                                    fontSize: 13
                                                 }}
-                                                title="View Purchase"
+                                                title="View Purchase Details"
                                                 onMouseEnter={(e) => {
                                                     e.target.style.background = "#0284c7";
                                                     e.target.style.transform = "scale(1.05)";
@@ -479,7 +466,7 @@ export default function Purchase() {
                                                     e.target.style.background = "#0ea5e9";
                                                     e.target.style.transform = "scale(1)";
                                                 }}>
-                                                    <FiEye />
+                                                    <FiEye size={14} /> View
                                                 </button>
                                             </Link>
 
@@ -489,7 +476,7 @@ export default function Purchase() {
                                                         background: "#22c55e",
                                                         color: "#fff",
                                                         border: "none",
-                                                        padding: "8px 12px",
+                                                        padding: "8px 14px",
                                                         borderRadius: 8,
                                                         cursor: "pointer",
                                                         transition: "transform 0.1s, background 0.2s",
@@ -512,56 +499,6 @@ export default function Purchase() {
                                                     </button>
                                                 </Link>
                                             )}
-
-                                            <Link to={`/edit-purchase/${purchase.id}`}>
-                                                <button style={{
-                                                    background: "#f59e0b",
-                                                    color: "#fff",
-                                                    border: "none",
-                                                    padding: "8px 10px",
-                                                    borderRadius: 8,
-                                                    cursor: "pointer",
-                                                    transition: "transform 0.1s, background 0.2s",
-                                                    display: "inline-flex",
-                                                    alignItems: "center"
-                                                }}
-                                                title="Edit Purchase"
-                                                onMouseEnter={(e) => {
-                                                    e.target.style.background = "#d97706";
-                                                    e.target.style.transform = "scale(1.05)";
-                                                }}
-                                                onMouseLeave={(e) => {
-                                                    e.target.style.background = "#f59e0b";
-                                                    e.target.style.transform = "scale(1)";
-                                                }}>
-                                                    <FiEdit />
-                                                </button>
-                                            </Link>
-
-                                            <button
-                                                onClick={() => deletePurchase(purchase.id)}
-                                                style={{
-                                                    background: "#ef4444",
-                                                    color: "#fff",
-                                                    border: "none",
-                                                    padding: "8px 10px",
-                                                    borderRadius: 8,
-                                                    cursor: "pointer",
-                                                    transition: "transform 0.1s, background 0.2s",
-                                                    display: "inline-flex",
-                                                    alignItems: "center"
-                                                }}
-                                                title="Delete Purchase"
-                                                onMouseEnter={(e) => {
-                                                    e.target.style.background = "#dc2626";
-                                                    e.target.style.transform = "scale(1.05)";
-                                                }}
-                                                onMouseLeave={(e) => {
-                                                    e.target.style.background = "#ef4444";
-                                                    e.target.style.transform = "scale(1)";
-                                                }}>
-                                                    <FiTrash2 />
-                                                </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -673,7 +610,7 @@ export default function Purchase() {
                                         cursor: "pointer",
                                         fontSize: 13
                                     }}>
-                                        View
+                                        View Details
                                     </button>
                                 </Link>
                                 {!isFullyPaid && (
