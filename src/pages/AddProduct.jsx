@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import API from "../services/api";
 
@@ -29,6 +29,33 @@ const UNITS = [
 
 const STEPS = ["Item", "Price", "Stock", "Extras", "Review"];
 
+// ─── Small inline "new / already exists" indicator ────────────
+function CheckBadge({ check, newLabel, existsLabel }) {
+    if (!check || check.status === "idle") return null;
+    if (check.status === "checking") {
+        return (
+            <span style={styles.checkBadge}>
+                <span style={{ ...styles.checkDot, background: "#C7CDD8" }} />
+                Checking…
+            </span>
+        );
+    }
+    if (check.status === "exists") {
+        return (
+            <span style={{ ...styles.checkBadge, color: "#B3691E" }}>
+                <span style={{ ...styles.checkDot, background: "#E4A23A" }} />
+                {existsLabel}
+            </span>
+        );
+    }
+    return (
+        <span style={{ ...styles.checkBadge, color: "#2C7A46" }}>
+            <span style={{ ...styles.checkDot, background: "#2C7A46" }} />
+            {newLabel}
+        </span>
+    );
+}
+
 export default function AddProduct() {
     // ─── State ───────────────────────────────────────────────
     const [step, setStep] = useState(0);
@@ -57,9 +84,77 @@ export default function AddProduct() {
     const [messageType, setMessageType] = useState("");
     const [touched, setTouched] = useState({});
 
+    // { status: "idle" | "checking" | "new" | "exists" }
+    const [nameCheck, setNameCheck] = useState({ status: "idle" });
+    const [barcodeCheck, setBarcodeCheck] = useState({ status: "idle" });
+
     // ─── Helpers ──────────────────────────────────────────────
     const getUnitIcon = (unit) => UNITS.find((u) => u.value === unit)?.icon || "📦";
     const getUnitLabel = (unit) => UNITS.find((u) => u.value === unit)?.label || unit;
+
+    // ─── Live "already exists / new" checks ────────────────────
+    // NOTE: assumes a GET /products/check endpoint that accepts
+    // business_id + (name or barcode) and returns { exists: boolean }.
+    // Point this at whatever your backend actually exposes.
+    useEffect(() => {
+        const name = form.product_name.trim();
+        if (name.length < 2) {
+            setNameCheck({ status: "idle" });
+            return;
+        }
+        setNameCheck({ status: "checking" });
+        let cancelled = false;
+        const handle = setTimeout(async () => {
+            try {
+                const res = await API.get("/products/check", {
+                    params: { business_id: form.business_id, name },
+                });
+                if (!cancelled) {
+                    setNameCheck(
+                        res.data?.exists
+                            ? { status: "exists" }
+                            : { status: "new" }
+                    );
+                }
+            } catch (err) {
+                if (!cancelled) setNameCheck({ status: "idle" });
+            }
+        }, 450);
+        return () => {
+            cancelled = true;
+            clearTimeout(handle);
+        };
+    }, [form.product_name, form.business_id]);
+
+    useEffect(() => {
+        const barcode = form.barcode.trim();
+        if (!barcode) {
+            setBarcodeCheck({ status: "idle" });
+            return;
+        }
+        setBarcodeCheck({ status: "checking" });
+        let cancelled = false;
+        const handle = setTimeout(async () => {
+            try {
+                const res = await API.get("/products/check", {
+                    params: { business_id: form.business_id, barcode },
+                });
+                if (!cancelled) {
+                    setBarcodeCheck(
+                        res.data?.exists
+                            ? { status: "exists" }
+                            : { status: "new" }
+                    );
+                }
+            } catch (err) {
+                if (!cancelled) setBarcodeCheck({ status: "idle" });
+            }
+        }, 450);
+        return () => {
+            cancelled = true;
+            clearTimeout(handle);
+        };
+    }, [form.barcode, form.business_id]);
 
     // ─── Computed fields ──────────────────────────────────────
     const purchaseNum = parseFloat(form.purchase_price) || 0;
@@ -233,6 +328,7 @@ export default function AddProduct() {
                             onChange={(e) => setForm((p) => ({ ...p, product_name: e.target.value }))}
                             style={styles.bigInput}
                         />
+                        <CheckBadge check={nameCheck} newLabel="New product" existsLabel="Already in your shop" />
 
                         <div style={styles.gridGrid}>
                             {CATEGORIES.map((c) => (
@@ -365,6 +461,7 @@ export default function AddProduct() {
                         <div style={styles.formGroup}>
                             <label style={styles.label}>Barcode</label>
                             <input type="text" placeholder="Scan or type" value={form.barcode} onChange={(e) => setForm((p) => ({ ...p, barcode: e.target.value }))} style={styles.input} />
+                            <CheckBadge check={barcodeCheck} newLabel="New barcode" existsLabel="Barcode already used" />
                         </div>
                         <div style={styles.formGroup}>
                             <label style={styles.label}>Product code</label>
@@ -554,6 +651,17 @@ const styles = {
         color: "#151A23",
         background: "#FAFBFD",
     },
+
+    checkBadge: {
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "6px",
+        fontSize: "12px",
+        fontWeight: 600,
+        color: "#8891A0",
+        marginTop: "-4px",
+    },
+    checkDot: { width: "6px", height: "6px", borderRadius: "50%", flexShrink: 0 },
 
     gridGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px" },
     gridTile: {
