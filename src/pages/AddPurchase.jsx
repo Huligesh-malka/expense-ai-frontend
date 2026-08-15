@@ -3,12 +3,12 @@ import { useNavigate } from "react-router-dom";
 import API from "../services/api";
 
 /**
- * AddPurchase — "Goods Received Note" design
+ * AddPurchase — "Stock Intake Card" design
  *
- * Concept: a supplier delivery challan / stock-intake booklet, staple-bound
- * on the left margin, with a carbon-copy tear line separating the item
- * ledger from the office totals, and a rubber ink stamp that appears once
- * a supplier is chosen — as if the godown clerk just received the goods.
+ * Concept: an old godown index-card catalog — cards hung on a metal ring
+ * inside a filing drawer, one card per delivery. Forest green + brass,
+ * a punched ring-hole binding along the top edge, a brass tab that names
+ * the card, and a wax-seal badge that stamps in once a supplier is picked.
  */
 export default function AddPurchase() {
     const navigate = useNavigate();
@@ -32,10 +32,10 @@ export default function AddPurchase() {
         { product_id: "", quantity: 1, purchase_price: 0, tax: 0 }
     ]);
 
-    // GRN number — generated once per visit, like tearing a fresh page off the pad
-    const [grnNumber] = useState(() => {
-        const n = Math.floor(100 + Math.random() * 900);
-        return `GRN-${new Date().getFullYear()}-${n}`;
+    // Card index number — one per drawer card
+    const [cardNumber] = useState(() => {
+        const n = Math.floor(1000 + Math.random() * 9000);
+        return `#${n}`;
     });
 
     const today = new Date().toLocaleDateString("en-IN", {
@@ -136,136 +136,136 @@ export default function AddPurchase() {
     };
 
     const selectedSupplier = suppliers.find((s) => s.id == form.supplier_id);
+    const holes = new Array(9).fill(0);
 
     return (
-        <div className="grn-root">
+        <div className="sic-root">
             <style>{`
-                @import url('https://fonts.googleapis.com/css2?family=Rozha+One&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap');
+                @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap');
 
-                .grn-root {
-                    --kraft: #e7dbc0;
-                    --paper: #fbf7ee;
-                    --ink: #2c2013;
-                    --ink-soft: #6b5c47;
-                    --rust: #a3431c;
-                    --rust-deep: #7c3115;
-                    --indigo: #2f4858;
-                    --green: #3f6b4c;
-                    --amber: #b5741f;
-                    --line: #d8c9a8;
+                .sic-root {
+                    --forest: #1e3d2f;
+                    --forest-deep: #14281f;
+                    --brass: #b98b32;
+                    --brass-light: #d9b565;
+                    --cream: #f6f0e1;
+                    --backdrop: #e4dcc6;
+                    --ink: #241f16;
+                    --ink-soft: #6e6350;
+                    --maroon: #7c2d3b;
+                    --sage: #4c6b45;
+                    --line: #dccfae;
                     font-family: 'Inter', sans-serif;
                     color: var(--ink);
-                    background: var(--kraft);
-                    background-image:
-                        radial-gradient(circle at 1px 1px, rgba(44,32,19,0.06) 1px, transparent 0);
-                    background-size: 18px 18px;
+                    background: var(--backdrop);
                     min-height: 100vh;
-                    padding: 40px 20px;
+                    padding: 44px 20px;
                 }
 
-                .grn-card {
-                    max-width: 1180px;
+                .sic-card {
+                    max-width: 1160px;
                     margin: 0 auto;
-                    background: var(--paper);
-                    border: 1px solid var(--line);
-                    border-radius: 4px;
+                    background: var(--cream);
+                    border-radius: 6px;
                     position: relative;
-                    padding: 40px 46px 40px 74px;
-                    box-shadow: 0 18px 40px rgba(44,32,19,0.16), 0 2px 0 var(--paper);
+                    box-shadow: 0 20px 44px rgba(20,40,31,0.22);
+                    padding: 54px 46px 42px;
                 }
 
-                /* staple-bound left margin */
-                .staple-margin {
+                /* ring-binder holes along the top edge */
+                .ring-strip {
                     position: absolute;
+                    top: -1px;
                     left: 0;
-                    top: 0;
-                    bottom: 0;
-                    width: 40px;
-                    background: linear-gradient(90deg, rgba(44,32,19,0.05), transparent);
-                    border-right: 1px dashed var(--line);
+                    right: 0;
+                    height: 28px;
+                    display: flex;
+                    justify-content: space-evenly;
+                    padding: 0 60px;
                 }
-                .staple {
-                    position: absolute;
-                    left: 14px;
-                    width: 11px;
-                    height: 11px;
+                .ring-hole {
+                    width: 16px;
+                    height: 16px;
                     border-radius: 50%;
-                    background: radial-gradient(circle at 35% 30%, #d9cdb1, #a99a7a 70%);
-                    box-shadow: inset 0 1px 2px rgba(0,0,0,0.35), 0 1px 1px rgba(255,255,255,0.4);
-                }
-                .staple::after {
-                    content: "";
-                    position: absolute;
-                    inset: 3px;
-                    border-radius: 50%;
-                    background: var(--paper);
+                    background: var(--backdrop);
+                    box-shadow: inset 0 2px 3px rgba(0,0,0,0.28);
+                    margin-top: -8px;
                 }
 
-                .grn-header {
+                /* brass tab sticking out top-right, like a filed index card */
+                .brass-tab {
+                    position: absolute;
+                    top: 26px;
+                    right: -14px;
+                    background: var(--brass);
+                    color: var(--forest-deep);
+                    font-family: 'IBM Plex Mono', monospace;
+                    font-weight: 600;
+                    font-size: 12px;
+                    letter-spacing: 1px;
+                    padding: 8px 18px 8px 14px;
+                    border-radius: 3px 0 0 3px;
+                    box-shadow: -2px 3px 6px rgba(20,40,31,0.25);
+                }
+
+                .sic-header {
                     display: flex;
                     justify-content: space-between;
-                    align-items: flex-start;
+                    align-items: flex-end;
                     flex-wrap: wrap;
-                    gap: 16px;
-                    padding-bottom: 20px;
-                    border-bottom: 2px solid var(--ink);
+                    gap: 18px;
+                    border-bottom: 3px solid var(--forest);
+                    padding-bottom: 18px;
                 }
-                .grn-eyebrow {
+                .sic-eyebrow {
                     font-family: 'IBM Plex Mono', monospace;
                     font-size: 11px;
                     letter-spacing: 2.5px;
-                    color: var(--rust);
                     text-transform: uppercase;
-                    margin: 0 0 4px;
+                    color: var(--brass);
+                    margin: 0 0 6px;
                 }
-                .grn-title {
-                    font-family: 'Rozha One', serif;
-                    font-size: 34px;
+                .sic-title {
+                    font-family: 'Oswald', sans-serif;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                    font-size: 30px;
+                    color: var(--forest);
                     margin: 0;
-                    color: var(--ink);
                 }
-                .grn-meta {
+                .sic-meta {
                     font-family: 'IBM Plex Mono', monospace;
                     font-size: 12.5px;
                     text-align: right;
-                    border: 1px dashed var(--rust);
-                    border-radius: 3px;
-                    padding: 10px 16px;
-                    color: var(--rust-deep);
-                    background: rgba(163,67,28,0.05);
-                    line-height: 1.7;
+                    color: var(--ink-soft);
+                    line-height: 1.8;
                 }
-                .grn-meta b { color: var(--ink); }
+                .sic-meta b { color: var(--forest); }
 
-                .stamp {
+                /* wax-seal badge, appears once a supplier is chosen */
+                .seal {
                     position: absolute;
-                    top: 26px;
-                    right: 46px;
-                    width: 118px;
-                    height: 118px;
-                    border: 3px solid var(--rust);
+                    top: 58px;
+                    right: 44px;
+                    width: 76px;
+                    height: 76px;
                     border-radius: 50%;
+                    background: radial-gradient(circle at 32% 28%, var(--brass-light), var(--brass) 65%, #92701f 100%);
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    text-align: center;
-                    transform: rotate(-11deg);
-                    color: var(--rust);
-                    font-family: 'IBM Plex Mono', monospace;
-                    font-weight: 600;
-                    font-size: 11px;
-                    letter-spacing: 1px;
-                    line-height: 1.5;
-                    opacity: 0.85;
-                    mix-blend-mode: multiply;
-                    pointer-events: none;
+                    box-shadow: 0 4px 10px rgba(20,40,31,0.35), inset 0 -3px 6px rgba(0,0,0,0.2);
+                    transform: rotate(-6deg);
                 }
-                .stamp::before {
-                    content: "";
-                    position: absolute;
-                    inset: 7px;
-                    border: 1px solid var(--rust);
-                    border-radius: 50%;
+                .seal span {
+                    font-family: 'Oswald', sans-serif;
+                    font-size: 11px;
+                    font-weight: 700;
+                    letter-spacing: 0.5px;
+                    color: var(--forest-deep);
+                    text-align: center;
+                    line-height: 1.3;
                 }
 
                 .section-label {
@@ -274,10 +274,17 @@ export default function AddPurchase() {
                     letter-spacing: 2px;
                     text-transform: uppercase;
                     color: var(--ink-soft);
-                    margin: 30px 0 14px;
+                    margin: 28px 0 14px;
                     display: flex;
                     align-items: center;
                     gap: 10px;
+                }
+                .section-label::before {
+                    content: "";
+                    width: 8px;
+                    height: 8px;
+                    background: var(--brass);
+                    transform: rotate(45deg);
                 }
                 .section-label::after {
                     content: "";
@@ -303,26 +310,27 @@ export default function AddPurchase() {
                 .field textarea {
                     width: 100%;
                     box-sizing: border-box;
-                    padding: 10px 2px;
+                    padding: 10px 12px;
                     font-family: 'Inter', sans-serif;
                     font-size: 14.5px;
                     color: var(--ink);
-                    background: transparent;
-                    border: none;
-                    border-bottom: 1.5px solid var(--line);
+                    background: #fff;
+                    border: 1.5px solid var(--line);
+                    border-radius: 4px;
                     outline: none;
-                    transition: border-color 0.2s;
+                    transition: border-color 0.2s, box-shadow 0.2s;
                 }
                 .field select:focus,
                 .field input:focus,
                 .field textarea:focus {
-                    border-bottom-color: var(--rust);
+                    border-color: var(--forest);
+                    box-shadow: 0 0 0 3px rgba(30,61,47,0.12);
                 }
 
                 .ledger-wrap {
                     overflow-x: auto;
-                    border: 1px solid var(--line);
-                    border-radius: 4px;
+                    border: 1.5px solid var(--line);
+                    border-radius: 6px;
                     margin-top: 4px;
                 }
                 table.ledger {
@@ -331,10 +339,10 @@ export default function AddPurchase() {
                     border-collapse: collapse;
                 }
                 table.ledger thead tr {
-                    background: var(--rust);
+                    background: var(--forest);
                 }
                 table.ledger thead th {
-                    color: #fbf3e8;
+                    color: var(--brass-light);
                     font-family: 'IBM Plex Mono', monospace;
                     font-size: 11px;
                     letter-spacing: 1.2px;
@@ -343,8 +351,8 @@ export default function AddPurchase() {
                     padding: 12px 14px;
                     font-weight: 500;
                 }
-                table.ledger tbody tr:nth-child(odd) { background: rgba(163,67,28,0.045); }
-                table.ledger tbody tr:hover { background: rgba(163,67,28,0.09); }
+                table.ledger tbody tr:nth-child(odd) { background: rgba(30,61,47,0.035); }
+                table.ledger tbody tr:hover { background: rgba(185,139,50,0.09); }
                 table.ledger td {
                     padding: 10px 14px;
                     border-bottom: 1px solid var(--line);
@@ -354,68 +362,60 @@ export default function AddPurchase() {
                 table.ledger input {
                     width: 100%;
                     box-sizing: border-box;
-                    padding: 7px 4px;
+                    padding: 8px 8px;
                     font-family: 'Inter', sans-serif;
                     font-size: 14px;
-                    background: transparent;
-                    border: none;
-                    border-bottom: 1.5px solid var(--line);
+                    background: #fff;
+                    border: 1px solid var(--line);
+                    border-radius: 3px;
                     outline: none;
                 }
                 table.ledger select:focus,
-                table.ledger input:focus { border-bottom-color: var(--rust); }
+                table.ledger input:focus { border-color: var(--forest); }
                 table.ledger .row-total {
                     font-family: 'IBM Plex Mono', monospace;
                     font-weight: 600;
-                    color: var(--indigo);
+                    color: var(--forest);
                 }
                 .remove-btn {
                     background: transparent;
-                    color: var(--rust-deep);
-                    border: 1px solid var(--rust-deep);
+                    color: var(--maroon);
+                    border: 1px solid var(--maroon);
                     padding: 6px 10px;
                     border-radius: 3px;
                     font-size: 12px;
                     cursor: pointer;
                     transition: background 0.2s, color 0.2s;
                 }
-                .remove-btn:hover { background: var(--rust-deep); color: #fff; }
+                .remove-btn:hover { background: var(--maroon); color: #fff; }
 
                 .add-row-btn {
                     margin-top: 14px;
-                    background: transparent;
-                    border: 1.5px dashed var(--rust);
-                    color: var(--rust-deep);
+                    background: var(--forest);
+                    border: none;
+                    color: var(--brass-light);
                     padding: 10px 20px;
                     border-radius: 4px;
                     font-family: 'IBM Plex Mono', monospace;
                     font-size: 13px;
                     letter-spacing: 0.5px;
                     cursor: pointer;
-                    transition: background 0.2s, border-style 0.2s;
+                    transition: background 0.2s;
                 }
-                .add-row-btn:hover { background: rgba(163,67,28,0.08); border-style: solid; }
+                .add-row-btn:hover { background: var(--forest-deep); }
 
-                .tear-divider {
-                    margin: 36px 0 24px;
-                    text-align: center;
-                    position: relative;
+                .tally-divider {
+                    margin: 34px 0 22px;
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
                     color: var(--ink-soft);
-                    font-family: 'IBM Plex Mono', monospace;
-                    font-size: 10.5px;
-                    letter-spacing: 3px;
-                    text-transform: uppercase;
                 }
-                .tear-divider::before {
-                    content: "";
-                    position: absolute;
-                    left: 0; right: 0; top: 50%;
-                    border-top: 2px dashed var(--line);
-                }
-                .tear-divider span {
-                    position: relative;
-                    background: var(--paper);
-                    padding: 0 14px;
+                .tally-divider .rule { flex: 1; height: 1px; background: var(--line); }
+                .tally-divider .diamond {
+                    width: 9px; height: 9px;
+                    background: var(--brass);
+                    transform: rotate(45deg);
                 }
 
                 .totals-panel {
@@ -424,38 +424,31 @@ export default function AddPurchase() {
                     gap: 22px;
                     align-items: end;
                 }
-                .total-box {
-                    border: 1px solid var(--line);
-                    border-radius: 4px;
-                    padding: 18px 20px;
-                    background: rgba(44,32,19,0.02);
+                .grand-card {
+                    border: 2px solid var(--forest);
+                    border-radius: 6px;
+                    padding: 16px 20px;
+                    background: var(--forest);
                 }
-                .total-box .amount-label {
+                .grand-card .amount-label {
                     font-family: 'IBM Plex Mono', monospace;
                     font-size: 11px;
                     letter-spacing: 1.5px;
                     text-transform: uppercase;
-                    color: var(--ink-soft);
+                    color: var(--brass-light);
                     margin-bottom: 4px;
                 }
-                .total-box .amount-value {
-                    font-family: 'IBM Plex Mono', monospace;
-                    font-size: 15px;
-                    color: var(--ink);
-                }
-                .grand-stamp {
-                    border: 2px solid var(--indigo);
-                    border-radius: 4px;
-                    padding: 16px 22px;
-                    background: rgba(47,72,88,0.05);
-                    transform: rotate(-1.2deg);
-                }
-                .grand-stamp .amount-label { color: var(--indigo); }
-                .grand-stamp .grand-value {
+                .grand-card .grand-value {
                     font-family: 'IBM Plex Mono', monospace;
                     font-weight: 600;
                     font-size: 30px;
-                    color: var(--indigo);
+                    color: #fff;
+                }
+                .grand-card .sub-value {
+                    font-family: 'IBM Plex Mono', monospace;
+                    font-size: 12px;
+                    color: rgba(255,255,255,0.65);
+                    margin-top: 4px;
                 }
 
                 .due-strip {
@@ -463,21 +456,18 @@ export default function AddPurchase() {
                     display: inline-flex;
                     align-items: center;
                     gap: 12px;
-                    border: 2px dashed var(--amber);
                     border-radius: 4px;
                     padding: 12px 20px;
-                    transform: rotate(-0.6deg);
-                    color: var(--amber);
-                    background: rgba(181,116,31,0.06);
+                    color: #fff;
+                    background: var(--maroon);
                 }
-                .due-strip .amount-label { font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; }
+                .due-strip .amount-label { font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; opacity: 0.85; }
                 .due-strip .due-value { font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 20px; }
-                .due-clear { color: var(--green); border-color: var(--green); background: rgba(63,107,76,0.06); }
-                .due-clear .amount-label, .due-clear .due-value { color: var(--green); }
+                .due-clear { background: var(--sage); }
 
                 .notes-field {
                     margin-top: 30px;
-                    border-top: 1px dashed var(--line);
+                    border-top: 1px solid var(--line);
                     padding-top: 18px;
                 }
                 .notes-field textarea { resize: vertical; }
@@ -496,7 +486,7 @@ export default function AddPurchase() {
                     border-radius: 4px;
                     cursor: pointer;
                     border: none;
-                    transition: transform 0.15s, opacity 0.15s;
+                    transition: transform 0.15s, opacity 0.15s, background 0.2s;
                 }
                 .btn:active { transform: translateY(1px); }
                 .btn-ghost {
@@ -506,41 +496,46 @@ export default function AddPurchase() {
                 }
                 .btn-ghost:hover { border-color: var(--ink-soft); color: var(--ink); }
                 .btn-primary {
-                    background: var(--rust);
-                    color: #fbf3e8;
+                    background: var(--brass);
+                    color: var(--forest-deep);
                     letter-spacing: 0.3px;
                 }
-                .btn-primary:hover:not(:disabled) { background: var(--rust-deep); }
+                .btn-primary:hover:not(:disabled) { background: var(--brass-light); }
                 .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
 
                 @media (max-width: 720px) {
-                    .grn-card { padding: 32px 24px 32px 54px; }
+                    .sic-card { padding: 50px 24px 32px; }
                     .field-grid { grid-template-columns: 1fr; }
                     .totals-panel { grid-template-columns: 1fr; }
-                    .grn-header { flex-direction: column; }
-                    .stamp { display: none; }
+                    .sic-header { flex-direction: column; align-items: flex-start; }
+                    .seal { display: none; }
+                    .brass-tab { display: none; }
                 }
             `}</style>
 
-            <div className="grn-card">
-                <div className="staple-margin">
-                    <span className="staple" style={{ top: 46 }} />
-                    <span className="staple" style={{ top: "50%", marginTop: -6 }} />
-                    <span className="staple" style={{ bottom: 46 }} />
+            <div className="sic-card">
+                <div className="ring-strip">
+                    {holes.map((_, i) => (
+                        <span className="ring-hole" key={i} />
+                    ))}
                 </div>
 
+                <div className="brass-tab">CARD {cardNumber}</div>
+
                 {form.supplier_id && (
-                    <div className="stamp">GOODS<br />RECEIVED<br />✓ {today}</div>
+                    <div className="seal">
+                        <span>STOCK<br />IN</span>
+                    </div>
                 )}
 
-                <div className="grn-header">
+                <div className="sic-header">
                     <div>
-                        <p className="grn-eyebrow">Stock Intake · Godown Copy</p>
-                        <h2 className="grn-title">Goods Received Note</h2>
+                        <p className="sic-eyebrow">Godown · Intake Register</p>
+                        <h2 className="sic-title">Stock Intake Card</h2>
                     </div>
-                    <div className="grn-meta">
-                        GRN No. <b>{grnNumber}</b><br />
-                        Date &nbsp;&nbsp;&nbsp;&nbsp;<b>{today}</b><br />
+                    <div className="sic-meta">
+                        Card No. <b>{cardNumber}</b><br />
+                        Date &nbsp;&nbsp;&nbsp;<b>{today}</b><br />
                         Supplier <b>{selectedSupplier ? selectedSupplier.supplier_name : "—"}</b>
                     </div>
                 </div>
@@ -649,7 +644,11 @@ export default function AddPurchase() {
                     + Add Product Line
                 </button>
 
-                <div className="tear-divider"><span>✂ carbon copy · office totals below</span></div>
+                <div className="tally-divider">
+                    <span className="rule" />
+                    <span className="diamond" />
+                    <span className="rule" />
+                </div>
 
                 <div className="totals-panel">
                     <div className="field" style={{ marginBottom: 0 }}>
@@ -676,12 +675,10 @@ export default function AddPurchase() {
                             placeholder="0.00"
                         />
                     </div>
-                    <div className="grand-stamp">
+                    <div className="grand-card">
                         <div className="amount-label">Grand Total</div>
                         <div className="grand-value">₹{grandTotal.toFixed(2)}</div>
-                        <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: "var(--ink-soft)", marginTop: 4 }}>
-                            Subtotal ₹{subtotal.toFixed(2)}
-                        </div>
+                        <div className="sub-value">Subtotal ₹{subtotal.toFixed(2)}</div>
                     </div>
                 </div>
 
