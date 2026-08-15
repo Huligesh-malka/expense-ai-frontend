@@ -21,7 +21,8 @@ import {
   FiCheckCircle,
   FiXCircle,
   FiX,
-  FiDownload
+  FiDownload,
+  FiPrinter
 } from "react-icons/fi";
 
 /* ============================================================
@@ -467,7 +468,7 @@ const GLOBAL_STYLES = `
   .vs-ledger-table {
     width: 100%;
     border-collapse: collapse;
-    min-width: 980px;
+    min-width: 1100px;
   }
   .vs-ledger-table thead th {
     text-align: left;
@@ -514,6 +515,20 @@ const GLOBAL_STYLES = `
     cursor: pointer;
     font-size: 12px;
     font-weight: 600;
+  }
+  .vs-btn-receipt {
+    border: none;
+    background: var(--indigo);
+    color: #fff;
+    padding: 7px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .vs-btn-receipt:hover {
+    opacity: 0.9;
   }
 
   .vs-empty {
@@ -722,6 +737,146 @@ const GLOBAL_STYLES = `
     margin: 0 auto 16px;
   }
   @keyframes vs-spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }
+
+  /* Receipt Detail Modal Styles */
+  .vs-receipt-detail {
+    background: var(--card);
+    width: 100%;
+    max-width: 700px;
+    border-radius: 10px;
+    padding: 30px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 24px 60px rgba(0,0,0,.28);
+    position: relative;
+  }
+  .vs-receipt-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid var(--rule);
+  }
+  .vs-receipt-header h2 {
+    font-family: 'Rozha One', serif;
+    margin: 0;
+    color: var(--ink);
+  }
+  .vs-receipt-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 20px;
+  }
+  .vs-receipt-field {
+    padding: 8px 0;
+  }
+  .vs-receipt-field label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 2px;
+  }
+  .vs-receipt-field .value {
+    font-size: 14px;
+    color: var(--ink);
+    font-family: 'JetBrains Mono', monospace;
+    word-break: break-word;
+  }
+  .vs-receipt-field .value.amount {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--green);
+  }
+  .vs-receipt-field .value.amount-due {
+    color: var(--red);
+  }
+  .vs-receipt-words {
+    background: var(--paper);
+    padding: 12px 15px;
+    border-radius: 8px;
+    border-left: 3px solid var(--brass);
+    margin: 15px 0;
+    font-style: italic;
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+  .vs-receipt-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid var(--rule);
+  }
+  .vs-btn-print {
+    border: none;
+    background: var(--brass);
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .vs-btn-print:hover {
+    opacity: 0.9;
+  }
+  .vs-receipt-payments-list {
+    margin-top: 20px;
+    border-top: 1px solid var(--rule);
+    padding-top: 15px;
+  }
+  .vs-receipt-payments-list h4 {
+    font-family: 'Rozha One', serif;
+    margin: 0 0 12px 0;
+    color: var(--ink-soft);
+  }
+  .vs-receipt-payment-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px dotted var(--rule);
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .vs-receipt-payment-item:hover {
+    background: rgba(216,196,120,.08);
+  }
+  .vs-receipt-payment-item.active {
+    background: rgba(216,196,120,.15);
+    border-left: 3px solid var(--brass);
+    padding-left: 10px;
+  }
+  .vs-receipt-payment-item .payment-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .vs-receipt-payment-item .payment-info .method {
+    font-weight: 600;
+    font-size: 13px;
+  }
+  .vs-receipt-payment-item .payment-info .date {
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .vs-receipt-payment-item .payment-amount {
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--green);
+  }
+  .vs-receipt-payment-item .payment-amount.due {
+    color: var(--red);
+  }
 `;
 
 export default function ViewSupplier() {
@@ -745,6 +900,11 @@ export default function ViewSupplier() {
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [historyPurchase, setHistoryPurchase] = useState(null);
   const [historyLoading, setHistoryLoading] = useState(false);
+
+  // New states for receipt detail view
+  const [showReceiptDetail, setShowReceiptDetail] = useState(false);
+  const [selectedReceipt, setSelectedReceipt] = useState(null);
+  const [receiptPayments, setReceiptPayments] = useState([]);
 
   const [themeKey, setThemeKey] = useState(() => {
     try {
@@ -856,13 +1016,48 @@ export default function ViewSupplier() {
     }
   };
 
+  // New function to open receipt detail view
+  const openReceiptDetail = async (purchase) => {
+    try {
+      setHistoryPurchase(purchase);
+      setHistoryLoading(true);
+
+      const res = await API.get(`/purchases/${purchase.id}/payments`);
+      const payments = res.data.data || [];
+      setReceiptPayments(payments);
+      
+      // Select the first payment or latest payment
+      if (payments.length > 0) {
+        // Sort by date descending to show latest first
+        const sorted = [...payments].sort(
+          (a, b) => new Date(b.payment_date) - new Date(a.payment_date)
+        );
+        setSelectedReceipt(sorted[0]);
+      } else {
+        setSelectedReceipt(null);
+      }
+      
+      setShowReceiptDetail(true);
+    } catch (err) {
+      console.log(err);
+      alert(err.response?.data?.message || "Failed to load payment receipts");
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  // Function to select a specific receipt
+  const selectReceipt = (payment) => {
+    setSelectedReceipt(payment);
+  };
+
   // Running balance as of a given payment — sorts the loaded payment
   // history chronologically and sums everything up to (and including)
   // this entry, so historical receipts show the balance as it stood
   // at that moment rather than today's live due_amount.
   const runningBalance = (payment) => {
     const total = Number(historyPurchase?.total_amount || 0);
-    const sorted = [...paymentHistory].sort(
+    const sorted = [...receiptPayments].sort(
       (a, b) => new Date(a.payment_date) - new Date(b.payment_date)
     );
     const idx = sorted.findIndex((p) => p.id === payment.id);
@@ -872,6 +1067,31 @@ export default function ViewSupplier() {
       .reduce((sum, p) => sum + Number(p.amount || 0), 0);
     const remaining = Math.max(total - paidSoFar, 0);
     return { total, paidSoFar, remaining };
+  };
+
+  // Function to get receipt details for display
+  const getReceiptDisplayData = (payment) => {
+    if (!historyPurchase || !payment) return null;
+    
+    const { total, paidSoFar, remaining } = runningBalance(payment);
+    
+    return {
+      receiptNo: `PAY-${String(payment.id || Date.now()).slice(-6)}`,
+      date: formatDate(payment.payment_date),
+      vendorName: supplier?.company_name || supplier?.supplier_name || "-",
+      contactPerson: supplier?.supplier_name || "-",
+      gstin: supplier?.gst_number || "-",
+      invoiceNo: historyPurchase.invoice_no,
+      totalAmount: total,
+      paidSoFar: paidSoFar,
+      remaining: remaining,
+      paymentAmount: Number(payment.amount || 0),
+      paymentMethod: payment.payment_method || "-",
+      referenceNo: payment.reference_no || "-",
+      notes: payment.notes || "-",
+      amountWords: rupeesInWords(Number(payment.amount || 0)),
+      status: remaining <= 0 ? "Paid" : (paidSoFar > 0 ? "Partial" : "Unpaid")
+    };
   };
 
   const downloadReceipt = (payment) => {
@@ -1243,7 +1463,7 @@ export default function ViewSupplier() {
                     <th>Paid</th>
                     <th>Balance</th>
                     <th>Status</th>
-                    <th>Action</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1282,6 +1502,13 @@ export default function ViewSupplier() {
                             )}
                             <button className="vs-btn-history" onClick={() => openPaymentHistory(purchase)}>
                               History
+                            </button>
+                            <button 
+                              className="vs-btn-receipt" 
+                              onClick={() => openReceiptDetail(purchase)}
+                            >
+                              <FiPrinter size={12} style={{ marginRight: 4 }} />
+                              Receipts
                             </button>
                           </div>
                         </td>
@@ -1471,6 +1698,184 @@ export default function ViewSupplier() {
             >
               Close
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Receipt Detail Modal - Shows all receipts for an invoice with separate columns */}
+      {showReceiptDetail && historyPurchase && (
+        <div className="vs-overlay">
+          <div className="vs-receipt-detail">
+            <div className="vs-receipt-header">
+              <div>
+                <h2>Receipts for Invoice</h2>
+                <div className="vs-mono" style={{ color: "var(--muted)", fontSize: 14 }}>
+                  {historyPurchase.invoice_no}
+                </div>
+              </div>
+              <button className="vs-passbook-close" onClick={() => setShowReceiptDetail(false)}>
+                <FiX />
+              </button>
+            </div>
+
+            {historyLoading ? (
+              <div className="vs-empty">Loading receipts…</div>
+            ) : receiptPayments.length === 0 ? (
+              <div className="vs-empty">No receipts found for this invoice.</div>
+            ) : (
+              <>
+                {/* Receipt Payments List - Separate columns */}
+                <div className="vs-receipt-payments-list">
+                  <h4>All Receipts ({receiptPayments.length})</h4>
+                  {receiptPayments.map((payment) => {
+                    const { total, remaining } = runningBalance(payment);
+                    const isActive = selectedReceipt?.id === payment.id;
+                    return (
+                      <div 
+                        key={payment.id} 
+                        className={`vs-receipt-payment-item ${isActive ? 'active' : ''}`}
+                        onClick={() => selectReceipt(payment)}
+                      >
+                        <div className="payment-info">
+                          <span className="method">{payment.payment_method}</span>
+                          <span className="date">{formatDate(payment.payment_date)}</span>
+                          {payment.reference_no && (
+                            <span style={{ fontSize: 11, color: "var(--muted)" }}>
+                              Ref: {payment.reference_no}
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ textAlign: "right" }}>
+                          <div className="payment-amount">₹{Number(payment.amount).toFixed(2)}</div>
+                          <div className="vs-bal">Bal: ₹{remaining.toFixed(2)}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Selected Receipt Detail */}
+                {selectedReceipt && (
+                  <>
+                    <div style={{ 
+                      marginTop: 20, 
+                      paddingTop: 20, 
+                      borderTop: "2px solid var(--rule)" 
+                    }}>
+                      <h3 style={{ fontFamily: "'Rozha One', serif", marginBottom: 15 }}>
+                        Receipt Details
+                      </h3>
+                      
+                      <div className="vs-receipt-grid">
+                        <div className="vs-receipt-field">
+                          <label>Receipt No.</label>
+                          <div className="value">PAY-{String(selectedReceipt.id).slice(-6)}</div>
+                        </div>
+                        <div className="vs-receipt-field">
+                          <label>Date</label>
+                          <div className="value">{formatDate(selectedReceipt.payment_date)}</div>
+                        </div>
+                        <div className="vs-receipt-field">
+                          <label>Vendor</label>
+                          <div className="value">{supplier?.company_name || supplier?.supplier_name}</div>
+                        </div>
+                        <div className="vs-receipt-field">
+                          <label>Invoice No.</label>
+                          <div className="value">{historyPurchase.invoice_no}</div>
+                        </div>
+                        <div className="vs-receipt-field">
+                          <label>Payment Method</label>
+                          <div className="value">{selectedReceipt.payment_method}</div>
+                        </div>
+                        <div className="vs-receipt-field">
+                          <label>Reference No.</label>
+                          <div className="value">{selectedReceipt.reference_no || "-"}</div>
+                        </div>
+                        <div className="vs-receipt-field">
+                          <label>Amount Paid</label>
+                          <div className="value amount">₹{Number(selectedReceipt.amount).toFixed(2)}</div>
+                        </div>
+                        <div className="vs-receipt-field">
+                          <label>Status</label>
+                          <div className="value">
+                            <span className={`vs-stamp ${stampVariant(
+                              runningBalance(selectedReceipt).remaining <= 0 ? "Paid" : 
+                              (runningBalance(selectedReceipt).paidSoFar > 0 ? "Partial" : "Unpaid")
+                            )}`}>
+                              {runningBalance(selectedReceipt).remaining <= 0 ? "Fully Paid" : 
+                               "Partial"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Summary */}
+                      <div style={{ 
+                        display: "grid", 
+                        gridTemplateColumns: "1fr 1fr 1fr", 
+                        gap: 15,
+                        background: "var(--paper)",
+                        padding: 15,
+                        borderRadius: 8,
+                        marginTop: 10
+                      }}>
+                        <div>
+                          <div style={{ fontSize: 11, color: "var(--muted)" }}>Total Invoice</div>
+                          <div style={{ fontSize: 16, fontWeight: 700 }}>₹{runningBalance(selectedReceipt).total.toFixed(2)}</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 11, color: "var(--muted)" }}>Total Paid</div>
+                          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--green)" }}>
+                            ₹{runningBalance(selectedReceipt).paidSoFar.toFixed(2)}
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 11, color: "var(--muted)" }}>Balance</div>
+                          <div style={{ fontSize: 16, fontWeight: 700, color: "var(--red)" }}>
+                            ₹{runningBalance(selectedReceipt).remaining.toFixed(2)}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Amount in Words */}
+                      <div className="vs-receipt-words">
+                        <strong>Amount in Words: </strong>
+                        {rupeesInWords(Number(selectedReceipt.amount))}
+                      </div>
+
+                      {selectedReceipt.notes && (
+                        <div style={{ 
+                          marginTop: 10, 
+                          padding: 10, 
+                          background: "#FBF6E6",
+                          borderRadius: 6,
+                          fontSize: 13
+                        }}>
+                          <strong>Notes: </strong>{selectedReceipt.notes}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="vs-receipt-actions">
+                      <button 
+                        className="vs-btn-cancel" 
+                        onClick={() => setShowReceiptDetail(false)}
+                      >
+                        Close
+                      </button>
+                      <button 
+                        className="vs-btn-download" 
+                        onClick={() => downloadReceipt(selectedReceipt)}
+                        style={{ fontSize: 13, padding: "10px 18px" }}
+                      >
+                        <FiDownload size={14} /> Download PDF
+                      </button>
+                    </div>
+                  </>
+                )}
+              </>
+            )}
           </div>
         </div>
       )}
