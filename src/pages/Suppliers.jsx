@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import API from "../services/api"; // Use centralized API service
+import API from "../services/api";
 import {
   FiPlus,
   FiSearch,
@@ -9,7 +9,11 @@ import {
   FiEye,
   FiTruck,
   FiPhone,
-  FiMail
+  FiMail,
+  FiChevronLeft,
+  FiChevronRight,
+  FiChevronsLeft,
+  FiChevronsRight
 } from "react-icons/fi";
 
 export default function Suppliers() {
@@ -17,6 +21,11 @@ export default function Suppliers() {
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
 
   useEffect(() => {
     loadSuppliers();
@@ -26,9 +35,15 @@ export default function Suppliers() {
     try {
       const res = await API.get(`/suppliers?business_id=${businessId}`);
       setSuppliers(res.data.data || []);
+      setTotalItems(res.data.data?.length || 0);
     } catch (err) {
       console.error("Error loading suppliers:", err);
-      alert("Failed to load suppliers");
+      if (err.response?.status === 401) {
+        alert("Session expired. Please login again.");
+        window.location.href = "/login";
+      } else {
+        alert(err.response?.data?.message || "Failed to load suppliers");
+      }
     } finally {
       setLoading(false);
     }
@@ -36,7 +51,7 @@ export default function Suppliers() {
 
   const deleteSupplier = async (id) => {
     const ok = window.confirm(
-      "Are you sure you want to delete this supplier?"
+      "Are you sure you want to delete this supplier?\nThis action cannot be undone."
     );
     if (!ok) return;
 
@@ -48,32 +63,72 @@ export default function Suppliers() {
       console.error("Error deleting supplier:", err);
       alert(
         err.response?.data?.message ||
-        "Failed to delete supplier."
+        "Failed to delete supplier. Please try again."
       );
     }
   };
 
-  const filteredSuppliers = suppliers.filter((item) =>
-    item.supplier_name
-      ?.toLowerCase()
-      .includes(search.toLowerCase()) ||
+  // Filter suppliers based on search
+  const filteredSuppliers = suppliers.filter((item) => {
+    const searchLower = search.toLowerCase();
+    return (
+      (item.supplier_name || "")
+        ?.toLowerCase()
+        .includes(searchLower) ||
+      (item.company_name || "")
+        ?.toLowerCase()
+        .includes(searchLower) ||
+      (item.supplier_phone || "")
+        ?.includes(search) ||
+      (item.supplier_email || "")
+        ?.toLowerCase()
+        .includes(searchLower)
+    );
+  });
 
-    (item.company_name || "")
-      ?.toLowerCase()
-      .includes(search.toLowerCase()) ||
+  // Pagination logic
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredSuppliers.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredSuppliers.length / itemsPerPage);
 
-    (item.supplier_phone || "")
-      ?.includes(search)
-  );
+  const paginate = (pageNumber) => {
+    if (pageNumber >= 1 && pageNumber <= totalPages) {
+      setCurrentPage(pageNumber);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
 
   // Get status color
   const getStatusColor = (status) => {
     const statusColors = {
       'active': '#22c55e',
       'inactive': '#ef4444',
-      'pending': '#f59e0b'
+      'pending': '#f59e0b',
+      'suspended': '#8b5cf6',
+      'blacklisted': '#dc2626'
     };
     return statusColors[status?.toLowerCase()] || '#6b7280';
+  };
+
+  // Get status label
+  const getStatusLabel = (status) => {
+    return status || "Active";
+  };
+
+  // Format date helper
+  const formatDate = (dateString) => {
+    if (!dateString) return "-";
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      });
+    } catch {
+      return "-";
+    }
   };
 
   if (loading) {
@@ -91,7 +146,9 @@ export default function Suppliers() {
       <div style={styles.header}>
         <div>
           <h1 style={styles.title}>Suppliers</h1>
-          <p style={styles.subtitle}>Manage all suppliers</p>
+          <p style={styles.subtitle}>
+            Manage all suppliers • {totalItems} total
+          </p>
         </div>
         <Link to="/add-supplier" style={styles.primaryButton}>
           <FiPlus size={18} />
@@ -99,21 +156,40 @@ export default function Suppliers() {
         </Link>
       </div>
 
-      {/* Search */}
+      {/* Search and Filter Section */}
       <div style={styles.searchSection}>
         <div style={styles.searchWrapper}>
           <FiSearch size={18} color="#9ca3af" style={styles.searchIcon} />
           <input
             type="text"
-            placeholder="Search by supplier name, company or phone..."
+            placeholder="Search by supplier name, company, phone or email..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setCurrentPage(1); // Reset to first page on search
+            }}
             style={styles.searchInput}
+            aria-label="Search suppliers"
           />
+          {search && (
+            <button
+              onClick={() => {
+                setSearch("");
+                setCurrentPage(1);
+              }}
+              style={styles.clearButton}
+              aria-label="Clear search"
+            >
+              ✕
+            </button>
+          )}
         </div>
-        <span style={styles.resultCount}>
-          {filteredSuppliers.length} supplier{filteredSuppliers.length !== 1 ? "s" : ""}
-        </span>
+        <div style={styles.statsContainer}>
+          <span style={styles.resultCount}>
+            {filteredSuppliers.length} supplier{filteredSuppliers.length !== 1 ? "s" : ""}
+            {search && ` (filtered from ${totalItems})`}
+          </span>
+        </div>
       </div>
 
       {/* Table */}
@@ -122,17 +198,18 @@ export default function Suppliers() {
           <thead>
             <tr>
               <th style={styles.th}>Supplier</th>
-              <th style={styles.th}>Phone</th>
+              <th style={styles.th}>Contact</th>
               <th style={styles.th}>Email</th>
               <th style={styles.th}>Opening Balance</th>
               <th style={styles.th}>Status</th>
-              <th style={{...styles.th, textAlign: "center"}}>Action</th>
+              <th style={styles.th}>Added</th>
+              <th style={{...styles.th, textAlign: "center"}}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {filteredSuppliers.length === 0 && (
+            {currentItems.length === 0 ? (
               <tr>
-                <td colSpan="6" style={styles.emptyState}>
+                <td colSpan="7" style={styles.emptyState}>
                   <div style={styles.emptyIcon}>📦</div>
                   <p style={styles.emptyText}>
                     {search ? "No matching suppliers found" : "No suppliers added yet"}
@@ -144,72 +221,153 @@ export default function Suppliers() {
                   )}
                 </td>
               </tr>
+            ) : (
+              currentItems.map((supplier) => (
+                <tr key={supplier.id} style={styles.tableRow}>
+                  <td>
+                    <div style={styles.supplierCell}>
+                      <div style={styles.supplierAvatar}>
+                        <FiTruck size={20} color="#3b82f6" />
+                      </div>
+                      <div>
+                        <div style={styles.supplierName}>
+                          {supplier.supplier_name || "Unnamed"}
+                        </div>
+                        <div style={styles.companyName}>
+                          {supplier.company_name || "No company"}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div style={styles.contactCell}>
+                      <FiPhone size={14} color="#94a3b8" />
+                      <span>{supplier.supplier_phone || "-"}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <div style={styles.contactCell}>
+                      <FiMail size={14} color="#94a3b8" />
+                      <span style={styles.emailText}>
+                        {supplier.supplier_email || "-"}
+                      </span>
+                    </div>
+                  </td>
+                  <td>
+                    <span style={styles.balance}>
+                      ₹{Number(supplier.opening_balance || 0).toFixed(2)}
+                    </span>
+                  </td>
+                  <td>
+                    <span style={{
+                      ...styles.statusBadge,
+                      background: getStatusColor(supplier.status),
+                      color: "#fff"
+                    }}>
+                      {getStatusLabel(supplier.status)}
+                    </span>
+                  </td>
+                  <td style={styles.dateCell}>
+                    {formatDate(supplier.created_at)}
+                  </td>
+                  <td>
+                    <div style={styles.actionButtons}>
+                      <Link 
+                        to={`/supplier/${supplier.id}`} 
+                        style={styles.viewButton} 
+                        title="View Supplier Details"
+                        aria-label={`View ${supplier.supplier_name}`}
+                      >
+                        <FiEye size={14} />
+                      </Link>
+                      <Link 
+                        to={`/edit-supplier/${supplier.id}`} 
+                        style={styles.editButton} 
+                        title="Edit Supplier"
+                        aria-label={`Edit ${supplier.supplier_name}`}
+                      >
+                        <FiEdit size={14} />
+                      </Link>
+                      <button
+                        onClick={() => deleteSupplier(supplier.id)}
+                        style={styles.deleteButton}
+                        title="Delete Supplier"
+                        aria-label={`Delete ${supplier.supplier_name}`}
+                      >
+                        <FiTrash2 size={14} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
             )}
-            {filteredSuppliers.map((supplier) => (
-              <tr key={supplier.id} style={styles.tableRow}>
-                <td>
-                  <div style={styles.supplierCell}>
-                    <div style={styles.supplierAvatar}>
-                      <FiTruck size={20} color="#3b82f6" />
-                    </div>
-                    <div>
-                      <div style={styles.supplierName}>
-                        {supplier.supplier_name}
-                      </div>
-                      <div style={styles.companyName}>
-                        {supplier.company_name || "-"}
-                      </div>
-                    </div>
-                  </div>
-                </td>
-                <td>
-                  <div style={styles.contactCell}>
-                    <FiPhone size={14} color="#94a3b8" />
-                    {supplier.supplier_phone || "-"}
-                  </div>
-                </td>
-                <td>
-                  <div style={styles.contactCell}>
-                    <FiMail size={14} color="#94a3b8" />
-                    {supplier.supplier_email || "-"}
-                  </div>
-                </td>
-                <td>
-                  <span style={styles.balance}>
-                    ₹{Number(supplier.opening_balance || 0).toFixed(2)}
-                  </span>
-                </td>
-                <td>
-                  <span style={{
-                    ...styles.statusBadge,
-                    background: getStatusColor(supplier.status),
-                    color: "#fff"
-                  }}>
-                    {supplier.status || "Active"}
-                  </span>
-                </td>
-                <td>
-                  <div style={styles.actionButtons}>
-                    <Link to={`/supplier/${supplier.id}`} style={styles.viewButton} title="View Supplier">
-                      <FiEye size={14} />
-                    </Link>
-                    <Link to={`/edit-supplier/${supplier.id}`} style={styles.editButton} title="Edit Supplier">
-                      <FiEdit size={14} />
-                    </Link>
-                    <button
-                      onClick={() => deleteSupplier(supplier.id)}
-                      style={styles.deleteButton}
-                      title="Delete Supplier"
-                    >
-                      <FiTrash2 size={14} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
           </tbody>
         </table>
       </div>
+
+      {/* Pagination */}
+      {filteredSuppliers.length > 0 && (
+        <div style={styles.paginationContainer}>
+          <div style={styles.paginationInfo}>
+            Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredSuppliers.length)} of {filteredSuppliers.length} suppliers
+          </div>
+          <div style={styles.paginationControls}>
+            <button
+              onClick={() => paginate(1)}
+              disabled={currentPage === 1}
+              style={{
+                ...styles.paginationButton,
+                opacity: currentPage === 1 ? 0.5 : 1,
+                cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
+              }}
+              aria-label="First page"
+            >
+              <FiChevronsLeft size={16} />
+            </button>
+            <button
+              onClick={() => paginate(currentPage - 1)}
+              disabled={currentPage === 1}
+              style={{
+                ...styles.paginationButton,
+                opacity: currentPage === 1 ? 0.5 : 1,
+                cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
+              }}
+              aria-label="Previous page"
+            >
+              <FiChevronLeft size={16} />
+            </button>
+            
+            <span style={styles.pageInfo}>
+              Page {currentPage} of {totalPages}
+            </span>
+
+            <button
+              onClick={() => paginate(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              style={{
+                ...styles.paginationButton,
+                opacity: currentPage === totalPages ? 0.5 : 1,
+                cursor: currentPage === totalPages ? 'not-allowed' : 'pointer'
+              }}
+              aria-label="Next page"
+            >
+              <FiChevronRight size={16} />
+            </button>
+            <button
+              onClick={() => paginate(totalPages)}
+              disabled={currentPage === totalPages}
+              style={{
+                ...styles.paginationButton,
+                opacity: currentPage === totalPages ? 0.5 : 1,
+                cursor: currentPage === totalPages ? 'not-allowed' : 'pointer'
+              }}
+              aria-label="Last page"
+            >
+              <FiChevronsRight size={16} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -258,7 +416,12 @@ const styles = {
     transition: "all 0.2s",
     border: "none",
     cursor: "pointer",
-    boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)"
+    boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)",
+    ':hover': {
+      background: "#2563eb",
+      transform: "translateY(-2px)",
+      boxShadow: "0 6px 16px rgba(59, 130, 246, 0.4)"
+    }
   },
   searchSection: {
     display: "flex",
@@ -280,10 +443,12 @@ const styles = {
     padding: "0 12px",
     flex: 1,
     minWidth: "200px",
-    transition: "all 0.2s"
+    transition: "all 0.2s",
+    position: "relative"
   },
   searchIcon: {
-    marginRight: "8px"
+    marginRight: "8px",
+    flexShrink: 0
   },
   searchInput: {
     border: "none",
@@ -293,6 +458,25 @@ const styles = {
     outline: "none",
     width: "100%",
     color: "#0f172a"
+  },
+  clearButton: {
+    background: "none",
+    border: "none",
+    color: "#94a3b8",
+    cursor: "pointer",
+    padding: "4px 8px",
+    fontSize: "14px",
+    borderRadius: "4px",
+    transition: "all 0.2s",
+    ':hover': {
+      background: "#e2e8f0",
+      color: "#475569"
+    }
+  },
+  statsContainer: {
+    display: "flex",
+    alignItems: "center",
+    gap: "12px"
   },
   resultCount: {
     fontSize: "14px",
@@ -311,7 +495,7 @@ const styles = {
     width: "100%",
     borderCollapse: "collapse",
     fontSize: "14px",
-    minWidth: "800px"
+    minWidth: "1000px"
   },
   th: {
     padding: "16px 20px",
@@ -326,7 +510,10 @@ const styles = {
   },
   tableRow: {
     borderBottom: "1px solid #f1f5f9",
-    transition: "background 0.15s"
+    transition: "background 0.15s",
+    ':hover': {
+      background: "#f8fafc"
+    }
   },
   supplierCell: {
     display: "flex",
@@ -357,6 +544,10 @@ const styles = {
     gap: "8px",
     color: "#0f172a"
   },
+  emailText: {
+    color: "#0f172a",
+    wordBreak: "break-all"
+  },
   balance: {
     fontWeight: "600",
     color: "#0f172a"
@@ -368,6 +559,10 @@ const styles = {
     fontSize: "12px",
     fontWeight: "600",
     textTransform: "capitalize"
+  },
+  dateCell: {
+    color: "#64748b",
+    fontSize: "13px"
   },
   actionButtons: {
     display: "flex",
@@ -385,7 +580,11 @@ const styles = {
     borderRadius: "6px",
     transition: "all 0.2s",
     border: "none",
-    cursor: "pointer"
+    cursor: "pointer",
+    ':hover': {
+      background: "#059669",
+      transform: "scale(1.05)"
+    }
   },
   editButton: {
     display: "flex",
@@ -398,7 +597,11 @@ const styles = {
     borderRadius: "6px",
     transition: "all 0.2s",
     border: "none",
-    cursor: "pointer"
+    cursor: "pointer",
+    ':hover': {
+      background: "#d97706",
+      transform: "scale(1.05)"
+    }
   },
   deleteButton: {
     display: "flex",
@@ -410,7 +613,11 @@ const styles = {
     border: "none",
     borderRadius: "6px",
     cursor: "pointer",
-    transition: "all 0.2s"
+    transition: "all 0.2s",
+    ':hover': {
+      background: "#fecaca",
+      transform: "scale(1.05)"
+    }
   },
   loadingContainer: {
     display: "flex",
@@ -457,16 +664,87 @@ const styles = {
     textDecoration: "none",
     borderRadius: "8px",
     fontWeight: "500",
-    transition: "all 0.2s"
+    transition: "all 0.2s",
+    ':hover': {
+      background: "#2563eb",
+      transform: "translateY(-2px)"
+    }
+  },
+  paginationContainer: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: "20px",
+    padding: "16px 20px",
+    background: "#fff",
+    borderRadius: "12px",
+    border: "1px solid #e2e8f0",
+    flexWrap: "wrap",
+    gap: "12px"
+  },
+  paginationInfo: {
+    fontSize: "14px",
+    color: "#64748b"
+  },
+  paginationControls: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px"
+  },
+  paginationButton: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "6px 10px",
+    border: "1px solid #e2e8f0",
+    borderRadius: "6px",
+    background: "#fff",
+    color: "#475569",
+    cursor: "pointer",
+    transition: "all 0.2s",
+    ':hover': {
+      background: "#f1f5f9",
+      borderColor: "#94a3b8"
+    },
+    ':disabled': {
+      opacity: 0.5,
+      cursor: "not-allowed"
+    }
+  },
+  pageInfo: {
+    fontSize: "14px",
+    fontWeight: "500",
+    color: "#0f172a",
+    padding: "0 12px"
   }
 };
 
 // Add keyframe animation
-const styleSheet = document.createElement("style");
-styleSheet.textContent = `
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-`;
-document.head.appendChild(styleSheet);
+if (typeof document !== 'undefined') {
+  const styleSheet = document.createElement("style");
+  styleSheet.textContent = `
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .supplier-row:hover {
+      background-color: #f8fafc !important;
+    }
+    
+    .action-button:hover {
+      transform: scale(1.05);
+    }
+    
+    @media (max-width: 640px) {
+      .pagination-container {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .pagination-controls {
+        justify-content: center;
+      }
+    }
+  `;
+  document.head.appendChild(styleSheet);
+}
