@@ -63,6 +63,11 @@ export default function BillingPOS() {
   const [quantity, setQuantity] = useState(1);
   const [selectedUnit, setSelectedUnit] = useState("pcs");
 
+  // Manual quantity states (for the new manual input feature)
+  const [manualQuantity, setManualQuantity] = useState(1);
+  const [manualUnit, setManualUnit] = useState("pcs");
+  const [manualSelectedProduct, setManualSelectedProduct] = useState(null);
+
   // Current time
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -141,6 +146,112 @@ export default function BillingPOS() {
       return () => clearTimeout(t);
     }
   }, [saleComplete]);
+
+  // Get supported units based on price unit
+  const getSupportedUnits = (priceUnit) => {
+    const unitMap = {
+      pcs: ["pcs"],
+      g: ["g", "kg"],
+      kg: ["g", "kg"],
+      ml: ["ml", "l"],
+      l: ["ml", "l"],
+      pack: ["pack"],
+      box: ["box"],
+      bottle: ["bottle"],
+      dozen: ["pcs", "dozen"],
+      meter: ["meter", "feet"],
+      feet: ["meter", "feet"],
+    };
+    return unitMap[priceUnit] || ["pcs"];
+  };
+
+  // Convert quantity to price unit
+  const convertToPriceUnit = (quantity, fromUnit, priceUnit) => {
+    if (fromUnit === priceUnit) return Number(quantity);
+
+    if (priceUnit === "kg" && fromUnit === "g") {
+      return Number(quantity) / 1000;
+    }
+
+    if (priceUnit === "g" && fromUnit === "kg") {
+      return Number(quantity) * 1000;
+    }
+
+    if (priceUnit === "l" && fromUnit === "ml") {
+      return Number(quantity) / 1000;
+    }
+
+    if (priceUnit === "ml" && fromUnit === "l") {
+      return Number(quantity) * 1000;
+    }
+
+    if (priceUnit === "dozen" && fromUnit === "pcs") {
+      return Number(quantity) / 12;
+    }
+
+    if (priceUnit === "pcs" && fromUnit === "dozen") {
+      return Number(quantity) * 12;
+    }
+
+    if (priceUnit === "meter" && fromUnit === "feet") {
+      return Number(quantity) * 0.3048;
+    }
+
+    if (priceUnit === "feet" && fromUnit === "meter") {
+      return Number(quantity) / 0.3048;
+    }
+
+    return Number(quantity);
+  };
+
+  // Calculate manual price
+  const calculateManualPrice = () => {
+    if (!manualSelectedProduct || !manualQuantity) return 0;
+
+    const convertedQuantity = convertToPriceUnit(
+      manualQuantity,
+      manualUnit,
+      manualSelectedProduct.price_unit
+    );
+
+    return convertedQuantity * Number(manualSelectedProduct.price_per);
+  };
+
+  // Add manual product to cart
+  const addManualProductToCart = () => {
+    if (!manualSelectedProduct) return;
+
+    const quantity = Number(manualQuantity);
+
+    if (!quantity || quantity <= 0) {
+      alert("Enter a valid quantity");
+      return;
+    }
+
+    const convertedQuantity = convertToPriceUnit(
+      quantity,
+      manualUnit,
+      manualSelectedProduct.price_unit
+    );
+
+    const totalPrice = convertedQuantity * Number(manualSelectedProduct.price_per);
+
+    const cartItem = {
+      ...manualSelectedProduct,
+      quantity: convertedQuantity,
+      displayQuantity: quantity,
+      displayUnit: manualUnit,
+      price: Number(manualSelectedProduct.price_per),
+      total: Number(totalPrice.toFixed(2)),
+    };
+
+    setCart((prevCart) => [...prevCart, cartItem]);
+
+    // Reset
+    setManualQuantity(1);
+    setManualUnit(manualSelectedProduct.price_unit);
+    setManualSelectedProduct(null);
+  };
 
   // Get compatible units based on product's base unit
   const getCompatibleUnits = (priceUnit) => {
@@ -260,7 +371,7 @@ export default function BillingPOS() {
     generateInvoiceNo();
     extractCategories();
     loadDashboard();
-    loadBusinessProfile(); // Load business name
+    loadBusinessProfile();
   }, []);
 
   const generateInvoiceNo = () => {
@@ -279,7 +390,6 @@ export default function BillingPOS() {
   };
 
   const extractCategories = () => {
-    // Extract unique categories from products (you may need to adjust based on your data structure)
     const uniqueCategories = ["All", "Grocery", "Medical", "Drinks", "Snacks", "Other"];
     setCategories(uniqueCategories);
   };
@@ -328,22 +438,10 @@ export default function BillingPOS() {
           item.unit === unit
             ? {
                 ...item,
-
-                quantity:
-                  item.quantity + 1,
-
-                convertedQuantity:
-                  item.convertedQuantity +
-                  priceData.convertedQuantity,
-
-                displayQuantity:
-                  item.displayQuantity +
-                  priceData.displayQuantity,
-
-                totalPrice:
-                  (item.convertedQuantity +
-                    priceData.convertedQuantity) *
-                  item.price_per_unit,
+                quantity: item.quantity + 1,
+                convertedQuantity: item.convertedQuantity + priceData.convertedQuantity,
+                displayQuantity: item.displayQuantity + priceData.displayQuantity,
+                totalPrice: (item.convertedQuantity + priceData.convertedQuantity) * item.price_per_unit,
               }
             : item
         );
@@ -351,34 +449,17 @@ export default function BillingPOS() {
 
       return [
         ...prevCart,
-
         {
           id: product.id,
-
-          product_name:
-            product.product_name,
-
-          price_per_unit:
-            priceData.pricePerUnit,
-
-          base_unit:
-            product.price_unit || "pcs",
-
+          product_name: product.product_name,
+          price_per_unit: priceData.pricePerUnit,
+          base_unit: product.price_unit || "pcs",
           quantity: 1,
-
           unit,
-
-          convertedQuantity:
-            priceData.convertedQuantity,
-
-          displayQuantity:
-            priceData.displayQuantity,
-
-          displayUnit:
-            priceData.displayUnit,
-
-          totalPrice:
-            priceData.total,
+          convertedQuantity: priceData.convertedQuantity,
+          displayQuantity: priceData.displayQuantity,
+          displayUnit: priceData.displayUnit,
+          totalPrice: priceData.total,
         },
       ];
     });
@@ -569,7 +650,7 @@ export default function BillingPOS() {
       setSaleComplete(true);
       setCart([]);
       loadProducts();
-      loadDashboard(); // Refresh dashboard data after sale
+      loadDashboard();
       generateInvoiceNo();
 
       setCustomerName("");
@@ -1984,6 +2065,96 @@ export default function BillingPOS() {
           color: #565C64;
         }
 
+        /* ============ MANUAL QUANTITY BOX ============ */
+        .manual-quantity-box {
+          background: var(--panel-dark-2);
+          border-radius: 12px;
+          padding: 16px;
+          margin: 12px 0;
+          border: 1px solid var(--charcoal-line);
+          color: var(--text-light);
+        }
+        .manual-quantity-box h3 {
+          font-family: 'Big Shoulders Display', sans-serif;
+          font-weight: 700;
+          font-size: 18px;
+          color: #fff;
+          margin: 0 0 4px 0;
+        }
+        .manual-quantity-box p {
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 12px;
+          color: var(--text-secondary);
+          margin: 0 0 12px 0;
+        }
+        .manual-quantity-box p b {
+          color: var(--gold);
+        }
+        .manual-quantity-box h2 {
+          font-family: 'Orbitron', sans-serif;
+          font-size: 28px;
+          font-weight: 700;
+          color: var(--gold);
+          text-shadow: 0 0 12px rgba(255,179,0,0.4);
+          margin: 10px 0;
+        }
+        .manual-quantity-box .manual-input-group {
+          display: flex;
+          gap: 10px;
+          align-items: center;
+        }
+        .manual-quantity-box .manual-input-group input {
+          flex: 1;
+          padding: 10px 12px;
+          border: 1.5px solid var(--charcoal-line);
+          background: var(--panel-dark);
+          border-radius: 8px;
+          color: var(--text-light);
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 15px;
+          outline: none;
+        }
+        .manual-quantity-box .manual-input-group input:focus {
+          border-color: var(--gold);
+        }
+        .manual-quantity-box .manual-input-group select {
+          padding: 10px 12px;
+          border: 1.5px solid var(--charcoal-line);
+          background: var(--panel-dark);
+          color: var(--text-light);
+          border-radius: 8px;
+          font-size: 13px;
+          outline: none;
+        }
+        .manual-quantity-box .manual-input-group select:focus {
+          border-color: var(--gold);
+        }
+        .manual-add-btn {
+          width: 100%;
+          padding: 12px;
+          margin-top: 12px;
+          background: linear-gradient(135deg, var(--gold), var(--brass-deep));
+          color: var(--text);
+          border: none;
+          border-radius: 8px;
+          font-weight: 800;
+          font-size: 14px;
+          cursor: pointer;
+          font-family: 'Manrope', sans-serif;
+        }
+        .manual-add-btn:hover {
+          filter: brightness(1.06);
+        }
+
+        /* Product clickable for manual mode */
+        .product-clickable {
+          cursor: pointer;
+        }
+        .product-clickable:hover .price-tag {
+          border-color: var(--gold);
+          box-shadow: 0 0 0 2px rgba(255,179,0,0.3);
+        }
+
         @media (max-width: 1100px) {
           .pos-layout { flex-direction: column; }
           .receipt-col { max-width: 100%; position: static; width: 100%; }
@@ -2107,7 +2278,17 @@ export default function BillingPOS() {
                 const pricePer = product.price_per || 1;
                 
                 return (
-                  <div key={product.id} className="price-tag">
+                  <div 
+                    key={product.id} 
+                    className={`price-tag ${scanMode === "ask" ? "product-clickable" : ""}`}
+                    onClick={() => {
+                      if (scanMode === "ask") {
+                        setManualSelectedProduct(product);
+                        setManualQuantity(1);
+                        setManualUnit(product.price_unit || "pcs");
+                      }
+                    }}
+                  >
                     <div className="tag-brass-strip" />
                     <div className="tag-body">
                       <div className="tag-name">{product.product_name}</div>
@@ -2127,7 +2308,8 @@ export default function BillingPOS() {
 
                       <button
                         className="tag-add-btn"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           if (scanMode === "quick") {
                             quickAddToCart(product);
                           } else {
@@ -2221,6 +2403,50 @@ export default function BillingPOS() {
                 )}
               </div>
 
+              {/* Manual Quantity Box - shown when a product is selected in ask mode */}
+              {manualSelectedProduct && (
+                <div className="manual-quantity-box">
+                  <h3>{manualSelectedProduct.product_name}</h3>
+                  <p>
+                    Price: <b>₹{Number(manualSelectedProduct.price_per).toFixed(2)}</b> / {manualSelectedProduct.price_unit}
+                  </p>
+                  <div className="manual-input-group">
+                    <input
+                      type="number"
+                      min="0.001"
+                      step="0.001"
+                      value={manualQuantity}
+                      onChange={(e) => {
+                        setManualQuantity(e.target.value);
+                      }}
+                      placeholder="Quantity"
+                      autoFocus
+                    />
+                    <select
+                      value={manualUnit}
+                      onChange={(e) => setManualUnit(e.target.value)}
+                    >
+                      {getSupportedUnits(manualSelectedProduct.price_unit).map((unit) => (
+                        <option key={unit} value={unit}>
+                          {unit}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <h2>
+                    ₹{calculateManualPrice().toFixed(2)}
+                  </h2>
+                  <button
+                    className="manual-add-btn"
+                    onClick={() => {
+                      addManualProductToCart();
+                    }}
+                  >
+                    Add to Cart
+                  </button>
+                </div>
+              )}
+
               <div className="items-zone">
                 {cart.length === 0 ? (
                   <div className="empty-receipt">No items added yet</div>
@@ -2230,7 +2456,7 @@ export default function BillingPOS() {
                       <div className="name-block">
                         <span className="nm">{item.product_name}</span>
                         <span className="qty">
-                          {formatUnitDisplay(item.unit)} · ₹{item.price_per_unit.toFixed(2)}/{formatUnitDisplay(item.base_unit)}
+                          {formatUnitDisplay(item.unit)} · ₹{item.price_per_unit?.toFixed(2) || item.price?.toFixed(2) || "0.00"}/{formatUnitDisplay(item.base_unit || item.price_unit)}
                         </span>
                       </div>
                       <div className="qty-controls">
@@ -2238,7 +2464,7 @@ export default function BillingPOS() {
                         <span className="qty-val">{item.quantity}</span>
                         <button className="qty-btn" onClick={() => changeQty(item.id, 1, item.unit)}>+</button>
                       </div>
-                      <span className="amt">₹{item.totalPrice.toFixed(2)}</span>
+                      <span className="amt">₹{(item.totalPrice || item.total || 0).toFixed(2)}</span>
                       <button className="rm" onClick={() => changeQty(item.id, 0, item.unit)}>✕</button>
                     </div>
                   ))
@@ -2323,7 +2549,10 @@ export default function BillingPOS() {
                 </button>
                 <button
                   className={`scan-mode-btn ${scanMode === "ask" ? "active" : ""}`}
-                  onClick={() => setScanMode("ask")}
+                  onClick={() => {
+                    setScanMode("ask");
+                    setManualSelectedProduct(null);
+                  }}
                 >
                   📋 Ask Quantity
                 </button>
