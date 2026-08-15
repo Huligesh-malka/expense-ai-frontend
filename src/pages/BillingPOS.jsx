@@ -583,6 +583,49 @@ export default function BillingPOS() {
   // VOICE BILLING FUNCTIONS
   // ===============================
 
+  // Same POS success beep for voice/barcode actions
+  const playSuccessBeep = () => {
+    try {
+      const AudioContext =
+        window.AudioContext || window.webkitAudioContext;
+
+      if (!AudioContext) return;
+
+      const audioContext = new AudioContext();
+
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(
+        900,
+        audioContext.currentTime
+      );
+
+      gainNode.gain.setValueAtTime(
+        0.15,
+        audioContext.currentTime
+      );
+
+      gainNode.gain.exponentialRampToValueAtTime(
+        0.001,
+        audioContext.currentTime + 0.15
+      );
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      oscillator.start();
+      oscillator.stop(audioContext.currentTime + 0.15);
+
+      oscillator.onended = () => {
+        audioContext.close();
+      };
+    } catch (error) {
+      console.log("Beep sound error:", error);
+    }
+  };
+
   const startVoiceBilling = () => {
     const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -775,6 +818,9 @@ export default function BillingPOS() {
     for (let i = 0; i < quantity; i++) {
       quickAddToCart(product);
     }
+
+    // 🔊 Successful voice billing beep
+    playSuccessBeep();
 
     setVoiceMessage(
       `✅ Added ${quantity} × ${product.product_name}`
