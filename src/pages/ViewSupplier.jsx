@@ -657,6 +657,13 @@ const GLOBAL_STYLES = `
     margin-right: 8px;
   }
 
+  .vs-bal {
+    font-size: 10.5px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .vs-bal strong { color: var(--red); font-weight: 700; }
+
   .vs-btn-download {
     border: 1px solid var(--brass);
     background: transparent;
@@ -849,6 +856,24 @@ export default function ViewSupplier() {
     }
   };
 
+  // Running balance as of a given payment — sorts the loaded payment
+  // history chronologically and sums everything up to (and including)
+  // this entry, so historical receipts show the balance as it stood
+  // at that moment rather than today's live due_amount.
+  const runningBalance = (payment) => {
+    const total = Number(historyPurchase?.total_amount || 0);
+    const sorted = [...paymentHistory].sort(
+      (a, b) => new Date(a.payment_date) - new Date(b.payment_date)
+    );
+    const idx = sorted.findIndex((p) => p.id === payment.id);
+    const upTo = idx === -1 ? sorted.length : idx + 1;
+    const paidSoFar = sorted
+      .slice(0, upTo)
+      .reduce((sum, p) => sum + Number(p.amount || 0), 0);
+    const remaining = Math.max(total - paidSoFar, 0);
+    return { total, paidSoFar, remaining };
+  };
+
   const downloadReceipt = (payment) => {
     if (!historyPurchase) return;
 
@@ -862,6 +887,7 @@ export default function ViewSupplier() {
     const [rr, rg, rb] = hexToRgb(theme.rule);
     const [gr, gg, gb] = hexToRgb(theme.green);
     const [gbr, gbg, gbb] = hexToRgb(theme.greenBg);
+    const [xr, xg, xb] = hexToRgb(theme.red);
 
     // header band
     doc.setFillColor(ar, ag, ab);
@@ -888,40 +914,75 @@ export default function ViewSupplier() {
     doc.line(32, y, W - 32, y);
     doc.setLineDashPattern([], 0);
 
+    // ---- Paid To: exact company_name first, contact person second ----
     y += 26;
     doc.setFont("times", "bold");
     doc.setFontSize(11);
+    doc.setTextColor(ir, ig, ib);
     doc.text("Paid To", 32, y);
     y += 16;
-    doc.setFont("times", "normal");
+    doc.setFont("times", "bold");
     doc.setFontSize(13);
-    doc.text(supplier?.supplier_name || "-", 32, y);
-    if (supplier?.company_name) {
-      y += 15;
+    doc.text(supplier?.company_name || supplier?.supplier_name || "-", 32, y);
+
+    if (supplier?.company_name && supplier?.supplier_name && supplier.company_name !== supplier.supplier_name) {
+      y += 14;
+      doc.setFont("times", "normal");
       doc.setFontSize(10);
       doc.setTextColor(sr, sg, sb);
-      doc.text(supplier.company_name, 32, y);
+      doc.text(`Contact: ${supplier.supplier_name}`, 32, y);
+      doc.setTextColor(ir, ig, ib);
+    }
+    if (supplier?.gst_number) {
+      y += 14;
+      doc.setFont("courier", "normal");
+      doc.setFontSize(9.5);
+      doc.setTextColor(sr, sg, sb);
+      doc.text(`GSTIN: ${supplier.gst_number}`, 32, y);
       doc.setTextColor(ir, ig, ib);
     }
 
-    y += 26;
+    y += 24;
     doc.setFont("times", "bold");
     doc.setFontSize(11);
     doc.text("Against Invoice", 32, y);
     y += 16;
     doc.setFont("courier", "normal");
     doc.setFontSize(10);
-    doc.text(`Invoice No.   ${historyPurchase.invoice_no}`, 32, y);
-    y += 14;
-    doc.text(`Invoice Total  Rs. ${Number(historyPurchase.total_amount || 0).toFixed(2)}`, 32, y);
+    doc.text(`Invoice No.  ${historyPurchase.invoice_no}`, 32, y);
 
-    y += 30;
+    // ---- Total / Paid so far / Remaining, as of this payment ----
+    y += 22;
+    const { total, paidSoFar, remaining } = runningBalance(payment);
+    const colW = (W - 64) / 3;
+    const statY = y;
+    [
+      { label: "Total", value: total, color: [ir, ig, ib] },
+      { label: "Paid So Far", value: paidSoFar, color: [gr, gg, gb] },
+      { label: "Remaining", value: remaining, color: [xr, xg, xb] }
+    ].forEach((s, i) => {
+      const x = 32 + i * colW;
+      doc.setFont("courier", "normal");
+      doc.setFontSize(8.5);
+      doc.setTextColor(mr, mg, mb);
+      doc.text(s.label, x, statY);
+      doc.setFont("times", "bold");
+      doc.setFontSize(12.5);
+      doc.setTextColor(...s.color);
+      doc.text(`Rs. ${s.value.toFixed(2)}`, x, statY + 16);
+    });
+    doc.setTextColor(ir, ig, ib);
+    y = statY + 34;
+
+    // ---- This payment's amount, highlighted ----
     doc.setFillColor(gbr, gbg, gbb);
     doc.roundedRect(32, y, W - 64, 58, 6, 6, "F");
     doc.setTextColor(gr, gg, gb);
     doc.setFont("times", "bold");
-    doc.setFontSize(22);
-    doc.text(`Rs. ${Number(payment.amount || 0).toFixed(2)}`, W / 2, y + 36, { align: "center" });
+    doc.setFontSize(9.5);
+    doc.text("THIS PAYMENT", W / 2, y + 18, { align: "center" });
+    doc.setFontSize(20);
+    doc.text(`Rs. ${Number(payment.amount || 0).toFixed(2)}`, W / 2, y + 42, { align: "center" });
     doc.setTextColor(ir, ig, ib);
 
     y += 78;
@@ -1363,37 +1424,43 @@ export default function ViewSupplier() {
               <div className="vs-empty">No payment entries recorded yet.</div>
             ) : (
               <div>
-                {paymentHistory.map((payment, index) => (
-                  <div key={payment.id} className="vs-entry">
-                    <div style={{ display: "flex" }}>
-                      <span className="vs-entry-num">{index + 1}</span>
-                      <div>
-                        <strong style={{ fontSize: 13.5 }}>{payment.payment_method}</strong>
-                        {payment.reference_no && (
-                          <span className="vs-mono" style={{ color: "var(--muted)", fontSize: 12 }}>
-                            {" "}• {payment.reference_no}
-                          </span>
-                        )}
-                        <div style={{ color: "var(--muted)", fontSize: 12.5, marginTop: 3 }}>
-                          {formatDate(payment.payment_date)}
-                        </div>
-                        {payment.notes && (
-                          <div style={{ marginTop: 6, fontSize: 12.5, color: "var(--ink-soft)" }}>
-                            {payment.notes}
+                {paymentHistory.map((payment, index) => {
+                  const { total, remaining } = runningBalance(payment);
+                  return (
+                    <div key={payment.id} className="vs-entry">
+                      <div style={{ display: "flex" }}>
+                        <span className="vs-entry-num">{index + 1}</span>
+                        <div>
+                          <strong style={{ fontSize: 13.5 }}>{payment.payment_method}</strong>
+                          {payment.reference_no && (
+                            <span className="vs-mono" style={{ color: "var(--muted)", fontSize: 12 }}>
+                              {" "}• {payment.reference_no}
+                            </span>
+                          )}
+                          <div style={{ color: "var(--muted)", fontSize: 12.5, marginTop: 3 }}>
+                            {formatDate(payment.payment_date)}
                           </div>
-                        )}
+                          {payment.notes && (
+                            <div style={{ marginTop: 6, fontSize: 12.5, color: "var(--ink-soft)" }}>
+                              {payment.notes}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+                        <strong className="vs-mono" style={{ color: "var(--green)", fontSize: 15, whiteSpace: "nowrap" }}>
+                          ₹{Number(payment.amount || 0).toFixed(2)}
+                        </strong>
+                        <span className="vs-mono vs-bal">
+                          Total ₹{total.toFixed(2)} · Bal <strong>₹{remaining.toFixed(2)}</strong>
+                        </span>
+                        <button className="vs-btn-download" onClick={() => downloadReceipt(payment)}>
+                          <FiDownload size={11} /> Receipt
+                        </button>
                       </div>
                     </div>
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 7 }}>
-                      <strong className="vs-mono" style={{ color: "var(--green)", fontSize: 15, whiteSpace: "nowrap" }}>
-                        ₹{Number(payment.amount || 0).toFixed(2)}
-                      </strong>
-                      <button className="vs-btn-download" onClick={() => downloadReceipt(payment)}>
-                        <FiDownload size={11} /> Receipt
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
