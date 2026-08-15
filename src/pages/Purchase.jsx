@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import axios from "axios";
+import API from "../services/api";
 
 import {
     FiPlus,
@@ -31,9 +31,9 @@ export default function Purchase() {
 
         try {
 
-            const res = await axios.get(
+            const res = await API.get(
 
-                `http://localhost:5000/api/purchases?business_id=${businessId}`
+                `/purchases?business_id=${businessId}`
 
             );
 
@@ -63,11 +63,7 @@ export default function Purchase() {
 
         try {
 
-            await axios.delete(
-
-                `http://localhost:5000/api/purchases/${id}`
-
-            );
+            await API.delete(`/purchases/${id}`);
 
             alert("Purchase Deleted");
 
