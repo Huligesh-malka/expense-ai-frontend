@@ -27,85 +27,29 @@ import {
    Shares Laabha's bahi-khata paper/ledger language with the
    rest of the app, extended here into a vendor rolodex card
    + running-account ledger for the purchase history table.
-
-   THEMES — same layout & signature elements (rolodex tab,
-   ruled khata table, rubber-stamp badges), six distinct color
-   identities so each shop owner can pick their own. Persisted
-   per-browser in localStorage under "laabha_vendor_theme".
    ============================================================ */
-export const VENDOR_THEMES = {
-  brass: {
-    label: "Brass Ledger",
-    swatch: "#B8863C",
-    paper: "#F3EEE1", card: "#FFFDF7", ink: "#2E3A46", inkSoft: "#5B5346",
-    muted: "#9A8F79", rule: "#DCD0B4",
-    accent: "#B8863C", accentDark: "#8F6A2C", accent2: "#D98E2B",
-    green: "#2F5D3A", greenBg: "#E4EDE0", red: "#A23A2B", redBg: "#F3E3DD",
-    indigo: "#37455E"
-  },
-  counter: {
-    label: "Counter Green",
-    swatch: "#4C7A4A",
-    paper: "#EEF1E7", card: "#FCFDF8", ink: "#26332A", inkSoft: "#48543D",
-    muted: "#8A9678", rule: "#D3DCC4",
-    accent: "#4C7A4A", accentDark: "#345234", accent2: "#C1652D",
-    green: "#2F5D3A", greenBg: "#DFEBDA", red: "#A23A2B", redBg: "#F3E3DD",
-    indigo: "#2F4A3D"
-  },
-  rosewood: {
-    label: "Rosewood Bazaar",
-    swatch: "#8C3A3A",
-    paper: "#F5EAE6", card: "#FFF9F7", ink: "#402626", inkSoft: "#6B4640",
-    muted: "#A88880", rule: "#E6D1C7",
-    accent: "#8C3A3A", accentDark: "#5E2323", accent2: "#D9942B",
-    green: "#3D6B3F", greenBg: "#E3EBDD", red: "#A23A2B", redBg: "#F3E1DC",
-    indigo: "#6B3A52"
-  },
-  peacock: {
-    label: "Peacock Mint",
-    swatch: "#1F7A6C",
-    paper: "#E9F3F1", card: "#F9FEFC", ink: "#1F3B3A", inkSoft: "#3D615D",
-    muted: "#7FA39D", rule: "#CBE3DD",
-    accent: "#1F7A6C", accentDark: "#145A50", accent2: "#D98E2B",
-    green: "#2F5D3A", greenBg: "#DEEBE2", red: "#A23A2B", redBg: "#F3E3DD",
-    indigo: "#235C77"
-  },
-  vyapar: {
-    label: "Indigo Vyapar",
-    swatch: "#3E4E9C",
-    paper: "#ECEEF6", card: "#FAFBFF", ink: "#262B45", inkSoft: "#454C74",
-    muted: "#8D93B8", rule: "#D6D9EE",
-    accent: "#3E4E9C", accentDark: "#2B3670", accent2: "#E0A83C",
-    green: "#2F5D3A", greenBg: "#E1E9DF", red: "#A23A2B", redBg: "#F1E1E5",
-    indigo: "#3E4E9C"
-  },
-  saffron: {
-    label: "Saffron Mandi",
-    swatch: "#D9720C",
-    paper: "#FBF0DE", card: "#FFFAF0", ink: "#3A2A14", inkSoft: "#6B4E27",
-    muted: "#B49364", rule: "#EFD9AF",
-    accent: "#D9720C", accentDark: "#A6560A", accent2: "#7A8C3F",
-    green: "#3F6B33", greenBg: "#E7EBD7", red: "#A6392B", redBg: "#F3E1DA",
-    indigo: "#8C3A2E"
-  }
-};
-
-const themeToCssVars = (t) => ({
-  "--paper": t.paper, "--card": t.card, "--ink": t.ink, "--ink-soft": t.inkSoft,
-  "--muted": t.muted, "--rule": t.rule, "--brass": t.accent, "--brass-dark": t.accentDark,
-  "--marigold": t.accent2, "--green": t.green, "--green-bg": t.greenBg,
-  "--red": t.red, "--red-bg": t.redBg, "--indigo": t.indigo
-});
-
 const GLOBAL_STYLES = `
   @import url('https://fonts.googleapis.com/css2?family=Rozha+One&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
   .vs-root {
+    --paper: #F3EEE1;
+    --card: #FFFDF7;
+    --ink: #2E3A46;
+    --ink-soft: #5B5346;
+    --muted: #9A8F79;
+    --rule: #DCD0B4;
+    --brass: #B8863C;
+    --brass-dark: #8F6A2C;
+    --marigold: #D98E2B;
+    --green: #2F5D3A;
+    --green-bg: #E4EDE0;
+    --red: #A23A2B;
+    --red-bg: #F3E3DD;
+    --indigo: #37455E;
     font-family: 'Inter', sans-serif;
     color: var(--ink);
     background: var(--paper);
     min-height: 100vh;
-    transition: background .25s ease, color .25s ease;
   }
 
   .vs-mono { font-family: 'JetBrains Mono', monospace; }
@@ -605,35 +549,6 @@ const GLOBAL_STYLES = `
     margin-right: 8px;
   }
 
-  .vs-theme-picker {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    background: var(--card);
-    border: 1px solid var(--rule);
-    padding: 7px 10px;
-    border-radius: 20px;
-  }
-  .vs-theme-label {
-    font-size: 11px;
-    color: var(--muted);
-    margin-right: 2px;
-    white-space: nowrap;
-  }
-  .vs-swatch {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    border: 2px solid transparent;
-    cursor: pointer;
-    padding: 0;
-    box-shadow: inset 0 0 0 1px rgba(0,0,0,.08);
-  }
-  .vs-swatch--active {
-    border-color: var(--ink);
-    transform: scale(1.12);
-  }
-
   .vs-spinner {
     width: 40px;
     height: 40px;
@@ -667,24 +582,6 @@ export default function ViewSupplier() {
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [historyPurchase, setHistoryPurchase] = useState(null);
   const [historyLoading, setHistoryLoading] = useState(false);
-
-  const [themeKey, setThemeKey] = useState(() => {
-    try {
-      return localStorage.getItem("laabha_vendor_theme") || "brass";
-    } catch {
-      return "brass";
-    }
-  });
-  const theme = VENDOR_THEMES[themeKey] || VENDOR_THEMES.brass;
-
-  const chooseTheme = (key) => {
-    setThemeKey(key);
-    try {
-      localStorage.setItem("laabha_vendor_theme", key);
-    } catch {
-      /* storage unavailable — theme just won't persist */
-    }
-  };
 
   useEffect(() => {
     loadSupplier();
@@ -808,7 +705,7 @@ export default function ViewSupplier() {
 
   if (loading) {
     return (
-      <div className="vs-root" style={{ padding: 40, ...themeToCssVars(theme) }}>
+      <div className="vs-root" style={{ padding: 40 }}>
         <style>{GLOBAL_STYLES}</style>
         <div style={{ textAlign: "center", paddingTop: 60 }}>
           <div className="vs-spinner" />
@@ -822,7 +719,7 @@ export default function ViewSupplier() {
 
   if (!supplier) {
     return (
-      <div className="vs-root" style={{ padding: 40, textAlign: "center", ...themeToCssVars(theme) }}>
+      <div className="vs-root" style={{ padding: 40, textAlign: "center" }}>
         <style>{GLOBAL_STYLES}</style>
         <p className="vs-display" style={{ fontSize: 20 }}>Supplier not found</p>
       </div>
@@ -832,7 +729,7 @@ export default function ViewSupplier() {
   const initial = (supplier.supplier_name || "?").trim().charAt(0).toUpperCase();
 
   return (
-    <div className="vs-root" style={{ padding: 30, ...themeToCssVars(theme) }}>
+    <div className="vs-root" style={{ padding: 30 }}>
       <style>{GLOBAL_STYLES}</style>
 
       {/* Top bar */}
@@ -850,30 +747,12 @@ export default function ViewSupplier() {
           </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          <div className="vs-theme-picker" role="radiogroup" aria-label="Card colour">
-            <span className="vs-theme-label">Card colour</span>
-            {Object.entries(VENDOR_THEMES).map(([key, t]) => (
-              <button
-                key={key}
-                type="button"
-                role="radio"
-                aria-checked={themeKey === key}
-                title={t.label}
-                onClick={() => chooseTheme(key)}
-                className={`vs-swatch ${themeKey === key ? "vs-swatch--active" : ""}`}
-                style={{ background: t.swatch }}
-              />
-            ))}
-          </div>
-
-          <Link to={`/edit-supplier/${supplier.id}`}>
-            <button className="vs-edit-btn">
-              <FiEdit />
-              Edit Supplier
-            </button>
-          </Link>
-        </div>
+        <Link to={`/edit-supplier/${supplier.id}`}>
+          <button className="vs-edit-btn">
+            <FiEdit />
+            Edit Supplier
+          </button>
+        </Link>
       </div>
 
       {/* Vendor rolodex card */}
