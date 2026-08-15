@@ -180,8 +180,6 @@ export default function BillingPOS() {
     if (fromUnit === toUnit) return quantity;
 
     let baseQuantity = quantity;
-    
-    // Convert to base unit (grams, ml, pieces, meters)
     if (fromUnit === "kg") baseQuantity = quantity * 1000;
     else if (fromUnit === "l") baseQuantity = quantity * 1000;
     else if (fromUnit === "dozen") baseQuantity = quantity * 12;
@@ -191,7 +189,6 @@ export default function BillingPOS() {
     else if (fromUnit === "meter") baseQuantity = quantity;
     else if (fromUnit === "pcs") baseQuantity = quantity;
 
-    // Convert from base unit to target unit
     let result = baseQuantity;
     if (toUnit === "kg") result = baseQuantity / 1000;
     else if (toUnit === "l") result = baseQuantity / 1000;
@@ -263,7 +260,7 @@ export default function BillingPOS() {
     generateInvoiceNo();
     extractCategories();
     loadDashboard();
-    loadBusinessProfile();
+    loadBusinessProfile(); // Load business name
   }, []);
 
   const generateInvoiceNo = () => {
@@ -282,7 +279,7 @@ export default function BillingPOS() {
   };
 
   const extractCategories = () => {
-    // Extract unique categories from products
+    // Extract unique categories from products (you may need to adjust based on your data structure)
     const uniqueCategories = ["All", "Grocery", "Medical", "Drinks", "Snacks", "Other"];
     setCategories(uniqueCategories);
   };
@@ -290,7 +287,6 @@ export default function BillingPOS() {
   const openQuantityModal = (product) => {
     setSelectedProduct(product);
     setQuantity(1);
-    // Set default unit to the product's price unit or pcs
     setSelectedUnit(product.price_unit || "pcs");
     setShowQtyModal(true);
     setTimeout(() => {
@@ -315,6 +311,7 @@ export default function BillingPOS() {
       alert(
         `Only ${product.stock} ${product.price_unit} available in stock`
       );
+
       return;
     }
 
@@ -331,10 +328,22 @@ export default function BillingPOS() {
           item.unit === unit
             ? {
                 ...item,
-                quantity: item.quantity + 1,
-                convertedQuantity: item.convertedQuantity + priceData.convertedQuantity,
-                displayQuantity: item.displayQuantity + priceData.displayQuantity,
-                totalPrice: (item.convertedQuantity + priceData.convertedQuantity) * item.price_per_unit,
+
+                quantity:
+                  item.quantity + 1,
+
+                convertedQuantity:
+                  item.convertedQuantity +
+                  priceData.convertedQuantity,
+
+                displayQuantity:
+                  item.displayQuantity +
+                  priceData.displayQuantity,
+
+                totalPrice:
+                  (item.convertedQuantity +
+                    priceData.convertedQuantity) *
+                  item.price_per_unit,
               }
             : item
         );
@@ -342,17 +351,34 @@ export default function BillingPOS() {
 
       return [
         ...prevCart,
+
         {
           id: product.id,
-          product_name: product.product_name,
-          price_per_unit: priceData.pricePerUnit,
-          base_unit: product.price_unit || "pcs",
+
+          product_name:
+            product.product_name,
+
+          price_per_unit:
+            priceData.pricePerUnit,
+
+          base_unit:
+            product.price_unit || "pcs",
+
           quantity: 1,
-          unit: unit,
-          convertedQuantity: priceData.convertedQuantity,
-          displayQuantity: priceData.displayQuantity,
-          displayUnit: priceData.displayUnit,
-          totalPrice: priceData.total,
+
+          unit,
+
+          convertedQuantity:
+            priceData.convertedQuantity,
+
+          displayQuantity:
+            priceData.displayQuantity,
+
+          displayUnit:
+            priceData.displayUnit,
+
+          totalPrice:
+            priceData.total,
         },
       ];
     });
@@ -368,7 +394,6 @@ export default function BillingPOS() {
     let displayQuantity = convertedQuantity;
     let displayUnit = baseUnit;
 
-    // Auto-convert to larger units for display
     if (baseUnit === "g" && convertedQuantity >= 1000) {
       displayQuantity = convertedQuantity / 1000;
       displayUnit = "kg";
@@ -534,10 +559,8 @@ export default function BillingPOS() {
         gst: Number(gst),
         items: cart.map((item) => ({
           product_id: item.id,
-          quantity: item.convertedQuantity || item.quantity,
+          quantity: item.quantity,
           entered_unit: item.unit,
-          price_per_unit: item.price_per_unit,
-          total_price: item.totalPrice,
         })),
       };
 
@@ -546,7 +569,7 @@ export default function BillingPOS() {
       setSaleComplete(true);
       setCart([]);
       loadProducts();
-      loadDashboard();
+      loadDashboard(); // Refresh dashboard data after sale
       generateInvoiceNo();
 
       setCustomerName("");
@@ -596,9 +619,10 @@ export default function BillingPOS() {
   });
 
   // ===============================
-  // VOICE BILLING FUNCTIONS - ENHANCED
+  // VOICE BILLING FUNCTIONS
   // ===============================
 
+  // Same POS success beep for voice/barcode actions
   const playSuccessBeep = () => {
     try {
       const AudioContext =
@@ -607,13 +631,25 @@ export default function BillingPOS() {
       if (!AudioContext) return;
 
       const audioContext = new AudioContext();
+
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
 
       oscillator.type = "sine";
-      oscillator.frequency.setValueAtTime(900, audioContext.currentTime);
-      gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.15);
+      oscillator.frequency.setValueAtTime(
+        900,
+        audioContext.currentTime
+      );
+
+      gainNode.gain.setValueAtTime(
+        0.15,
+        audioContext.currentTime
+      );
+
+      gainNode.gain.exponentialRampToValueAtTime(
+        0.001,
+        audioContext.currentTime + 0.15
+      );
 
       oscillator.connect(gainNode);
       gainNode.connect(audioContext.destination);
@@ -631,6 +667,7 @@ export default function BillingPOS() {
 
   const stopVoiceBilling = () => {
     voiceActiveRef.current = false;
+
     setIsListening(false);
     setVoiceMessage("🎤 Voice billing stopped");
 
@@ -640,6 +677,7 @@ export default function BillingPOS() {
       } catch (error) {
         console.log("Voice stop error:", error);
       }
+
       recognitionRef.current = null;
     }
   };
@@ -655,6 +693,7 @@ export default function BillingPOS() {
       return;
     }
 
+    // If already active, stop voice mode
     if (voiceActiveRef.current) {
       stopVoiceBilling();
       return;
@@ -666,11 +705,17 @@ export default function BillingPOS() {
     setVoiceMessage("🎤 Voice billing active");
 
     const createRecognition = () => {
+      // Don't start if owner stopped voice mode
       if (!voiceActiveRef.current) return;
 
       const recognition = new SpeechRecognition();
+
       recognition.lang = "en-IN";
+
+      // IMPORTANT
+      // Recognition can continue listening
       recognition.continuous = true;
+
       recognition.interimResults = false;
       recognition.maxAlternatives = 3;
 
@@ -678,6 +723,7 @@ export default function BillingPOS() {
 
       recognition.onstart = () => {
         if (!voiceActiveRef.current) return;
+
         setIsListening(true);
         setVoiceMessage("🎤 Listening... Say a product");
       };
@@ -685,13 +731,17 @@ export default function BillingPOS() {
       recognition.onresult = (event) => {
         if (!voiceActiveRef.current) return;
 
+        // Process all new final results
         for (let i = event.resultIndex; i < event.results.length; i++) {
           if (!event.results[i].isFinal) continue;
 
-          const transcript = event.results[i][0].transcript.trim();
+          const transcript =
+            event.results[i][0].transcript.trim();
+
           if (!transcript) continue;
 
           console.log("🎤 Voice:", transcript);
+
           setVoiceText(transcript);
           setVoiceMessage(`🗣️ "${transcript}"`);
 
@@ -701,20 +751,29 @@ export default function BillingPOS() {
 
       recognition.onerror = (event) => {
         console.log("Voice error:", event.error);
-        if (event.error === "no-speech" || event.error === "aborted") {
+
+        // These errors can happen normally during continuous recognition
+        if (
+          event.error === "no-speech" ||
+          event.error === "aborted"
+        ) {
           return;
         }
+
         if (event.error === "not-allowed") {
           voiceActiveRef.current = false;
           setIsListening(false);
           setVoiceMessage("❌ Microphone permission denied");
           return;
         }
+
         setVoiceMessage(`⚠️ Voice error: ${event.error}`);
       };
 
       recognition.onend = () => {
         recognitionRef.current = null;
+
+        // Automatically start listening again
         if (voiceActiveRef.current) {
           setTimeout(() => {
             if (voiceActiveRef.current) {
@@ -740,24 +799,29 @@ export default function BillingPOS() {
     if (!text) return;
 
     let command = text.toLowerCase().trim();
+
     console.log("Voice command:", command);
 
     // ===============================
     // CLEAR CART
     // ===============================
+
     if (
       command === "clear cart" ||
       command === "clear the cart" ||
       command.includes("empty cart")
     ) {
       setCart([]);
+
       setVoiceMessage("🗑️ Cart cleared");
+
       return;
     }
 
     // ===============================
     // REMOVE PRODUCT
     // ===============================
+
     if (
       command.startsWith("remove ") ||
       command.startsWith("delete ")
@@ -769,6 +833,7 @@ export default function BillingPOS() {
         .trim();
 
       const product = findVoiceProduct(productName);
+
       if (!product) {
         setVoiceMessage(`❌ Product "${productName}" not found`);
         return;
@@ -777,15 +842,33 @@ export default function BillingPOS() {
       setCart((prevCart) =>
         prevCart.filter((item) => item.id !== product.id)
       );
+
       setVoiceMessage(`🗑️ Removed ${product.product_name}`);
+
       return;
     }
 
     // ===============================
-    // ADVANCED ADD PRODUCT WITH QUANTITY AND UNIT
+    // ADVANCED ADD PRODUCT
     // ===============================
-    let qty = 1;
-    let unit = null;
+
+    let quantity = 1;
+
+    // Number words
+    const numberWords = {
+      one: 1,
+      two: 2,
+      three: 3,
+      four: 4,
+      five: 5,
+      six: 6,
+      seven: 7,
+      eight: 8,
+      nine: 9,
+      ten: 10,
+    };
+
+    // Remove common command words first
     let productName = command
       .replace(/^add\s+/i, "")
       .replace(/^buy\s+/i, "")
@@ -797,55 +880,29 @@ export default function BillingPOS() {
       .replace(/\s+please$/i, "")
       .trim();
 
-    // Number words mapping
-    const numberWords = {
-      one: 1, two: 2, three: 3, four: 4, five: 5,
-      six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
-      half: 0.5, quarter: 0.25,
-    };
-
-    // Unit mapping for voice recognition
-    const unitMap = {
-      gram: "g", grams: "g", g: "g",
-      kilogram: "kg", kilograms: "kg", kilo: "kg", kg: "kg",
-      milliliter: "ml", milliliters: "ml", ml: "ml",
-      liter: "l", liters: "l", l: "l",
-      piece: "pcs", pieces: "pcs", pcs: "pcs",
-      dozen: "dozen", dozens: "dozen",
-      meter: "meter", meters: "meter", m: "meter",
-      feet: "feet", foot: "feet", ft: "feet",
-      pack: "pack", box: "box", bottle: "bottle",
-    };
-
-    // Extract quantity and unit from voice command
-    // Pattern: "500 grams sugar" or "2 kg rice" or "half kg tea"
-    const qtyUnitMatch = productName.match(
-      /^(\d+(?:\.\d+)?)\s*(gram|grams|g|kilogram|kilograms|kg|kilo|milliliter|milliliters|ml|liter|liters|l|piece|pieces|pcs|dozen|dozens|meter|meters|m|feet|foot|ft|pack|box|bottle)\s+(.+)$/i
+    // Numeric quantity
+    const quantityMatch = productName.match(
+      /^(\d+(?:\.\d+)?)\s+(.+)$/
     );
 
-    if (qtyUnitMatch) {
-      qty = Number(qtyUnitMatch[1]);
-      const unitWord = qtyUnitMatch[2].toLowerCase();
-      unit = unitMap[unitWord] || unitWord;
-      productName = qtyUnitMatch[3].trim();
-    } else {
-      // Try word-based quantity: "half kg sugar"
-      const wordQtyMatch = productName.match(
-        /^(half|quarter|one|two|three|four|five|six|seven|eight|nine|ten)\s+(gram|grams|g|kilogram|kilograms|kg|kilo|milliliter|milliliters|ml|liter|liters|l|piece|pieces|pcs|dozen|dozens|meter|meters|m|feet|foot|ft|pack|box|bottle)\s+(.+)$/i
-      );
+    if (quantityMatch) {
+      quantity = Number(quantityMatch[1]);
+      productName = quantityMatch[2].trim();
+    }
 
-      if (wordQtyMatch) {
-        qty = numberWords[wordQtyMatch[1].toLowerCase()] || 1;
-        const unitWord = wordQtyMatch[2].toLowerCase();
-        unit = unitMap[unitWord] || unitWord;
-        productName = wordQtyMatch[3].trim();
-      } else {
-        // Try quantity without explicit unit: "500 sugar" (default to product's unit)
-        const numericMatch = productName.match(/^(\d+(?:\.\d+)?)\s+(.+)$/);
-        if (numericMatch) {
-          qty = Number(numericMatch[1]);
-          productName = numericMatch[2].trim();
-        }
+    // Word quantity
+    for (const word in numberWords) {
+      if (productName.startsWith(`${word} `)) {
+        quantity = numberWords[word];
+
+        productName = productName
+          .replace(
+            new RegExp(`^${word}\\s+`, "i"),
+            ""
+          )
+          .trim();
+
+        break;
       }
     }
 
@@ -856,71 +913,26 @@ export default function BillingPOS() {
 
     // Find product
     const product = findVoiceProduct(productName);
+
     if (!product) {
-      setVoiceMessage(`❌ "${productName}" not found`);
-      return;
-    }
-
-    // Determine unit
-    if (!unit) {
-      unit = product.price_unit || "pcs";
-    }
-
-    // Validate unit is compatible with product
-    const compatibleUnits = getCompatibleUnits(product.price_unit || "pcs");
-    if (!compatibleUnits.includes(unit)) {
-      setVoiceMessage(`⚠️ "${unit}" not compatible with ${product.product_name}`);
-      return;
-    }
-
-    // Add product with quantity and unit
-    const priceData = calculateLivePriceForProduct(product, qty, unit);
-    
-    if (product.stock < priceData.convertedQuantity) {
-      setVoiceMessage(`⚠️ Only ${product.stock} ${product.price_unit} available`);
-      return;
-    }
-
-    // Check if same product with same unit exists in cart
-    const exist = cart.find(
-      (item) => item.id === product.id && item.unit === unit
-    );
-
-    if (exist) {
-      setCart(
-        cart.map((item) =>
-          item.id === product.id && item.unit === unit
-            ? {
-                ...item,
-                quantity: item.quantity + qty,
-                convertedQuantity: item.convertedQuantity + priceData.convertedQuantity,
-                displayQuantity: item.displayQuantity + priceData.displayQuantity,
-                totalPrice: (item.convertedQuantity + priceData.convertedQuantity) * item.price_per_unit,
-              }
-            : item
-        )
+      setVoiceMessage(
+        `❌ "${productName}" not found`
       );
-    } else {
-      setCart([
-        ...cart,
-        {
-          id: product.id,
-          product_name: product.product_name,
-          price_per_unit: priceData.pricePerUnit,
-          base_unit: product.price_unit || "pcs",
-          quantity: qty,
-          unit: unit,
-          convertedQuantity: priceData.convertedQuantity,
-          displayQuantity: priceData.displayQuantity,
-          displayUnit: priceData.displayUnit,
-          totalPrice: priceData.total,
-        },
-      ]);
+
+      return;
     }
 
+    // Add product
+    for (let i = 0; i < quantity; i++) {
+      quickAddToCart(product);
+    }
+
+    // 🔊 Success sound
     playSuccessBeep();
-    const displayQty = qty % 1 === 0 ? qty : qty.toFixed(2);
-    setVoiceMessage(`✅ Added ${displayQty} ${formatUnitDisplay(unit)} ${product.product_name}`);
+
+    setVoiceMessage(
+      `✅ Added ${quantity} × ${product.product_name}`
+    );
   };
 
   const findVoiceProduct = (voiceName) => {
@@ -944,7 +956,11 @@ export default function BillingPOS() {
     // Product name contains voice text
     product = products.find((p) => {
       const name = normalize(p.product_name);
-      return name.includes(searchName) || searchName.includes(name);
+
+      return (
+        name.includes(searchName) ||
+        searchName.includes(name)
+      );
     });
 
     if (product) return product;
@@ -957,6 +973,7 @@ export default function BillingPOS() {
 
     product = products.find((p) => {
       const name = String(p.product_name || "").toLowerCase();
+
       return words.every((word) => name.includes(word));
     });
 
@@ -1967,21 +1984,6 @@ export default function BillingPOS() {
           color: #565C64;
         }
 
-        .voice-commands-hint {
-          margin-top: 8px;
-          padding: 8px 12px;
-          background: var(--panel-dark-2);
-          border-radius: 8px;
-          font-size: 10px;
-          color: var(--text-secondary);
-          font-family: 'JetBrains Mono', monospace;
-          border: 1px solid var(--charcoal-line);
-        }
-        .voice-commands-hint .examples {
-          color: var(--gold-soft);
-          font-weight: 600;
-        }
-
         @media (max-width: 1100px) {
           .pos-layout { flex-direction: column; }
           .receipt-col { max-width: 100%; position: static; width: 100%; }
@@ -2082,14 +2084,6 @@ export default function BillingPOS() {
                 </div>
               </div>
             )}
-
-            {/* Voice Commands Hint */}
-            <div className="voice-commands-hint">
-              💡 Try: <span className="examples">"500 grams sugar"</span> · 
-              <span className="examples"> "2 kg rice"</span> · 
-              <span className="examples"> "half kg tea"</span> · 
-              <span className="examples"> "3 pcs apples"</span>
-            </div>
 
             {/* Category Filters */}
             <div className="category-filters">
@@ -2236,8 +2230,7 @@ export default function BillingPOS() {
                       <div className="name-block">
                         <span className="nm">{item.product_name}</span>
                         <span className="qty">
-                          {item.displayQuantity.toFixed(2)} {formatUnitDisplay(item.displayUnit)} · 
-                          ₹{item.price_per_unit.toFixed(2)}/{formatUnitDisplay(item.base_unit)}
+                          {formatUnitDisplay(item.unit)} · ₹{item.price_per_unit.toFixed(2)}/{formatUnitDisplay(item.base_unit)}
                         </span>
                       </div>
                       <div className="qty-controls">
