@@ -26,7 +26,9 @@ export default function ViewSupplier() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [supplier, setSupplier] = useState(null);
+  const [purchases, setPurchases] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [purchaseLoading, setPurchaseLoading] = useState(true);
 
   useEffect(() => {
     loadSupplier();
@@ -34,16 +36,22 @@ export default function ViewSupplier() {
 
   const loadSupplier = async () => {
     try {
-      const res = await API.get(
-        `/suppliers/${id}`
+      // Get supplier details
+      const supplierRes = await API.get(`/suppliers/${id}`);
+      setSupplier(supplierRes.data.data);
+
+      // Get supplier purchase invoices
+      const purchaseRes = await API.get(
+        `/purchases/suppliers/${id}/purchases`
       );
-      setSupplier(res.data.data);
+      setPurchases(purchaseRes.data.data || []);
     } catch (err) {
       console.log(err);
       alert("Failed to load supplier details");
       navigate("/suppliers");
     } finally {
       setLoading(false);
+      setPurchaseLoading(false);
     }
   };
 
@@ -90,6 +98,20 @@ export default function ViewSupplier() {
       hour: "2-digit",
       minute: "2-digit"
     });
+  };
+
+  const thStyle = {
+    padding: "12px 14px",
+    textAlign: "left",
+    fontSize: 13,
+    color: "#6b7280",
+    fontWeight: 600
+  };
+
+  const tdStyle = {
+    padding: "14px",
+    fontSize: 14,
+    color: "#1f2937"
   };
 
   if (loading) {
@@ -611,6 +633,199 @@ export default function ViewSupplier() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Purchase Invoices */}
+        <div
+          style={{
+            background: "#fff",
+            borderRadius: 12,
+            padding: 24,
+            boxShadow: "0 2px 8px rgba(0,0,0,.08)"
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: 20,
+              flexWrap: "wrap",
+              gap: 10
+            }}
+          >
+            <h3
+              style={{
+                margin: 0,
+                color: "#1f2937",
+                fontSize: 16,
+                display: "flex",
+                alignItems: "center",
+                gap: 8
+              }}
+            >
+              <FiCreditCard />
+              Purchase Invoices
+            </h3>
+
+            <span
+              style={{
+                background: "#eff6ff",
+                color: "#2563eb",
+                padding: "6px 12px",
+                borderRadius: 20,
+                fontSize: 13,
+                fontWeight: 600
+              }}
+            >
+              {purchases.length} Invoice
+              {purchases.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+
+          {purchaseLoading ? (
+            <div
+              style={{
+                textAlign: "center",
+                padding: 30,
+                color: "#6b7280"
+              }}
+            >
+              Loading purchase invoices...
+            </div>
+          ) : purchases.length === 0 ? (
+            <div
+              style={{
+                textAlign: "center",
+                padding: 40,
+                background: "#f9fafb",
+                borderRadius: 10,
+                color: "#6b7280"
+              }}
+            >
+              <FiFileText size={30} />
+              <div style={{ marginTop: 10 }}>
+                No purchase invoices found for this supplier.
+              </div>
+            </div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  minWidth: 800
+                }}
+              >
+                <thead>
+                  <tr
+                    style={{
+                      background: "#f9fafb",
+                      borderBottom: "1px solid #e5e7eb"
+                    }}
+                  >
+                    <th style={thStyle}>Invoice</th>
+                    <th style={thStyle}>Date</th>
+                    <th style={thStyle}>Total</th>
+                    <th style={thStyle}>Paid</th>
+                    <th style={thStyle}>Balance</th>
+                    <th style={thStyle}>Status</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {purchases.map((purchase) => {
+                    const total = Number(purchase.total_amount || 0);
+                    const paid = Number(purchase.paid_amount || 0);
+                    const balance = Number(purchase.due_amount || 0);
+
+                    let status = "Unpaid";
+
+                    if (balance <= 0) {
+                      status = "Paid";
+                    } else if (paid > 0) {
+                      status = "Partial";
+                    }
+
+                    return (
+                      <tr
+                        key={purchase.id}
+                        style={{
+                          borderBottom: "1px solid #f1f5f9"
+                        }}
+                      >
+                        <td style={tdStyle}>
+                          <strong>{purchase.invoice_no}</strong>
+                        </td>
+
+                        <td style={tdStyle}>
+                          {formatDate(purchase.created_at)}
+                        </td>
+
+                        <td style={tdStyle}>
+                          ₹{total.toFixed(2)}
+                        </td>
+
+                        <td
+                          style={{
+                            ...tdStyle,
+                            color: "#16a34a",
+                            fontWeight: 600
+                          }}
+                        >
+                          ₹{paid.toFixed(2)}
+                        </td>
+
+                        <td
+                          style={{
+                            ...tdStyle,
+                            color: balance > 0 ? "#dc2626" : "#16a34a",
+                            fontWeight: 700
+                          }}
+                        >
+                          ₹{balance.toFixed(2)}
+                        </td>
+
+                        <td style={tdStyle}>
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 5,
+                              padding: "5px 12px",
+                              borderRadius: 20,
+                              fontSize: 12,
+                              fontWeight: 600,
+
+                              background:
+                                status === "Paid"
+                                  ? "#dcfce7"
+                                  : status === "Partial"
+                                  ? "#fef3c7"
+                                  : "#fee2e2",
+
+                              color:
+                                status === "Paid"
+                                  ? "#166534"
+                                  : status === "Partial"
+                                  ? "#92400e"
+                                  : "#991b1b"
+                            }}
+                          >
+                            {status === "Paid" && <FiCheckCircle />}
+                            {status === "Partial" && <FiAlertCircle />}
+                            {status === "Unpaid" && <FiXCircle />}
+
+                            {status}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
     </div>
