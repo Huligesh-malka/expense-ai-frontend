@@ -5,9 +5,31 @@ import { auth, googleProvider } from "../firebase";
 import API from "../services/api";
 import { AuthContext } from "../context/AuthContext";
 
+// Sample rows for the illustrative ledger strip in the left panel.
+// Purely decorative — not real account data.
+const LEDGER_SAMPLE = [
+    { date: "01 Aug", entry: "Rent collected", amount: "₹42,000" },
+    { date: "03 Aug", entry: "Inventory restock", amount: "₹18,500" },
+    { date: "05 Aug", entry: "Vendor settlement", amount: "₹9,200" },
+];
+
+function useIsNarrow(breakpoint = 900) {
+    const [isNarrow, setIsNarrow] = useState(
+        typeof window !== "undefined" ? window.innerWidth < breakpoint : false
+    );
+    useEffect(() => {
+        const onResize = () => setIsNarrow(window.innerWidth < breakpoint);
+        window.addEventListener("resize", onResize);
+        return () => window.removeEventListener("resize", onResize);
+    }, [breakpoint]);
+    return isNarrow;
+}
+
 export default function Login() {
     const navigate = useNavigate();
     const { login } = useContext(AuthContext);
+    const isNarrow = useIsNarrow();
+    const isCompact = useIsNarrow(640);
 
     const [formData, setFormData] = useState({
         email: "",
@@ -117,327 +139,389 @@ export default function Login() {
     };
 
     return (
-        <div style={styles.container}>
-            {/* Animated Background */}
-            <div style={styles.bgAnimation}>
-                <div style={styles.bgCircle1}></div>
-                <div style={styles.bgCircle2}></div>
-                <div style={styles.bgCircle3}></div>
-                <div style={styles.bgCircle4}></div>
+        <div style={styles.page}>
+            <style>{FONT_AND_MOTION_CSS}</style>
+
+            {/* ============== LEFT: LEDGER PANEL ============== */}
+            <div
+                style={{
+                    ...styles.leftPanel,
+                    ...(isNarrow ? styles.leftPanelNarrow : {}),
+                }}
+            >
+                <div>
+                    <div style={styles.wordmark}>FinancePro</div>
+                    <div style={styles.tagline}>BUSINESS LEDGER</div>
+                </div>
+
+                <h1 style={{ ...styles.hero, ...(isCompact ? styles.heroCompact : {}) }}>
+                    Every rupee,
+                    <br />
+                    accounted for.
+                </h1>
+
+                {!isCompact && (
+                    <div style={styles.ledgerBlock}>
+                        <div style={styles.ledgerCaption}>Sample ledger entry</div>
+                        <div style={styles.ledgerTable}>
+                            {LEDGER_SAMPLE.map((row, i) => (
+                                <div style={styles.ledgerRow} key={i}>
+                                    <span style={styles.ledgerDate}>{row.date}</span>
+                                    <span style={styles.ledgerEntry}>{row.entry}</span>
+                                    <span style={styles.ledgerDots} />
+                                    <span style={styles.ledgerAmount}>{row.amount}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
 
-            <div style={styles.card}>
-                {/* Brand Section */}
-                <div style={styles.brandSection}>
-                    <div className="brand-icon" style={styles.brandIcon}>
-                        <span style={styles.brandEmoji}>📊</span>
-                    </div>
-                    <h1 style={styles.brandTitle}>FinancePro</h1>
-                    <p style={styles.brandSubtitle}>Smart Business Management</p>
-                </div>
+            {/* ============== RIGHT: SIGN IN CARD ============== */}
+            <div
+                style={{
+                    ...styles.rightPanel,
+                    ...(isNarrow ? styles.rightPanelNarrow : {}),
+                }}
+            >
+                <div className="ledger-card-enter" style={styles.card}>
+                    <div style={styles.ledgerTab}>SIGN IN</div>
 
-                {/* Welcome Section */}
-                <div style={styles.welcomeSection}>
-                    <h2 style={styles.welcomeTitle}>Welcome back</h2>
-                    <p style={styles.welcomeText}>Sign in to access your business dashboard</p>
-                </div>
-
-                {/* Form */}
-                <form onSubmit={handleSubmit} style={styles.form}>
-                    <div style={styles.inputGroup}>
-                        <label style={styles.label}>Email address</label>
-                        <input
-                            type="email"
-                            name="email"
-                            placeholder="you@company.com"
-                            value={formData.email}
-                            onChange={handleChange}
-                            required
-                            className="input-field"
-                            style={{
-                                ...styles.input,
-                                ...(error && styles.inputError),
-                            }}
-                        />
+                    <div style={styles.cardHead}>
+                        <h2 style={styles.cardTitle}>Welcome back</h2>
+                        <p style={styles.cardSubtitle}>Sign in to open your books.</p>
                     </div>
 
-                    <div style={styles.inputGroup}>
-                        <div style={styles.labelRow}>
-                            <label style={styles.label}>Password</label>
-                            <Link to="/forgot-password" className="forgot-link" style={styles.forgotLink}>
-                                Forgot password?
-                            </Link>
+                    <form onSubmit={handleSubmit} style={styles.form}>
+                        <div style={styles.inputGroup}>
+                            <label style={styles.label} htmlFor="login-email">
+                                Email address
+                            </label>
+                            <input
+                                id="login-email"
+                                type="email"
+                                name="email"
+                                placeholder="you@business.in"
+                                value={formData.email}
+                                onChange={handleChange}
+                                required
+                                className="ledger-input"
+                                style={{
+                                    ...styles.input,
+                                    ...(error && styles.inputError),
+                                }}
+                            />
                         </div>
-                        <input
-                            type="password"
-                            name="password"
-                            placeholder="Enter your password"
-                            value={formData.password}
-                            onChange={handleChange}
-                            required
-                            minLength={6}
-                            className="input-field"
-                            style={{
-                                ...styles.input,
-                                ...(error && styles.inputError),
-                            }}
-                        />
-                    </div>
 
-                    {error && (
-                        <div style={styles.errorBox}>
-                            <span style={styles.errorIcon}>⚠️</span>
-                            <span>{error}</span>
-                        </div>
-                    )}
-
-                    <button
-                        type="submit"
-                        disabled={isLoading}
-                        className="submit-btn"
-                        style={{
-                            ...styles.submitButton,
-                            ...(isLoading && styles.buttonDisabled),
-                        }}
-                    >
-                        {isLoading ? (
-                            <div style={styles.spinnerContainer}>
-                                <div style={styles.spinner}></div>
-                                <span>Signing in...</span>
+                        <div style={styles.inputGroup}>
+                            <div style={styles.labelRow}>
+                                <label style={styles.label} htmlFor="login-password">
+                                    Password
+                                </label>
+                                <Link to="/forgot-password" className="ledger-link" style={styles.forgotLink}>
+                                    Forgot password?
+                                </Link>
                             </div>
-                        ) : (
-                            <span>Sign In</span>
+                            <input
+                                id="login-password"
+                                type="password"
+                                name="password"
+                                placeholder="Enter your password"
+                                value={formData.password}
+                                onChange={handleChange}
+                                required
+                                minLength={6}
+                                className="ledger-input"
+                                style={{
+                                    ...styles.input,
+                                    ...(error && styles.inputError),
+                                }}
+                            />
+                        </div>
+
+                        {error && (
+                            <div style={styles.errorBox}>
+                                <span style={styles.errorTag}>Error</span>
+                                <span>{error}</span>
+                            </div>
                         )}
-                    </button>
 
-                    <div style={styles.divider}>
-                        <span style={styles.dividerLine} />
-                        <span style={styles.dividerText}>Or continue with</span>
-                        <span style={styles.dividerLine} />
+                        <button
+                            type="submit"
+                            disabled={isLoading}
+                            className="ledger-btn-primary"
+                            style={{
+                                ...styles.submitButton,
+                                ...(isLoading && styles.buttonDisabled),
+                            }}
+                        >
+                            {isLoading ? (
+                                <span style={styles.spinnerContainer}>
+                                    <span style={styles.spinner}></span>
+                                    Signing in…
+                                </span>
+                            ) : (
+                                "Sign in"
+                            )}
+                        </button>
+
+                        <div style={styles.divider}>
+                            <span style={styles.dividerLine} />
+                            <span style={styles.dividerText}>or continue with</span>
+                            <span style={styles.dividerLine} />
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={handleGoogleLogin}
+                            disabled={isLoading}
+                            className="ledger-btn-google"
+                            style={styles.googleButton}
+                        >
+                            <svg style={styles.socialIcon} viewBox="0 0 24 24">
+                                <path fill="#EA4335" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
+                                <path fill="#4285F4" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                                <path fill="#34A853" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                            </svg>
+                            Continue with Google
+                        </button>
+                    </form>
+
+                    <div style={styles.footer}>
+                        <span style={styles.footerText}>New here?</span>
+                        <Link to="/register" className="ledger-link" style={styles.registerLink}>
+                            Create an account →
+                        </Link>
                     </div>
 
-                    <button
-                        type="button"
-                        onClick={handleGoogleLogin}
-                        disabled={isLoading}
-                        className="social-btn"
-                        style={styles.googleButton}
-                    >
-                        <svg style={styles.socialIcon} viewBox="0 0 24 24">
-                            <path fill="#EA4335" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
-                            <path fill="#4285F4" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                            <path fill="#34A853" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                        </svg>
-                        Continue with Google
-                    </button>
-                </form>
-
-                {/* Footer */}
-                <div style={styles.footer}>
-                    <span style={styles.footerText}>New here?</span>
-                    <Link to="/register" className="register-link" style={styles.registerLink}>
-                        Create an account →
-                    </Link>
-                </div>
-
-                {/* Demo Credentials */}
-                <div style={styles.demoCard}>
-                    <p style={styles.demoTitle}>🔑 Demo Credentials</p>
-                    <div style={styles.demoCreds}>
-                        <span style={styles.demoLabel}>Email:</span>
-                        <span style={styles.demoValue}>demo@financepro.com</span>
-                    </div>
-                    <div style={styles.demoCreds}>
-                        <span style={styles.demoLabel}>Password:</span>
-                        <span style={styles.demoValue}>password123</span>
+                    <div style={styles.receipt}>
+                        <div style={styles.receiptLabel}>Demo access</div>
+                        <div style={styles.receiptRow}>
+                            <span style={styles.receiptKey}>email</span>
+                            <span style={styles.receiptValue}>demo@financepro.com</span>
+                        </div>
+                        <div style={styles.receiptRow}>
+                            <span style={styles.receiptKey}>pass</span>
+                            <span style={styles.receiptValue}>password123</span>
+                        </div>
                     </div>
                 </div>
             </div>
-
-            <style>
-                {`
-                    @keyframes float {
-                        0%, 100% { transform: translateY(0px) rotate(0deg); }
-                        50% { transform: translateY(-20px) rotate(5deg); }
-                    }
-                    @keyframes float2 {
-                        0%, 100% { transform: translateY(0px) rotate(0deg); }
-                        50% { transform: translateY(15px) rotate(-5deg); }
-                    }
-                    @keyframes spin {
-                        to { transform: rotate(360deg); }
-                    }
-                    @keyframes pulse {
-                        0%, 100% { opacity: 0.3; }
-                        50% { opacity: 1; }
-                    }
-                    .submit-btn:hover {
-                        transform: translateY(-2px);
-                        box-shadow: 0 8px 30px rgba(99, 102, 241, 0.4);
-                    }
-                    .submit-btn:active {
-                        transform: translateY(0);
-                    }
-                    .social-btn:hover {
-                        background: rgba(255, 255, 255, 0.1) !important;
-                        border-color: rgba(255, 255, 255, 0.15) !important;
-                        color: #ffffff !important;
-                        transform: translateY(-2px);
-                    }
-                    .input-field:hover {
-                        border-color: rgba(255, 255, 255, 0.15);
-                    }
-                    .input-field:focus {
-                        border-color: #6366f1;
-                        background: rgba(99, 102, 241, 0.08);
-                        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
-                    }
-                    .register-link:hover {
-                        color: #c4b5fd;
-                        border-bottom-color: rgba(165, 180, 252, 0.3);
-                    }
-                    .forgot-link:hover {
-                        color: rgba(255, 255, 255, 0.6);
-                    }
-                    .brand-icon:hover {
-                        transform: scale(1.05);
-                    }
-                `}
-            </style>
         </div>
     );
 }
 
-// ===== Styles =====
+// ===== Fonts, keyframes, hover states & focus rings =====
+const FONT_AND_MOTION_CSS = `
+    @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;1,500;1,600&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+    @keyframes ledgerCardIn {
+        from { opacity: 0; transform: translateY(10px) rotate(-0.4deg); }
+        to { opacity: 1; transform: translateY(0) rotate(0deg); }
+    }
+    @keyframes ledgerSpin {
+        to { transform: rotate(360deg); }
+    }
+    .ledger-card-enter {
+        animation: ledgerCardIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .ledger-card-enter { animation: none; }
+    }
+
+    .ledger-input:hover {
+        border-color: #b9ab84;
+    }
+    .ledger-input:focus {
+        outline: none;
+        border-color: #1F6F54;
+        box-shadow: 0 0 0 3px rgba(31, 111, 84, 0.15);
+    }
+    .ledger-btn-primary:hover:not(:disabled) {
+        background: #195c46;
+    }
+    .ledger-btn-google:hover:not(:disabled) {
+        border-color: #101C2C;
+        background: #fbf7ec;
+    }
+    .ledger-link:focus-visible,
+    .ledger-btn-primary:focus-visible,
+    .ledger-btn-google:focus-visible,
+    .ledger-input:focus-visible {
+        outline: 2px solid #C9A227;
+        outline-offset: 2px;
+    }
+`;
+
+// ===== Palette =====
+// ink:     #101C2C  – ledger cover / dark panel
+// paper:   #F1E9D6  – parchment card
+// emerald: #1F6F54  – stamp-ink green (primary action)
+// gold:    #C9A227  – brass tab / accent
+// margin:  #A64B3C  – classic red ledger margin rule
+
 const styles = {
-    container: {
+    page: {
+        minHeight: "100vh",
+        display: "flex",
+        background: "#101C2C",
+        fontFamily: "'Work Sans', -apple-system, BlinkMacSystemFont, sans-serif",
+    },
+
+    // ---------- Left panel ----------
+    leftPanel: {
+        flex: "0 0 44%",
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+        padding: "56px 56px 64px",
+        background:
+            "radial-gradient(circle at 20% 15%, rgba(201,162,39,0.08) 0%, transparent 45%), #101C2C",
+        boxSizing: "border-box",
+        position: "relative",
+    },
+    leftPanelNarrow: {
+        flex: "none",
+        minHeight: "auto",
+        padding: "40px 28px 32px",
+    },
+    wordmark: {
+        fontFamily: "'Fraunces', serif",
+        fontStyle: "italic",
+        fontWeight: 600,
+        fontSize: "26px",
+        color: "#F1E9D6",
+        letterSpacing: "-0.3px",
+    },
+    tagline: {
+        marginTop: "6px",
+        fontFamily: "'IBM Plex Mono', monospace",
+        fontSize: "11px",
+        letterSpacing: "2.5px",
+        color: "rgba(241,233,214,0.45)",
+    },
+    hero: {
+        fontFamily: "'Fraunces', serif",
+        fontStyle: "italic",
+        fontWeight: 500,
+        fontSize: "44px",
+        lineHeight: 1.15,
+        color: "#F1E9D6",
+        margin: "40px 0",
+        maxWidth: "420px",
+    },
+    heroCompact: {
+        fontSize: "30px",
+        margin: "28px 0",
+    },
+    ledgerBlock: {
+        borderTop: "1px solid rgba(241,233,214,0.15)",
+        paddingTop: "20px",
+    },
+    ledgerCaption: {
+        fontFamily: "'IBM Plex Mono', monospace",
+        fontSize: "10px",
+        letterSpacing: "1.5px",
+        textTransform: "uppercase",
+        color: "rgba(241,233,214,0.35)",
+        marginBottom: "12px",
+    },
+    ledgerTable: {
+        borderLeft: "2px solid #A64B3C",
+        paddingLeft: "16px",
+        display: "flex",
+        flexDirection: "column",
+        gap: "10px",
+    },
+    ledgerRow: {
+        display: "flex",
+        alignItems: "baseline",
+        gap: "10px",
+        fontFamily: "'IBM Plex Mono', monospace",
+        fontSize: "12.5px",
+        color: "rgba(241,233,214,0.8)",
+    },
+    ledgerDate: {
+        color: "rgba(241,233,214,0.4)",
+        flexShrink: 0,
+    },
+    ledgerEntry: {
+        flexShrink: 0,
+        whiteSpace: "nowrap",
+    },
+    ledgerDots: {
+        flex: 1,
+        borderBottom: "1px dotted rgba(241,233,214,0.25)",
+        transform: "translateY(-3px)",
+    },
+    ledgerAmount: {
+        color: "#F1E9D6",
+        flexShrink: 0,
+    },
+
+    // ---------- Right panel ----------
+    rightPanel: {
+        flex: "1",
         minHeight: "100vh",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: "20px",
-        background: "#0f0f1a",
-        position: "relative",
-        overflow: "hidden",
-        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+        padding: "48px 32px",
+        boxSizing: "border-box",
     },
-    bgAnimation: {
-        position: "absolute",
-        inset: 0,
-        pointerEvents: "none",
-        overflow: "hidden",
-    },
-    bgCircle1: {
-        position: "absolute",
-        top: "-20%",
-        right: "-10%",
-        width: "500px",
-        height: "500px",
-        background: "radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%)",
-        borderRadius: "50%",
-        animation: "float 8s ease-in-out infinite",
-    },
-    bgCircle2: {
-        position: "absolute",
-        bottom: "-20%",
-        left: "-10%",
-        width: "400px",
-        height: "400px",
-        background: "radial-gradient(circle, rgba(139, 92, 246, 0.12) 0%, transparent 70%)",
-        borderRadius: "50%",
-        animation: "float2 10s ease-in-out infinite",
-    },
-    bgCircle3: {
-        position: "absolute",
-        top: "50%",
-        left: "50%",
-        width: "300px",
-        height: "300px",
-        background: "radial-gradient(circle, rgba(236, 72, 153, 0.08) 0%, transparent 70%)",
-        borderRadius: "50%",
-        transform: "translate(-50%, -50%)",
-        animation: "pulse 6s ease-in-out infinite",
-    },
-    bgCircle4: {
-        position: "absolute",
-        top: "20%",
-        left: "20%",
-        width: "200px",
-        height: "200px",
-        background: "radial-gradient(circle, rgba(251, 146, 60, 0.08) 0%, transparent 70%)",
-        borderRadius: "50%",
-        animation: "float2 7s ease-in-out infinite",
+    rightPanelNarrow: {
+        minHeight: "auto",
+        padding: "32px 20px 56px",
     },
     card: {
         width: "100%",
-        maxWidth: "440px",
-        background: "rgba(255, 255, 255, 0.05)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
-        borderRadius: "32px",
-        padding: "48px 40px",
-        border: "1px solid rgba(255, 255, 255, 0.08)",
-        boxShadow: "0 30px 80px rgba(0, 0, 0, 0.6)",
+        maxWidth: "400px",
+        background: "#F1E9D6",
+        backgroundImage:
+            "repeating-linear-gradient(to bottom, transparent 0 30px, rgba(16,28,44,0.05) 30px 31px)",
+        borderRadius: "6px",
+        padding: "44px 36px 32px",
         position: "relative",
-        zIndex: 1,
-        transition: "all 0.3s ease",
+        boxShadow: "0 24px 60px rgba(0,0,0,0.35)",
+        border: "1px solid rgba(16,28,44,0.06)",
     },
-    brandSection: {
-        textAlign: "center",
-        marginBottom: "32px",
+    ledgerTab: {
+        position: "absolute",
+        top: "-16px",
+        right: "32px",
+        background: "#C9A227",
+        color: "#101C2C",
+        fontFamily: "'IBM Plex Mono', monospace",
+        fontSize: "11px",
+        fontWeight: 500,
+        letterSpacing: "1.5px",
+        padding: "7px 14px",
+        borderRadius: "4px 4px 0 0",
+        transform: "rotate(-2deg)",
+        boxShadow: "0 -2px 8px rgba(0,0,0,0.15)",
     },
-    brandIcon: {
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        width: "72px",
-        height: "72px",
-        background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
-        borderRadius: "20px",
-        marginBottom: "16px",
-        boxShadow: "0 8px 32px rgba(99, 102, 241, 0.3)",
-        transition: "transform 0.3s ease",
+    cardHead: {
+        marginBottom: "28px",
     },
-    brandEmoji: {
-        fontSize: "32px",
-    },
-    brandTitle: {
-        fontSize: "28px",
-        fontWeight: 700,
-        color: "#ffffff",
-        margin: "0 0 4px 0",
-        letterSpacing: "-0.5px",
-        background: "linear-gradient(135deg, #fff 0%, #a5b4fc 100%)",
-        WebkitBackgroundClip: "text",
-        WebkitTextFillColor: "transparent",
-    },
-    brandSubtitle: {
-        color: "rgba(255, 255, 255, 0.4)",
-        fontSize: "14px",
-        fontWeight: 400,
-        margin: 0,
-        letterSpacing: "0.5px",
-    },
-    welcomeSection: {
-        marginBottom: "32px",
-        textAlign: "center",
-    },
-    welcomeTitle: {
-        fontSize: "22px",
+    cardTitle: {
+        fontFamily: "'Fraunces', serif",
+        fontStyle: "italic",
         fontWeight: 600,
-        color: "#ffffff",
+        fontSize: "26px",
+        color: "#101C2C",
         margin: "0 0 6px 0",
     },
-    welcomeText: {
-        color: "rgba(255, 255, 255, 0.5)",
+    cardSubtitle: {
+        color: "#6b6355",
         fontSize: "14px",
         margin: 0,
     },
     form: {
         display: "flex",
         flexDirection: "column",
-        gap: "20px",
+        gap: "18px",
     },
     inputGroup: {
         display: "flex",
@@ -450,97 +534,98 @@ const styles = {
         justifyContent: "space-between",
     },
     label: {
-        color: "rgba(255, 255, 255, 0.7)",
-        fontSize: "13px",
+        color: "#4a4438",
+        fontSize: "12.5px",
         fontWeight: 500,
     },
     input: {
-        padding: "14px 18px",
-        background: "rgba(255, 255, 255, 0.06)",
-        border: "1.5px solid rgba(255, 255, 255, 0.08)",
-        borderRadius: "14px",
-        color: "#ffffff",
-        fontSize: "15px",
+        padding: "12px 14px",
+        background: "#FBF8F0",
+        border: "1.5px solid rgba(16,28,44,0.15)",
+        borderRadius: "6px",
+        color: "#101C2C",
+        fontSize: "14.5px",
+        fontFamily: "'IBM Plex Mono', monospace",
         outline: "none",
-        transition: "all 0.3s ease",
-        fontFamily: "inherit",
+        transition: "border-color 0.2s ease, box-shadow 0.2s ease",
+        boxSizing: "border-box",
     },
     inputError: {
-        borderColor: "rgba(239, 68, 68, 0.4)",
-        background: "rgba(239, 68, 68, 0.08)",
+        borderColor: "#A64B3C",
+        background: "rgba(166,75,60,0.06)",
     },
     forgotLink: {
-        color: "rgba(255, 255, 255, 0.35)",
+        color: "#8a7f66",
         fontSize: "12px",
         textDecoration: "none",
-        transition: "color 0.3s ease",
         borderBottom: "1px solid transparent",
     },
     errorBox: {
         display: "flex",
         alignItems: "center",
         gap: "8px",
-        padding: "12px 16px",
-        background: "rgba(239, 68, 68, 0.1)",
-        border: "1px solid rgba(239, 68, 68, 0.2)",
-        borderRadius: "12px",
-        color: "#fca5a5",
+        padding: "10px 14px",
+        background: "rgba(166,75,60,0.08)",
+        borderLeft: "3px solid #A64B3C",
+        borderRadius: "2px",
+        color: "#7a3225",
         fontSize: "13px",
     },
-    errorIcon: {
-        fontSize: "16px",
+    errorTag: {
+        fontFamily: "'IBM Plex Mono', monospace",
+        fontSize: "10px",
+        fontWeight: 500,
+        letterSpacing: "1px",
+        textTransform: "uppercase",
+        flexShrink: 0,
     },
     submitButton: {
-        padding: "16px",
-        background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+        padding: "13px",
+        background: "#1F6F54",
         border: "none",
-        borderRadius: "14px",
-        color: "#fff",
-        fontSize: "16px",
+        borderRadius: "6px",
+        color: "#F1E9D6",
+        fontSize: "15px",
         fontWeight: 600,
         cursor: "pointer",
-        transition: "all 0.3s ease",
-        boxShadow: "0 4px 20px rgba(99, 102, 241, 0.3)",
-        fontFamily: "inherit",
-        position: "relative",
-        overflow: "hidden",
+        transition: "background 0.2s ease",
+        fontFamily: "'Work Sans', sans-serif",
     },
     buttonDisabled: {
-        opacity: 0.7,
+        opacity: 0.6,
         cursor: "not-allowed",
-        transform: "none !important",
     },
     spinnerContainer: {
-        display: "flex",
+        display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
-        gap: "10px",
+        gap: "9px",
     },
     spinner: {
-        width: "20px",
-        height: "20px",
-        border: "2.5px solid rgba(255, 255, 255, 0.2)",
-        borderTopColor: "#fff",
+        width: "15px",
+        height: "15px",
+        border: "2px solid rgba(241,233,214,0.3)",
+        borderTopColor: "#F1E9D6",
         borderRadius: "50%",
-        animation: "spin 0.7s linear infinite",
+        display: "inline-block",
+        animation: "ledgerSpin 0.7s linear infinite",
     },
     divider: {
         display: "flex",
         alignItems: "center",
-        gap: "16px",
-        margin: "4px 0",
+        gap: "14px",
+        margin: "2px 0",
     },
     dividerLine: {
         flex: 1,
         height: "1px",
-        background: "rgba(255, 255, 255, 0.06)",
+        background: "rgba(16,28,44,0.12)",
     },
     dividerText: {
-        color: "rgba(255, 255, 255, 0.2)",
-        fontSize: "12px",
+        color: "#a39a84",
+        fontSize: "11px",
         textTransform: "uppercase",
-        letterSpacing: "0.8px",
-        fontWeight: 500,
+        letterSpacing: "1px",
         whiteSpace: "nowrap",
     },
     googleButton: {
@@ -549,75 +634,68 @@ const styles = {
         justifyContent: "center",
         gap: "10px",
         width: "100%",
-        padding: "13px",
-        background: "rgba(255, 255, 255, 0.05)",
-        border: "1px solid rgba(255, 255, 255, 0.08)",
-        borderRadius: "12px",
-        color: "rgba(255, 255, 255, 0.8)",
+        padding: "12px",
+        background: "#FBF8F0",
+        border: "1.5px solid rgba(16,28,44,0.15)",
+        borderRadius: "6px",
+        color: "#101C2C",
         fontSize: "14px",
         fontWeight: 500,
         cursor: "pointer",
-        transition: "all 0.3s ease",
-        fontFamily: "inherit",
+        transition: "all 0.2s ease",
+        fontFamily: "'Work Sans', sans-serif",
+        boxSizing: "border-box",
     },
     socialIcon: {
-        width: "20px",
-        height: "20px",
+        width: "18px",
+        height: "18px",
     },
     footer: {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        gap: "8px",
+        gap: "6px",
         marginTop: "24px",
-        paddingTop: "20px",
-        borderTop: "1px solid rgba(255, 255, 255, 0.06)",
+        paddingTop: "18px",
+        borderTop: "1px dashed rgba(16,28,44,0.15)",
+        fontSize: "13.5px",
     },
     footerText: {
-        color: "rgba(255, 255, 255, 0.3)",
-        fontSize: "14px",
+        color: "#8a7f66",
     },
     registerLink: {
-        color: "#a5b4fc",
+        color: "#101C2C",
         textDecoration: "none",
-        fontWeight: 500,
-        fontSize: "14px",
-        transition: "all 0.3s ease",
-        borderBottom: "1px solid transparent",
+        fontWeight: 600,
+        borderBottom: "1px solid #C9A227",
     },
-    demoCard: {
+    receipt: {
         marginTop: "20px",
-        padding: "16px 20px",
-        background: "rgba(99, 102, 241, 0.06)",
-        borderRadius: "14px",
-        border: "1px solid rgba(99, 102, 241, 0.1)",
+        paddingTop: "14px",
+        borderTop: "1px dashed rgba(16,28,44,0.2)",
     },
-    demoTitle: {
-        color: "rgba(255, 255, 255, 0.5)",
-        fontSize: "12px",
-        fontWeight: 500,
-        margin: "0 0 8px 0",
+    receiptLabel: {
+        fontFamily: "'IBM Plex Mono', monospace",
+        fontSize: "10px",
+        letterSpacing: "1.5px",
+        textTransform: "uppercase",
+        color: "#a39a84",
+        marginBottom: "6px",
         textAlign: "center",
-        letterSpacing: "0.5px",
     },
-    demoCreds: {
+    receiptRow: {
         display: "flex",
         justifyContent: "center",
-        alignItems: "center",
         gap: "8px",
-        fontSize: "13px",
-        padding: "2px 0",
-    },
-    demoLabel: {
-        color: "rgba(255, 255, 255, 0.3)",
-    },
-    demoValue: {
-        color: "rgba(255, 255, 255, 0.7)",
-        fontWeight: 500,
-        fontFamily: "'Monaco', 'Menlo', monospace",
+        fontFamily: "'IBM Plex Mono', monospace",
         fontSize: "12px",
-        background: "rgba(0, 0, 0, 0.2)",
-        padding: "2px 10px",
-        borderRadius: "6px",
+        padding: "1px 0",
+    },
+    receiptKey: {
+        color: "#a39a84",
+    },
+    receiptValue: {
+        color: "#4a4438",
+        fontWeight: 500,
     },
 };
