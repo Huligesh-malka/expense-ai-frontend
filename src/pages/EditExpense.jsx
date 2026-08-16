@@ -30,10 +30,21 @@ export default function EditExpense() {
         notes: ""
     });
     const [manualAmount, setManualAmount] = useState("");
+    const [categories, setCategories] = useState([]);
 
     useEffect(() => {
+        fetchCategories();
         fetchExpense();
     }, [id]);
+
+    const fetchCategories = async () => {
+        try {
+            const res = await axios.get("http://localhost:5000/api/categories");
+            setCategories(res.data.categories || []);
+        } catch (err) {
+            console.error("Error fetching categories:", err);
+        }
+    };
 
     const fetchExpense = async () => {
         try {
@@ -307,45 +318,41 @@ export default function EditExpense() {
 
     if (loading) {
         return (
-            <h2 style={{
-                textAlign: "center",
-                marginTop: "100px"
-            }}>
-                Loading...
-            </h2>
+            <div style={loadingContainerStyle}>
+                <div style={loadingSpinnerStyle}></div>
+                <h2 style={{ color: "#64748b", marginTop: "20px" }}>
+                    Loading Expense...
+                </h2>
+            </div>
         );
     }
 
     return (
-        <div style={{
-            maxWidth: "1200px",
-            margin: "30px auto",
-            background: "#fff",
-            padding: "30px",
-            borderRadius: "16px",
-            boxShadow: "0 4px 12px rgba(0,0,0,.08)",
-            border: "1px solid rgba(0,0,0,.04)"
-        }}>
-            <h1 style={{
-                fontSize: "28px",
-                fontWeight: "700",
-                color: "#1a2332",
-                marginBottom: "30px"
-            }}>
-                Edit Expense
-            </h1>
+        <div style={containerStyle}>
+            {/* Header Section */}
+            <div style={headerStyle}>
+                <div>
+                    <h1 style={titleStyle}>✏️ Edit Expense</h1>
+                    <p style={subtitleStyle}>Update your expense details below</p>
+                </div>
+                <button
+                    type="button"
+                    onClick={() => navigate("/expenses")}
+                    style={backButtonStyle}
+                >
+                    ← Back to Expenses
+                </button>
+            </div>
 
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} style={formStyle}>
                 {/* Two Column Layout */}
-                <div style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: "20px",
-                }}>
+                <div style={twoColumnStyle}>
                     {/* Left Column */}
                     <div>
                         <div style={inputGroupStyle}>
-                            <label style={labelStyle}>Merchant *</label>
+                            <label style={labelStyle}>
+                                <span style={{ color: "#ef4444" }}>*</span> Merchant
+                            </label>
                             <input
                                 type="text"
                                 name="merchant"
@@ -358,7 +365,9 @@ export default function EditExpense() {
                         </div>
 
                         <div style={inputGroupStyle}>
-                            <label style={labelStyle}>Expense Name *</label>
+                            <label style={labelStyle}>
+                                <span style={{ color: "#ef4444" }}>*</span> Expense Name
+                            </label>
                             <input
                                 type="text"
                                 name="expense_name"
@@ -371,7 +380,9 @@ export default function EditExpense() {
                         </div>
 
                         <div style={inputGroupStyle}>
-                            <label style={labelStyle}>Amount *</label>
+                            <label style={labelStyle}>
+                                <span style={{ color: "#ef4444" }}>*</span> Amount
+                            </label>
                             <input
                                 type="number"
                                 name="amount"
@@ -382,18 +393,21 @@ export default function EditExpense() {
                                 style={{
                                     ...inputStyle,
                                     background: products.some(p => p.product_name.trim() !== "") ? "#f1f5f9" : "#fff",
+                                    cursor: products.some(p => p.product_name.trim() !== "") ? "not-allowed" : "text",
                                 }}
                                 readOnly={products.some(p => p.product_name.trim() !== "")}
                             />
                             {products.some(p => p.product_name.trim() !== "") && (
-                                <span style={{ fontSize: "12px", color: "#64748b", marginTop: "4px" }}>
+                                <span style={infoTextStyle}>
                                     ℹ️ Amount is auto-calculated from products. To enter manually, remove all products.
                                 </span>
                             )}
                         </div>
 
                         <div style={inputGroupStyle}>
-                            <label style={labelStyle}>Date *</label>
+                            <label style={labelStyle}>
+                                <span style={{ color: "#ef4444" }}>*</span> Date
+                            </label>
                             <input
                                 type="date"
                                 name="expense_date"
@@ -408,7 +422,9 @@ export default function EditExpense() {
                     {/* Right Column */}
                     <div>
                         <div style={inputGroupStyle}>
-                            <label style={labelStyle}>Category *</label>
+                            <label style={labelStyle}>
+                                <span style={{ color: "#ef4444" }}>*</span> Category
+                            </label>
                             <select
                                 name="category_id"
                                 value={form.category_id}
@@ -417,17 +433,11 @@ export default function EditExpense() {
                                 style={inputStyle}
                             >
                                 <option value="">Select Category</option>
-                                <option value="1">🛒 Groceries</option>
-                                <option value="2">🏥 Medical</option>
-                                <option value="3">🍽️ Restaurant</option>
-                                <option value="4">⛽ Fuel</option>
-                                <option value="5">🛍️ Shopping</option>
-                                <option value="6">✈️ Travel</option>
-                                <option value="7">💡 Electricity</option>
-                                <option value="8">🌐 Internet</option>
-                                <option value="9">🎬 Entertainment</option>
-                                <option value="10">📚 Education</option>
-                                <option value="11">📌 Others</option>
+                                {categories.map(cat => (
+                                    <option key={cat.id} value={cat.id}>
+                                        {cat.icon} {cat.name}
+                                    </option>
+                                ))}
                             </select>
                         </div>
 
@@ -463,62 +473,23 @@ export default function EditExpense() {
                 </div>
 
                 {/* Products Section */}
-                <div style={{
-                    marginTop: "30px",
-                    paddingTop: "25px",
-                    borderTop: "2px solid #f1f5f9",
-                }}>
-                    <div style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        marginBottom: "20px",
-                    }}>
-                        <h2 style={{
-                            fontSize: "18px",
-                            fontWeight: "600",
-                            color: "#1a2332",
-                            margin: 0,
-                        }}>
-                            🛍️ Products (Optional)
+                <div style={productsSectionStyle}>
+                    <div style={productsHeaderStyle}>
+                        <h2 style={productsTitleStyle}>
+                            🛍️ Products
+                            <span style={optionalBadgeStyle}>Optional</span>
                         </h2>
                         <button
                             type="button"
                             onClick={addProductRow}
-                            style={{
-                                padding: "10px 20px",
-                                background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
-                                color: "#fff",
-                                border: "none",
-                                borderRadius: "10px",
-                                cursor: "pointer",
-                                fontWeight: "600",
-                                fontSize: "14px",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "8px",
-                                transition: "all 0.3s ease",
-                            }}
+                            style={addProductButtonStyle}
                         >
                             + Add Product
                         </button>
                     </div>
 
                     {products.length > 0 && (
-                        <div style={{
-                            display: "grid",
-                            gridTemplateColumns: "1.5fr 0.8fr 1fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.5fr",
-                            gap: "10px",
-                            padding: "15px",
-                            background: "#f8fafc",
-                            borderRadius: "10px",
-                            marginBottom: "10px",
-                            fontWeight: "600",
-                            color: "#64748b",
-                            fontSize: "12px",
-                            textTransform: "uppercase",
-                            letterSpacing: "0.5px",
-                        }}>
+                        <div style={productTableHeaderStyle}>
                             <span>Product</span>
                             <span>Qty</span>
                             <span>Unit Price</span>
@@ -532,18 +503,7 @@ export default function EditExpense() {
                     )}
 
                     {products.map((product, index) => (
-                        <div key={index} style={{
-                            display: "grid",
-                            gridTemplateColumns: "1.5fr 0.8fr 1fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.5fr",
-                            gap: "10px",
-                            padding: "12px",
-                            background: "#fff",
-                            borderRadius: "10px",
-                            marginBottom: "10px",
-                            border: "1px solid #e8edf5",
-                            alignItems: "center",
-                            transition: "all 0.3s ease",
-                        }}>
+                        <div key={index} style={productRowStyle}>
                             <input
                                 type="text"
                                 placeholder="Product Name"
@@ -581,13 +541,7 @@ export default function EditExpense() {
                                 type="checkbox"
                                 checked={product.gst_applicable}
                                 onChange={(e) => handleProductChange(index, "gst_applicable", e.target.checked)}
-                                style={{
-                                    width: "20px",
-                                    height: "20px",
-                                    cursor: "pointer",
-                                    margin: "0 auto",
-                                    display: "block",
-                                }}
+                                style={checkboxStyle}
                             />
                             <input
                                 type="number"
@@ -600,41 +554,17 @@ export default function EditExpense() {
                                     opacity: product.gst_applicable ? 1 : 0.5,
                                 }}
                             />
-                            <span style={{
-                                fontSize: "14px",
-                                fontWeight: "600",
-                                color: "#1a2332",
-                                textAlign: "center",
-                            }}>
+                            <span style={gstAmountStyle}>
                                 ₹{product.gst_amount || 0}
                             </span>
-                            <span style={{
-                                fontSize: "14px",
-                                fontWeight: "700",
-                                color: "#16a34a",
-                                textAlign: "center",
-                            }}>
+                            <span style={finalPriceStyle}>
                                 ₹{product.final_price || 0}
                             </span>
                             {products.length > 1 && (
                                 <button
                                     type="button"
                                     onClick={() => removeProductRow(index)}
-                                    style={{
-                                        padding: "8px",
-                                        background: "#fef2f2",
-                                        color: "#dc2626",
-                                        border: "1px solid #fecaca",
-                                        borderRadius: "8px",
-                                        cursor: "pointer",
-                                        display: "flex",
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                        transition: "all 0.3s ease",
-                                        width: "36px",
-                                        height: "36px",
-                                        margin: "0 auto",
-                                    }}
+                                    style={removeButtonStyle}
                                 >
                                     ✕
                                 </button>
@@ -645,133 +575,85 @@ export default function EditExpense() {
 
                 {/* Bill Summary Section */}
                 {products.some(p => p.product_name.trim() !== "" || p.unit_price > 0) && (
-                    <div style={{
-                        marginTop: "30px",
-                        padding: "25px",
-                        background: "#f8fafc",
-                        borderRadius: "12px",
-                        border: "1px solid #e8edf5",
-                    }}>
-                        <h3 style={{
-                            fontSize: "16px",
-                            fontWeight: "600",
-                            color: "#1a2332",
-                            marginBottom: "20px",
-                        }}>
-                            📊 Bill Summary
-                        </h3>
+                    <div style={summarySectionStyle}>
+                        <h3 style={summaryTitleStyle}>📊 Bill Summary</h3>
 
-                        <div style={{ maxWidth: "400px", marginLeft: "auto" }}>
-                            <div style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                padding: "8px 0",
-                                borderBottom: "1px solid #e8edf5",
-                            }}>
-                                <span style={{ color: "#64748b" }}>Subtotal</span>
-                                <span style={{ fontWeight: "600", color: "#1a2332" }}>
-                                    ₹{billSummary.subtotal.toFixed(2)}
-                                </span>
+                        <div style={summaryContainerStyle}>
+                            <div style={summaryRowStyle}>
+                                <span style={summaryLabelStyle}>Subtotal</span>
+                                <span style={summaryValueStyle}>₹{billSummary.subtotal.toFixed(2)}</span>
                             </div>
-                            <div style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                padding: "8px 0",
-                                borderBottom: "1px solid #e8edf5",
-                                color: "#dc2626",
-                            }}>
+                            <div style={{ ...summaryRowStyle, color: "#dc2626" }}>
                                 <span>Discount</span>
                                 <span>-₹{billSummary.totalDiscount.toFixed(2)}</span>
                             </div>
-                            <div style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                padding: "8px 0",
-                                borderBottom: "1px solid #e8edf5",
-                                color: "#2563eb",
-                            }}>
+                            <div style={{ ...summaryRowStyle, color: "#2563eb" }}>
                                 <span>GST</span>
                                 <span>+₹{billSummary.totalGST.toFixed(2)}</span>
                             </div>
 
                             {/* Extras */}
-                            <div style={{ marginTop: "10px" }}>
-                                <div style={{
-                                    display: "grid",
-                                    gridTemplateColumns: "1fr 1fr",
-                                    gap: "10px",
-                                    marginTop: "10px",
-                                }}>
-                                    <div style={inputGroupStyle}>
-                                        <label style={smallLabelStyle}>Coupon Discount</label>
-                                        <input
-                                            type="number"
-                                            name="couponDiscount"
-                                            value={extras.couponDiscount}
-                                            onChange={handleExtraChange}
-                                            style={extraInputStyle}
-                                            placeholder="₹0"
-                                        />
-                                    </div>
-                                    <div style={inputGroupStyle}>
-                                        <label style={smallLabelStyle}>Delivery Charge</label>
-                                        <input
-                                            type="number"
-                                            name="deliveryCharge"
-                                            value={extras.deliveryCharge}
-                                            onChange={handleExtraChange}
-                                            style={extraInputStyle}
-                                            placeholder="₹0"
-                                        />
-                                    </div>
-                                    <div style={inputGroupStyle}>
-                                        <label style={smallLabelStyle}>Packing Charge</label>
-                                        <input
-                                            type="number"
-                                            name="packingCharge"
-                                            value={extras.packingCharge}
-                                            onChange={handleExtraChange}
-                                            style={extraInputStyle}
-                                            placeholder="₹0"
-                                        />
-                                    </div>
-                                    <div style={inputGroupStyle}>
-                                        <label style={smallLabelStyle}>Service Charge</label>
-                                        <input
-                                            type="number"
-                                            name="serviceCharge"
-                                            value={extras.serviceCharge}
-                                            onChange={handleExtraChange}
-                                            style={extraInputStyle}
-                                            placeholder="₹0"
-                                        />
-                                    </div>
-                                    <div style={inputGroupStyle}>
-                                        <label style={smallLabelStyle}>Round Off</label>
-                                        <input
-                                            type="number"
-                                            name="roundOff"
-                                            value={extras.roundOff}
-                                            onChange={handleExtraChange}
-                                            style={extraInputStyle}
-                                            placeholder="₹0"
-                                            step="0.01"
-                                        />
-                                    </div>
+                            <div style={extrasGridStyle}>
+                                <div style={extraFieldStyle}>
+                                    <label style={smallLabelStyle}>Coupon Discount</label>
+                                    <input
+                                        type="number"
+                                        name="couponDiscount"
+                                        value={extras.couponDiscount}
+                                        onChange={handleExtraChange}
+                                        style={extraInputStyle}
+                                        placeholder="₹0"
+                                    />
+                                </div>
+                                <div style={extraFieldStyle}>
+                                    <label style={smallLabelStyle}>Delivery Charge</label>
+                                    <input
+                                        type="number"
+                                        name="deliveryCharge"
+                                        value={extras.deliveryCharge}
+                                        onChange={handleExtraChange}
+                                        style={extraInputStyle}
+                                        placeholder="₹0"
+                                    />
+                                </div>
+                                <div style={extraFieldStyle}>
+                                    <label style={smallLabelStyle}>Packing Charge</label>
+                                    <input
+                                        type="number"
+                                        name="packingCharge"
+                                        value={extras.packingCharge}
+                                        onChange={handleExtraChange}
+                                        style={extraInputStyle}
+                                        placeholder="₹0"
+                                    />
+                                </div>
+                                <div style={extraFieldStyle}>
+                                    <label style={smallLabelStyle}>Service Charge</label>
+                                    <input
+                                        type="number"
+                                        name="serviceCharge"
+                                        value={extras.serviceCharge}
+                                        onChange={handleExtraChange}
+                                        style={extraInputStyle}
+                                        placeholder="₹0"
+                                    />
+                                </div>
+                                <div style={extraFieldStyle}>
+                                    <label style={smallLabelStyle}>Round Off</label>
+                                    <input
+                                        type="number"
+                                        name="roundOff"
+                                        value={extras.roundOff}
+                                        onChange={handleExtraChange}
+                                        style={extraInputStyle}
+                                        placeholder="₹0"
+                                        step="0.01"
+                                    />
                                 </div>
                             </div>
 
                             {/* Grand Total */}
-                            <div style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                padding: "12px 0",
-                                marginTop: "10px",
-                                borderTop: "2px solid #1a2332",
-                                fontSize: "18px",
-                                fontWeight: "700",
-                                color: "#1a2332",
-                            }}>
+                            <div style={grandTotalStyle}>
                                 <span>Grand Total</span>
                                 <span>₹{billSummary.grandTotal.toFixed(2)}</span>
                             </div>
@@ -780,49 +662,17 @@ export default function EditExpense() {
                 )}
 
                 {/* Buttons */}
-                <div style={{
-                    marginTop: "30px",
-                    display: "flex",
-                    gap: "15px",
-                    justifyContent: "flex-end",
-                }}>
+                <div style={buttonContainerStyle}>
                     <button
                         type="button"
                         onClick={() => navigate("/expenses")}
-                        style={{
-                            padding: "14px 30px",
-                            background: "#f1f5f9",
-                            color: "#64748b",
-                            border: "none",
-                            borderRadius: "12px",
-                            cursor: "pointer",
-                            fontWeight: "600",
-                            fontSize: "15px",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "8px",
-                            transition: "all 0.3s ease",
-                        }}
+                        style={cancelButtonStyle}
                     >
                         ✕ Cancel
                     </button>
                     <button
                         type="submit"
-                        style={{
-                            padding: "14px 35px",
-                            background: "linear-gradient(135deg, #16a34a, #15803d)",
-                            color: "#fff",
-                            border: "none",
-                            borderRadius: "12px",
-                            cursor: "pointer",
-                            fontWeight: "600",
-                            fontSize: "15px",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "8px",
-                            transition: "all 0.3s ease",
-                            boxShadow: "0 4px 12px rgba(22, 163, 74, 0.3)",
-                        }}
+                        style={submitButtonStyle}
                     >
                         💾 Update Expense
                     </button>
@@ -833,26 +683,76 @@ export default function EditExpense() {
 }
 
 // Styles
+const containerStyle = {
+    maxWidth: "1200px",
+    margin: "30px auto",
+    padding: "20px",
+    background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
+    borderRadius: "20px",
+    minHeight: "100vh",
+};
+
+const headerStyle = {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "30px",
+    padding: "20px 30px",
+    background: "#fff",
+    borderRadius: "16px",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+};
+
+const titleStyle = {
+    fontSize: "28px",
+    fontWeight: "700",
+    color: "#1a2332",
+    margin: 0,
+};
+
+const subtitleStyle = {
+    fontSize: "14px",
+    color: "#64748b",
+    marginTop: "4px",
+    marginBottom: 0,
+};
+
+const backButtonStyle = {
+    padding: "10px 20px",
+    background: "#f1f5f9",
+    color: "#64748b",
+    border: "none",
+    borderRadius: "10px",
+    cursor: "pointer",
+    fontWeight: "500",
+    fontSize: "14px",
+    transition: "all 0.2s ease",
+};
+
+const formStyle = {
+    background: "#fff",
+    padding: "30px",
+    borderRadius: "16px",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+};
+
+const twoColumnStyle = {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: "30px",
+};
+
 const inputGroupStyle = {
     display: "flex",
     flexDirection: "column",
     gap: "6px",
-    marginBottom: "18px",
+    marginBottom: "20px",
 };
 
 const labelStyle = {
     fontSize: "14px",
     fontWeight: "500",
     color: "#1a2332",
-    display: "flex",
-    alignItems: "center",
-    gap: "6px",
-};
-
-const smallLabelStyle = {
-    fontSize: "12px",
-    fontWeight: "500",
-    color: "#64748b",
     display: "flex",
     alignItems: "center",
     gap: "4px",
@@ -882,6 +782,88 @@ const textareaStyle = {
     boxSizing: "border-box",
     resize: "vertical",
     fontFamily: "inherit",
+    minHeight: "100px",
+};
+
+const infoTextStyle = {
+    fontSize: "12px",
+    color: "#64748b",
+    marginTop: "4px",
+};
+
+const productsSectionStyle = {
+    marginTop: "30px",
+    paddingTop: "25px",
+    borderTop: "2px solid #f1f5f9",
+};
+
+const productsHeaderStyle = {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "20px",
+};
+
+const productsTitleStyle = {
+    fontSize: "18px",
+    fontWeight: "600",
+    color: "#1a2332",
+    margin: 0,
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+};
+
+const optionalBadgeStyle = {
+    fontSize: "11px",
+    fontWeight: "500",
+    color: "#64748b",
+    background: "#f1f5f9",
+    padding: "2px 10px",
+    borderRadius: "20px",
+};
+
+const addProductButtonStyle = {
+    padding: "10px 20px",
+    background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
+    color: "#fff",
+    border: "none",
+    borderRadius: "10px",
+    cursor: "pointer",
+    fontWeight: "600",
+    fontSize: "14px",
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    transition: "all 0.3s ease",
+};
+
+const productTableHeaderStyle = {
+    display: "grid",
+    gridTemplateColumns: "1.5fr 0.8fr 1fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.5fr",
+    gap: "10px",
+    padding: "12px 15px",
+    background: "#f8fafc",
+    borderRadius: "10px",
+    marginBottom: "10px",
+    fontWeight: "600",
+    color: "#64748b",
+    fontSize: "11px",
+    textTransform: "uppercase",
+    letterSpacing: "0.5px",
+};
+
+const productRowStyle = {
+    display: "grid",
+    gridTemplateColumns: "1.5fr 0.8fr 1fr 0.8fr 0.8fr 0.8fr 0.8fr 0.8fr 0.5fr",
+    gap: "10px",
+    padding: "12px 15px",
+    background: "#fff",
+    borderRadius: "10px",
+    marginBottom: "10px",
+    border: "1px solid #e8edf5",
+    alignItems: "center",
+    transition: "all 0.3s ease",
 };
 
 const productInputStyle = {
@@ -896,6 +878,99 @@ const productInputStyle = {
     boxSizing: "border-box",
 };
 
+const checkboxStyle = {
+    width: "20px",
+    height: "20px",
+    cursor: "pointer",
+    margin: "0 auto",
+    display: "block",
+};
+
+const gstAmountStyle = {
+    fontSize: "14px",
+    fontWeight: "600",
+    color: "#1a2332",
+    textAlign: "center",
+};
+
+const finalPriceStyle = {
+    fontSize: "14px",
+    fontWeight: "700",
+    color: "#16a34a",
+    textAlign: "center",
+};
+
+const removeButtonStyle = {
+    padding: "8px",
+    background: "#fef2f2",
+    color: "#dc2626",
+    border: "1px solid #fecaca",
+    borderRadius: "8px",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    transition: "all 0.3s ease",
+    width: "36px",
+    height: "36px",
+    margin: "0 auto",
+};
+
+const summarySectionStyle = {
+    marginTop: "30px",
+    padding: "25px",
+    background: "#f8fafc",
+    borderRadius: "12px",
+    border: "1px solid #e8edf5",
+};
+
+const summaryTitleStyle = {
+    fontSize: "16px",
+    fontWeight: "600",
+    color: "#1a2332",
+    marginBottom: "20px",
+};
+
+const summaryContainerStyle = {
+    maxWidth: "400px",
+    marginLeft: "auto",
+};
+
+const summaryRowStyle = {
+    display: "flex",
+    justifyContent: "space-between",
+    padding: "8px 0",
+    borderBottom: "1px solid #e8edf5",
+};
+
+const summaryLabelStyle = {
+    color: "#64748b",
+};
+
+const summaryValueStyle = {
+    fontWeight: "600",
+    color: "#1a2332",
+};
+
+const extrasGridStyle = {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: "10px",
+    marginTop: "10px",
+};
+
+const extraFieldStyle = {
+    display: "flex",
+    flexDirection: "column",
+    gap: "4px",
+};
+
+const smallLabelStyle = {
+    fontSize: "12px",
+    fontWeight: "500",
+    color: "#64748b",
+};
+
 const extraInputStyle = {
     padding: "8px 12px",
     border: "2px solid #e8edf5",
@@ -906,4 +981,71 @@ const extraInputStyle = {
     background: "#fff",
     width: "100%",
     boxSizing: "border-box",
+};
+
+const grandTotalStyle = {
+    display: "flex",
+    justifyContent: "space-between",
+    padding: "12px 0",
+    marginTop: "10px",
+    borderTop: "2px solid #1a2332",
+    fontSize: "18px",
+    fontWeight: "700",
+    color: "#1a2332",
+};
+
+const buttonContainerStyle = {
+    marginTop: "30px",
+    display: "flex",
+    gap: "15px",
+    justifyContent: "flex-end",
+};
+
+const cancelButtonStyle = {
+    padding: "14px 30px",
+    background: "#f1f5f9",
+    color: "#64748b",
+    border: "none",
+    borderRadius: "12px",
+    cursor: "pointer",
+    fontWeight: "600",
+    fontSize: "15px",
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    transition: "all 0.3s ease",
+};
+
+const submitButtonStyle = {
+    padding: "14px 35px",
+    background: "linear-gradient(135deg, #16a34a, #15803d)",
+    color: "#fff",
+    border: "none",
+    borderRadius: "12px",
+    cursor: "pointer",
+    fontWeight: "600",
+    fontSize: "15px",
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    transition: "all 0.3s ease",
+    boxShadow: "0 4px 12px rgba(22, 163, 74, 0.3)",
+};
+
+const loadingContainerStyle = {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: "100vh",
+    background: "#f8fafc",
+};
+
+const loadingSpinnerStyle = {
+    width: "50px",
+    height: "50px",
+    border: "4px solid #e8edf5",
+    borderTop: "4px solid #2563eb",
+    borderRadius: "50%",
+    animation: "spin 1s linear infinite",
 };
