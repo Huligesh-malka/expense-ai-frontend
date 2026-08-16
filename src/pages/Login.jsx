@@ -1,4 +1,4 @@
-import { useState, useContext } from "react";
+import { useState, useContext, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from "../firebase";
@@ -17,6 +17,22 @@ export default function Login() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState("");
 
+    // =====================================
+    // AUTO-REDIRECT IF ALREADY LOGGED IN
+    // =====================================
+    useEffect(() => {
+        const token = localStorage.getItem("token");
+        const businessId = localStorage.getItem("businessId");
+
+        if (token) {
+            if (businessId) {
+                navigate("/dashboard", { replace: true });
+            } else {
+                navigate("/create-business", { replace: true });
+            }
+        }
+    }, [navigate]);
+
     const handleChange = (e) => {
         setFormData({
             ...formData,
@@ -34,7 +50,9 @@ export default function Login() {
             const res = await API.post("/auth/login", formData);
 
             if (res.data.success) {
+                // Store all data in localStorage
                 login(res.data.user, res.data.token);
+                localStorage.setItem("token", res.data.token);
                 localStorage.setItem("userId", res.data.user.id);
                 localStorage.setItem("userName", res.data.user.full_name);
                 localStorage.setItem("userEmail", res.data.user.email);
@@ -68,7 +86,9 @@ export default function Login() {
             const res = await API.post("/auth/google", { idToken });
 
             if (res.data.success) {
+                // Store all data in localStorage
                 login(res.data.user, res.data.token);
+                localStorage.setItem("token", res.data.token);
                 localStorage.setItem("userId", res.data.user.id);
                 localStorage.setItem("userName", res.data.user.full_name);
                 localStorage.setItem("userEmail", res.data.user.email);
@@ -653,4 +673,4 @@ hoverStyles.textContent = `
         transform: scale(1.05);
     }
 `;
-document.head.appendChild(hoverStyles); 
+document.head.appendChild(hoverStyles);
