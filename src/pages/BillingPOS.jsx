@@ -49,6 +49,9 @@ export default function BillingPOS() {
   const [invoiceNo, setInvoiceNo] = useState("");
   const [saleComplete, setSaleComplete] = useState(false);
 
+  // Last completed invoice snapshot (for print/download)
+  const [lastInvoice, setLastInvoice] = useState(null);
+
   // Cash received for change calculation
   const [cashReceived, setCashReceived] = useState("");
 
@@ -670,6 +673,88 @@ export default function BillingPOS() {
   const change = cashReceived ? Number(cashReceived) - grandTotal : 0;
   const showChange = paymentMethod === "Cash" && cashReceived && change >= 0;
 
+  // Build a printable/downloadable invoice window for the given invoice snapshot
+  const printInvoice = (invoice) => {
+    if (!invoice) return;
+
+    const win = window.open("", "_blank", "width=380,height=640");
+    if (!win) {
+      alert("Please allow pop-ups for this site to download/print the invoice");
+      return;
+    }
+
+    const itemsHtml = invoice.items
+      .map(
+        (item) => `
+      <tr>
+        <td style="padding:4px 2px;border-bottom:1px dashed #999;">${item.product_name}</td>
+        <td style="padding:4px 2px;border-bottom:1px dashed #999;text-align:center;">${item.quantity} ${formatUnitDisplay(item.unit)}</td>
+        <td style="padding:4px 2px;border-bottom:1px dashed #999;text-align:right;">₹${(item.totalPrice || 0).toFixed(2)}</td>
+      </tr>`
+      )
+      .join("");
+
+    const html = `
+      <html>
+        <head>
+          <title>${invoice.invoiceNo}</title>
+          <meta charset="utf-8" />
+          <style>
+            body { font-family: 'Courier New', monospace; padding: 16px; font-size: 12px; color:#111; margin:0; }
+            h2 { text-align:center; margin: 4px 0; letter-spacing: 0.5px; }
+            .meta { text-align:center; font-size: 11px; margin-bottom: 10px; line-height:1.6; color:#333; }
+            table { width:100%; border-collapse: collapse; margin-top: 8px; }
+            th { text-align:left; font-size: 10px; text-transform:uppercase; letter-spacing:0.5px; padding-bottom:4px; border-bottom:1px solid #333; }
+            .totals { margin-top:10px; }
+            .totals div { display:flex; justify-content:space-between; padding:2px 0; font-size:12px; }
+            .grand { font-weight:bold; font-size:15px; border-top:1px dashed #000; margin-top:8px; padding-top:8px; }
+            .footer { text-align:center; margin-top:20px; font-size:11px; color:#333; }
+            .btn-row { text-align:center; margin-top:16px; }
+            .btn-row button {
+              padding:8px 18px; font-size:12px; font-weight:bold; border-radius:6px;
+              border:1px solid #333; background:#111; color:#FFB000; cursor:pointer;
+            }
+            @media print {
+              .btn-row { display:none; }
+              body { padding: 0; }
+            }
+          </style>
+        </head>
+        <body>
+          <h2>${invoice.businessName}</h2>
+          <div class="meta">
+            Invoice: ${invoice.invoiceNo}<br/>
+            ${invoice.date.toLocaleString("en-IN")}<br/>
+            Customer: ${invoice.customerName}${invoice.customerPhone ? " · " + invoice.customerPhone : ""}
+          </div>
+          <table>
+            <thead>
+              <tr><th>Item</th><th style="text-align:center;">Qty</th><th style="text-align:right;">Amt</th></tr>
+            </thead>
+            <tbody>${itemsHtml}</tbody>
+          </table>
+          <div class="totals">
+            <div><span>Subtotal</span><span>₹${invoice.subtotal.toFixed(2)}</span></div>
+            <div><span>Discount (${invoice.discount}%)</span><span>−₹${invoice.discountAmount.toFixed(2)}</span></div>
+            <div><span>CGST (${(invoice.gst / 2).toFixed(0)}%)</span><span>₹${invoice.cgst.toFixed(2)}</span></div>
+            <div><span>SGST (${(invoice.gst / 2).toFixed(0)}%)</span><span>₹${invoice.sgst.toFixed(2)}</span></div>
+            <div class="grand"><span>TOTAL</span><span>₹${invoice.grandTotal.toFixed(2)}</span></div>
+            <div><span>Payment</span><span>${invoice.paymentMethod}</span></div>
+          </div>
+          <div class="footer">Thank you for shopping with us!</div>
+          <div class="btn-row">
+            <button onclick="window.print()">🖨️ Print / Save as PDF</button>
+          </div>
+        </body>
+      </html>
+    `;
+
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+  };
+
   const saveSale = async () => {
     try {
       const payload = {
@@ -689,6 +774,26 @@ export default function BillingPOS() {
       };
 
       const res = await API.post("/sales/create", payload);
+
+      // Snapshot the invoice BEFORE we clear the cart/fields, so we can
+      // print or download it after the sale is settled.
+      const invoiceSnapshot = {
+        invoiceNo,
+        businessName,
+        date: new Date(),
+        customerName: customerName || "Walk-in Customer",
+        customerPhone,
+        items: cart,
+        subtotal,
+        discount: Number(discount),
+        discountAmount,
+        gst: Number(gst),
+        cgst,
+        sgst,
+        grandTotal,
+        paymentMethod,
+      };
+      setLastInvoice(invoiceSnapshot);
 
       setSaleComplete(true);
       setCart([]);
@@ -1648,6 +1753,26 @@ export default function BillingPOS() {
           to { opacity: 1; transform: translateY(0); }
         }
 
+        .invoice-download-btn {
+          width: 100%;
+          margin-top: 8px;
+          padding: 10px 0;
+          background: var(--panel-dark-2);
+          color: var(--gold);
+          border: 1px solid var(--charcoal-line);
+          border-radius: 8px;
+          font-weight: 700;
+          font-size: 12px;
+          cursor: pointer;
+          font-family: 'JetBrains Mono', monospace;
+          letter-spacing: 0.3px;
+          transition: background 0.15s, border-color 0.15s;
+        }
+        .invoice-download-btn:hover {
+          background: var(--charcoal-soft);
+          border-color: var(--gold);
+        }
+
         .receipt-dash {
           border: none;
           border-top: 1px dashed var(--charcoal-line);
@@ -2394,6 +2519,16 @@ export default function BillingPOS() {
               </div>
 
               {saleComplete && <div className="save-banner">✓ Bill settled</div>}
+
+              {/* Download / print the invoice for the last completed sale */}
+              {lastInvoice && (
+                <button
+                  className="invoice-download-btn"
+                  onClick={() => printInvoice(lastInvoice)}
+                >
+                  🧾 Download / Print Invoice ({lastInvoice.invoiceNo})
+                </button>
+              )}
 
               <hr className="receipt-dash" />
 
