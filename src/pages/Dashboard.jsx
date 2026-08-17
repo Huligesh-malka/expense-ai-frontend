@@ -72,17 +72,16 @@ export default function BusinessDashboard() {
     loadBusinessProfile();
   };
 
+  // FIXED: Removed ownerId from URL, using /business/profile directly
   const loadBusinessProfile = async () => {
     try {
-      const ownerId = localStorage.getItem("userId");
-      if (ownerId) {
-        const res = await API.get(`/business/profile/${ownerId}`);
-        if (res.data.business) {
-          setBusinessLogo(res.data.business.logo || "");
-          // Also update business name from API if available
-          if (res.data.business.business_name) {
-            setBusinessName(res.data.business.business_name);
-          }
+      const res = await API.get("/business/profile");
+      
+      if (res.data.business) {
+        setBusinessLogo(res.data.business.logo || "");
+        // Also update business name from API if available
+        if (res.data.business.business_name) {
+          setBusinessName(res.data.business.business_name);
         }
       }
     } catch (err) {
