@@ -51,14 +51,25 @@ export default function BusinessDashboard() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [businessLogo, setBusinessLogo] = useState("");
 
-  // Get business_id from localStorage
-  const businessId = localStorage.getItem("businessId") || "1";
-
   // ---------- Load Data ----------
   useEffect(() => {
-    loadDashboard();
-    loadRecentSales();
-    loadBusinessInfo();
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        
+        await Promise.all([
+          loadDashboard(),
+          loadRecentSales(),
+          loadBusinessInfo()
+        ]);
+      } catch (error) {
+        console.error("Dashboard loading error:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
   }, []);
 
   const loadBusinessInfo = () => {
@@ -72,7 +83,7 @@ export default function BusinessDashboard() {
     loadBusinessProfile();
   };
 
-  // FIXED: Removed ownerId from URL, using /business/profile directly
+  // FIXED: Removed business_id from URL, using middleware
   const loadBusinessProfile = async () => {
     try {
       const res = await API.get("/business/profile");
@@ -89,25 +100,27 @@ export default function BusinessDashboard() {
     }
   };
 
+  // FIXED: Removed business_id from URL, using middleware
   const loadDashboard = async () => {
     try {
-      const res = await API.get(`/dashboard?business_id=${businessId}`);
+      const res = await API.get("/dashboard");
       setDashboard(res.data);
     } catch (err) {
       console.error("Failed to load dashboard:", err);
-    } finally {
-      setLoading(false);
+      throw err;
     }
   };
 
+  // FIXED: Removed business_id from URL, using middleware
   const loadRecentSales = async () => {
     try {
-      const res = await API.get(`/sales?business_id=${businessId}&limit=5`);
+      const res = await API.get("/sales?limit=5");
       const salesData = res.data.data || [];
       setRecentSales(salesData.slice(0, 5));
     } catch (err) {
       console.error("Failed to load recent sales:", err);
       setRecentSales([]);
+      throw err;
     }
   };
 
@@ -119,6 +132,17 @@ export default function BusinessDashboard() {
   // ---------- Format Currency ----------
   const formatCurrency = (amount) => {
     return `₹${Number(amount).toLocaleString()}`;
+  };
+
+  // ---------- Normalize Payment Status ----------
+  const getPaymentStatus = (status) => {
+    const normalized = String(status || "paid").toLowerCase();
+    return {
+      isPaid: normalized === "paid",
+      isPending: normalized === "pending",
+      isFailed: normalized === "failed" || normalized === "cancelled",
+      label: normalized.charAt(0).toUpperCase() + normalized.slice(1),
+    };
   };
 
   // ---------- Loading State ----------
@@ -578,7 +602,6 @@ export default function BusinessDashboard() {
         </div>
       </div>
 
-      {/* Rest of your dashboard content remains the same */}
       {/* Business Info Widget */}
       <div
         style={{
@@ -916,116 +939,120 @@ export default function BusinessDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {recentSales.map((sale, idx) => (
-                  <tr
-                    key={idx}
-                    style={{
-                      borderBottom:
-                        idx < recentSales.length - 1
-                          ? "1px solid #e8edf5"
-                          : "none",
-                      transition: "background 0.2s ease",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = "#f8fafc";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = "transparent";
-                    }}
-                  >
-                    <td style={{ fontWeight: "500", color: "#1a2332" }}>
-                      #INV-{sale.invoice_no || "0001"}
-                    </td>
-                    <td style={{ color: "#1a2332" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <div
-                          style={{
-                            width: "32px",
-                            height: "32px",
-                            borderRadius: "50%",
-                            background: "#6366f1",
-                            color: "#fff",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontSize: "12px",
-                            fontWeight: "600",
-                          }}
-                        >
-                          {sale.customer_phone ? sale.customer_phone.slice(-4) : "📱"}
-                        </div>
-                        <span style={{ fontWeight: "500" }}>
-                          {sale.customer_phone || "No phone"}
-                        </span>
-                      </div>
-                    </td>
-                    <td>
-                      {sale.items && sale.items.length > 0 ? (
-                        <>
-                          <strong>{sale.items.length} Item{sale.items.length > 1 ? "s" : ""}</strong>
-                          <div style={{ marginTop: 4, fontSize: "12px", color: "#64748b" }}>
-                            {sale.items.slice(0, 2).map((item, index) => (
-                              <div key={index}>
-                                {item.product_name} ({Number(item.entered_quantity)} {item.entered_unit})
-                              </div>
-                            ))}
-                            {sale.items.length > 2 && (
-                              <div>+{sale.items.length - 2} more</div>
-                            )}
+                {recentSales.map((sale) => {
+                  const paymentStatus = getPaymentStatus(sale.payment_status);
+                  
+                  // Check if invoice_no already has "INV-" prefix
+                  const invoiceDisplay = sale.invoice_no?.startsWith("INV-") 
+                    ? sale.invoice_no 
+                    : `INV-${sale.invoice_no || "0001"}`;
+                  
+                  return (
+                    <tr
+                      key={sale.id || sale._id}
+                      style={{
+                        borderBottom: "1px solid #e8edf5",
+                        transition: "background 0.2s ease",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "#f8fafc";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "transparent";
+                      }}
+                    >
+                      <td style={{ fontWeight: "500", color: "#1a2332" }}>
+                        #{invoiceDisplay}
+                      </td>
+                      <td style={{ color: "#1a2332" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <div
+                            style={{
+                              width: "32px",
+                              height: "32px",
+                              borderRadius: "50%",
+                              background: "#6366f1",
+                              color: "#fff",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontSize: "12px",
+                              fontWeight: "600",
+                            }}
+                          >
+                            {sale.customer_phone ? sale.customer_phone.slice(-4) : "📱"}
                           </div>
-                        </>
-                      ) : (
-                        "0 Items"
-                      )}
-                    </td>
-                    <td style={{ fontWeight: "600", color: "#16a34a" }}>
-                      {formatCurrency(sale.total_amount || 0)}
-                    </td>
-                    <td>
-                      <span
-                        style={{
-                          background:
-                            sale.payment_status === "Paid" || sale.payment_status === "paid"
+                          <span style={{ fontWeight: "500" }}>
+                            {sale.customer_phone || "No phone"}
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        {sale.items && sale.items.length > 0 ? (
+                          <>
+                            <strong>{sale.items.length} Item{sale.items.length > 1 ? "s" : ""}</strong>
+                            <div style={{ marginTop: 4, fontSize: "12px", color: "#64748b" }}>
+                              {sale.items.slice(0, 2).map((item, index) => (
+                                <div key={index}>
+                                  {item.product_name} ({Number(item.entered_quantity)} {item.entered_unit})
+                                </div>
+                              ))}
+                              {sale.items.length > 2 && (
+                                <div>+{sale.items.length - 2} more</div>
+                              )}
+                            </div>
+                          </>
+                        ) : (
+                          "0 Items"
+                        )}
+                      </td>
+                      <td style={{ fontWeight: "600", color: "#16a34a" }}>
+                        {formatCurrency(sale.total_amount || 0)}
+                      </td>
+                      <td>
+                        <span
+                          style={{
+                            background: paymentStatus.isPaid
                               ? "#dcfce7"
-                              : sale.payment_status === "Pending" || sale.payment_status === "pending"
+                              : paymentStatus.isPending
                               ? "#fef3c7"
                               : "#fee2e2",
-                          color:
-                            sale.payment_status === "Paid" || sale.payment_status === "paid"
+                            color: paymentStatus.isPaid
                               ? "#16a34a"
-                              : sale.payment_status === "Pending" || sale.payment_status === "pending"
+                              : paymentStatus.isPending
                               ? "#f59e0b"
                               : "#dc2626",
-                          padding: "4px 12px",
-                          borderRadius: "20px",
-                          fontSize: "12px",
-                          fontWeight: "600",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "4px",
-                        }}
-                      >
-                        {sale.payment_status === "Paid" || sale.payment_status === "paid" ? (
-                          <FiCheckCircle size={14} />
-                        ) : sale.payment_status === "Pending" || sale.payment_status === "pending" ? (
-                          <FiClock size={14} />
-                        ) : (
-                          <FiXCircle size={14} />
-                        )}
-                        {sale.payment_status || "Paid"}
-                      </span>
-                    </td>
-                    <td style={{ color: "#64748b", fontSize: "14px" }}>
-                      {sale.created_at
-                        ? new Date(sale.created_at).toLocaleDateString("en-IN", {
-                            day: "2-digit",
-                            month: "short",
-                            year: "numeric"
-                          })
-                        : "-"}
-                    </td>
-                  </tr>
-                ))}
+                            padding: "4px 12px",
+                            borderRadius: "20px",
+                            fontSize: "12px",
+                            fontWeight: "600",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: "4px",
+                          }}
+                        >
+                          {paymentStatus.isPaid ? (
+                            <FiCheckCircle size={14} />
+                          ) : paymentStatus.isPending ? (
+                            <FiClock size={14} />
+                          ) : (
+                            <FiXCircle size={14} />
+                          )}
+                          {paymentStatus.label}
+                        </span>
+                      </td>
+                      <td style={{ color: "#64748b", fontSize: "14px" }}>
+                        {sale.created_at
+                          ? new Date(sale.created_at).toLocaleDateString("en-IN", {
+                              day: "2-digit",
+                              month: "short",
+                              year: "numeric"
+                            })
+                          : "-"}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
