@@ -4,7 +4,6 @@ import API from "../services/api";
 
 export default function EditBusiness() {
     const navigate = useNavigate();
-    const ownerId = localStorage.getItem("userId");
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [form, setForm] = useState({
@@ -29,7 +28,7 @@ export default function EditBusiness() {
 
     const loadBusiness = async () => {
         try {
-            const res = await API.get(`/business/profile/${ownerId}`);
+            const res = await API.get("/business/profile");
             setForm(res.data.business);
         } catch (err) {
             console.log(err);
@@ -50,7 +49,7 @@ export default function EditBusiness() {
         e.preventDefault();
         setSaving(true);
         try {
-            await API.put(`/business/profile/${form.id}`, form);
+            await API.put("/business/profile", form);
             localStorage.setItem("businessName", form.business_name);
             localStorage.setItem("businessType", form.business_type);
             alert("Business profile updated successfully!");
