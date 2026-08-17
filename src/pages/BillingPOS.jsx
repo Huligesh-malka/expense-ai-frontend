@@ -88,14 +88,10 @@ export default function BillingPOS() {
     return isNaN(numPrice) ? 0 : numPrice;
   };
 
-  // Load business profile - same as Dashboard
+  // FIXED: Load business profile - removed ownerId, using /business/profile directly
   const loadBusinessProfile = async () => {
     try {
-      const ownerId = localStorage.getItem("userId");
-
-      if (!ownerId) return;
-
-      const res = await API.get(`/business/profile/${ownerId}`);
+      const res = await API.get("/business/profile");
 
       if (res.data.business) {
         setBusinessName(
