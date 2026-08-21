@@ -2344,7 +2344,7 @@ export default function BillingPOS() {
         {/* Status Bar - Now using real business name and dashboard data */}
         <div className="status-bar">
           <div className="status-left">
-            <span className="status-brand">₹ {businessName.toUpperCase()} COUNTER</span>
+            <span className="status-brand">₹ {businessName.toUpperCase()} </span>
             <span className="status-online">ONLINE</span>
             <span style={{ color: '#6B7178' }}>Cashier: Admin</span>
           </div>
@@ -2377,7 +2377,7 @@ export default function BillingPOS() {
                 <div className="brand-mark">₹</div>
                 <div className="shelf-heading">
                   {businessName}
-                  <span className="sub">Counter Billing</span>
+                  <span className="sub"></span>
                 </div>
               </div>
               <div className="shelf-count">
