@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useContext } from "react";
 import API from "../services/api";
+import { AuthContext } from "../context/AuthContext";
 import {
   FiDollarSign,
   FiShoppingBag,
@@ -31,6 +32,7 @@ import {
 
 export default function BusinessDashboard() {
   const navigate = useNavigate();
+  const { logout } = useContext(AuthContext);
   
   // ---------- State ----------
   const [dashboard, setDashboard] = useState({
@@ -46,20 +48,27 @@ export default function BusinessDashboard() {
 
   const [recentSales, setRecentSales] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [businessName, setBusinessName] = useState("Your Store");
   const [businessType, setBusinessType] = useState("");
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [businessLogo, setBusinessLogo] = useState("");
 
-  // Get business_id from localStorage
-  const businessId = localStorage.getItem("businessId") || "1";
+  // Get business_id from localStorage - NO FALLBACK
+  const businessId = localStorage.getItem("businessId");
 
   // ---------- Load Data ----------
   useEffect(() => {
+    if (!businessId) {
+      setLoading(false);
+      setError("Business information not found. Please create/select your business.");
+      return;
+    }
+
     loadDashboard();
     loadRecentSales();
     loadBusinessInfo();
-  }, []);
+  }, [businessId]);
 
   const loadBusinessInfo = () => {
     // Get business info from localStorage
@@ -72,15 +81,11 @@ export default function BusinessDashboard() {
     loadBusinessProfile();
   };
 
-  // FIXED: loadBusinessProfile now calls the correct endpoint
   const loadBusinessProfile = async () => {
     try {
-      // The backend route is GET /business/profile
-      // It uses the authenticated user's session to get the business
       const res = await API.get("/business/profile");
       if (res.data.business) {
         setBusinessLogo(res.data.business.logo || "");
-        // Also update business name from API if available
         if (res.data.business.business_name) {
           setBusinessName(res.data.business.business_name);
         }
@@ -91,17 +96,29 @@ export default function BusinessDashboard() {
   };
 
   const loadDashboard = async () => {
+    if (!businessId) {
+      setError("Business information not found.");
+      setLoading(false);
+      return;
+    }
+
     try {
+      setError("");
       const res = await API.get(`/dashboard?business_id=${businessId}`);
       setDashboard(res.data);
     } catch (err) {
       console.error("Failed to load dashboard:", err);
+      setError(
+        err.response?.data?.message || "Failed to load dashboard."
+      );
     } finally {
       setLoading(false);
     }
   };
 
   const loadRecentSales = async () => {
+    if (!businessId) return;
+
     try {
       const res = await API.get(`/sales?business_id=${businessId}&limit=5`);
       const salesData = res.data.data || [];
@@ -113,7 +130,7 @@ export default function BusinessDashboard() {
   };
 
   const handleLogout = () => {
-    localStorage.clear();
+    logout();
     navigate("/login");
   };
 
@@ -147,6 +164,57 @@ export default function BusinessDashboard() {
             }}
           />
           <p style={{ color: "#64748b" }}>Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ---------- Error State ----------
+  if (error) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          background: "#f5f7fb",
+          padding: "20px",
+        }}
+      >
+        <div
+          style={{
+            background: "#fff",
+            padding: "40px",
+            borderRadius: "16px",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+            textAlign: "center",
+            maxWidth: "500px",
+          }}
+        >
+          <FiAlertCircle size={48} color="#ef4444" style={{ marginBottom: "16px" }} />
+          <h2 style={{ color: "#1a2332", marginBottom: "12px" }}>Unable to Load Dashboard</h2>
+          <p style={{ color: "#64748b", marginBottom: "20px" }}>{error}</p>
+          <button
+            onClick={() => {
+              if (!businessId) {
+                navigate("/business-setup");
+              } else {
+                window.location.reload();
+              }
+            }}
+            style={{
+              padding: "12px 24px",
+              background: "#2563eb",
+              color: "#fff",
+              border: "none",
+              borderRadius: "8px",
+              cursor: "pointer",
+              fontWeight: "600",
+            }}
+          >
+            {!businessId ? "Set Up Business" : "Retry"}
+          </button>
         </div>
       </div>
     );
