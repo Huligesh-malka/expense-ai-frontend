@@ -22,6 +22,7 @@ API.interceptors.request.use(
         const token = localStorage.getItem("token");
 
         if (token) {
+            config.headers = config.headers || {};
             config.headers.Authorization = `Bearer ${token}`;
         }
 
@@ -38,51 +39,88 @@ API.interceptors.request.use(
 // =====================================
 
 API.interceptors.response.use(
-    (response) => {
-        return response;
-    },
+    (response) => response,
 
     (error) => {
+        // =====================================
+        // NETWORK ERROR
+        // =====================================
+
         if (!error.response) {
             console.error("Network error:", error.message);
             return Promise.reject(error);
         }
 
         const status = error.response.status;
+        const url = error.config?.url || "";
+        const backendMessage =
+            error.response.data?.message || "";
 
-        // Authentication expired / invalid
+        // =====================================
+        // 401 - AUTHENTICATION
+        // =====================================
+
         if (status === 401) {
             localStorage.removeItem("token");
+            localStorage.removeItem("user");
             localStorage.removeItem("userId");
             localStorage.removeItem("businessId");
 
-            // Don't force navigation if already on login
             if (window.location.pathname !== "/login") {
                 window.location.href = "/login";
             }
         }
 
-        // Permission denied
-        if (status === 403) {
+        // =====================================
+        // 403 - PERMISSION
+        // =====================================
+
+        else if (status === 403) {
             console.error(
                 "Access denied:",
-                error.response.data?.message
+                backendMessage || "Permission denied"
             );
         }
 
-        // Resource not found
-        if (status === 404) {
+        // =====================================
+        // 404 - RESOURCE NOT FOUND
+        // =====================================
+
+        else if (status === 404) {
+
+            // Barcode lookup 404 is expected when
+            // checking whether a barcode is available.
+            if (url.includes("/products/barcode/")) {
+                // Do not report this as an API endpoint error.
+                // The endpoint exists; the product simply wasn't found.
+            } else {
+                console.error(
+                    "Resource not found:",
+                    url,
+                    backendMessage
+                );
+            }
+        }
+
+        // =====================================
+        // 400 - VALIDATION / BAD REQUEST
+        // =====================================
+
+        else if (status === 400) {
             console.error(
-                "API endpoint not found:",
-                error.config?.url
+                "Bad request:",
+                backendMessage || "Invalid request"
             );
         }
 
-        // Server error
-        if (status >= 500) {
+        // =====================================
+        // 500+ - SERVER ERROR
+        // =====================================
+
+        else if (status >= 500) {
             console.error(
                 "Server error:",
-                error.response.data?.message || "Internal server error"
+                backendMessage || "Internal server error"
             );
         }
 
