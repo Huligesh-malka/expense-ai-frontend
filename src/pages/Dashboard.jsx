@@ -72,17 +72,17 @@ export default function BusinessDashboard() {
     loadBusinessProfile();
   };
 
+  // FIXED: loadBusinessProfile now calls the correct endpoint
   const loadBusinessProfile = async () => {
     try {
-      const ownerId = localStorage.getItem("userId");
-      if (ownerId) {
-        const res = await API.get(`/business/profile/${ownerId}`);
-        if (res.data.business) {
-          setBusinessLogo(res.data.business.logo || "");
-          // Also update business name from API if available
-          if (res.data.business.business_name) {
-            setBusinessName(res.data.business.business_name);
-          }
+      // The backend route is GET /business/profile
+      // It uses the authenticated user's session to get the business
+      const res = await API.get("/business/profile");
+      if (res.data.business) {
+        setBusinessLogo(res.data.business.logo || "");
+        // Also update business name from API if available
+        if (res.data.business.business_name) {
+          setBusinessName(res.data.business.business_name);
         }
       }
     } catch (err) {
@@ -579,7 +579,6 @@ export default function BusinessDashboard() {
         </div>
       </div>
 
-      {/* Rest of your dashboard content remains the same */}
       {/* Business Info Widget */}
       <div
         style={{
