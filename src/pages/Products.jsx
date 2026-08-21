@@ -3,9 +3,11 @@ import { Link } from "react-router-dom";
 import API from "../services/api";
 
 export default function Products() {
+    const businessId = localStorage.getItem("businessId");
+
     const [products, setProducts] = useState([]);
     const [search, setSearch] = useState("");
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [message, setMessage] = useState("");
     const [messageType, setMessageType] = useState("");
     const [selectedCategory, setSelectedCategory] = useState("all");
@@ -28,12 +30,11 @@ export default function Products() {
 
     const loadProducts = async () => {
         setLoading(true);
+
         try {
-            const businessId = localStorage.getItem("businessId");
             if (!businessId) {
-                setMessage("Business ID not found");
+                setMessage("Business information not found");
                 setMessageType("error");
-                setLoading(false);
                 return;
             }
 
@@ -42,7 +43,7 @@ export default function Products() {
             setMessage("");
         } catch (err) {
             console.error("Error loading products:", err);
-            setMessage("Couldn't load products");
+            setMessage(err.response?.data?.message || "Couldn't load products");
             setMessageType("error");
         } finally {
             setLoading(false);
@@ -54,9 +55,13 @@ export default function Products() {
 
         try {
             await API.delete(`/products/${id}`);
-            setMessage("Product removed");
+            
+            setProducts((prevProducts) =>
+                prevProducts.filter((product) => product.id !== id)
+            );
+
+            setMessage("Product removed successfully");
             setMessageType("success");
-            loadProducts();
 
             setTimeout(() => {
                 setMessage("");
@@ -71,7 +76,6 @@ export default function Products() {
 
     const viewProductDetails = async (id) => {
         try {
-            const businessId = localStorage.getItem("businessId");
             const res = await API.get(`/products/${id}?business_id=${businessId}`);
             setSelectedProduct(res.data.data);
             setShowDetailsModal(true);
@@ -92,21 +96,14 @@ export default function Products() {
         if (!barcodeInput.trim()) return;
 
         try {
-            const businessId = localStorage.getItem("businessId");
             const res = await API.get(`/products/barcode/${barcodeInput.trim()}?business_id=${businessId}`);
             
             if (res.data.data) {
-                // Focus on the found product
                 const product = res.data.data;
                 setSearch(product.product_name || product.product_code || "");
                 setBarcodeInput("");
-                
-                // Optionally scroll to or highlight the product
                 setMessage(`Found: ${product.product_name}`);
                 setMessageType("success");
-                
-                // Load all products to ensure we have the full list
-                await loadProducts();
                 
                 setTimeout(() => {
                     setMessage("");
@@ -228,12 +225,24 @@ export default function Products() {
     const endIndex = startIndex + itemsPerPage;
     const currentProducts = filteredAndSortedProducts.slice(startIndex, endIndex);
 
+    // ─── FIXED STATISTICS ─────────────────────────────────────
     const stats = useMemo(() => {
-        const total = filteredAndSortedProducts.length;
-        const lowStock = filteredAndSortedProducts.filter((p) => p.stock > 0 && p.stock <= p.min_stock).length;
-        const outOfStock = filteredAndSortedProducts.filter((p) => p.stock <= 0).length;
-        return { total, lowStock, outOfStock };
-    }, [filteredAndSortedProducts]);
+        const total = products.length;
+        const lowStock = products.filter(
+            (p) =>
+                Number(p.stock) > 0 &&
+                Number(p.stock) <= Number(p.min_stock)
+        ).length;
+        const outOfStock = products.filter(
+            (p) => Number(p.stock) <= 0
+        ).length;
+
+        return {
+            total,
+            lowStock,
+            outOfStock,
+        };
+    }, [products]);
 
     const handleSort = (field) => {
         if (sortField === field) {
@@ -304,9 +313,12 @@ export default function Products() {
                     <div style={styles.searchWrapper}>
                         <span style={styles.searchIcon}>⌕</span>
                         <input
+                            type="search"
                             placeholder="Search by name, code or barcode…"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
+                            autoComplete="off"
+                            aria-label="Search products"
                             style={styles.searchBox}
                         />
                         {search && (
@@ -321,8 +333,13 @@ export default function Products() {
                             placeholder="Scan barcode…"
                             value={barcodeInput}
                             onChange={(e) => setBarcodeInput(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                    handleBarcodeSearch();
+                                }
+                            }}
+                            autoComplete="off"
                             style={styles.barcodeInput}
-                            onKeyPress={(e) => e.key === "Enter" && handleBarcodeSearch()}
                         />
                         <button style={styles.barcodeButton} onClick={handleBarcodeSearch}>
                             Scan
