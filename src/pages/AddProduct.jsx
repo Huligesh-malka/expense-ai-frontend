@@ -58,10 +58,9 @@ function CheckBadge({ check, newLabel, existsLabel }) {
 
 export default function AddProduct() {
     // ─── State ───────────────────────────────────────────────
-    const businessId = localStorage.getItem("businessId") || "";
     const [step, setStep] = useState(0);
     const [form, setForm] = useState({
-        business_id: businessId,
+        business_id: localStorage.getItem("businessId") || "",
         category: "",
         product_name: "",
         product_code: "",
@@ -90,8 +89,8 @@ export default function AddProduct() {
     const [barcodeCheck, setBarcodeCheck] = useState({ status: "idle" });
 
     // ─── Helpers ──────────────────────────────────────────────
-    const getUnitLabel = (unit) =>
-        UNITS.find((u) => u.value === unit)?.label || unit;
+    const getUnitIcon = (unit) => UNITS.find((u) => u.value === unit)?.icon || "📦";
+    const getUnitLabel = (unit) => UNITS.find((u) => u.value === unit)?.label || unit;
 
     // ─── Live "already exists / new" checks ────────────────────
     // Check if product name exists using getProducts endpoint
@@ -107,7 +106,7 @@ export default function AddProduct() {
             try {
                 // Check if product with this name exists
                 const res = await API.get("/products", {
-                    params: { business_id: businessId }
+                    params: { business_id: form.business_id }
                 });
                 if (!cancelled && res.data?.success) {
                     const exists = res.data.data.some(
@@ -132,7 +131,7 @@ export default function AddProduct() {
     // Check if barcode exists using getProductByBarcode endpoint
     useEffect(() => {
         const barcode = form.barcode.trim();
-        if (!barcode || !businessId) {
+        if (!barcode || !form.business_id) {
             setBarcodeCheck({ status: "idle" });
             return;
         }
@@ -142,7 +141,7 @@ export default function AddProduct() {
             try {
                 // Try to get product by barcode
                 const res = await API.get(`/products/barcode/${encodeURIComponent(barcode)}`, {
-                    params: { business_id: businessId }
+                    params: { business_id: form.business_id }
                 });
                 if (!cancelled) {
                     setBarcodeCheck(
@@ -166,7 +165,7 @@ export default function AddProduct() {
             cancelled = true;
             clearTimeout(handle);
         };
-    }, [form.barcode, businessId]);
+    }, [form.barcode, form.business_id]);
 
     // ─── Computed fields ──────────────────────────────────────
     const purchaseNum = parseFloat(form.purchase_price) || 0;
@@ -219,7 +218,7 @@ export default function AddProduct() {
 
     const resetForm = () => {
         setForm({
-            business_id: businessId,
+            business_id: localStorage.getItem("businessId") || "",
             category: "",
             product_name: "",
             product_code: "",
@@ -245,223 +244,77 @@ export default function AddProduct() {
 
     // ─── Per-step validation ──────────────────────────────────
     const stepErrors = {
-        0:
-            !form.product_name.trim() ||
-            form.product_name.trim().length < 2 ||
-            !form.category ||
-            nameCheck.status === "exists" ||
-            nameCheck.status === "checking",
-
-        1:
-            purchaseNum <= 0 ||
-            sellingNum <= 0 ||
-            parseFloat(form.price_per) <= 0,
-
-        2:
-            form.stock === "" ||
-            stockNum < 0 ||
-            minStockNum < 0,
-
+        0: !form.product_name || !form.category || nameCheck.status === "exists",
+        1: !form.purchase_price || !form.selling_price || purchaseNum < 0 || sellingNum < 0,
+        2: !form.stock || stockNum < 0,
         3: false,
         4: false,
     };
 
     // Check if Next button should be disabled for step 0
-    const isNextDisabled = (stepIndex) => {
-        if (stepIndex === 0) {
-            return (
-                !form.product_name.trim() ||
-                form.product_name.trim().length < 2 ||
-                !form.category ||
-                nameCheck.status === "exists" ||
-                nameCheck.status === "checking"
-            );
+    const isNextDisabled = (step) => {
+        if (step === 0) {
+            return !form.product_name || !form.category || nameCheck.status === "exists" || nameCheck.status === "checking";
         }
-
-        if (stepIndex === 1) {
-            return (
-                purchaseNum <= 0 ||
-                sellingNum <= 0 ||
-                parseFloat(form.price_per) <= 0
-            );
+        if (step === 1) {
+            return !form.purchase_price || !form.selling_price || purchaseNum < 0 || sellingNum < 0;
         }
-
-        if (stepIndex === 2) {
-            return form.stock === "" || stockNum < 0 || minStockNum < 0;
+        if (step === 2) {
+            return !form.stock || stockNum < 0;
         }
-
         return false;
     };
 
     const goNext = () => {
         setTouched((prev) => ({ ...prev, [`step${step}`]: true }));
-
-        if (!businessId) {
-            setMessage(
-                "Business information is missing. Please select or create your business first."
-            );
+        
+        // Check if name already exists - prevent moving forward
+        if (step === 0 && nameCheck.status === "exists") {
+            setMessage("This product name already exists in your shop! Please use a different name.");
             setMessageType("error");
             return;
         }
-
-        if (
-            step === 0 &&
-            (nameCheck.status === "exists" ||
-                nameCheck.status === "checking")
-        ) {
-            setMessage(
-                nameCheck.status === "checking"
-                    ? "Checking product name. Please wait a moment."
-                    : "This product name already exists in your shop. Please use a different name."
-            );
-            setMessageType("error");
-            return;
-        }
-
+        
         if (stepErrors[step]) return;
-
-        setMessage("");
-        setMessageType("");
         setStep((s) => Math.min(STEPS.length - 1, s + 1));
     };
-
     const goBack = () => setStep((s) => Math.max(0, s - 1));
     const jumpTo = (i) => setStep(i);
 
     const handleSubmit = async () => {
-        if (loading) return;
-
         setLoading(true);
         setMessage("");
         setMessageType("");
 
-        const productName = form.product_name.trim();
-        const pricePer = Number(form.price_per);
-        const tax = Number(form.tax);
-        const stock = Number(form.stock);
-        const minStock = Number(form.min_stock);
-
-        if (!businessId) {
-            setMessage(
-                "Business information is missing. Please select or create your business first."
-            );
+        const required = ["product_name", "category", "purchase_price", "selling_price", "stock"];
+        const missing = required.filter((field) => !form[field] || form[field] === "");
+        if (missing.length > 0) {
+            setMessage(`Missing: ${missing.join(", ")}`);
             setMessageType("error");
             setLoading(false);
             return;
         }
 
-        if (productName.length < 2) {
-            setMessage("Product name must contain at least 2 characters.");
-            setMessageType("error");
-            setLoading(false);
-            setStep(0);
-            return;
-        }
-
-        if (!form.category) {
-            setMessage("Please select a product category.");
-            setMessageType("error");
-            setLoading(false);
-            setStep(0);
-            return;
-        }
-
-        if (
-            !Number.isFinite(purchaseNum) ||
-            !Number.isFinite(sellingNum) ||
-            purchaseNum <= 0 ||
-            sellingNum <= 0
-        ) {
-            setMessage("Purchase and selling prices must be greater than 0.");
-            setMessageType("error");
-            setLoading(false);
-            setStep(1);
-            return;
-        }
-
-        if (!Number.isFinite(pricePer) || pricePer <= 0) {
-            setMessage("Price quantity must be greater than 0.");
-            setMessageType("error");
-            setLoading(false);
-            setStep(1);
-            return;
-        }
-
-        if (form.stock === "" || !Number.isFinite(stock) || stock < 0) {
-            setMessage("Stock must be 0 or greater.");
-            setMessageType("error");
-            setLoading(false);
-            setStep(2);
-            return;
-        }
-
-        if (!Number.isFinite(minStock) || minStock < 0) {
-            setMessage("Minimum stock cannot be negative.");
-            setMessageType("error");
-            setLoading(false);
-            setStep(2);
-            return;
-        }
-
-        if (!Number.isFinite(tax) || tax < 0 || tax > 100) {
-            setMessage("Tax rate must be between 0% and 100%.");
-            setMessageType("error");
-            setLoading(false);
-            setStep(3);
-            return;
-        }
-
-        if (nameCheck.status === "checking") {
-            setMessage("Still checking the product name. Please wait.");
-            setMessageType("error");
-            setLoading(false);
-            setStep(0);
-            return;
-        }
-
+        // Final check - product name should not exist
         if (nameCheck.status === "exists") {
-            setMessage(
-                "This product name already exists in your shop. Please use a different name."
-            );
+            setMessage("This product name already exists in your shop!");
             setMessageType("error");
             setLoading(false);
-            setStep(0);
             return;
         }
 
-        if (barcodeCheck.status === "checking") {
-            setMessage("Still checking the barcode. Please wait.");
+        // Check if barcode already exists (if provided)
+        if (form.barcode && barcodeCheck.status === "exists") {
+            setMessage("This barcode is already used in your shop!");
             setMessageType("error");
             setLoading(false);
-            setStep(3);
-            return;
-        }
-
-        if (form.barcode.trim() && barcodeCheck.status === "exists") {
-            setMessage("This barcode is already used in your shop.");
-            setMessageType("error");
-            setLoading(false);
-            setStep(3);
             return;
         }
 
         const submitData = {
             ...form,
-            business_id: businessId,
-            product_name: productName,
-            product_code: form.product_code.trim(),
-            barcode: form.barcode.trim(),
-            purchase_price: purchaseNum,
-            selling_price: sellingNum,
-            price_per: pricePer,
-            price_unit: form.price_unit,
-            stock: stock,
-            stock_unit: form.stock_unit,
             unit: form.stock_unit,
-            min_stock: minStock,
-            tax: tax,
-            image: form.image.trim(),
-            description: form.description.trim(),
+            price_per: 1,
             expiry_date: form.expiry_date || null,
         };
 
@@ -521,16 +374,8 @@ export default function AddProduct() {
                         <input
                             type="text"
                             autoFocus
-                            id="add-product-name"
-                            name="product_name"
-                            id="add-product-name"
-                            name="product_name"
                             placeholder="Product name"
                             value={form.product_name}
-                            autoComplete="off"
-                            maxLength={120}
-                            autoComplete="off"
-                            maxLength={120}
                             onChange={(e) => {
                                 setForm((p) => ({ ...p, product_name: e.target.value }));
                                 // Clear any previous error message when user types
@@ -557,7 +402,6 @@ export default function AddProduct() {
                                 <button
                                     type="button"
                                     key={c.value}
-                                    aria-pressed={form.category === c.value}
                                     onClick={() => selectCategory(c.value)}
                                     style={{ ...styles.gridTile, ...(form.category === c.value ? styles.gridTileActive : {}) }}
                                 >
@@ -591,14 +435,8 @@ export default function AddProduct() {
                                     <input
                                         type="number"
                                         autoFocus
-                                        id="add-product-purchase-price"
-                                        name="purchase_price"
-                                        id="add-product-purchase-price"
-                                        name="purchase_price"
                                         placeholder="0"
                                         value={form.purchase_price}
-                                        autoComplete="off"
-                                        inputMode="decimal"
                                         onChange={(e) => setForm((p) => ({ ...p, purchase_price: e.target.value }))}
                                         min="0"
                                         step="0.01"
@@ -612,14 +450,8 @@ export default function AddProduct() {
                                     <span style={styles.rupee}>₹</span>
                                     <input
                                         type="number"
-                                        id="add-product-selling-price"
-                                        name="selling_price"
-                                        id="add-product-selling-price"
-                                        name="selling_price"
                                         placeholder="0"
                                         value={form.selling_price}
-                                        autoComplete="off"
-                                        inputMode="decimal"
                                         onChange={(e) => setForm((p) => ({ ...p, selling_price: e.target.value }))}
                                         min="0"
                                         step="0.01"
@@ -627,33 +459,6 @@ export default function AddProduct() {
                                     />
                                 </div>
                             </div>
-                        </div>
-
-                        <div style={styles.formGroup}>
-                            <label style={styles.priceLabel}>
-                                Price quantity
-                            </label>
-                            <input
-                                id="add-product-price-per"
-                                name="price_per"
-                                type="number"
-                                min="0.01"
-                                step="0.01"
-                                inputMode="decimal"
-                                value={form.price_per}
-                                onChange={(e) =>
-                                    setForm((p) => ({
-                                        ...p,
-                                        price_per: e.target.value,
-                                    }))
-                                }
-                                autoComplete="off"
-                                style={styles.input}
-                                aria-label="Price quantity"
-                            />
-                            <span style={styles.fieldHint}>
-                                Example: 1 kg, 500 g, 1 pcs
-                            </span>
                         </div>
 
                         {purchaseNum > 0 && sellingNum > 0 && (
@@ -695,16 +500,8 @@ export default function AddProduct() {
                         </div>
                         <input
                             type="number"
-                            id="add-product-stock"
-                            name="stock"
-                            id="add-product-stock"
-                            name="stock"
                             placeholder="or type exact quantity"
                             value={form.stock}
-                            autoComplete="off"
-                            inputMode="decimal"
-                            autoComplete="off"
-                            inputMode="decimal"
                             onChange={(e) => setForm((p) => ({ ...p, stock: e.target.value }))}
                             min="0"
                             step="0.01"
@@ -736,13 +533,8 @@ export default function AddProduct() {
                             <label style={styles.label}>Barcode</label>
                             <input 
                                 type="text" 
-                                id="add-product-barcode"
-                                name="barcode"
                                 placeholder="Scan or type" 
-                                value={form.barcode}
-                                autoComplete="off"
-                                inputMode="numeric"
-                                maxLength={64} 
+                                value={form.barcode} 
                                 onChange={(e) => {
                                     setForm((p) => ({ ...p, barcode: e.target.value }));
                                     // Clear any previous error message when user types
@@ -762,20 +554,12 @@ export default function AddProduct() {
                         </div>
                         <div style={styles.formGroup}>
                             <label style={styles.label}>Product code</label>
-                            <input
-                                id="add-product-code"
-                                name="product_code"
-                                type="text"
-                                placeholder="PRD-001"
-                                value={form.product_code}
-                                autoComplete="off"
-                                maxLength={64}
-                                onChange={(e) => setForm((p) => ({ ...p, product_code: e.target.value }))} style={styles.input} />
+                            <input type="text" placeholder="PRD-001" value={form.product_code} onChange={(e) => setForm((p) => ({ ...p, product_code: e.target.value }))} style={styles.input} />
                         </div>
                         <div style={styles.row}>
                             <div style={styles.formGroup}>
                                 <label style={styles.label}>Expiry date</label>
-                                <input id="add-product-expiry" name="expiry_date" type="date" value={form.expiry_date} onChange={(e) => setForm((p) => ({ ...p, expiry_date: e.target.value }))} style={styles.input} />
+                                <input type="date" value={form.expiry_date} onChange={(e) => setForm((p) => ({ ...p, expiry_date: e.target.value }))} style={styles.input} />
                                 {expiryStatus && (
                                     <span style={{ ...styles.expiryPill, color: expiryStatus.color, borderColor: expiryStatus.color }}>
                                         {expiryStatus.label} · {expiryStatus.detail}
@@ -785,15 +569,7 @@ export default function AddProduct() {
                             <div style={styles.formGroup}>
                                 <label style={styles.label}>Or shelf life (days)</label>
                                 <input
-                                    id="add-product-shelf-life"
-                                    name="shelf_life_days"
-                                    type="number"
-                                    placeholder="e.g., 365"
-                                    min="0"
-                                    max="36500"
-                                    autoComplete="off"
-                                    inputMode="numeric"
-                                    style={styles.input}
+                                    type="number" placeholder="e.g., 365" min="0" style={styles.input}
                                     onChange={(e) => {
                                         const days = parseInt(e.target.value);
                                         if (days > 0) {
@@ -807,15 +583,15 @@ export default function AddProduct() {
                         </div>
                         <div style={styles.formGroup}>
                             <label style={styles.label}>Tax rate (%)</label>
-                            <input id="add-product-tax" name="tax" type="number" value={form.tax} onChange={(e) => setForm((p) => ({ ...p, tax: e.target.value }))} min="0" max="100" step="0.01" style={styles.input} />
+                            <input type="number" value={form.tax} onChange={(e) => setForm((p) => ({ ...p, tax: e.target.value }))} min="0" max="100" step="0.01" style={styles.input} />
                         </div>
                         <div style={styles.formGroup}>
                             <label style={styles.label}>Description</label>
-                            <textarea id="add-product-description" name="description" rows="2" maxLength={1000} placeholder="Brand, features…" value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} style={styles.textarea} />
+                            <textarea rows="2" placeholder="Brand, features…" value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} style={styles.textarea} />
                         </div>
                         <div style={styles.formGroup}>
                             <label style={styles.label}>Image URL</label>
-                            <input id="add-product-image" name="image" type="url" placeholder="https://…" value={form.image} autoComplete="url" onChange={(e) => setForm((p) => ({ ...p, image: e.target.value }))} style={styles.input} />
+                            <input type="text" placeholder="https://…" value={form.image} onChange={(e) => setForm((p) => ({ ...p, image: e.target.value }))} style={styles.input} />
                         </div>
                     </div>
                 )}
@@ -901,27 +677,13 @@ export default function AddProduct() {
                             {step === 3 ? "Continue" : "Next"}
                         </button>
                     ) : (
-                        <button
-                            type="button"
-                            style={{
-                                ...styles.nextBtn,
-                                ...(
-                                    loading ||
-                                    nameCheck.status === "checking" ||
-                                    nameCheck.status === "exists" ||
-                                    barcodeCheck.status === "checking" ||
-                                    barcodeCheck.status === "exists"
-                                )
-                                    ? styles.nextBtnDisabled
-                                    : {}
-                            }}
-                            disabled={
-                                loading ||
-                                nameCheck.status === "checking" ||
-                                nameCheck.status === "exists" ||
-                                barcodeCheck.status === "checking" ||
-                                barcodeCheck.status === "exists"
-                            }
+                        <button 
+                            type="button" 
+                            style={{ 
+                                ...styles.nextBtn, 
+                                ...(loading || nameCheck.status === "exists" || barcodeCheck.status === "exists" ? styles.nextBtnDisabled : {}) 
+                            }} 
+                            disabled={loading || nameCheck.status === "exists" || barcodeCheck.status === "exists"} 
                             onClick={handleSubmit}
                         >
                             {loading ? "Saving…" : "Add Product"}
@@ -1051,7 +813,6 @@ const styles = {
     },
 
     miniLabel: { fontSize: "12.5px", fontWeight: 600, color: "#8891A0", marginTop: "4px" },
-    fieldHint: { fontSize: "11px", color: "#8C96A5", marginTop: "-6px" },
     chipRow: { display: "flex", gap: "8px", flexWrap: "wrap" },
     unitChip: {
         fontSize: "12.5px",
