@@ -7,7 +7,6 @@ import {
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
@@ -16,24 +15,33 @@ export const AuthProvider = ({ children }) => {
     // =====================================
 
     useEffect(() => {
-        try {
-            const token = localStorage.getItem("token");
-            const savedUser = localStorage.getItem("user");
+        const restoreSession = () => {
+            try {
+                const token = localStorage.getItem("token");
+                const savedUser = localStorage.getItem("user");
 
-            if (token && savedUser) {
-                setUser(JSON.parse(savedUser));
+                if (token && savedUser) {
+                    const parsedUser = JSON.parse(savedUser);
+                    setUser(parsedUser);
+                } else {
+                    setUser(null);
+                }
+            } catch (error) {
+                console.error(
+                    "Failed to restore authentication:",
+                    error
+                );
+
+                localStorage.removeItem("token");
+                localStorage.removeItem("user");
+
+                setUser(null);
+            } finally {
+                setLoading(false);
             }
-        } catch (error) {
-            console.error(
-                "Failed to restore authentication:",
-                error
-            );
+        };
 
-            localStorage.removeItem("user");
-            localStorage.removeItem("token");
-        } finally {
-            setLoading(false);
-        }
+        restoreSession();
     }, []);
 
     // =====================================
@@ -41,9 +49,7 @@ export const AuthProvider = ({ children }) => {
     // =====================================
 
     const login = (userData, token) => {
-
         localStorage.setItem("token", token);
-
         localStorage.setItem(
             "user",
             JSON.stringify(userData)
@@ -57,7 +63,6 @@ export const AuthProvider = ({ children }) => {
     // =====================================
 
     const logout = () => {
-
         localStorage.removeItem("token");
         localStorage.removeItem("user");
         localStorage.removeItem("userId");
@@ -71,7 +76,7 @@ export const AuthProvider = ({ children }) => {
     // =====================================
 
     const isAuthenticated =
-        !!localStorage.getItem("token") && !!user;
+        !loading && !!user && !!localStorage.getItem("token");
 
     return (
         <AuthContext.Provider
