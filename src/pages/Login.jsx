@@ -1,4 +1,4 @@
-import { useState, useContext, useEffect } from "react";
+import { useState, useContext } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from "../firebase";
@@ -39,22 +39,6 @@ export default function Login() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState("");
 
-    // =====================================
-    // AUTO-REDIRECT IF ALREADY LOGGED IN
-    // =====================================
-    useEffect(() => {
-        const token = localStorage.getItem("token");
-        const businessId = localStorage.getItem("businessId");
-
-        if (token) {
-            if (businessId) {
-                navigate("/dashboard", { replace: true });
-            } else {
-                navigate("/create-business", { replace: true });
-            }
-        }
-    }, [navigate]);
-
     const handleChange = (e) => {
         setFormData({
             ...formData,
@@ -72,8 +56,10 @@ export default function Login() {
             const res = await API.post("/auth/login", formData);
 
             if (res.data.success) {
+                // AuthContext.login() handles token storage
                 login(res.data.user, res.data.token);
-                localStorage.setItem("token", res.data.token);
+
+                // Store additional user info
                 localStorage.setItem("userId", res.data.user.id);
                 localStorage.setItem("userName", res.data.user.full_name);
                 localStorage.setItem("userEmail", res.data.user.email);
@@ -82,9 +68,9 @@ export default function Login() {
                     localStorage.setItem("businessId", res.data.business.id);
                     localStorage.setItem("businessName", res.data.business.business_name);
                     localStorage.setItem("businessType", res.data.business.business_type);
-                    navigate("/dashboard");
+                    navigate("/dashboard", { replace: true });
                 } else {
-                    navigate("/create-business");
+                    navigate("/create-business", { replace: true });
                 }
             } else {
                 setError(res.data.message);
@@ -107,8 +93,10 @@ export default function Login() {
             const res = await API.post("/auth/google", { idToken });
 
             if (res.data.success) {
+                // AuthContext.login() handles token storage
                 login(res.data.user, res.data.token);
-                localStorage.setItem("token", res.data.token);
+
+                // Store additional user info
                 localStorage.setItem("userId", res.data.user.id);
                 localStorage.setItem("userName", res.data.user.full_name);
                 localStorage.setItem("userEmail", res.data.user.email);
@@ -117,9 +105,9 @@ export default function Login() {
                     localStorage.setItem("businessId", res.data.business.id);
                     localStorage.setItem("businessName", res.data.business.business_name);
                     localStorage.setItem("businessType", res.data.business.business_type);
-                    navigate("/dashboard");
+                    navigate("/dashboard", { replace: true });
                 } else {
-                    navigate("/create-business");
+                    navigate("/create-business", { replace: true });
                 }
             } else {
                 setError(res.data.message || "Google login failed. Please try again.");
@@ -205,6 +193,7 @@ export default function Login() {
                                 value={formData.email}
                                 onChange={handleChange}
                                 required
+                                autoComplete="email"
                                 className="ledger-input"
                                 style={{
                                     ...styles.input,
@@ -231,6 +220,7 @@ export default function Login() {
                                 onChange={handleChange}
                                 required
                                 minLength={6}
+                                autoComplete="current-password"
                                 className="ledger-input"
                                 style={{
                                     ...styles.input,
