@@ -15,8 +15,6 @@ import {
 
 export default function Purchase() {
 
-    const businessId = localStorage.getItem("businessId");
-
     const [purchases, setPurchases] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
@@ -38,9 +36,7 @@ export default function Purchase() {
 
     const loadPurchases = async () => {
         try {
-            const res = await API.get(
-                `/purchases?business_id=${businessId}`
-            );
+            const res = await API.get("/purchases");
             const data = res.data.data || [];
             setPurchases(data);
             calculateSummary(data);
