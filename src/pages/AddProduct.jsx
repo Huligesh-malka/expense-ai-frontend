@@ -58,10 +58,8 @@ function CheckBadge({ check, newLabel, existsLabel }) {
 
 export default function AddProduct() {
     // ─── State ───────────────────────────────────────────────
-    const businessId = localStorage.getItem("businessId") || "";
     const [step, setStep] = useState(0);
     const [form, setForm] = useState({
-        business_id: businessId,
         category: "",
         product_name: "",
         product_code: "",
@@ -97,7 +95,7 @@ export default function AddProduct() {
     // Check if product name exists using getProducts endpoint
     useEffect(() => {
         const name = form.product_name.trim();
-        if (name.length < 2 || !form.business_id) {
+        if (name.length < 2) {
             setNameCheck({ status: "idle" });
             return;
         }
@@ -109,7 +107,6 @@ export default function AddProduct() {
                 const res = await API.get("/products", {
                     params: {
                         search: name,
-                        business_id: businessId,
                         limit: 20,
                     },
                 });
@@ -140,12 +137,12 @@ export default function AddProduct() {
             cancelled = true;
             clearTimeout(handle);
         };
-    }, [form.product_name, form.business_id]);
+    }, [form.product_name]);
 
     // Check if barcode exists using getProductByBarcode endpoint
     useEffect(() => {
         const barcode = form.barcode.trim();
-        if (!barcode || !businessId) {
+        if (!barcode) {
             setBarcodeCheck({ status: "idle" });
             return;
         }
@@ -154,9 +151,7 @@ export default function AddProduct() {
         const handle = setTimeout(async () => {
             try {
                 // Try to get product by barcode
-                const res = await API.get(`/products/barcode/${encodeURIComponent(barcode)}`, {
-                    params: { business_id: businessId }
-                });
+                const res = await API.get(`/products/barcode/${encodeURIComponent(barcode)}`);
                 if (!cancelled) {
                     setBarcodeCheck(
                         res.data?.success && res.data?.data
@@ -179,7 +174,7 @@ export default function AddProduct() {
             cancelled = true;
             clearTimeout(handle);
         };
-    }, [form.barcode, businessId]);
+    }, [form.barcode]);
 
     // ─── Computed fields ──────────────────────────────────────
     const purchaseNum = parseFloat(form.purchase_price) || 0;
@@ -232,7 +227,6 @@ export default function AddProduct() {
 
     const resetForm = () => {
         setForm({
-            business_id: businessId,
             category: "",
             product_name: "",
             product_code: "",
@@ -309,14 +303,6 @@ export default function AddProduct() {
     const goNext = () => {
         setTouched((prev) => ({ ...prev, [`step${step}`]: true }));
 
-        if (!businessId) {
-            setMessage(
-                "Business information is missing. Please select or create your business first."
-            );
-            setMessageType("error");
-            return;
-        }
-
         if (
             step === 0 &&
             (nameCheck.status === "exists" ||
@@ -353,15 +339,6 @@ export default function AddProduct() {
         const tax = Number(form.tax);
         const stock = Number(form.stock);
         const minStock = Number(form.min_stock);
-
-        if (!businessId) {
-            setMessage(
-                "Business information is missing. Please select or create your business first."
-            );
-            setMessageType("error");
-            setLoading(false);
-            return;
-        }
 
         if (productName.length < 2) {
             setMessage("Product name must contain at least 2 characters.");
@@ -460,7 +437,6 @@ export default function AddProduct() {
 
         const submitData = {
             ...form,
-            business_id: businessId,
             product_name: productName,
             product_code: form.product_code.trim(),
             barcode: form.barcode.trim(),
