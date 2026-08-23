@@ -205,15 +205,6 @@ export default function AddProduct() {
     const category = CATEGORIES.find((c) => c.value === form.category);
 
     // ─── Handlers ─────────────────────────────────────────────
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        if (name === "price_unit" || name === "stock_unit") {
-            setForm((prev) => ({ ...prev, price_unit: value, stock_unit: value }));
-            return;
-        }
-        setForm((prev) => ({ ...prev, [name]: value }));
-    };
-
     const bump = (field, delta, min = 0) => {
         setForm((prev) => {
             const current = parseFloat(prev[field]) || 0;
