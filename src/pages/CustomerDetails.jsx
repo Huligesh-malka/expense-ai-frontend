@@ -7,6 +7,7 @@ export default function CustomerDetails() {
   const [customer, setCustomer] = useState(null);
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     loadCustomer();
@@ -14,13 +15,23 @@ export default function CustomerDetails() {
 
   const loadCustomer = async () => {
     try {
+      setLoading(true);
+      setError("");
+
       const res = await API.get(`/customers/${id}/history`);
+
       if (res.data.success) {
         setCustomer(res.data.customer);
         setSales(res.data.sales || []);
+      } else {
+        setError(res.data.message || "Unable to load customer.");
       }
     } catch (err) {
-      console.log(err);
+      console.error("Customer history error:", err);
+      setError(
+        err.response?.data?.message ||
+        "Unable to load customer details."
+      );
     } finally {
       setLoading(false);
     }
@@ -247,6 +258,15 @@ export default function CustomerDetails() {
       marginBottom: "1.5rem",
       fontSize: "0.95rem",
     },
+    alertSuccess: {
+      backgroundColor: "#dcfce7",
+      color: "#166534",
+      padding: "1rem 1.5rem",
+      borderRadius: "12px",
+      border: "1px solid #bbf7d0",
+      marginBottom: "1.5rem",
+      fontSize: "0.95rem",
+    },
     statsGrid: {
       display: "grid",
       gridTemplateColumns: "repeat(4, 1fr)",
@@ -294,6 +314,21 @@ export default function CustomerDetails() {
       <div style={styles.loadingContainer}>
         <div style={styles.spinner}></div>
         <span style={styles.loadingText}>Loading customer details...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={styles.container}>
+        <div style={styles.alert}>
+          <i className="fas fa-exclamation-triangle" style={{ marginRight: "0.5rem" }}></i>
+          {error}
+        </div>
+        <Link to="/customers" style={styles.backButton}>
+          <i className="fas fa-arrow-left"></i>
+          Back to Customers
+        </Link>
       </div>
     );
   }
@@ -352,7 +387,12 @@ export default function CustomerDetails() {
         </div>
         <div style={styles.statCard}>
           <div style={styles.statLabel}>Last Purchase</div>
-          <div style={styles.statValue} style={{ fontSize: "0.9rem" }}>
+          <div
+            style={{
+              ...styles.statValue,
+              fontSize: "0.9rem"
+            }}
+          >
             {customer.last_purchase
               ? new Date(customer.last_purchase).toLocaleDateString("en-IN", {
                   day: "2-digit",
