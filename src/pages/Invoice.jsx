@@ -17,6 +17,7 @@ import {
     FiPackage,
     FiBox,
 } from "react-icons/fi";
+import QRCode from "qrcode";
 
 export default function Invoice() {
     const { id } = useParams();
@@ -24,6 +25,8 @@ export default function Invoice() {
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showPrintOptions, setShowPrintOptions] = useState(false);
+    const [qrCodeUrl, setQrCodeUrl] = useState(null);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
         loadInvoice();
@@ -31,15 +34,53 @@ export default function Invoice() {
 
     const loadInvoice = async () => {
         setLoading(true);
+        setError(null);
         try {
             const res = await API.get(`/sales/invoice/${id}`);
             setInvoice(res.data.invoice);
             setItems(res.data.items || []);
+            // Generate QR code with invoice verification URL or ID
+            generateQRCode(res.data.invoice);
         } catch (err) {
             console.error("Error loading invoice:", err);
-            alert("Unable to load invoice. Please try again.");
+            setError("Unable to load invoice. Please try again.");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const generateQRCode = async (invoiceData) => {
+        try {
+            // Build a meaningful QR code payload
+            // You can customize this URL to your verification endpoint
+            const qrPayload = JSON.stringify({
+                invoice_no: invoiceData.invoice_no,
+                customer: invoiceData.customer_name,
+                total: invoiceData.total_amount,
+                // Or use a verification URL
+                // url: `${window.location.origin}/verify/${invoiceData.invoice_no}`
+            });
+            const qrDataUrl = await QRCode.toDataURL(qrPayload, {
+                width: 200,
+                margin: 2,
+                color: {
+                    dark: "#2A2621",
+                    light: "#FFFEFB"
+                }
+            });
+            setQrCodeUrl(qrDataUrl);
+        } catch (err) {
+            console.error("Error generating QR code:", err);
+            // Fallback: use invoice ID as simple payload
+            try {
+                const fallbackData = await QRCode.toDataURL(invoiceData.invoice_no, {
+                    width: 200,
+                    margin: 2
+                });
+                setQrCodeUrl(fallbackData);
+            } catch (fallbackErr) {
+                console.error("Fallback QR generation failed:", fallbackErr);
+            }
         }
     };
 
@@ -74,6 +115,40 @@ export default function Invoice() {
     const handlePrint = () => {
         window.print();
         setShowPrintOptions(false);
+    };
+
+    const handleDownload = () => {
+        // Option 1: Print to PDF (simplest)
+        window.print();
+        
+        // Option 2: Advanced PDF generation with a library like jsPDF or html2canvas
+        // For now, we'll use the print method which allows "Save as PDF"
+        alert("Click 'Print' and select 'Save as PDF' to download the invoice.");
+    };
+
+    const handleShare = async () => {
+        try {
+            const shareData = {
+                title: `Invoice ${invoice.invoice_no}`,
+                text: `Invoice #${invoice.invoice_no} - Total: ${formatCurrency(invoice.total_amount)}`,
+                url: window.location.href,
+            };
+
+            if (navigator.share) {
+                await navigator.share(shareData);
+            } else {
+                // Fallback: copy to clipboard
+                await navigator.clipboard.writeText(
+                    `${shareData.title}\n${shareData.text}\n${shareData.url}`
+                );
+                alert("Invoice link copied to clipboard!");
+            }
+        } catch (err) {
+            if (err.name !== "AbortError") {
+                console.error("Share failed:", err);
+                alert("Unable to share. Please try again.");
+            }
+        }
     };
 
     const getPaymentIcon = (method) => {
@@ -116,12 +191,14 @@ export default function Invoice() {
         );
     }
 
-    if (!invoice) {
+    if (error || !invoice) {
         return (
             <div style={styles.errorContainer}>
                 <div style={styles.errorIcon}>📄</div>
                 <h2 style={styles.errorTitle}>Bill not found</h2>
-                <p style={styles.errorText}>This entry doesn't exist in the ledger, or it's been removed.</p>
+                <p style={styles.errorText}>
+                    {error || "This entry doesn't exist in the ledger, or it's been removed."}
+                </p>
                 <Link to="/sales" style={styles.errorButton}>
                     <FiArrowLeft size={18} />
                     Back to Sales
@@ -146,11 +223,11 @@ export default function Invoice() {
                         <FiPrinter size={18} />
                         Print
                     </button>
-                    <button style={styles.actionButton}>
+                    <button style={styles.actionButton} onClick={handleDownload}>
                         <FiDownload size={18} />
                         Download
                     </button>
-                    <button style={styles.actionButton}>
+                    <button style={styles.actionButton} onClick={handleShare}>
                         <FiShare2 size={18} />
                         Share
                     </button>
@@ -179,7 +256,6 @@ export default function Invoice() {
                         {/* Masthead */}
                         <div style={styles.masthead}>
                             <div style={styles.businessBlock}>
-                                {/* UPDATED: Use invoice.logo directly from API response */}
                                 {invoice.logo ? (
                                     <img src={invoice.logo} alt="Business Logo" style={styles.businessLogo} />
                                 ) : (
@@ -393,9 +469,18 @@ export default function Invoice() {
                         <div style={styles.bottomRow}>
                             <div style={styles.qrBlock}>
                                 <div style={styles.qrBox}>
-                                    {Array.from({ length: 25 }).map((_, i) => (
-                                        <div key={i} style={{ ...styles.qrDot, opacity: Math.random() > 0.5 ? 1 : 0.25 }}></div>
-                                    ))}
+                                    {qrCodeUrl ? (
+                                        <img 
+                                            src={qrCodeUrl} 
+                                            alt="QR Code" 
+                                            style={styles.qrImage}
+                                        />
+                                    ) : (
+                                        // Fallback: simple visual pattern if QR generation fails
+                                        Array.from({ length: 25 }).map((_, i) => (
+                                            <div key={i} style={{ ...styles.qrDot, opacity: Math.random() > 0.5 ? 1 : 0.25 }}></div>
+                                        ))
+                                    )}
                                 </div>
                                 <p style={styles.qrText}>Scan to verify</p>
                                 <p style={styles.qrSubtext}>{invoice.invoice_no}</p>
@@ -515,6 +600,7 @@ const styles = {
         fontWeight: "600",
         color: "#2A2621",
         cursor: "pointer",
+        transition: "all 0.2s",
     },
     printOptions: {
         maxWidth: "760px",
@@ -767,15 +853,20 @@ const styles = {
     },
     qrBlock: { textAlign: "center" },
     qrBox: {
-        width: "64px",
-        height: "64px",
+        width: "74px",
+        height: "74px",
         display: "grid",
-        gridTemplateColumns: "repeat(5, 1fr)",
-        gap: "2px",
+        placeItems: "center",
         padding: "6px",
         border: "1px solid #E4DCC4",
         borderRadius: "6px",
         background: "#FFFEFB",
+        overflow: "hidden",
+    },
+    qrImage: {
+        width: "100%",
+        height: "100%",
+        objectFit: "contain",
     },
     qrDot: { width: "100%", height: "100%", background: "#2A2621", borderRadius: "1px" },
     qrText: { margin: "6px 0 0", fontSize: "11px", fontWeight: "600", color: "#1F2A22" },
@@ -834,9 +925,25 @@ styleSheet.textContent = `
     }
 
     @media print {
-        body { background: white !important; }
-        #invoice-content { margin: 0 !important; }
-        .no-print { display: none !important; }
+        @page {
+            margin: 8mm;
+        }
+
+        body {
+            background: white !important;
+        }
+
+        #invoice-content {
+            width: 100% !important;
+            max-width: none !important;
+            margin: 0 !important;
+            box-shadow: none !important;
+            border: none !important;
+        }
+
+        .no-print {
+            display: none !important;
+        }
     }
 `;
 document.head.appendChild(styleSheet);
