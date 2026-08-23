@@ -4,7 +4,6 @@ import API from "../services/api";
 
 // Modern, clean design for Customers page - Phone numbers only
 export default function Customers() {
-  const businessId = localStorage.getItem("businessId");
   const [customers, setCustomers] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -15,7 +14,7 @@ export default function Customers() {
 
   const loadCustomers = async () => {
     try {
-      const res = await API.get(`/customers?business_id=${businessId}`);
+      const res = await API.get("/customers");
       setCustomers(res.data.data || []);
     } catch (err) {
       console.log(err);
