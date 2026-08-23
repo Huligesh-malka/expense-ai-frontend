@@ -6,7 +6,6 @@ import API from "../services/api";
 export default function EditPurchase() {
     const { id } = useParams();
     const navigate = useNavigate();
-    const businessId = localStorage.getItem("businessId");
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -32,8 +31,8 @@ export default function EditPurchase() {
     const loadData = async () => {
         try {
             const [supplierRes, productRes, purchaseRes] = await Promise.all([
-                API.get(`/suppliers?business_id=${businessId}`),
-                API.get(`/products?business_id=${businessId}`),
+                API.get("/suppliers"),
+                API.get("/products"),
                 API.get(`/purchases/details/${id}`)
             ]);
 
