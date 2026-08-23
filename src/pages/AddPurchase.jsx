@@ -12,7 +12,6 @@ import API from "../services/api";
  */
 export default function AddPurchase() {
     const navigate = useNavigate();
-    const businessId = localStorage.getItem("businessId");
 
     const [suppliers, setSuppliers] = useState([]);
     const [products, setProducts] = useState([]);
@@ -51,7 +50,7 @@ export default function AddPurchase() {
 
     const loadSuppliers = async () => {
         try {
-            const res = await API.get(`/suppliers?business_id=${businessId}`);
+            const res = await API.get("/suppliers");
             setSuppliers(res.data.data || []);
         } catch (err) {
             console.log(err);
@@ -60,7 +59,7 @@ export default function AddPurchase() {
 
     const loadProducts = async () => {
         try {
-            const res = await API.get(`/products?business_id=${businessId}`);
+            const res = await API.get("/products");
             setProducts(res.data.data || []);
         } catch (err) {
             console.log(err);
@@ -110,7 +109,6 @@ export default function AddPurchase() {
         try {
             setLoading(true);
             await API.post("/purchases", {
-                business_id: businessId,
                 supplier_id: form.supplier_id,
                 discount: Number(form.discount || 0),
                 tax: Number(form.tax || 0),
