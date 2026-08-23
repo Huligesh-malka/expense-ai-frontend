@@ -17,7 +17,6 @@ import {
     FiPackage,
     FiBox,
 } from "react-icons/fi";
-import QRCode from "qrcode";
 
 export default function Invoice() {
     const { id } = useParams();
@@ -25,7 +24,6 @@ export default function Invoice() {
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showPrintOptions, setShowPrintOptions] = useState(false);
-    const [qrCodeUrl, setQrCodeUrl] = useState(null);
     const [error, setError] = useState(null);
 
     useEffect(() => {
@@ -39,48 +37,11 @@ export default function Invoice() {
             const res = await API.get(`/sales/invoice/${id}`);
             setInvoice(res.data.invoice);
             setItems(res.data.items || []);
-            // Generate QR code with invoice verification URL or ID
-            generateQRCode(res.data.invoice);
         } catch (err) {
             console.error("Error loading invoice:", err);
             setError("Unable to load invoice. Please try again.");
         } finally {
             setLoading(false);
-        }
-    };
-
-    const generateQRCode = async (invoiceData) => {
-        try {
-            // Build a meaningful QR code payload
-            // You can customize this URL to your verification endpoint
-            const qrPayload = JSON.stringify({
-                invoice_no: invoiceData.invoice_no,
-                customer: invoiceData.customer_name,
-                total: invoiceData.total_amount,
-                // Or use a verification URL
-                // url: `${window.location.origin}/verify/${invoiceData.invoice_no}`
-            });
-            const qrDataUrl = await QRCode.toDataURL(qrPayload, {
-                width: 200,
-                margin: 2,
-                color: {
-                    dark: "#2A2621",
-                    light: "#FFFEFB"
-                }
-            });
-            setQrCodeUrl(qrDataUrl);
-        } catch (err) {
-            console.error("Error generating QR code:", err);
-            // Fallback: use invoice ID as simple payload
-            try {
-                const fallbackData = await QRCode.toDataURL(invoiceData.invoice_no, {
-                    width: 200,
-                    margin: 2
-                });
-                setQrCodeUrl(fallbackData);
-            } catch (fallbackErr) {
-                console.error("Fallback QR generation failed:", fallbackErr);
-            }
         }
     };
 
@@ -465,28 +426,10 @@ export default function Invoice() {
                             </div>
                         )}
 
-                        {/* QR + footer */}
+                        {/* Footer */}
                         <div style={styles.bottomRow}>
-                            <div style={styles.qrBlock}>
-                                <div style={styles.qrBox}>
-                                    {qrCodeUrl ? (
-                                        <img 
-                                            src={qrCodeUrl} 
-                                            alt="QR Code" 
-                                            style={styles.qrImage}
-                                        />
-                                    ) : (
-                                        // Fallback: simple visual pattern if QR generation fails
-                                        Array.from({ length: 25 }).map((_, i) => (
-                                            <div key={i} style={{ ...styles.qrDot, opacity: Math.random() > 0.5 ? 1 : 0.25 }}></div>
-                                        ))
-                                    )}
-                                </div>
-                                <p style={styles.qrText}>Scan to verify</p>
-                                <p style={styles.qrSubtext}>{invoice.invoice_no}</p>
-                            </div>
                             <div style={styles.footerNote}>
-                                <p style={styles.thankYou}>Dhanyavadagalu — thank you, come again!</p>
+                                <p style={styles.thankYou}>Thank you for your business!</p>
                                 <p style={styles.footerSmall}>Computer-generated bill · no signature required</p>
                             </div>
                         </div>
@@ -844,33 +787,13 @@ const styles = {
     notesText: { margin: 0, fontSize: "13px", color: "#4A453C" },
     bottomRow: {
         display: "flex",
-        justifyContent: "space-between",
+        justifyContent: "flex-end",
         alignItems: "flex-end",
         flexWrap: "wrap",
         gap: "16px",
         borderTop: "1px dashed #D8CFB0",
         paddingTop: "18px",
     },
-    qrBlock: { textAlign: "center" },
-    qrBox: {
-        width: "74px",
-        height: "74px",
-        display: "grid",
-        placeItems: "center",
-        padding: "6px",
-        border: "1px solid #E4DCC4",
-        borderRadius: "6px",
-        background: "#FFFEFB",
-        overflow: "hidden",
-    },
-    qrImage: {
-        width: "100%",
-        height: "100%",
-        objectFit: "contain",
-    },
-    qrDot: { width: "100%", height: "100%", background: "#2A2621", borderRadius: "1px" },
-    qrText: { margin: "6px 0 0", fontSize: "11px", fontWeight: "600", color: "#1F2A22" },
-    qrSubtext: { margin: 0, fontSize: "10px", color: "#9C917E", fontFamily: "'JetBrains Mono', monospace" },
     footerNote: { textAlign: "right", flex: 1 },
     thankYou: {
         margin: "0 0 4px",
