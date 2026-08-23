@@ -3,8 +3,6 @@ import API from "../services/api";
 import BarcodeScanner from "../pages/BarcodeScanner";
 
 export default function BillingPOS() {
-  const businessId = localStorage.getItem("businessId");
-
   // Business profile state
   const [businessName, setBusinessName] = useState("Your Store");
 
@@ -88,13 +86,10 @@ export default function BillingPOS() {
     return isNaN(numPrice) ? 0 : numPrice;
   };
 
-  // Load business profile - FIXED: removed ownerId from URL path
+  // Load business profile - uses JWT to get business
   const loadBusinessProfile = async () => {
     try {
-      // The backend route is GET /business/profile
-      // It uses the authenticated user's session to get the business
       const res = await API.get("/business/profile");
-
       if (res.data.business) {
         setBusinessName(
           res.data.business.business_name || "Your Store"
@@ -362,7 +357,7 @@ export default function BillingPOS() {
     return unitDisplayNames[unit] || unit;
   };
 
-  // AUTO CUSTOMER SEARCH FUNCTION
+  // AUTO CUSTOMER SEARCH FUNCTION - FIXED: removed business_id param
   const searchCustomer = async (phone) => {
     if (phone.length < 10) {
       setIsCustomerFound(false);
@@ -373,9 +368,8 @@ export default function BillingPOS() {
 
     setIsSearching(true);
     try {
-      const res = await API.get(
-        `/customers/search/${phone}?business_id=${businessId}`
-      );
+      // REMOVED: ?business_id=${businessId} - backend uses JWT
+      const res = await API.get(`/customers/search/${phone}`);
 
       if (res.data.success && res.data.data) {
         setCustomerId(res.data.data.id);
@@ -395,12 +389,11 @@ export default function BillingPOS() {
     }
   };
 
-  // Load dashboard data
+  // Load dashboard data - FIXED: removed business_id param
   const loadDashboard = async () => {
     try {
-      const res = await API.get(
-        `/dashboard?business_id=${businessId}`
-      );
+      // REMOVED: ?business_id=${businessId} - backend uses JWT
+      const res = await API.get("/dashboard");
 
       if (res.data.success) {
         setDashboard(res.data);
@@ -424,9 +417,11 @@ export default function BillingPOS() {
     setInvoiceNo(`${prefix}${timestamp}`);
   };
 
+  // Load products - FIXED: removed business_id param
   const loadProducts = async () => {
     try {
-      const res = await API.get(`/products?business_id=${businessId}`);
+      // REMOVED: ?business_id=${businessId} - backend uses JWT
+      const res = await API.get("/products");
       setProducts(res.data.data);
     } catch (err) {
       console.log(err);
@@ -753,10 +748,11 @@ export default function BillingPOS() {
     win.focus();
   };
 
+  // Save sale - FIXED: removed business_id from payload
   const saveSale = async () => {
     try {
       const payload = {
-        business_id: businessId,
+        // REMOVED: business_id: businessId - backend uses JWT
         customer_id: customerId,
         customer_name: customerName || "Walk-in Customer",
         customer_phone: customerPhone || null,
@@ -2815,10 +2811,9 @@ export default function BillingPOS() {
         </div>
       )}
 
-      {/* Barcode Scanner Modal */}
+      {/* Barcode Scanner Modal - FIXED: removed businessId prop */}
       {showScanner && (
         <BarcodeScanner
-          businessId={businessId}
           onClose={() => setShowScanner(false)}
           onProductFound={(product) => {
             setShowScanner(false);
