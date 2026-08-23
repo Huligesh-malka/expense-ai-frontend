@@ -6,8 +6,6 @@ export default function AddSupplier() {
 
     const navigate = useNavigate();
 
-    const businessId = localStorage.getItem("businessId");
-
     const [loading, setLoading] = useState(false);
 
     const [form, setForm] = useState({
@@ -71,7 +69,6 @@ export default function AddSupplier() {
             await API.post(
                 "/suppliers",
                 {
-                    business_id: businessId,
                     ...form,
                     opening_balance: form.opening_balance || 0
                 }
