@@ -9,6 +9,8 @@ export default function EditProduct() {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState("");
     const [messageType, setMessageType] = useState("");
+    const [categories, setCategories] = useState([]);
+    const [loadingCategories, setLoadingCategories] = useState(false);
 
     const [form, setForm] = useState({
         category: "",
@@ -31,7 +33,31 @@ export default function EditProduct() {
 
     useEffect(() => {
         loadProduct();
+        loadCategories();
     }, [id]);
+
+    const loadCategories = async () => {
+        setLoadingCategories(true);
+        try {
+            const res = await API.get("/categories");
+            setCategories(res.data.data || []);
+        } catch (err) {
+            console.error("Error loading categories:", err);
+            // Fallback to hardcoded categories if API fails
+            setCategories([
+                { id: "electronics", name: "Electronics" },
+                { id: "clothing", name: "Clothing" },
+                { id: "food", name: "Food" },
+                { id: "medicine", name: "Medicine" },
+                { id: "grocery", name: "Grocery" },
+                { id: "restaurant", name: "Restaurant" },
+                { id: "medical", name: "Medical" },
+                { id: "other", name: "Other" }
+            ]);
+        } finally {
+            setLoadingCategories(false);
+        }
+    };
 
     const loadProduct = async () => {
         setLoading(true);
@@ -46,12 +72,24 @@ export default function EditProduct() {
                 expiryDate = date.toISOString().split('T')[0];
             }
             
+            // Explicitly map fields to avoid sending unwanted backend fields
             setForm({
-                ...product,
-                stock_unit: product.unit || "pcs",
+                category: product.category || "",
+                product_name: product.product_name || "",
+                product_code: product.product_code || "",
+                barcode: product.barcode || "",
+                purchase_price: product.purchase_price ?? "",
+                selling_price: product.selling_price ?? "",
+                price_per: product.price_per ?? 1,
                 price_unit: product.price_unit || "pcs",
-                price_per: product.price_per || 1,
-                expiry_date: expiryDate
+                stock: product.stock ?? "",
+                stock_unit: product.unit || "pcs",
+                min_stock: product.min_stock ?? 5,
+                tax: product.tax ?? 0,
+                image: product.image || "",
+                description: product.description || "",
+                expiry_date: expiryDate,
+                status: product.status || "active"
             });
             
             setMessage("");
@@ -70,20 +108,10 @@ export default function EditProduct() {
     const handleChange = (e) => {
         const { name, value } = e.target;
         
-        // If price_unit changes, also update stock_unit to match
-        if (name === "price_unit") {
-            setForm(prev => ({
-                ...prev,
-                price_unit: value,
-                stock_unit: value
-            }));
-            return;
-        }
-        
-        setForm({
-            ...form,
+        setForm(prev => ({
+            ...prev,
             [name]: value
-        });
+        }));
     };
 
     const handleSubmit = async (e) => {
@@ -120,10 +148,22 @@ export default function EditProduct() {
         try {
             // Prepare data for backend - map stock_unit to unit
             const submitData = {
-                ...form,
+                category: form.category,
+                product_name: form.product_name,
+                product_code: form.product_code,
+                barcode: form.barcode,
+                purchase_price: parseFloat(form.purchase_price),
+                selling_price: parseFloat(form.selling_price),
+                price_per: parseInt(form.price_per),
+                price_unit: form.price_unit,
+                stock: parseFloat(form.stock),
                 unit: form.stock_unit,
-                // Only send expiry_date if it has a value
-                expiry_date: form.expiry_date || null
+                min_stock: parseInt(form.min_stock),
+                tax: parseFloat(form.tax),
+                image: form.image,
+                description: form.description,
+                expiry_date: form.expiry_date || null,
+                status: form.status
             };
             
             const res = await API.put(`/products/${id}`, submitData);
@@ -197,17 +237,18 @@ export default function EditProduct() {
                         onChange={handleChange}
                         required
                         style={styles.input}
+                        disabled={loadingCategories}
                     >
                         <option value="">Select Category</option>
-                        <option value="electronics">Electronics</option>
-                        <option value="clothing">Clothing</option>
-                        <option value="food">Food</option>
-                        <option value="medicine">Medicine</option>
-                        <option value="grocery">Grocery</option>
-                        <option value="restaurant">Restaurant</option>
-                        <option value="medical">Medical</option>
-                        <option value="other">Other</option>
+                        {categories.map((cat) => (
+                            <option key={cat.id || cat} value={cat.id || cat}>
+                                {cat.name || cat}
+                            </option>
+                        ))}
                     </select>
+                    {loadingCategories && (
+                        <small style={styles.helperText}>Loading categories...</small>
+                    )}
                 </div>
 
                 {/* Product Code & Barcode */}
@@ -289,6 +330,7 @@ export default function EditProduct() {
                             step="1"
                             style={styles.input}
                         />
+                        <small style={styles.helperText}>Quantity per unit price</small>
                     </div>
                     <div style={styles.formGroupHalf}>
                         <label style={styles.label}>
@@ -330,6 +372,7 @@ export default function EditProduct() {
                             onChange={handleChange}
                             required
                             min="0"
+                            step="0.01"
                             style={styles.input}
                         />
                     </div>
@@ -512,7 +555,8 @@ const styles = {
         display: "flex",
         flexDirection: "column",
         gap: "6px",
-        flex: 1
+        flex: "1 1 300px",
+        minWidth: 0
     },
     label: {
         fontSize: "14px",
@@ -552,7 +596,8 @@ const styles = {
     },
     row: {
         display: "flex",
-        gap: "16px"
+        gap: "16px",
+        flexWrap: "wrap"
     },
     buttonGroup: {
         display: "flex",
