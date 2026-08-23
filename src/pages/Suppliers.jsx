@@ -14,7 +14,6 @@ import {
 } from "react-icons/fi";
 
 export default function Suppliers() {
-  const businessId = localStorage.getItem("businessId");
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -25,7 +24,7 @@ export default function Suppliers() {
 
   const loadSuppliers = async () => {
     try {
-      const res = await API.get(`/suppliers?business_id=${businessId}`);
+      const res = await API.get("/suppliers");
       setSuppliers(res.data.data || []);
     } catch (err) {
       console.error("Error loading suppliers:", err);
