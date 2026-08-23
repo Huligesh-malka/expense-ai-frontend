@@ -99,6 +99,55 @@ const themeToCssVars = (t) => ({
   "--red": t.red, "--red-bg": t.redBg, "--indigo": t.indigo
 });
 
+/* ---- Toast notification system ---- */
+const Toast = ({ message, type, onClose }) => {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 5000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  const styles = {
+    success: { background: "var(--green)", color: "#fff" },
+    error: { background: "var(--red)", color: "#fff" },
+    warning: { background: "var(--brass-dark)", color: "#fff" },
+    info: { background: "var(--indigo)", color: "#fff" }
+  };
+
+  return (
+    <div style={{
+      position: "fixed",
+      bottom: "30px",
+      right: "30px",
+      padding: "14px 24px",
+      borderRadius: "10px",
+      fontFamily: "'Inter', sans-serif",
+      fontWeight: "600",
+      fontSize: "14px",
+      boxShadow: "0 8px 30px rgba(0,0,0,0.2)",
+      zIndex: 10000,
+      animation: "slideIn 0.3s ease-out",
+      ...styles[type] || styles.info,
+      maxWidth: "420px"
+    }}>
+      {message}
+      <button
+        onClick={onClose}
+        style={{
+          background: "transparent",
+          border: "none",
+          color: "inherit",
+          marginLeft: "16px",
+          cursor: "pointer",
+          fontSize: "16px",
+          opacity: 0.7
+        }}
+      >
+        ✕
+      </button>
+    </div>
+  );
+};
+
 /* ---- PDF receipt helpers ---- */
 const hexToRgb = (hex) => {
   const h = (hex || "#000000").replace("#", "");
@@ -164,6 +213,11 @@ const GLOBAL_STYLES = `
   .vs-display { font-family: 'Rozha One', serif; }
 
   .vs-root * { box-sizing: border-box; }
+
+  @keyframes slideIn {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
 
   .vs-topbar {
     display: flex;
@@ -238,7 +292,6 @@ const GLOBAL_STYLES = `
     box-shadow: 0 10px 24px rgba(43,32,10,.07);
   }
   .vs-index-card::before {
-    /* punch hole, top-left, like a card-file record */
     content: "";
     position: absolute;
     top: 14px;
@@ -746,6 +799,9 @@ export default function ViewSupplier() {
   const [historyPurchase, setHistoryPurchase] = useState(null);
   const [historyLoading, setHistoryLoading] = useState(false);
 
+  // Toast state
+  const [toast, setToast] = useState(null);
+
   const [themeKey, setThemeKey] = useState(() => {
     try {
       return localStorage.getItem("laabha_vendor_theme") || "brass";
@@ -764,6 +820,10 @@ export default function ViewSupplier() {
     }
   };
 
+  const showToast = (message, type = "info") => {
+    setToast({ message, type });
+  };
+
   useEffect(() => {
     loadSupplier();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -780,7 +840,7 @@ export default function ViewSupplier() {
       setPurchases(purchaseRes.data.data || []);
     } catch (err) {
       console.log(err);
-      alert(err.response?.data?.message || "Failed to load supplier details");
+      showToast(err.response?.data?.message || "Failed to load supplier details", "error");
       navigate("/suppliers");
     } finally {
       setLoading(false);
@@ -807,12 +867,12 @@ export default function ViewSupplier() {
     const balance = Number(selectedPurchase.due_amount || 0);
 
     if (!amount || amount <= 0) {
-      alert("Enter a valid payment amount");
+      showToast("Enter a valid payment amount", "warning");
       return;
     }
 
     if (amount > balance) {
-      alert(`Payment cannot be greater than ₹${balance.toFixed(2)}`);
+      showToast(`Payment cannot be greater than ₹${balance.toFixed(2)}`, "error");
       return;
     }
 
@@ -826,7 +886,7 @@ export default function ViewSupplier() {
         notes: paymentNotes || null
       });
 
-      alert("Payment recorded successfully.");
+      showToast("Payment recorded successfully ✅", "success");
 
       setShowPaymentModal(false);
       setSelectedPurchase(null);
@@ -834,7 +894,7 @@ export default function ViewSupplier() {
       await loadSupplier();
     } catch (err) {
       console.log(err);
-      alert(err.response?.data?.message || "Failed to record payment");
+      showToast(err.response?.data?.message || "Failed to record payment", "error");
     } finally {
       setPaymentSaving(false);
     }
@@ -850,7 +910,7 @@ export default function ViewSupplier() {
       setPaymentHistory(res.data.data || []);
     } catch (err) {
       console.log(err);
-      alert(err.response?.data?.message || "Failed to load payment history");
+      showToast(err.response?.data?.message || "Failed to load payment history", "error");
     } finally {
       setHistoryLoading(false);
     }
@@ -1079,6 +1139,15 @@ export default function ViewSupplier() {
   return (
     <div className="vs-root" style={{ padding: 30, ...themeToCssVars(theme) }}>
       <style>{GLOBAL_STYLES}</style>
+
+      {/* Toast notifications */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
 
       {/* Top bar */}
       <div className="vs-topbar">
@@ -1335,7 +1404,7 @@ export default function ViewSupplier() {
               <label className="vs-field-label">Payment Amount</label>
               <input
                 type="number"
-                min="0"
+                min="0.01"
                 max={Number(selectedPurchase.due_amount || 0)}
                 step="0.01"
                 value={paymentAmount}
