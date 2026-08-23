@@ -72,6 +72,9 @@ export default function BillingPOS() {
   // Current time
   const [currentTime, setCurrentTime] = useState(new Date());
 
+  // NEW: Prevent duplicate sale submissions
+  const [savingSale, setSavingSale] = useState(false);
+
   // Helper function to safely format price
   const formatPrice = (price) => {
     if (price === undefined || price === null) return "0.00";
@@ -121,13 +124,15 @@ export default function BillingPOS() {
       // Ctrl+Enter - Complete bill
       if (e.key === "Enter" && e.ctrlKey) {
         e.preventDefault();
-        if (cart.length > 0) saveSale();
+        if (cart.length > 0 && !savingSale) {
+          saveSale();
+        }
       }
     };
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [cart]);
+  }, [cart, savingSale]);
 
   // Update time every second
   useEffect(() => {
@@ -748,8 +753,13 @@ export default function BillingPOS() {
     win.focus();
   };
 
-  // Save sale - FIXED: removed business_id from payload
+  // Save sale - FIXED: removed business_id from payload, added duplicate protection
   const saveSale = async () => {
+    // Prevent duplicate submissions
+    if (savingSale || cart.length === 0) return;
+
+    setSavingSale(true);
+
     try {
       const payload = {
         // REMOVED: business_id: businessId - backend uses JWT
@@ -805,6 +815,8 @@ export default function BillingPOS() {
     } catch (err) {
       console.log(err);
       alert(err.response?.data?.message || "Error creating sale");
+    } finally {
+      setSavingSale(false);
     }
   };
 
@@ -2682,9 +2694,9 @@ export default function BillingPOS() {
                 <button
                   className="btn-settle"
                   onClick={saveSale}
-                  disabled={cart.length === 0 || !isPhoneValid}
+                  disabled={savingSale || cart.length === 0 || !isPhoneValid}
                 >
-                  Settle ₹{grandTotal.toFixed(2)}
+                  {savingSale ? "Saving..." : `Settle ₹${grandTotal.toFixed(2)}`}
                 </button>
               </div>
 
