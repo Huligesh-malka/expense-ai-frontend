@@ -2631,7 +2631,7 @@ const styles = {
     },
 
 
-    riskSummary h3: {
+    riskSummaryHeading: {
 
         margin: "0 0 8px",
 
@@ -2640,7 +2640,7 @@ const styles = {
     },
 
 
-    riskSummary p: {
+    riskSummaryText: {
 
         margin: 0,
 
