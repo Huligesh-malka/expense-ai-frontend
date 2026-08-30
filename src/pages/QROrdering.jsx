@@ -18,11 +18,14 @@ export default function QROrdering() {
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [qrUpdating, setQrUpdating] = useState(false);
+
+    // =========================================
+    // LOAD QR + TABLES
+    // =========================================
 
     const loadData = async () => {
-
         try {
-
             setLoading(true);
 
             const [qrResponse, tableResponse] =
@@ -31,12 +34,41 @@ export default function QROrdering() {
                     getTables()
                 ]);
 
-            setQr(qrResponse.data);
-            setTables(tableResponse.data || []);
+            // Axios response:
+            // qrResponse.data = backend JSON
+            //
+            // Backend:
+            // {
+            //   success: true,
+            //   data: {...}
+            // }
+
+            const qrPayload = qrResponse?.data;
+            const tablePayload = tableResponse?.data;
+
+            setQr(
+                qrPayload?.data ||
+                qrPayload ||
+                null
+            );
+
+            setTables(
+                tablePayload?.data ||
+                []
+            );
 
         } catch (error) {
 
-            alert(error.message);
+            console.error(
+                "QR Ordering Load Error:",
+                error
+            );
+
+            alert(
+                error.response?.data?.message ||
+                error.message ||
+                "Failed to load QR ordering"
+            );
 
         } finally {
 
@@ -51,6 +83,10 @@ export default function QROrdering() {
     }, []);
 
 
+    // =========================================
+    // ADD TABLE
+    // =========================================
+
     const addTable = async () => {
 
         if (!tableNumber.trim()) {
@@ -63,8 +99,11 @@ export default function QROrdering() {
             setSaving(true);
 
             await createTable({
-                table_number: tableNumber.trim(),
-                table_name: tableName.trim() || null
+                table_number:
+                    tableNumber.trim(),
+
+                table_name:
+                    tableName.trim() || null
             });
 
             setTableNumber("");
@@ -74,7 +113,16 @@ export default function QROrdering() {
 
         } catch (error) {
 
-            alert(error.message);
+            console.error(
+                "Create Table Error:",
+                error
+            );
+
+            alert(
+                error.response?.data?.message ||
+                error.message ||
+                "Failed to create table"
+            );
 
         } finally {
 
@@ -84,11 +132,17 @@ export default function QROrdering() {
     };
 
 
+    // =========================================
+    // DELETE TABLE
+    // =========================================
+
     const removeTable = async (id) => {
 
-        if (!window.confirm(
+        const confirmed = window.confirm(
             "Delete this table?"
-        )) {
+        );
+
+        if (!confirmed) {
             return;
         }
 
@@ -100,15 +154,30 @@ export default function QROrdering() {
 
         } catch (error) {
 
-            alert(error.message);
+            console.error(
+                "Delete Table Error:",
+                error
+            );
+
+            alert(
+                error.response?.data?.message ||
+                error.message ||
+                "Failed to delete table"
+            );
 
         }
     };
 
 
+    // =========================================
+    // ENABLE / DISABLE QR
+    // =========================================
+
     const toggleQR = async () => {
 
-        if (!qr) return;
+        if (!qr) {
+            return;
+        }
 
         const newStatus =
             qr.status === "active"
@@ -117,21 +186,45 @@ export default function QROrdering() {
 
         try {
 
-            await updateQRStatus(newStatus);
+            setQrUpdating(true);
+
+            await updateQRStatus(
+                newStatus
+            );
 
             await loadData();
 
         } catch (error) {
 
-            alert(error.message);
+            console.error(
+                "Update QR Status Error:",
+                error
+            );
+
+            alert(
+                error.response?.data?.message ||
+                error.message ||
+                "Failed to update QR status"
+            );
+
+        } finally {
+
+            setQrUpdating(false);
 
         }
     };
 
 
+    // =========================================
+    // COPY QR LINK
+    // =========================================
+
     const copyQRLink = async () => {
 
-        if (!qr?.qr_url) return;
+        if (!qr?.qr_url) {
+            alert("QR link is not available");
+            return;
+        }
 
         try {
 
@@ -141,7 +234,12 @@ export default function QROrdering() {
 
             alert("QR link copied");
 
-        } catch {
+        } catch (error) {
+
+            console.error(
+                "Copy QR Error:",
+                error
+            );
 
             alert(qr.qr_url);
 
@@ -149,37 +247,67 @@ export default function QROrdering() {
     };
 
 
+    // =========================================
+    // PRINT QR
+    // =========================================
+
     const printQR = () => {
 
-        window.print();
+        if (!qr?.qr_url) {
+            alert("QR code is not available");
+            return;
+        }
 
+        window.print();
     };
 
+
+    // =========================================
+    // LOADING
+    // =========================================
 
     if (loading) {
 
         return (
             <div className="qr-loading">
-                Loading QR Ordering...
+                <h2>Loading QR Ordering...</h2>
+                <p>
+                    Connecting to your business
+                    QR service.
+                </p>
             </div>
         );
 
     }
 
 
+    // =========================================
+    // PAGE
+    // =========================================
+
     return (
+
         <div className="qr-page">
+
+            {/* ================================= */}
+            {/* HEADER */}
+            {/* ================================= */}
 
             <div className="qr-page-header">
 
                 <div>
-                    <h1>QR Ordering</h1>
+
+                    <h1>
+                        QR Ordering
+                    </h1>
 
                     <p>
-                        Let customers scan one QR,
-                        select their table and order.
+                        Customers scan one QR
+                        code to open your menu.
                     </p>
+
                 </div>
+
 
                 <button
                     className={
@@ -188,17 +316,22 @@ export default function QROrdering() {
                             : "success-btn"
                     }
                     onClick={toggleQR}
+                    disabled={qrUpdating}
                 >
-                    {qr?.status === "active"
-                        ? "Disable QR"
-                        : "Enable QR"}
+
+                    {qrUpdating
+                        ? "Updating..."
+                        : qr?.status === "active"
+                            ? "Disable QR"
+                            : "Enable QR"}
+
                 </button>
 
             </div>
 
 
             {/* ================================= */}
-            {/* QR CARD */}
+            {/* QR CODE */}
             {/* ================================= */}
 
             <div className="qr-card">
@@ -210,10 +343,12 @@ export default function QROrdering() {
                     </h2>
 
                     <p>
-                        Use this single QR code
-                        throughout your restaurant.
+                        Place this QR code on
+                        tables, counters or bills.
                     </p>
 
+
+                    {/* STATUS */}
 
                     <div className="qr-status">
 
@@ -225,32 +360,53 @@ export default function QROrdering() {
                             }
                         />
 
-                        {qr?.status === "active"
-                            ? "QR Menu Active"
-                            : "QR Menu Disabled"}
+                        <span>
+                            {qr?.status === "active"
+                                ? "QR Menu Active"
+                                : "QR Menu Disabled"}
+                        </span>
 
                     </div>
 
 
-                    <div className="qr-url">
+                    {/* QR URL */}
 
-                        {qr?.qr_url}
+                    {qr?.qr_url ? (
 
-                    </div>
+                        <div className="qr-url">
 
+                            {qr.qr_url}
+
+                        </div>
+
+                    ) : (
+
+                        <div className="qr-url">
+
+                            QR link unavailable
+
+                        </div>
+
+                    )}
+
+
+                    {/* ACTIONS */}
 
                     <div className="qr-actions">
 
                         <button
                             onClick={copyQRLink}
                             className="secondary-btn"
+                            disabled={!qr?.qr_url}
                         >
                             Copy Link
                         </button>
 
+
                         <button
                             onClick={printQR}
                             className="primary-btn"
+                            disabled={!qr?.qr_url}
                         >
                             Print QR
                         </button>
@@ -260,23 +416,37 @@ export default function QROrdering() {
                 </div>
 
 
+                {/* ================================= */}
+                {/* QR IMAGE */}
+                {/* ================================= */}
+
                 <div className="qr-image-box">
 
                     {qr?.qr_url ? (
 
                         <img
                             src={
-                                `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
+                                `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
                                     qr.qr_url
                                 )}`
                             }
                             alt="Restaurant QR Code"
+                            width="300"
+                            height="300"
                         />
 
                     ) : (
 
-                        <div>
-                            QR unavailable
+                        <div className="qr-unavailable">
+
+                            <div>
+                                📱
+                            </div>
+
+                            <span>
+                                QR unavailable
+                            </span>
+
                         </div>
 
                     )}
@@ -296,91 +466,151 @@ export default function QROrdering() {
 
                     <div>
 
-                        <h2>Restaurant Tables</h2>
+                        <h2>
+                            Restaurant Tables
+                        </h2>
 
                         <p>
-                            Customers select their table
-                            after scanning the QR.
+                            Add your tables so customers
+                            can select their table after
+                            scanning the QR.
                         </p>
 
                     </div>
 
+
                     <span className="count-badge">
-                        {tables.length} Tables
+                        {tables.length}{" "}
+                        {tables.length === 1
+                            ? "Table"
+                            : "Tables"}
                     </span>
 
                 </div>
 
 
+                {/* ADD TABLE */}
+
                 <div className="add-table">
 
                     <input
+                        type="text"
                         value={tableNumber}
                         onChange={(e) =>
-                            setTableNumber(e.target.value)
+                            setTableNumber(
+                                e.target.value
+                            )
                         }
                         placeholder="Table number"
+                        disabled={saving}
                     />
 
+
                     <input
+                        type="text"
                         value={tableName}
                         onChange={(e) =>
-                            setTableName(e.target.value)
+                            setTableName(
+                                e.target.value
+                            )
                         }
                         placeholder="Table name (optional)"
+                        disabled={saving}
                     />
+
 
                     <button
                         onClick={addTable}
                         disabled={saving}
                         className="primary-btn"
                     >
-                        + Add Table
+
+                        {saving
+                            ? "Adding..."
+                            : "+ Add Table"}
+
                     </button>
 
                 </div>
 
 
-                <div className="table-grid">
+                {/* TABLE LIST */}
 
-                    {tables.map((table) => (
+                {tables.length === 0 ? (
 
-                        <div
-                            className="table-box"
-                            key={table.id}
-                        >
+                    <div className="empty-tables">
 
-                            <div className="table-icon">
-                                🪑
-                            </div>
-
-                            <strong>
-                                Table {table.table_number}
-                            </strong>
-
-                            {table.table_name && (
-                                <span>
-                                    {table.table_name}
-                                </span>
-                            )}
-
-                            <button
-                                className="delete-btn"
-                                onClick={() =>
-                                    removeTable(table.id)
-                                }
-                            >
-                                Delete
-                            </button>
-
+                        <div>
+                            🪑
                         </div>
 
-                    ))}
+                        <h3>
+                            No tables added
+                        </h3>
 
-                </div>
+                        <p>
+                            Add your restaurant tables
+                            above.
+                        </p>
+
+                    </div>
+
+                ) : (
+
+                    <div className="table-grid">
+
+                        {tables.map((table) => (
+
+                            <div
+                                className="table-box"
+                                key={table.id}
+                            >
+
+                                <div className="table-icon">
+                                    🪑
+                                </div>
+
+
+                                <strong>
+                                    Table{" "}
+                                    {table.table_number}
+                                </strong>
+
+
+                                {table.table_name && (
+
+                                    <span>
+                                        {
+                                            table.table_name
+                                        }
+                                    </span>
+
+                                )}
+
+
+                                <button
+                                    className="delete-btn"
+                                    onClick={() =>
+                                        removeTable(
+                                            table.id
+                                        )
+                                    }
+                                >
+                                    Delete
+                                </button>
+
+                            </div>
+
+                        ))}
+
+                    </div>
+
+                )}
 
             </div>
 
         </div>
+
     );
+
 }
