@@ -4,7 +4,7 @@ import {
     getQROrders,
     updateQROrderStatus,
     updateQRPayment
-} from "../api/qrOrderApi";
+} from "../services/qrOrderApi";
 
 const statusButtons = [
     "new",

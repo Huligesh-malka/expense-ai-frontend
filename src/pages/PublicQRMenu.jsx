@@ -9,7 +9,7 @@ import { useParams } from "react-router-dom";
 import {
     getPublicQRMenu,
     createQROrder
-} from "../api/qrOrderApi";
+} from "../services/qrOrderApi";
 
 export default function PublicQRMenu() {
 

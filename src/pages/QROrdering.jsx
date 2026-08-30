@@ -6,7 +6,7 @@ import {
     getTables,
     createTable,
     deleteTable
-} from "../api/qrOrderApi";
+} from "../services/qrOrderApi";
 
 export default function QROrdering() {
 
