@@ -64,13 +64,26 @@ export default function Login() {
                 localStorage.setItem("userName", res.data.user.full_name);
                 localStorage.setItem("userEmail", res.data.user.email);
 
+                // =====================================
+                // ADMIN REDIRECT - FIXED
+                // =====================================
                 if (res.data.business) {
                     localStorage.setItem("businessId", res.data.business.id);
                     localStorage.setItem("businessName", res.data.business.business_name);
                     localStorage.setItem("businessType", res.data.business.business_type);
-                    navigate("/dashboard", { replace: true });
+
+                    if (res.data.user.role === "admin") {
+                        navigate("/admin/dashboard", { replace: true });
+                    } else {
+                        navigate("/dashboard", { replace: true });
+                    }
                 } else {
-                    navigate("/create-business", { replace: true });
+                    // Admin does not need a business
+                    if (res.data.user.role === "admin") {
+                        navigate("/admin/dashboard", { replace: true });
+                    } else {
+                        navigate("/create-business", { replace: true });
+                    }
                 }
             } else {
                 setError(res.data.message);
@@ -101,13 +114,26 @@ export default function Login() {
                 localStorage.setItem("userName", res.data.user.full_name);
                 localStorage.setItem("userEmail", res.data.user.email);
 
+                // =====================================
+                // ADMIN REDIRECT - FIXED
+                // =====================================
                 if (res.data.business) {
                     localStorage.setItem("businessId", res.data.business.id);
                     localStorage.setItem("businessName", res.data.business.business_name);
                     localStorage.setItem("businessType", res.data.business.business_type);
-                    navigate("/dashboard", { replace: true });
+
+                    if (res.data.user.role === "admin") {
+                        navigate("/admin/dashboard", { replace: true });
+                    } else {
+                        navigate("/dashboard", { replace: true });
+                    }
                 } else {
-                    navigate("/create-business", { replace: true });
+                    // Admin does not need a business
+                    if (res.data.user.role === "admin") {
+                        navigate("/admin/dashboard", { replace: true });
+                    } else {
+                        navigate("/create-business", { replace: true });
+                    }
                 }
             } else {
                 setError(res.data.message || "Google login failed. Please try again.");
