@@ -10,7 +10,7 @@ export const getAdminDashboard = () => {
 
 
 // =====================================
-// ALL BUSINESSES
+// ADMIN BUSINESSES
 // =====================================
 
 export const getAdminBusinesses = () => {
@@ -19,9 +19,38 @@ export const getAdminBusinesses = () => {
 
 
 // =====================================
-// ALL USERS
+// ADMIN USERS
 // =====================================
 
 export const getAdminUsers = () => {
     return API.get("/admin/users");
+};
+
+
+// =====================================
+// SECURITY OVERVIEW
+// =====================================
+
+export const getSecurityOverview = () => {
+    return API.get("/admin/security/overview");
+};
+
+
+// =====================================
+// SECURITY EVENTS
+// =====================================
+
+export const getSecurityEvents = (limit = 100) => {
+    return API.get(
+        `/admin/security/events?limit=${limit}`
+    );
+};
+
+
+// =====================================
+// SECURITY AI ENGINE
+// =====================================
+
+export const getSecurityAI = () => {
+    return API.get("/admin/security/ai");
 };
