@@ -3,15 +3,12 @@ import { useContext } from "react";
 import { AuthContext } from "../context/AuthContext";
 
 const AdminRoute = () => {
+
     const {
         user,
         loading,
         isAuthenticated
     } = useContext(AuthContext);
-
-    // ================================
-    // AUTH LOADING
-    // ================================
 
     if (loading) {
         return (
@@ -20,8 +17,7 @@ const AdminRoute = () => {
                     minHeight: "100vh",
                     display: "flex",
                     alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "18px",
+                    justifyContent: "center"
                 }}
             >
                 Loading...
@@ -29,25 +25,13 @@ const AdminRoute = () => {
         );
     }
 
-    // ================================
-    // NOT LOGGED IN
-    // ================================
-
     if (!isAuthenticated || !user) {
         return <Navigate to="/login" replace />;
     }
 
-    // ================================
-    // ADMIN CHECK
-    // ================================
-
     if (user.role !== "admin") {
         return <Navigate to="/dashboard" replace />;
     }
-
-    // ================================
-    // ADMIN ALLOWED
-    // ================================
 
     return <Outlet />;
 };
