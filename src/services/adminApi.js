@@ -1,3 +1,5 @@
+// services/adminApi.js
+
 import API from "./api";
 
 // =====================================
@@ -8,19 +10,9 @@ export const getAdminDashboard = () => {
     return API.get("/admin/dashboard");
 };
 
-
-// =====================================
-// ADMIN BUSINESSES
-// =====================================
-
 export const getAdminBusinesses = () => {
     return API.get("/admin/businesses");
 };
-
-
-// =====================================
-// ADMIN USERS
-// =====================================
 
 export const getAdminUsers = () => {
     return API.get("/admin/users");
@@ -28,7 +20,7 @@ export const getAdminUsers = () => {
 
 
 // =====================================
-// SECURITY OVERVIEW
+// SECURITY ENGINE
 // =====================================
 
 export const getSecurityOverview = () => {
@@ -36,20 +28,12 @@ export const getSecurityOverview = () => {
 };
 
 
-// =====================================
-// SECURITY EVENTS
-// =====================================
-
 export const getSecurityEvents = (limit = 100) => {
     return API.get(
         `/admin/security/events?limit=${limit}`
     );
 };
 
-
-// =====================================
-// SECURITY AI ENGINE
-// =====================================
 
 export const getSecurityAI = () => {
     return API.get("/admin/security/ai");
