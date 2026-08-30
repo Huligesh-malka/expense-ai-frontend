@@ -42,6 +42,9 @@ import QROrdering from "./pages/QROrdering";
 import QROrders from "./pages/QROrders";
 import PublicQRMenu from "./pages/PublicQRMenu";
 
+
+import AdminDashboard from "./pages/admin/AdminDashboard";
+
 function App() {
     return (
         <Routes>
@@ -68,6 +71,12 @@ function App() {
 <Route
     path="/qr/:token"
     element={<PublicQRMenu />}
+/>
+
+
+<Route
+    path="/admin/dashboard"
+    element={<AdminDashboard />}
 />
 
             {/* Protected Routes - All business pages */}
