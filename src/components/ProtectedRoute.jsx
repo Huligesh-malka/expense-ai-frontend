@@ -9,6 +9,10 @@ const ProtectedRoute = () => {
         isAuthenticated
     } = useContext(AuthContext);
 
+    // =====================================
+    // WAIT FOR SESSION RESTORE
+    // =====================================
+
     if (loading) {
         return (
             <div
@@ -25,9 +29,36 @@ const ProtectedRoute = () => {
         );
     }
 
+    // =====================================
+    // NOT LOGGED IN
+    // =====================================
+
     if (!isAuthenticated || !user) {
-        return <Navigate to="/login" replace />;
+        return (
+            <Navigate
+                to="/login"
+                replace
+            />
+        );
     }
+
+    // =====================================
+    // ADMIN USERS
+    // NEVER ALLOW ADMIN INTO BUSINESS AREA
+    // =====================================
+
+    if (user.role === "admin") {
+        return (
+            <Navigate
+                to="/admin/dashboard"
+                replace
+            />
+        );
+    }
+
+    // =====================================
+    // NORMAL BUSINESS USER
+    // =====================================
 
     return <Outlet />;
 };
