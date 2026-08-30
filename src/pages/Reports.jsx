@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+
 
 import {
     getSalesReport,
@@ -411,6 +411,25 @@ export default function Reports() {
                     </div>
 
 
+                    <div className="summary-card discount-summary-card">
+
+                        <div className="summary-label">
+                            TOTAL DISCOUNT
+                        </div>
+
+                        <div className="summary-value discount-value">
+                            {money(
+                                salesSummary.total_discount
+                            )}
+                        </div>
+
+                        <div className="summary-info">
+                            Discount given
+                        </div>
+
+                    </div>
+
+
                     <div className="summary-card">
 
                         <div className="summary-label">
@@ -530,6 +549,10 @@ export default function Reports() {
                                     </th>
 
                                     <th>
+                                        Discount
+                                    </th>
+
+                                    <th>
                                         Total
                                     </th>
 
@@ -589,6 +612,12 @@ export default function Reports() {
                                                     }
                                                 </span>
 
+                                            </td>
+
+                                            <td className="discount-cell">
+                                                {money(
+                                                    sale.discount
+                                                )}
                                             </td>
 
                                             <td className="amount">
@@ -1362,7 +1391,7 @@ const styles = {
             display: grid;
 
             grid-template-columns:
-                repeat(4, minmax(0, 1fr));
+                repeat(5, minmax(0, 1fr));
 
             gap: 14px;
 
@@ -1409,6 +1438,22 @@ const styles = {
 
         .profit-value {
             color: #2F8F5B;
+        }
+
+
+        .discount-value {
+            color: #C26B20;
+        }
+
+
+        .discount-cell {
+            color: #C26B20;
+
+            font-family:
+                "JetBrains Mono",
+                monospace;
+
+            font-weight: 600;
         }
 
 
