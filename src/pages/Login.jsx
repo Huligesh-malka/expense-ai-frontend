@@ -5,12 +5,12 @@ import { auth, googleProvider } from "../firebase";
 import API from "../services/api";
 import { AuthContext } from "../context/AuthContext";
 
-// Shop types Laabha serves — shown as badges so an owner instantly
-// recognizes the product is built for a business like theirs.
-const SHOP_TYPES = [
-    { label: "Grocery", icon: "🛒" },
-    { label: "Medical", icon: "💊" },
-    { label: "General store", icon: "🏪" },
+// Sample rows for the illustrative ledger strip in the left panel.
+// Purely decorative — not real account data.
+const LEDGER_SAMPLE = [
+    { date: "01 Aug", entry: "Rent collected", amount: "₹42,000" },
+    { date: "03 Aug", entry: "Inventory restock", amount: "₹18,500" },
+    { date: "05 Aug", entry: "Vendor settlement", amount: "₹9,200" },
 ];
 
 function useIsNarrow(breakpoint = 900) {
@@ -23,53 +23,6 @@ function useIsNarrow(breakpoint = 900) {
         return () => window.removeEventListener("resize", onResize);
     }, [breakpoint]);
     return isNarrow;
-}
-
-/* ---------- Signature visual: stitched ledger spine ---------- */
-function StitchSpine() {
-    return (
-        <svg
-            width="18"
-            height="100%"
-            viewBox="0 0 18 400"
-            preserveAspectRatio="none"
-            style={styles.spineSvg}
-            aria-hidden="true"
-        >
-            <line x1="9" y1="0" x2="9" y2="400" stroke="rgba(251,242,221,0.14)" strokeWidth="1" />
-            {Array.from({ length: 20 }).map((_, i) => {
-                const y = i * 21 + 6;
-                return (
-                    <g key={i} stroke="rgba(217,140,43,0.55)" strokeWidth="1.4" strokeLinecap="round">
-                        <line x1="2" y1={y} x2="16" y2={y + 9} />
-                        <line x1="16" y1={y} x2="2" y2={y + 9} />
-                    </g>
-                );
-            })}
-        </svg>
-    );
-}
-
-/* ---------- Signature visual: rubber security stamp ---------- */
-function SecurityStamp() {
-    return (
-        <div style={styles.stampWrap} aria-hidden="true">
-            <svg width="86" height="86" viewBox="0 0 86 86">
-                <defs>
-                    <path id="stampCircle" d="M 43,43 m -32,0 a 32,32 0 1,1 64,0 a 32,32 0 1,1 -64,0" />
-                </defs>
-                <circle cx="43" cy="43" r="40" fill="none" stroke="#A93D2F" strokeWidth="1.5" opacity="0.85" />
-                <circle cx="43" cy="43" r="33" fill="none" stroke="#A93D2F" strokeWidth="1" opacity="0.6" />
-                <text fill="#A93D2F" fontSize="8.4" fontFamily="'JetBrains Mono', monospace" letterSpacing="1.5">
-                    <textPath href="#stampCircle" startOffset="2%">
-                        BANK-GRADE ENCRYPTION • DATA STAYS PRIVATE •
-                    </textPath>
-                </text>
-                <path d="M43 30a7 7 0 00-7 7v3h-1.5a1.5 1.5 0 00-1.5 1.5v13a1.5 1.5 0 001.5 1.5h17a1.5 1.5 0 001.5-1.5v-13A1.5 1.5 0 0051.5 40H50v-3a7 7 0 00-7-7zm0 3.2a3.8 3.8 0 013.8 3.8v3H39.2v-3A3.8 3.8 0 0143 33.2z"
-                    fill="#A93D2F" opacity="0.9" />
-            </svg>
-        </div>
-    );
 }
 
 export default function Login() {
@@ -103,12 +56,17 @@ export default function Login() {
             const res = await API.post("/auth/login", formData);
 
             if (res.data.success) {
+                // AuthContext.login() handles token storage
                 login(res.data.user, res.data.token);
 
+                // Store additional user info
                 localStorage.setItem("userId", res.data.user.id);
                 localStorage.setItem("userName", res.data.user.full_name);
                 localStorage.setItem("userEmail", res.data.user.email);
 
+                // =====================================
+                // ADMIN REDIRECT - FIXED
+                // =====================================
                 if (res.data.business) {
                     localStorage.setItem("businessId", res.data.business.id);
                     localStorage.setItem("businessName", res.data.business.business_name);
@@ -120,6 +78,7 @@ export default function Login() {
                         navigate("/dashboard", { replace: true });
                     }
                 } else {
+                    // Admin does not need a business
                     if (res.data.user.role === "admin") {
                         navigate("/admin/dashboard", { replace: true });
                     } else {
@@ -147,12 +106,17 @@ export default function Login() {
             const res = await API.post("/auth/google", { idToken });
 
             if (res.data.success) {
+                // AuthContext.login() handles token storage
                 login(res.data.user, res.data.token);
 
+                // Store additional user info
                 localStorage.setItem("userId", res.data.user.id);
                 localStorage.setItem("userName", res.data.user.full_name);
                 localStorage.setItem("userEmail", res.data.user.email);
 
+                // =====================================
+                // ADMIN REDIRECT - FIXED
+                // =====================================
                 if (res.data.business) {
                     localStorage.setItem("businessId", res.data.business.id);
                     localStorage.setItem("businessName", res.data.business.business_name);
@@ -164,6 +128,7 @@ export default function Login() {
                         navigate("/dashboard", { replace: true });
                     }
                 } else {
+                    // Admin does not need a business
                     if (res.data.user.role === "admin") {
                         navigate("/admin/dashboard", { replace: true });
                     } else {
@@ -191,56 +156,39 @@ export default function Login() {
         <div style={styles.page}>
             <style>{FONT_AND_MOTION_CSS}</style>
 
-            {/* ============== LEFT: TRUST / BRAND PANEL ============== */}
+            {/* ============== LEFT: LEDGER PANEL ============== */}
             <div
                 style={{
                     ...styles.leftPanel,
                     ...(isNarrow ? styles.leftPanelNarrow : {}),
                 }}
             >
-                <StitchSpine />
-
-                <div style={styles.leftInner}>
-                    <div>
-                        <div style={styles.wordmark}>
-                            Laabha
-                        </div>
-                        <div style={styles.tagline}>DUKAAN KA HISAAB, DIGITISED</div>
-                    </div>
-
-                    <h1 style={{ ...styles.hero, ...(isCompact ? styles.heroCompact : {}) }}>
-                        Your shop's <span style={styles.heroAccent}>hisaab</span>,
-                        <br />
-                        finally in one place.
-                    </h1>
-
-                    {!isCompact && (
-                        <>
-                            <div style={styles.statBlock}>
-                                <span style={styles.statNumber}>12,400+</span>
-                                <span style={styles.statLabel}>
-                                    shop owners already track their daily profit on Laabha
-                                </span>
-                            </div>
-
-                            <div style={styles.badgeRow}>
-                                {SHOP_TYPES.map((s) => (
-                                    <span style={styles.badge} key={s.label}>
-                                        <span aria-hidden="true">{s.icon}</span> {s.label}
-                                    </span>
-                                ))}
-                            </div>
-
-                            <div style={styles.testimonial}>
-                                <span style={styles.testimonialMark}>"</span>
-                                Ab mujhe raat ko baithke hisaab nahi milaana padta.
-                                <div style={styles.testimonialBy}>
-                                    — Suresh Patil, Grocery shop owner, Mysuru
-                                </div>
-                            </div>
-                        </>
-                    )}
+                <div>
+                    <div style={styles.wordmark}>FinancePro</div>
+                    <div style={styles.tagline}>BUSINESS LEDGER</div>
                 </div>
+
+                <h1 style={{ ...styles.hero, ...(isCompact ? styles.heroCompact : {}) }}>
+                    Every rupee,
+                    <br />
+                    accounted for.
+                </h1>
+
+                {!isCompact && (
+                    <div style={styles.ledgerBlock}>
+                        <div style={styles.ledgerCaption}>Sample ledger entry</div>
+                        <div style={styles.ledgerTable}>
+                            {LEDGER_SAMPLE.map((row, i) => (
+                                <div style={styles.ledgerRow} key={i}>
+                                    <span style={styles.ledgerDate}>{row.date}</span>
+                                    <span style={styles.ledgerEntry}>{row.entry}</span>
+                                    <span style={styles.ledgerDots} />
+                                    <span style={styles.ledgerAmount}>{row.amount}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* ============== RIGHT: SIGN IN CARD ============== */}
@@ -251,12 +199,11 @@ export default function Login() {
                 }}
             >
                 <div className="ledger-card-enter" style={styles.card}>
-                    <SecurityStamp />
-                    <div style={styles.ledgerTab}>PRAVESH · SIGN IN</div>
+                    <div style={styles.ledgerTab}>SIGN IN</div>
 
                     <div style={styles.cardHead}>
                         <h2 style={styles.cardTitle}>Welcome back</h2>
-                        <p style={styles.cardSubtitle}>Sign in to see today's profit.</p>
+                        <p style={styles.cardSubtitle}>Sign in to open your books.</p>
                     </div>
 
                     <form onSubmit={handleSubmit} style={styles.form}>
@@ -268,7 +215,7 @@ export default function Login() {
                                 id="login-email"
                                 type="email"
                                 name="email"
-                                placeholder="you@yourshop.in"
+                                placeholder="you@business.in"
                                 value={formData.email}
                                 onChange={handleChange}
                                 required
@@ -306,7 +253,6 @@ export default function Login() {
                                     ...(error && styles.inputError),
                                 }}
                             />
-                            <span style={styles.microcopy}>We never share your shop data with anyone.</span>
                         </div>
 
                         {error && (
@@ -331,7 +277,7 @@ export default function Login() {
                                     Signing in…
                                 </span>
                             ) : (
-                                "Sign in and open your books"
+                                "Sign in"
                             )}
                         </button>
 
@@ -358,19 +304,23 @@ export default function Login() {
                         </button>
                     </form>
 
-                    <div style={styles.trustFooter}>
-                        <span style={styles.trustItem}>🔒 Encrypted</span>
-                        <span style={styles.trustDot}>·</span>
-                        <span style={styles.trustItem}>✅ GST-ready</span>
-                        <span style={styles.trustDot}>·</span>
-                        <span style={styles.trustItem}>Hindi · Kannada · English support</span>
-                    </div>
-
                     <div style={styles.footer}>
                         <span style={styles.footerText}>New here?</span>
                         <Link to="/register" className="ledger-link" style={styles.registerLink}>
-                            Start your free account →
+                            Create an account →
                         </Link>
+                    </div>
+
+                    <div style={styles.receipt}>
+                        <div style={styles.receiptLabel}>Demo access</div>
+                        <div style={styles.receiptRow}>
+                            <span style={styles.receiptKey}>email</span>
+                            <span style={styles.receiptValue}>demo@financepro.com</span>
+                        </div>
+                        <div style={styles.receiptRow}>
+                            <span style={styles.receiptKey}>pass</span>
+                            <span style={styles.receiptValue}>password123</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -380,7 +330,7 @@ export default function Login() {
 
 // ===== Fonts, keyframes, hover states & focus rings =====
 const FONT_AND_MOTION_CSS = `
-    @import url('https://fonts.googleapis.com/css2?family=Rozha+One&family=Hind:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;1,500;1,600&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
     @keyframes ledgerCardIn {
         from { opacity: 0; transform: translateY(10px) rotate(-0.4deg); }
@@ -397,42 +347,42 @@ const FONT_AND_MOTION_CSS = `
     }
 
     .ledger-input:hover {
-        border-color: #d9c9a3;
+        border-color: #b9ab84;
     }
     .ledger-input:focus {
         outline: none;
-        border-color: #1F7A54;
-        box-shadow: 0 0 0 3px rgba(31, 122, 84, 0.15);
+        border-color: #1F6F54;
+        box-shadow: 0 0 0 3px rgba(31, 111, 84, 0.15);
     }
     .ledger-btn-primary:hover:not(:disabled) {
-        background: #175d41;
+        background: #195c46;
     }
     .ledger-btn-google:hover:not(:disabled) {
-        border-color: #16241D;
-        background: #f7efd9;
+        border-color: #101C2C;
+        background: #fbf7ec;
     }
     .ledger-link:focus-visible,
     .ledger-btn-primary:focus-visible,
     .ledger-btn-google:focus-visible,
     .ledger-input:focus-visible {
-        outline: 2px solid #D98C2B;
+        outline: 2px solid #C9A227;
         outline-offset: 2px;
     }
 `;
 
 // ===== Palette =====
-// ink:      #16241D  – ledger cover, deep bottle-green black
-// paper:    #FBF2DD  – rice-paper card
-// profit:   #1F7A54  – "laabha" green, primary action
-// marigold: #D98C2B  – warmth / accent
-// stamp:    #A93D2F  – rubber-stamp red, alerts, margin rule
+// ink:     #101C2C  – ledger cover / dark panel
+// paper:   #F1E9D6  – parchment card
+// emerald: #1F6F54  – stamp-ink green (primary action)
+// gold:    #C9A227  – brass tab / accent
+// margin:  #A64B3C  – classic red ledger margin rule
 
 const styles = {
     page: {
         minHeight: "100vh",
         display: "flex",
-        background: "#16241D",
-        fontFamily: "'Hind', -apple-system, BlinkMacSystemFont, sans-serif",
+        background: "#101C2C",
+        fontFamily: "'Work Sans', -apple-system, BlinkMacSystemFont, sans-serif",
     },
 
     // ---------- Left panel ----------
@@ -440,121 +390,91 @@ const styles = {
         flex: "0 0 44%",
         minHeight: "100vh",
         display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+        padding: "56px 56px 64px",
         background:
-            "radial-gradient(circle at 15% 10%, rgba(217,140,43,0.08) 0%, transparent 45%), #16241D",
+            "radial-gradient(circle at 20% 15%, rgba(201,162,39,0.08) 0%, transparent 45%), #101C2C",
         boxSizing: "border-box",
         position: "relative",
-        paddingLeft: "18px",
     },
     leftPanelNarrow: {
         flex: "none",
         minHeight: "auto",
-        paddingBottom: "8px",
-    },
-    spineSvg: {
-        position: "absolute",
-        left: 0,
-        top: 0,
-        height: "100%",
-    },
-    leftInner: {
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "space-between",
-        padding: "56px 56px 48px 38px",
-        boxSizing: "border-box",
+        padding: "40px 28px 32px",
     },
     wordmark: {
-        fontFamily: "'Rozha One', serif",
-        fontSize: "28px",
-        color: "#FBF2DD",
-        letterSpacing: "0.5px",
+        fontFamily: "'Fraunces', serif",
+        fontStyle: "italic",
+        fontWeight: 600,
+        fontSize: "26px",
+        color: "#F1E9D6",
+        letterSpacing: "-0.3px",
     },
     tagline: {
         marginTop: "6px",
-        fontFamily: "'JetBrains Mono', monospace",
+        fontFamily: "'IBM Plex Mono', monospace",
         fontSize: "11px",
         letterSpacing: "2.5px",
-        color: "rgba(251,242,221,0.4)",
+        color: "rgba(241,233,214,0.45)",
     },
     hero: {
-        fontFamily: "'Rozha One', serif",
-        fontSize: "42px",
-        lineHeight: 1.2,
-        color: "#FBF2DD",
-        margin: "36px 0",
+        fontFamily: "'Fraunces', serif",
+        fontStyle: "italic",
+        fontWeight: 500,
+        fontSize: "44px",
+        lineHeight: 1.15,
+        color: "#F1E9D6",
+        margin: "40px 0",
         maxWidth: "420px",
     },
     heroCompact: {
         fontSize: "30px",
-        margin: "24px 0",
+        margin: "28px 0",
     },
-    heroAccent: {
-        color: "#D98C2B",
+    ledgerBlock: {
+        borderTop: "1px solid rgba(241,233,214,0.15)",
+        paddingTop: "20px",
     },
-    statBlock: {
+    ledgerCaption: {
+        fontFamily: "'IBM Plex Mono', monospace",
+        fontSize: "10px",
+        letterSpacing: "1.5px",
+        textTransform: "uppercase",
+        color: "rgba(241,233,214,0.35)",
+        marginBottom: "12px",
+    },
+    ledgerTable: {
+        borderLeft: "2px solid #A64B3C",
+        paddingLeft: "16px",
         display: "flex",
         flexDirection: "column",
-        gap: "4px",
-        borderTop: "1px solid rgba(251,242,221,0.15)",
-        paddingTop: "18px",
-        maxWidth: "300px",
+        gap: "10px",
     },
-    statNumber: {
-        fontFamily: "'JetBrains Mono', monospace",
-        fontSize: "26px",
-        color: "#FBF2DD",
-        fontWeight: 500,
-    },
-    statLabel: {
-        fontSize: "13px",
-        color: "rgba(251,242,221,0.55)",
-        lineHeight: 1.4,
-    },
-    badgeRow: {
+    ledgerRow: {
         display: "flex",
-        flexWrap: "wrap",
-        gap: "8px",
-        marginTop: "18px",
+        alignItems: "baseline",
+        gap: "10px",
+        fontFamily: "'IBM Plex Mono', monospace",
+        fontSize: "12.5px",
+        color: "rgba(241,233,214,0.8)",
     },
-    badge: {
-        fontFamily: "'JetBrains Mono', monospace",
-        fontSize: "11.5px",
-        color: "rgba(251,242,221,0.75)",
-        border: "1px solid rgba(251,242,221,0.2)",
-        borderRadius: "999px",
-        padding: "5px 12px",
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "6px",
+    ledgerDate: {
+        color: "rgba(241,233,214,0.4)",
+        flexShrink: 0,
     },
-    testimonial: {
-        marginTop: "26px",
-        maxWidth: "300px",
-        fontFamily: "'Hind', sans-serif",
-        fontSize: "14px",
-        fontStyle: "italic",
-        color: "rgba(251,242,221,0.8)",
-        lineHeight: 1.5,
-        borderLeft: "2px solid #A93D2F",
-        paddingLeft: "14px",
-        position: "relative",
+    ledgerEntry: {
+        flexShrink: 0,
+        whiteSpace: "nowrap",
     },
-    testimonialMark: {
-        fontFamily: "'Rozha One', serif",
-        fontStyle: "normal",
-        color: "#D98C2B",
-        fontSize: "22px",
-        marginRight: "2px",
+    ledgerDots: {
+        flex: 1,
+        borderBottom: "1px dotted rgba(241,233,214,0.25)",
+        transform: "translateY(-3px)",
     },
-    testimonialBy: {
-        marginTop: "8px",
-        fontFamily: "'JetBrains Mono', monospace",
-        fontStyle: "normal",
-        fontSize: "10.5px",
-        letterSpacing: "0.5px",
-        color: "rgba(251,242,221,0.45)",
+    ledgerAmount: {
+        color: "#F1E9D6",
+        flexShrink: 0,
     },
 
     // ---------- Right panel ----------
@@ -574,45 +494,39 @@ const styles = {
     card: {
         width: "100%",
         maxWidth: "400px",
-        background: "#FBF2DD",
+        background: "#F1E9D6",
         backgroundImage:
-            "repeating-linear-gradient(to bottom, transparent 0 30px, rgba(22,36,29,0.05) 30px 31px)",
+            "repeating-linear-gradient(to bottom, transparent 0 30px, rgba(16,28,44,0.05) 30px 31px)",
         borderRadius: "6px",
-        padding: "44px 36px 28px",
+        padding: "44px 36px 32px",
         position: "relative",
         boxShadow: "0 24px 60px rgba(0,0,0,0.35)",
-        border: "1px solid rgba(22,36,29,0.06)",
-    },
-    stampWrap: {
-        position: "absolute",
-        top: "-30px",
-        left: "-24px",
-        transform: "rotate(-9deg)",
-        opacity: 0.9,
-        pointerEvents: "none",
+        border: "1px solid rgba(16,28,44,0.06)",
     },
     ledgerTab: {
         position: "absolute",
         top: "-16px",
         right: "32px",
-        background: "#D98C2B",
-        color: "#16241D",
-        fontFamily: "'JetBrains Mono', monospace",
-        fontSize: "10.5px",
+        background: "#C9A227",
+        color: "#101C2C",
+        fontFamily: "'IBM Plex Mono', monospace",
+        fontSize: "11px",
         fontWeight: 500,
-        letterSpacing: "1.2px",
+        letterSpacing: "1.5px",
         padding: "7px 14px",
         borderRadius: "4px 4px 0 0",
         transform: "rotate(-2deg)",
         boxShadow: "0 -2px 8px rgba(0,0,0,0.15)",
     },
     cardHead: {
-        marginBottom: "26px",
+        marginBottom: "28px",
     },
     cardTitle: {
-        fontFamily: "'Rozha One', serif",
+        fontFamily: "'Fraunces', serif",
+        fontStyle: "italic",
+        fontWeight: 600,
         fontSize: "26px",
-        color: "#16241D",
+        color: "#101C2C",
         margin: "0 0 6px 0",
     },
     cardSubtitle: {
@@ -623,7 +537,7 @@ const styles = {
     form: {
         display: "flex",
         flexDirection: "column",
-        gap: "16px",
+        gap: "18px",
     },
     inputGroup: {
         display: "flex",
@@ -642,23 +556,19 @@ const styles = {
     },
     input: {
         padding: "12px 14px",
-        background: "#FEFBF3",
-        border: "1.5px solid rgba(22,36,29,0.15)",
+        background: "#FBF8F0",
+        border: "1.5px solid rgba(16,28,44,0.15)",
         borderRadius: "6px",
-        color: "#16241D",
+        color: "#101C2C",
         fontSize: "14.5px",
-        fontFamily: "'JetBrains Mono', monospace",
+        fontFamily: "'IBM Plex Mono', monospace",
         outline: "none",
         transition: "border-color 0.2s ease, box-shadow 0.2s ease",
         boxSizing: "border-box",
     },
     inputError: {
-        borderColor: "#A93D2F",
-        background: "rgba(169,61,47,0.06)",
-    },
-    microcopy: {
-        fontSize: "11.5px",
-        color: "#9c927a",
+        borderColor: "#A64B3C",
+        background: "rgba(166,75,60,0.06)",
     },
     forgotLink: {
         color: "#8a7f66",
@@ -671,14 +581,14 @@ const styles = {
         alignItems: "center",
         gap: "8px",
         padding: "10px 14px",
-        background: "rgba(169,61,47,0.08)",
-        borderLeft: "3px solid #A93D2F",
+        background: "rgba(166,75,60,0.08)",
+        borderLeft: "3px solid #A64B3C",
         borderRadius: "2px",
         color: "#7a3225",
         fontSize: "13px",
     },
     errorTag: {
-        fontFamily: "'JetBrains Mono', monospace",
+        fontFamily: "'IBM Plex Mono', monospace",
         fontSize: "10px",
         fontWeight: 500,
         letterSpacing: "1px",
@@ -687,15 +597,15 @@ const styles = {
     },
     submitButton: {
         padding: "13px",
-        background: "#1F7A54",
+        background: "#1F6F54",
         border: "none",
         borderRadius: "6px",
-        color: "#FBF2DD",
+        color: "#F1E9D6",
         fontSize: "15px",
         fontWeight: 600,
         cursor: "pointer",
         transition: "background 0.2s ease",
-        fontFamily: "'Hind', sans-serif",
+        fontFamily: "'Work Sans', sans-serif",
     },
     buttonDisabled: {
         opacity: 0.6,
@@ -710,8 +620,8 @@ const styles = {
     spinner: {
         width: "15px",
         height: "15px",
-        border: "2px solid rgba(251,242,221,0.3)",
-        borderTopColor: "#FBF2DD",
+        border: "2px solid rgba(241,233,214,0.3)",
+        borderTopColor: "#F1E9D6",
         borderRadius: "50%",
         display: "inline-block",
         animation: "ledgerSpin 0.7s linear infinite",
@@ -725,7 +635,7 @@ const styles = {
     dividerLine: {
         flex: 1,
         height: "1px",
-        background: "rgba(22,36,29,0.12)",
+        background: "rgba(16,28,44,0.12)",
     },
     dividerText: {
         color: "#a39a84",
@@ -741,53 +651,67 @@ const styles = {
         gap: "10px",
         width: "100%",
         padding: "12px",
-        background: "#FEFBF3",
-        border: "1.5px solid rgba(22,36,29,0.15)",
+        background: "#FBF8F0",
+        border: "1.5px solid rgba(16,28,44,0.15)",
         borderRadius: "6px",
-        color: "#16241D",
+        color: "#101C2C",
         fontSize: "14px",
         fontWeight: 500,
         cursor: "pointer",
         transition: "all 0.2s ease",
-        fontFamily: "'Hind', sans-serif",
+        fontFamily: "'Work Sans', sans-serif",
         boxSizing: "border-box",
     },
     socialIcon: {
         width: "18px",
         height: "18px",
     },
-    trustFooter: {
-        display: "flex",
-        justifyContent: "center",
-        flexWrap: "wrap",
-        alignItems: "center",
-        gap: "8px",
-        marginTop: "20px",
-        fontFamily: "'JetBrains Mono', monospace",
-        fontSize: "10.5px",
-        color: "#8a7f66",
-    },
-    trustItem: {},
-    trustDot: {
-        color: "#c9bfa6",
-    },
     footer: {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
         gap: "6px",
-        marginTop: "18px",
-        paddingTop: "16px",
-        borderTop: "1px dashed rgba(22,36,29,0.15)",
+        marginTop: "24px",
+        paddingTop: "18px",
+        borderTop: "1px dashed rgba(16,28,44,0.15)",
         fontSize: "13.5px",
     },
     footerText: {
         color: "#8a7f66",
     },
     registerLink: {
-        color: "#16241D",
+        color: "#101C2C",
         textDecoration: "none",
         fontWeight: 600,
-        borderBottom: "1px solid #D98C2B",
+        borderBottom: "1px solid #C9A227",
+    },
+    receipt: {
+        marginTop: "20px",
+        paddingTop: "14px",
+        borderTop: "1px dashed rgba(16,28,44,0.2)",
+    },
+    receiptLabel: {
+        fontFamily: "'IBM Plex Mono', monospace",
+        fontSize: "10px",
+        letterSpacing: "1.5px",
+        textTransform: "uppercase",
+        color: "#a39a84",
+        marginBottom: "6px",
+        textAlign: "center",
+    },
+    receiptRow: {
+        display: "flex",
+        justifyContent: "center",
+        gap: "8px",
+        fontFamily: "'IBM Plex Mono', monospace",
+        fontSize: "12px",
+        padding: "1px 0",
+    },
+    receiptKey: {
+        color: "#a39a84",
+    },
+    receiptValue: {
+        color: "#4a4438",
+        fontWeight: 500,
     },
 };
