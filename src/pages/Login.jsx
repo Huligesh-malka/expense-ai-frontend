@@ -89,42 +89,8 @@ export default function Login() {
                 setError(res.data.message);
             }
         } catch (err) {
-            console.error("Login error:", err);
-
-            const data = err?.response?.data;
-
-            // Account is temporarily locked by the backend
-            if (data?.locked === true) {
-                const retryAfterSeconds = Number(data?.retryAfterSeconds || 300);
-                const minutes = Math.ceil(retryAfterSeconds / 60);
-
-                setError(
-                    `Account temporarily locked. Try again in ${minutes} minute${minutes === 1 ? "" : "s"}.`
-                );
-            }
-
-            // Wrong password/email with remaining attempts
-            else if (data?.remainingAttempts !== undefined) {
-                const remaining = Number(data.remainingAttempts);
-
-                if (remaining > 0) {
-                    setError(
-                        `${remaining} ${remaining === 1 ? "attempt" : "attempts"} remaining`
-                    );
-                } else {
-                    setError(
-                        "Too many failed login attempts. Your account has been temporarily locked."
-                    );
-                }
-            }
-
-            // Other backend errors
-            else {
-                setError(
-                    data?.message ||
-                    "Server error. Please check your connection."
-                );
-            }
+            console.error(err);
+            setError(err.response?.data?.message || "Server error. Please check your connection.");
         } finally {
             setIsLoading(false);
         }
