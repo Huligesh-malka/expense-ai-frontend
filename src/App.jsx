@@ -1,5 +1,6 @@
 import { Routes, Route } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
+import AdminRoute from "./components/AdminRoute";
 
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -73,15 +74,22 @@ function App() {
     element={<PublicQRMenu />}
 />
 
+<Route element={<AdminRoute />}>
+    <Route
+        path="/admin/dashboard"
+        element={<AdminDashboard />}
+    />
+</Route>
 
-<Route
-    path="/admin/dashboard"
-    element={<AdminDashboard />}
-/>
+
+
+
 
             {/* Protected Routes - All business pages */}
             <Route element={<ProtectedRoute />}>
                 <Route path="/dashboard" element={<Dashboard />} />
+
+             
 
                 {/* Expenses */}
                 <Route path="/add-expense" element={<AddExpense />} />
