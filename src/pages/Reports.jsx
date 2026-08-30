@@ -241,6 +241,81 @@ export default function Reports() {
 
 
     // =====================================
+    // PROFIT / LOSS HELPERS
+    // =====================================
+
+    const getProfitValue = (item) => {
+        return Number(item?.profit || 0);
+    };
+
+    const profitStats = profit.reduce(
+        (stats, item) => {
+            const value = getProfitValue(item);
+
+            if (value > 0) {
+                stats.profitProducts += 1;
+                stats.grossProfit += value;
+            } else if (value < 0) {
+                stats.lossProducts += 1;
+                stats.totalLoss += Math.abs(value);
+            } else {
+                stats.zeroProducts += 1;
+            }
+
+            return stats;
+        },
+        {
+            profitProducts: 0,
+            lossProducts: 0,
+            zeroProducts: 0,
+            grossProfit: 0,
+            totalLoss: 0,
+        }
+    );
+
+
+    const formatProfit = (value) => {
+        const number = Number(value || 0);
+
+        if (number < 0) {
+            return `-₹${Math.abs(number).toLocaleString(
+                "en-IN",
+                {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                }
+            )}`;
+        }
+
+        return money(number);
+    };
+
+
+    const getProfitStatus = (value) => {
+        const number = Number(value || 0);
+
+        if (number < 0) {
+            return {
+                text: "LOSS",
+                className: "loss",
+            };
+        }
+
+        if (number > 0) {
+            return {
+                text: "PROFIT",
+                className: "profit",
+            };
+        }
+
+        return {
+            text: "NO PROFIT",
+            className: "zero",
+        };
+    };
+
+
+    // =====================================
     // LOADING
     // =====================================
 
@@ -824,11 +899,61 @@ export default function Reports() {
 
                         </div>
 
-                        <div className="section-total">
-                            {money(
-                                profitSummary.total_profit
-                            )}
+                        <div className="profit-header-total">
+                            <span>Net Profit</span>
+
+                            <strong className={
+                                Number(profitSummary.total_profit || 0) < 0
+                                    ? "negative"
+                                    : ""
+                            }>
+                                {formatProfit(
+                                    profitSummary.total_profit
+                                )}
+                            </strong>
                         </div>
+
+                    </div>
+
+
+                    <div className="profit-summary">
+
+                        <div className="profit-summary-item">
+                            <span>Gross Profit</span>
+                            <strong className="gross-profit">
+                                {money(profitStats.grossProfit)}
+                            </strong>
+                        </div>
+
+                        <div className="profit-summary-item">
+                            <span>Total Loss</span>
+                            <strong className="gross-loss">
+                                {money(profitStats.totalLoss)}
+                            </strong>
+                        </div>
+
+                        <div className="profit-summary-item">
+                            <span>Profit Products</span>
+                            <strong>
+                                {profitStats.profitProducts}
+                            </strong>
+                        </div>
+
+                        <div className="profit-summary-item">
+                            <span>Loss Products</span>
+                            <strong className="loss-count">
+                                {profitStats.lossProducts}
+                            </strong>
+                        </div>
+
+                        {profitStats.zeroProducts > 0 && (
+                            <div className="profit-summary-item">
+                                <span>Zero Profit</span>
+                                <strong>
+                                    {profitStats.zeroProducts}
+                                </strong>
+                            </div>
+                        )}
 
                     </div>
 
@@ -858,7 +983,11 @@ export default function Reports() {
                                     </th>
 
                                     <th>
-                                        Profit
+                                        Profit / Loss
+                                    </th>
+
+                                    <th>
+                                        Status
                                     </th>
 
                                 </tr>
@@ -873,7 +1002,7 @@ export default function Reports() {
                                     <tr>
 
                                         <td
-                                            colSpan="5"
+                                            colSpan="6"
                                             className="empty-row"
                                         >
                                             No profit data found
@@ -915,10 +1044,34 @@ export default function Reports() {
                                                 )}
                                             </td>
 
-                                            <td className="profit-cell">
-                                                {money(
+                                            <td
+                                                className={
+                                                    `profit-cell ${
+                                                        getProfitValue(item) < 0
+                                                            ? "loss-cell"
+                                                            : getProfitValue(item) > 0
+                                                                ? "profit-positive"
+                                                                : "zero-profit"
+                                                    }`
+                                                }
+                                            >
+                                                {formatProfit(
                                                     item.profit
                                                 )}
+                                            </td>
+
+                                            <td>
+                                                <span
+                                                    className={
+                                                        `profit-status ${
+                                                            getProfitStatus(item.profit).className
+                                                        }`
+                                                    }
+                                                >
+                                                    {
+                                                        getProfitStatus(item.profit).text
+                                                    }
+                                                </span>
                                             </td>
 
                                         </tr>
@@ -1628,13 +1781,164 @@ const styles = {
 
 
         .profit-cell {
+            font-family:
+                "JetBrains Mono",
+                monospace;
+
+            font-weight: 700;
+        }
+
+
+        .profit-positive {
+            color: #2F8F5B;
+        }
+
+
+        .loss-cell {
+            color: #D6482B;
+        }
+
+
+        .zero-profit {
+            color: #7A8581;
+        }
+
+
+        .profit-header-total {
+            display: flex;
+
+            flex-direction: column;
+
+            align-items: flex-end;
+
+            gap: 2px;
+        }
+
+
+        .profit-header-total span {
+            color: #7A8581;
+
+            font-size: 10px;
+
+            font-weight: 600;
+        }
+
+
+        .profit-header-total strong {
             color: #2F8F5B;
 
             font-family:
                 "JetBrains Mono",
                 monospace;
 
+            font-size: 15px;
+
             font-weight: 700;
+        }
+
+
+        .profit-header-total strong.negative {
+            color: #D6482B;
+        }
+
+
+        .profit-summary {
+            display: grid;
+
+            grid-template-columns:
+                repeat(4, minmax(0, 1fr));
+
+            gap: 1px;
+
+            background: #E4DEC8;
+
+            border-bottom: 1px solid #E4DEC8;
+        }
+
+
+        .profit-summary-item {
+            display: flex;
+
+            align-items: center;
+
+            justify-content: space-between;
+
+            gap: 10px;
+
+            padding: 11px 15px;
+
+            background: #FFFEFA;
+        }
+
+
+        .profit-summary-item span {
+            color: #7A8581;
+
+            font-size: 10px;
+
+            font-weight: 700;
+
+            text-transform: uppercase;
+
+            letter-spacing: 0.4px;
+        }
+
+
+        .profit-summary-item strong {
+            color: #0B4F52;
+
+            font-family:
+                "JetBrains Mono",
+                monospace;
+
+            font-size: 12px;
+        }
+
+
+        .profit-summary-item .gross-profit {
+            color: #2F8F5B;
+        }
+
+
+        .profit-summary-item .gross-loss,
+        .profit-summary-item .loss-count {
+            color: #D6482B;
+        }
+
+
+        .profit-status {
+            display: inline-block;
+
+            padding: 4px 8px;
+
+            border-radius: 20px;
+
+            font-size: 9px;
+
+            font-weight: 800;
+
+            letter-spacing: 0.3px;
+        }
+
+
+        .profit-status.profit {
+            background: #E4F5EC;
+
+            color: #2F8F5B;
+        }
+
+
+        .profit-status.loss {
+            background: #FBE7E0;
+
+            color: #D6482B;
+        }
+
+
+        .profit-status.zero {
+            background: #F0F0ED;
+
+            color: #596560;
         }
 
 
@@ -1866,6 +2170,16 @@ const styles = {
                 align-items: flex-start;
 
                 flex-direction: column;
+            }
+
+
+            .profit-summary {
+                grid-template-columns: 1fr;
+            }
+
+
+            .profit-summary-item {
+                padding: 10px 14px;
             }
 
 
