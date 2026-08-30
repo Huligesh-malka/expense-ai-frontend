@@ -37,6 +37,11 @@ import EditPurchase from "./pages/EditPurchase";
 import AddProduct from "./pages/AddProduct";
 import BillingPOS from "./pages/BillingPOS";
 
+
+import QROrdering from "./pages/QROrdering";
+import QROrders from "./pages/QROrders";
+import PublicQRMenu from "./pages/PublicQRMenu";
+
 function App() {
     return (
         <Routes>
@@ -47,6 +52,23 @@ function App() {
             
             {/* Public Route - Business Creation (for new users) */}
             <Route path="/create-business" element={<CreateBusiness />} />
+
+
+
+            <Route
+    path="/qr-ordering"
+    element={<QROrdering />}
+/>
+
+<Route
+    path="/qr-orders"
+    element={<QROrders />}
+/>
+
+<Route
+    path="/qr/:token"
+    element={<PublicQRMenu />}
+/>
 
             {/* Protected Routes - All business pages */}
             <Route element={<ProtectedRoute />}>

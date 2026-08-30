@@ -835,7 +835,7 @@ export default function BusinessDashboard() {
             icon={<FiList size={20} />}
             label="Sales History"
             color="#059669"
-          /> 
+          />
           <QuickActionButton
             to="/reports"
             icon={<FiBarChart2 size={20} />}
@@ -846,6 +846,12 @@ export default function BusinessDashboard() {
             to="/create-layout"
             icon={<FiGrid size={20} />}
             label="3D Shop Designer"
+            color="#0ea5e9"
+          />
+          <QuickActionButton
+            to="/qr-ordering"
+            icon={<FiGrid size={20} />}
+            label="QR Ordering"
             color="#0ea5e9"
           />
         </div>
