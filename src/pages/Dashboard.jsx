@@ -28,6 +28,7 @@ import {
   FiChevronDown,
   FiHome,
   FiBriefcase,
+  FiZap, // ← Added AI icon
 } from "react-icons/fi";
 
 export default function BusinessDashboard() {
@@ -853,6 +854,13 @@ export default function BusinessDashboard() {
             icon={<FiGrid size={20} />}
             label="QR Ordering"
             color="#0ea5e9"
+          />
+          {/* ⚡ AI Business Engine - NEW BUTTON */}
+          <QuickActionButton
+            to="/ai-business"
+            icon={<FiZap size={20} />}
+            label="AI Business Engine"
+            color="#7c3aed"
           />
         </div>
       </div>
