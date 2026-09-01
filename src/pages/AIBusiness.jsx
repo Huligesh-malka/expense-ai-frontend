@@ -1,697 +1,2008 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import API from "../services/api";
 
 import {
-    getBusinessAnalytics
-} from "../services/aiBusinessService";
+  FiArrowLeft,
+  FiRefreshCw,
+  FiTrendingUp,
+  FiTrendingDown,
+  FiDollarSign,
+  FiPackage,
+  FiUsers,
+  FiAlertTriangle,
+  FiCheckCircle,
+  FiTarget,
+  FiShoppingCart,
+  FiBarChart2,
+  FiActivity,
+  FiZap,
+  FiShield,
+  FiCalendar,
+  FiClock,
+  FiMessageCircle,
+} from "react-icons/fi";
 
+export default function AIBusiness() {
+  const navigate = useNavigate();
 
-const AIBusiness = () => {
+  const [loading, setLoading] = useState(false);
+  const [firstLoading, setFirstLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [analysis, setAnalysis] = useState(null);
 
-    const [analytics, setAnalytics] = useState(null);
+  const businessId = localStorage.getItem("businessId");
+  const businessName =
+    localStorage.getItem("businessName") || "Your Business";
 
-    const [loading, setLoading] = useState(true);
+  // ============================================================
+  // LOAD AI BUSINESS ANALYSIS
+  // ============================================================
 
-    const [error, setError] = useState("");
+  const loadAnalysis = async () => {
+    try {
+      setLoading(true);
+      setError("");
 
+      const response = await API.get(
+        `/ai-business/analytics?business_id=${businessId}`
+      );
 
-    // ========================================================
-    // LOAD ANALYTICS
-    // ========================================================
+      if (response.data) {
+        setAnalysis(response.data.data || response.data);
+      }
+    } catch (err) {
+      console.error("AI Business Analysis Error:", err);
 
-    const loadAnalytics = async () => {
+      setError(
+        err.response?.data?.message ||
+          "Unable to generate business analysis."
+      );
+    } finally {
+      setLoading(false);
+      setFirstLoading(false);
+    }
+  };
 
-        try {
+  useEffect(() => {
+    if (businessId) {
+      loadAnalysis();
+    } else {
+      setFirstLoading(false);
+      setError("Business information not found.");
+    }
+  }, [businessId]);
 
-            setLoading(true);
-            setError("");
+  // ============================================================
+  // HELPERS
+  // ============================================================
 
-            const response =
-                await getBusinessAnalytics();
+  const number = (value) => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : 0;
+  };
 
-            if (response.success) {
+  const money = (value) => {
+    return `₹${number(value).toLocaleString("en-IN", {
+      maximumFractionDigits: 2,
+    })}`;
+  };
 
-                setAnalytics(response.data);
+  const percentage = (value) => {
+    return `${number(value).toFixed(1)}%`;
+  };
 
-            } else {
-
-                setError(
-                    response.message ||
-                    "Failed to load business analytics"
-                );
-
-            }
-
-        } catch (err) {
-
-            console.error(
-                "AI Business Analytics Error:",
-                err
-            );
-
-            setError(
-                err.response?.data?.message ||
-                "Failed to load business analytics"
-            );
-
-        } finally {
-
-            setLoading(false);
-
-        }
-
-    };
-
-
-    // ========================================================
-    // LOAD ON PAGE OPEN
-    // ========================================================
-
-    useEffect(() => {
-
-        loadAnalytics();
-
-    }, []);
-
-
-    // ========================================================
-    // LOADING
-    // ========================================================
-
-    if (loading) {
-
-        return (
-            <div style={{
-                padding: "30px"
-            }}>
-                Loading business analytics...
-            </div>
-        );
-
+  const getValue = (...values) => {
+    for (const value of values) {
+      if (
+        value !== undefined &&
+        value !== null &&
+        value !== ""
+      ) {
+        return value;
+      }
     }
 
+    return 0;
+  };
 
-    // ========================================================
-    // ERROR
-    // ========================================================
+  // ============================================================
+  // SUPPORT DIFFERENT BACKEND RESPONSE NAMES
+  // ============================================================
 
-    if (error) {
+  const data = analysis || {};
 
-        return (
-            <div style={{
-                padding: "30px"
-            }}>
+  const sales = data.sales || data.salesIntelligence || {};
+  const inventory =
+    data.inventory || data.inventoryIntelligence || {};
+  const customers =
+    data.customers || data.customerIntelligence || {};
+  const profit =
+    data.profit || data.profitIntelligence || {};
+  const health =
+    data.health || data.businessHealth || {};
+  const strategy =
+    data.strategy || data.growthStrategy || {};
 
-                <h2>
-                    Business Analytics
-                </h2>
+  const opportunities =
+    data.opportunities ||
+    data.aiOpportunities ||
+    data.recommendations ||
+    [];
 
-                <p>
-                    {error}
-                </p>
+  const risks =
+    data.risks ||
+    data.businessRisks ||
+    [];
 
-                <button
-                    onClick={loadAnalytics}
-                >
-                    Try Again
-                </button>
+  const actions =
+    data.actions ||
+    data.actionPlan ||
+    strategy.actions ||
+    [];
 
-            </div>
-        );
+  // ============================================================
+  // LOADING SCREEN
+  // ============================================================
 
-    }
-
-
-    // ========================================================
-    // NO DATA
-    // ========================================================
-
-    if (!analytics) {
-
-        return (
-            <div style={{
-                padding: "30px"
-            }}>
-                No analytics data available.
-            </div>
-        );
-
-    }
-
-
-    const sales =
-        analytics.sales || {};
-
-    const today =
-        sales.today || {};
-
-    const currentMonth =
-        sales.current_month || {};
-
-    const previousMonth =
-        sales.previous_month || {};
-
-    const growth =
-        sales.growth || {};
-
-    const inventory =
-        analytics.inventory || {};
-
-    const customers =
-        analytics.customers || {};
-
-    const suppliers =
-        analytics.suppliers || {};
-
-    const purchases =
-        analytics.purchases || {};
-
-    const products =
-        analytics.products || {};
-
-
-    // ========================================================
-    // PAGE
-    // ========================================================
-
+  if (firstLoading) {
     return (
+      <div style={styles.page}>
+        <div style={styles.loadingBox}>
+          <div style={styles.aiLoadingIcon}>
+            <FiZap size={32} />
+          </div>
 
-        <div style={{
-            padding: "30px"
-        }}>
+          <h2 style={styles.loadingTitle}>
+            AI Business Engine
+          </h2>
 
-            {/* =================================================
-                HEADER
-            ================================================= */}
+          <p style={styles.loadingText}>
+            Analyzing your business data...
+          </p>
 
-            <div style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: "30px"
-            }}>
+          <div style={styles.spinner}></div>
+        </div>
+      </div>
+    );
+  }
 
-                <div>
+  // ============================================================
+  // PAGE
+  // ============================================================
 
-                    <h1>
-                        AI Business Intelligence
-                    </h1>
+  return (
+    <div style={styles.page}>
+      {/* ======================================================
+          TOP HEADER
+      ====================================================== */}
 
-                    <p>
-                        Understand your business performance
-                        and discover growth opportunities.
-                    </p>
+      <div style={styles.header}>
+        <div style={styles.headerLeft}>
+          <button
+            onClick={() => navigate("/dashboard")}
+            style={styles.backButton}
+          >
+            <FiArrowLeft size={18} />
+            Dashboard
+          </button>
 
-                </div>
+          <div>
+            <div style={styles.titleRow}>
+              <div style={styles.aiIcon}>
+                <FiZap size={25} />
+              </div>
 
+              <div>
+                <h1 style={styles.title}>
+                  AI Business Engine
+                </h1>
 
-                <button
-                    onClick={loadAnalytics}
-                >
-                    Refresh
-                </button>
-
+                <p style={styles.subtitle}>
+                  Intelligent strategy, planning and business decisions
+                </p>
+              </div>
             </div>
-
-
-            {/* =================================================
-                SALES
-            ================================================= */}
-
-            <h2>
-                Sales
-            </h2>
-
-            <div style={{
-                display: "grid",
-                gridTemplateColumns:
-                    "repeat(auto-fit, minmax(220px, 1fr))",
-                gap: "20px",
-                marginBottom: "30px"
-            }}>
-
-                <div className="ai-card">
-
-                    <h3>
-                        Today's Sales
-                    </h3>
-
-                    <strong>
-                        ₹{Number(
-                            today.revenue || 0
-                        ).toLocaleString("en-IN")}
-                    </strong>
-
-                    <p>
-                        {today.orders || 0} orders
-                    </p>
-
-                </div>
-
-
-                <div className="ai-card">
-
-                    <h3>
-                        This Month
-                    </h3>
-
-                    <strong>
-                        ₹{Number(
-                            currentMonth.revenue || 0
-                        ).toLocaleString("en-IN")}
-                    </strong>
-
-                    <p>
-                        {currentMonth.orders || 0} orders
-                    </p>
-
-                </div>
-
-
-                <div className="ai-card">
-
-                    <h3>
-                        Previous Month
-                    </h3>
-
-                    <strong>
-                        ₹{Number(
-                            previousMonth.revenue || 0
-                        ).toLocaleString("en-IN")}
-                    </strong>
-
-                </div>
-
-
-                <div className="ai-card">
-
-                    <h3>
-                        Sales Growth
-                    </h3>
-
-                    <strong>
-                        {Number(
-                            growth.revenue_percent || 0
-                        ).toFixed(2)}%
-                    </strong>
-
-                    <p>
-                        Compared with previous month
-                    </p>
-
-                </div>
-
-            </div>
-
-
-            {/* =================================================
-                INVENTORY
-            ================================================= */}
-
-            <h2>
-                Inventory Intelligence
-            </h2>
-
-            <div style={{
-                display: "grid",
-                gridTemplateColumns:
-                    "repeat(auto-fit, minmax(220px, 1fr))",
-                gap: "20px",
-                marginBottom: "30px"
-            }}>
-
-                <div className="ai-card">
-
-                    <h3>
-                        Products
-                    </h3>
-
-                    <strong>
-                        {inventory.total_products || 0}
-                    </strong>
-
-                </div>
-
-
-                <div className="ai-card">
-
-                    <h3>
-                        Total Stock
-                    </h3>
-
-                    <strong>
-                        {inventory.total_stock || 0}
-                    </strong>
-
-                </div>
-
-
-                <div className="ai-card">
-
-                    <h3>
-                        Low Stock
-                    </h3>
-
-                    <strong>
-                        {inventory.low_stock_count || 0}
-                    </strong>
-
-                </div>
-
-
-                <div className="ai-card">
-
-                    <h3>
-                        Out of Stock
-                    </h3>
-
-                    <strong>
-                        {inventory.out_of_stock_count || 0}
-                    </strong>
-
-                </div>
-
-
-                <div className="ai-card">
-
-                    <h3>
-                        Dead Stock
-                    </h3>
-
-                    <strong>
-                        {inventory.dead_stock_count || 0}
-                    </strong>
-
-                </div>
-
-
-                <div className="ai-card">
-
-                    <h3>
-                        Inventory Value
-                    </h3>
-
-                    <strong>
-                        ₹{Number(
-                            inventory.purchase_value || 0
-                        ).toLocaleString("en-IN")}
-                    </strong>
-
-                </div>
-
-            </div>
-
-
-            {/* =================================================
-                PRODUCT OPPORTUNITIES
-            ================================================= */}
-
-            <h2>
-                Product Intelligence
-            </h2>
-
-            <div style={{
-                display: "grid",
-                gridTemplateColumns:
-                    "repeat(auto-fit, minmax(300px, 1fr))",
-                gap: "20px",
-                marginBottom: "30px"
-            }}>
-
-
-                {/* TOP SELLING */}
-
-                <div className="ai-card">
-
-                    <h3>
-                        🔥 Top Selling Products
-                    </h3>
-
-                    {(
-                        products.top_selling || []
-                    ).slice(0, 5).map(product => (
-
-                        <div
-                            key={product.id}
-                            style={{
-                                display: "flex",
-                                justifyContent:
-                                    "space-between",
-                                padding: "10px 0",
-                                borderBottom:
-                                    "1px solid #eee"
-                            }}
-                        >
-
-                            <span>
-                                {product.product_name}
-                            </span>
-
-                            <strong>
-                                {product.units_sold_30_days}
-                            </strong>
-
-                        </div>
-
-                    ))}
-
-                </div>
-
-
-                {/* HIGH MARGIN */}
-
-                <div className="ai-card">
-
-                    <h3>
-                        💰 High Margin Products
-                    </h3>
-
-                    {(
-                        products.high_margin || []
-                    ).slice(0, 5).map(product => (
-
-                        <div
-                            key={product.id}
-                            style={{
-                                display: "flex",
-                                justifyContent:
-                                    "space-between",
-                                padding: "10px 0",
-                                borderBottom:
-                                    "1px solid #eee"
-                            }}
-                        >
-
-                            <span>
-                                {product.product_name}
-                            </span>
-
-                            <strong>
-                                {Number(
-                                    product.margin_percent || 0
-                                ).toFixed(1)}%
-                            </strong>
-
-                        </div>
-
-                    ))}
-
-                </div>
-
-
-                {/* LOW MARGIN */}
-
-                <div className="ai-card">
-
-                    <h3>
-                        ⚠️ Low Margin Products
-                    </h3>
-
-                    {(
-                        products.low_margin || []
-                    ).slice(0, 5).map(product => (
-
-                        <div
-                            key={product.id}
-                            style={{
-                                display: "flex",
-                                justifyContent:
-                                    "space-between",
-                                padding: "10px 0",
-                                borderBottom:
-                                    "1px solid #eee"
-                            }}
-                        >
-
-                            <span>
-                                {product.product_name}
-                            </span>
-
-                            <strong>
-                                {Number(
-                                    product.margin_percent || 0
-                                ).toFixed(1)}%
-                            </strong>
-
-                        </div>
-
-                    ))}
-
-                </div>
-
-            </div>
-
-
-            {/* =================================================
-                CUSTOMERS
-            ================================================= */}
-
-            <h2>
-                Customer Intelligence
-            </h2>
-
-            <div style={{
-                display: "grid",
-                gridTemplateColumns:
-                    "repeat(auto-fit, minmax(220px, 1fr))",
-                gap: "20px",
-                marginBottom: "30px"
-            }}>
-
-                <div className="ai-card">
-
-                    <h3>
-                        Customers
-                    </h3>
-
-                    <strong>
-                        {customers.total || 0}
-                    </strong>
-
-                </div>
-
-
-                <div className="ai-card">
-
-                    <h3>
-                        Customer Spending
-                    </h3>
-
-                    <strong>
-                        ₹{Number(
-                            customers.total_spent || 0
-                        ).toLocaleString("en-IN")}
-                    </strong>
-
-                </div>
-
-
-                <div className="ai-card">
-
-                    <h3>
-                        Average Customer Value
-                    </h3>
-
-                    <strong>
-                        ₹{Number(
-                            customers.average_customer_value || 0
-                        ).toLocaleString("en-IN")}
-                    </strong>
-
-                </div>
-
-
-                <div className="ai-card">
-
-                    <h3>
-                        Inactive 60+ Days
-                    </h3>
-
-                    <strong>
-                        {customers.inactive_60_days || 0}
-                    </strong>
-
-                </div>
-
-            </div>
-
-
-            {/* =================================================
-                SUPPLIERS / PURCHASES
-            ================================================= */}
-
-            <h2>
-                Purchasing
-            </h2>
-
-            <div style={{
-                display: "grid",
-                gridTemplateColumns:
-                    "repeat(auto-fit, minmax(220px, 1fr))",
-                gap: "20px"
-            }}>
-
-                <div className="ai-card">
-
-                    <h3>
-                        Suppliers
-                    </h3>
-
-                    <strong>
-                        {suppliers.total || 0}
-                    </strong>
-
-                </div>
-
-
-                <div className="ai-card">
-
-                    <h3>
-                        Total Purchases
-                    </h3>
-
-                    <strong>
-                        {purchases.total || 0}
-                    </strong>
-
-                </div>
-
-
-                <div className="ai-card">
-
-                    <h3>
-                        Purchase Value
-                    </h3>
-
-                    <strong>
-                        ₹{Number(
-                            purchases.total_value || 0
-                        ).toLocaleString("en-IN")}
-                    </strong>
-
-                </div>
-
-
-                <div className="ai-card">
-
-                    <h3>
-                        Supplier Due
-                    </h3>
-
-                    <strong>
-                        ₹{Number(
-                            purchases.total_due || 0
-                        ).toLocaleString("en-IN")}
-                    </strong>
-
-                </div>
-
-            </div>
-
+          </div>
         </div>
 
-    );
+        <button
+          onClick={loadAnalysis}
+          disabled={loading}
+          style={{
+            ...styles.analyzeButton,
+            opacity: loading ? 0.7 : 1,
+          }}
+        >
+          <FiRefreshCw
+            size={17}
+            style={{
+              animation: loading
+                ? "aiSpin 1s linear infinite"
+                : "none",
+            }}
+          />
 
+          {loading
+            ? "Analyzing..."
+            : "Analyze My Business"}
+        </button>
+      </div>
+
+      {/* ======================================================
+          BUSINESS BANNER
+      ====================================================== */}
+
+      <div style={styles.businessBanner}>
+        <div>
+          <div style={styles.bannerSmall}>
+            BUSINESS INTELLIGENCE
+          </div>
+
+          <div style={styles.bannerName}>
+            {businessName}
+          </div>
+
+          <div style={styles.bannerDescription}>
+            AI is analyzing sales, products, inventory,
+            customers and business performance.
+          </div>
+        </div>
+
+        <div style={styles.bannerAI}>
+          <FiActivity size={34} />
+          <span>AI ACTIVE</span>
+        </div>
+      </div>
+
+      {/* ======================================================
+          ERROR
+      ====================================================== */}
+
+      {error && (
+        <div style={styles.errorBox}>
+          <FiAlertTriangle size={20} />
+
+          <div>
+            <strong>AI analysis unavailable</strong>
+
+            <div style={styles.errorText}>
+              {error}
+            </div>
+          </div>
+
+          <button
+            onClick={loadAnalysis}
+            style={styles.retryButton}
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {/* ======================================================
+          BUSINESS HEALTH
+      ====================================================== */}
+
+      <SectionHeader
+        icon={<FiActivity />}
+        title="Business Health"
+        description="Overall performance detected by the AI engine"
+      />
+
+      <div style={styles.cardGrid}>
+        <MetricCard
+          icon={<FiDollarSign />}
+          title="Revenue"
+          value={money(
+            getValue(
+              health.revenue,
+              sales.revenue,
+              data.totalSales
+            )
+          )}
+          description="Total business revenue"
+          type="green"
+        />
+
+        <MetricCard
+          icon={<FiTrendingUp />}
+          title="Sales Growth"
+          value={percentage(
+            getValue(
+              health.salesGrowth,
+              sales.growth,
+              data.growth
+            )
+          )}
+          description="Business sales growth"
+          type="blue"
+        />
+
+        <MetricCard
+          icon={<FiPackage />}
+          title="Inventory"
+          value={number(
+            getValue(
+              inventory.totalStock,
+              inventory.stock,
+              data.totalStock
+            )
+          ).toLocaleString("en-IN")}
+          description="Current stock units"
+          type="purple"
+        />
+
+        <MetricCard
+          icon={<FiUsers />}
+          title="Customers"
+          value={number(
+            getValue(
+              customers.total,
+              customers.totalCustomers,
+              data.totalCustomers
+            )
+          ).toLocaleString("en-IN")}
+          description="Customers in your business"
+          type="pink"
+        />
+      </div>
+
+      {/* ======================================================
+          SALES INTELLIGENCE
+      ====================================================== */}
+
+      <SectionHeader
+        icon={<FiBarChart2 />}
+        title="Sales Intelligence"
+        description="Understand what is driving your revenue"
+      />
+
+      <div style={styles.twoColumn}>
+        <div style={styles.largeCard}>
+          <CardTitle
+            icon={<FiTrendingUp />}
+            title="Sales Performance"
+          />
+
+          <div style={styles.insightList}>
+            <InsightRow
+              label="Today Sales"
+              value={money(
+                getValue(
+                  sales.today,
+                  sales.todaySales,
+                  data.todaySales
+                )
+              )}
+            />
+
+            <InsightRow
+              label="Monthly Sales"
+              value={money(
+                getValue(
+                  sales.month,
+                  sales.monthlySales,
+                  data.monthSales
+                )
+              )}
+            />
+
+            <InsightRow
+              label="Total Sales"
+              value={money(
+                getValue(
+                  sales.total,
+                  sales.totalSales,
+                  data.totalSales
+                )
+              )}
+            />
+
+            <InsightRow
+              label="Growth"
+              value={percentage(
+                getValue(
+                  sales.growth,
+                  sales.salesGrowth,
+                  data.growth
+                )
+              )}
+            />
+          </div>
+        </div>
+
+        <div style={styles.largeCard}>
+          <CardTitle
+            icon={<FiTarget />}
+            title="AI Sales Insight"
+          />
+
+          <div style={styles.aiInsight}>
+            <div style={styles.aiInsightIcon}>
+              <FiZap size={22} />
+            </div>
+
+            <div>
+              <div style={styles.aiLabel}>
+                AI RECOMMENDATION
+              </div>
+
+              <div style={styles.aiText}>
+                {sales.insight ||
+                  sales.recommendation ||
+                  data.salesInsight ||
+                  "Keep tracking your daily and monthly sales. The AI engine will identify growth opportunities as more sales data becomes available."}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ======================================================
+          INVENTORY INTELLIGENCE
+      ====================================================== */}
+
+      <SectionHeader
+        icon={<FiPackage />}
+        title="Inventory Intelligence"
+        description="Know what to buy, what to reduce and what may become dead stock"
+      />
+
+      <div style={styles.cardGrid}>
+        <MetricCard
+          icon={<FiAlertTriangle />}
+          title="Low Stock"
+          value={number(
+            getValue(
+              inventory.lowStock,
+              inventory.lowStockItems,
+              data.lowStock
+            )
+          )}
+          description="Products needing attention"
+          type="red"
+        />
+
+        <MetricCard
+          icon={<FiShoppingCart />}
+          title="Reorder"
+          value={number(
+            getValue(
+              inventory.reorder,
+              inventory.reorderItems
+            )
+          )}
+          description="Products AI recommends buying"
+          type="orange"
+        />
+
+        <MetricCard
+          icon={<FiPackage />}
+          title="Dead Stock"
+          value={number(
+            getValue(
+              inventory.deadStock,
+              inventory.deadStockItems
+            )
+          )}
+          description="Products with weak movement"
+          type="gray"
+        />
+
+        <MetricCard
+          icon={<FiTrendingDown />}
+          title="Overstock"
+          value={number(
+            getValue(
+              inventory.overstock,
+              inventory.overstockItems
+            )
+          )}
+          description="Products with excess stock"
+          type="purple"
+        />
+      </div>
+
+      {/* ======================================================
+          INVENTORY AI RECOMMENDATION
+      ====================================================== */}
+
+      <div style={styles.largeCard}>
+        <CardTitle
+          icon={<FiZap />}
+          title="Inventory Action Plan"
+        />
+
+        <div style={styles.actionGrid}>
+          <ActionBox
+            title="Buy More"
+            text={
+              inventory.buyMore ||
+              inventory.reorderRecommendation ||
+              "AI will identify products that need replenishment."
+            }
+            icon={<FiShoppingCart />}
+            type="green"
+          />
+
+          <ActionBox
+            title="Reduce Stock"
+            text={
+              inventory.reduce ||
+              inventory.overstockRecommendation ||
+              "AI will identify products with excess inventory."
+            }
+            icon={<FiTrendingDown />}
+            type="orange"
+          />
+
+          <ActionBox
+            title="Promote Dead Stock"
+            text={
+              inventory.deadStockRecommendation ||
+              "Create offers or promotions for slow-moving products."
+            }
+            icon={<FiTarget />}
+            type="purple"
+          />
+        </div>
+      </div>
+
+      {/* ======================================================
+          CUSTOMER INTELLIGENCE
+      ====================================================== */}
+
+      <SectionHeader
+        icon={<FiUsers />}
+        title="Customer Intelligence"
+        description="Understand customer behavior and find opportunities"
+      />
+
+      <div style={styles.twoColumn}>
+        <div style={styles.largeCard}>
+          <CardTitle
+            icon={<FiUsers />}
+            title="Customer Analysis"
+          />
+
+          <div style={styles.insightList}>
+            <InsightRow
+              label="Total Customers"
+              value={number(
+                getValue(
+                  customers.total,
+                  customers.totalCustomers,
+                  data.totalCustomers
+                )
+              )}
+            />
+
+            <InsightRow
+              label="Repeat Customers"
+              value={number(
+                getValue(
+                  customers.repeat,
+                  customers.repeatCustomers
+                )
+              )}
+            />
+
+            <InsightRow
+              label="Inactive Customers"
+              value={number(
+                getValue(
+                  customers.inactive,
+                  customers.inactiveCustomers
+                )
+              )}
+            />
+
+            <InsightRow
+              label="Retention"
+              value={percentage(
+                getValue(
+                  customers.retention,
+                  customers.retentionRate
+                )
+              )}
+            />
+          </div>
+        </div>
+
+        <div style={styles.largeCard}>
+          <CardTitle
+            icon={<FiTarget />}
+            title="Customer Opportunity"
+          />
+
+          <div style={styles.aiInsight}>
+            <div style={styles.aiInsightIcon}>
+              <FiUsers size={22} />
+            </div>
+
+            <div>
+              <div style={styles.aiLabel}>
+                AI CUSTOMER STRATEGY
+              </div>
+
+              <div style={styles.aiText}>
+                {customers.insight ||
+                  customers.recommendation ||
+                  data.customerInsight ||
+                  "Target repeat customers with personalized offers and bring inactive customers back with relevant promotions."}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ======================================================
+          PROFIT INTELLIGENCE
+      ====================================================== */}
+
+      <SectionHeader
+        icon={<FiDollarSign />}
+        title="Profit Intelligence"
+        description="Find where your business is making and losing money"
+      />
+
+      <div style={styles.cardGrid}>
+        <MetricCard
+          icon={<FiDollarSign />}
+          title="Estimated Profit"
+          value={money(
+            getValue(
+              profit.total,
+              profit.profit,
+              data.profit
+            )
+          )}
+          description="Estimated business profit"
+          type="green"
+        />
+
+        <MetricCard
+          icon={<FiBarChart2 />}
+          title="Profit Margin"
+          value={percentage(
+            getValue(
+              profit.margin,
+              profit.profitMargin,
+              data.profitMargin
+            )
+          )}
+          description="Estimated margin"
+          type="blue"
+        />
+
+        <MetricCard
+          icon={<FiTrendingUp />}
+          title="High Profit Products"
+          value={number(
+            getValue(
+              profit.highProfitProducts,
+              profit.highMarginProducts
+            )
+          )}
+          description="Products generating strong margin"
+          type="purple"
+        />
+
+        <MetricCard
+          icon={<FiTrendingDown />}
+          title="Low Margin Products"
+          value={number(
+            getValue(
+              profit.lowMarginProducts,
+              profit.lowProfitProducts
+            )
+          )}
+          description="Products needing review"
+          type="red"
+        />
+      </div>
+
+      {/* ======================================================
+          AI OPPORTUNITIES
+      ====================================================== */}
+
+      <SectionHeader
+        icon={<FiZap />}
+        title="AI Business Opportunities"
+        description="Actions that may improve revenue, profit and efficiency"
+      />
+
+      <div style={styles.opportunityGrid}>
+        {Array.isArray(opportunities) &&
+        opportunities.length > 0 ? (
+          opportunities.map((item, index) => (
+            <OpportunityCard
+              key={index}
+              item={item}
+              index={index}
+            />
+          ))
+        ) : (
+          <>
+            <OpportunityCard
+              index={1}
+              item={{
+                title: "Increase Sales",
+                description:
+                  "Identify your best-selling products and create focused promotions around them.",
+              }}
+            />
+
+            <OpportunityCard
+              index={2}
+              item={{
+                title: "Improve Inventory",
+                description:
+                  "Reduce slow-moving stock and reorder products with strong demand.",
+              }}
+            />
+
+            <OpportunityCard
+              index={3}
+              item={{
+                title: "Grow Customers",
+                description:
+                  "Target existing customers with repeat-purchase offers.",
+              }}
+            />
+          </>
+        )}
+      </div>
+
+      {/* ======================================================
+          BUSINESS RISKS
+      ====================================================== */}
+
+      <SectionHeader
+        icon={<FiShield />}
+        title="Business Risks"
+        description="Potential problems that need attention"
+      />
+
+      <div style={styles.riskGrid}>
+        {Array.isArray(risks) &&
+        risks.length > 0 ? (
+          risks.map((item, index) => (
+            <RiskCard
+              key={index}
+              item={item}
+            />
+          ))
+        ) : (
+          <>
+            <RiskCard
+              item={{
+                title: "Inventory Risk",
+                description:
+                  "Monitor low-stock and slow-moving products regularly.",
+              }}
+            />
+
+            <RiskCard
+              item={{
+                title: "Sales Risk",
+                description:
+                  "Watch for declining sales and weak-performing periods.",
+              }}
+            />
+
+            <RiskCard
+              item={{
+                title: "Customer Risk",
+                description:
+                  "Inactive customers may reduce future repeat revenue.",
+              }}
+            />
+          </>
+        )}
+      </div>
+
+      {/* ======================================================
+          GROWTH STRATEGY
+      ====================================================== */}
+
+      <SectionHeader
+        icon={<FiTarget />}
+        title="AI Growth Strategy"
+        description="A practical plan for improving the business"
+      />
+
+      <div style={styles.strategyGrid}>
+        <StrategyCard
+          icon={<FiZap />}
+          title="Today"
+          text={
+            strategy.today ||
+            data.todayStrategy ||
+            "Review low-stock products, today's sales and your highest-value opportunities."
+          }
+        />
+
+        <StrategyCard
+          icon={<FiCalendar />}
+          title="This Week"
+          text={
+            strategy.week ||
+            strategy.thisWeek ||
+            data.weekStrategy ||
+            "Focus on best-selling products, customer retention and inventory optimization."
+          }
+        />
+
+        <StrategyCard
+          icon={<FiBarChart2 />}
+          title="This Month"
+          text={
+            strategy.month ||
+            strategy.thisMonth ||
+            data.monthStrategy ||
+            "Improve margins, increase repeat purchases and reduce dead inventory."
+          }
+        />
+
+        <StrategyCard
+          icon={<FiTrendingUp />}
+          title="Next 3 Months"
+          text={
+            strategy.threeMonths ||
+            strategy.nextThreeMonths ||
+            data.threeMonthStrategy ||
+            "Build a consistent growth plan based on sales, customer and inventory trends."
+          }
+        />
+      </div>
+
+      {/* ======================================================
+          ACTION PLAN
+      ====================================================== */}
+
+      <SectionHeader
+        icon={<FiCheckCircle />}
+        title="Recommended Action Plan"
+        description="Prioritized actions for the business owner"
+      />
+
+      <div style={styles.actionPlan}>
+        {Array.isArray(actions) &&
+        actions.length > 0 ? (
+          actions.map((item, index) => (
+            <div
+              key={index}
+              style={styles.actionPlanRow}
+            >
+              <div style={styles.actionNumber}>
+                {index + 1}
+              </div>
+
+              <div style={{ flex: 1 }}>
+                <div style={styles.actionTitle}>
+                  {typeof item === "string"
+                    ? item
+                    : item.title ||
+                      item.action ||
+                      "Recommended Action"}
+                </div>
+
+                {typeof item !== "string" &&
+                  item.description && (
+                    <div style={styles.actionDescription}>
+                      {item.description}
+                    </div>
+                  )}
+              </div>
+
+              <FiCheckCircle
+                size={20}
+                style={{ color: "#16a34a" }}
+              />
+            </div>
+          ))
+        ) : (
+          <>
+            <ActionPlanRow
+              number="1"
+              title="Review low-stock products"
+              description="Prevent missed sales by keeping important products available."
+            />
+
+            <ActionPlanRow
+              number="2"
+              title="Promote slow-moving products"
+              description="Use offers and bundles to convert dead stock into revenue."
+            />
+
+            <ActionPlanRow
+              number="3"
+              title="Target repeat customers"
+              description="Increase customer lifetime value with repeat-purchase campaigns."
+            />
+
+            <ActionPlanRow
+              number="4"
+              title="Review product margins"
+              description="Identify products where pricing or purchasing costs need improvement."
+            />
+          </>
+        )}
+      </div>
+
+      {/* ======================================================
+          AI STATUS
+      ====================================================== */}
+
+      <div style={styles.footerAI}>
+        <div style={styles.footerIcon}>
+          <FiZap size={25} />
+        </div>
+
+        <div>
+          <div style={styles.footerTitle}>
+            AI Business Engine
+          </div>
+
+          <div style={styles.footerText}>
+            Your business data is being converted into
+            practical decisions and strategies.
+          </div>
+        </div>
+
+        <div style={styles.activeBadge}>
+          <span style={styles.activeDot}></span>
+          Active
+        </div>
+      </div>
+
+      {/* ======================================================
+          CSS
+      ====================================================== */}
+
+      <style>
+        {`
+          @keyframes aiSpin {
+            from {
+              transform: rotate(0deg);
+            }
+            to {
+              transform: rotate(360deg);
+            }
+          }
+
+          @keyframes aiPulse {
+            0%, 100% {
+              opacity: 1;
+            }
+            50% {
+              opacity: .55;
+            }
+          }
+
+          * {
+            box-sizing: border-box;
+          }
+
+          @media (max-width: 900px) {
+            .ai-two-column {
+              grid-template-columns: 1fr !important;
+            }
+          }
+        `}
+      </style>
+    </div>
+  );
+}
+
+// ============================================================
+// SECTION HEADER
+// ============================================================
+
+function SectionHeader({
+  icon,
+  title,
+  description,
+}) {
+  return (
+    <div style={styles.sectionHeader}>
+      <div style={styles.sectionIcon}>
+        {icon}
+      </div>
+
+      <div>
+        <h2 style={styles.sectionTitle}>
+          {title}
+        </h2>
+
+        <p style={styles.sectionDescription}>
+          {description}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// METRIC CARD
+// ============================================================
+
+function MetricCard({
+  icon,
+  title,
+  value,
+  description,
+  type,
+}) {
+  const theme = getTheme(type);
+
+  return (
+    <div
+      style={{
+        ...styles.metricCard,
+        borderTop: `3px solid ${theme.main}`,
+      }}
+    >
+      <div
+        style={{
+          ...styles.metricIcon,
+          background: theme.background,
+          color: theme.main,
+        }}
+      >
+        {icon}
+      </div>
+
+      <div style={styles.metricTitle}>
+        {title}
+      </div>
+
+      <div style={styles.metricValue}>
+        {value}
+      </div>
+
+      <div style={styles.metricDescription}>
+        {description}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// CARD TITLE
+// ============================================================
+
+function CardTitle({ icon, title }) {
+  return (
+    <div style={styles.cardTitle}>
+      <div style={styles.cardTitleIcon}>
+        {icon}
+      </div>
+
+      <h3 style={styles.cardTitleText}>
+        {title}
+      </h3>
+    </div>
+  );
+}
+
+// ============================================================
+// INSIGHT ROW
+// ============================================================
+
+function InsightRow({ label, value }) {
+  return (
+    <div style={styles.insightRow}>
+      <span style={styles.insightLabel}>
+        {label}
+      </span>
+
+      <strong style={styles.insightValue}>
+        {value}
+      </strong>
+    </div>
+  );
+}
+
+// ============================================================
+// AI ACTION BOX
+// ============================================================
+
+function ActionBox({
+  title,
+  text,
+  icon,
+  type,
+}) {
+  const theme = getTheme(type);
+
+  return (
+    <div
+      style={{
+        ...styles.actionBox,
+        background: theme.background,
+        borderColor: `${theme.main}30`,
+      }}
+    >
+      <div
+        style={{
+          ...styles.actionIcon,
+          color: theme.main,
+        }}
+      >
+        {icon}
+      </div>
+
+      <div>
+        <div style={styles.actionBoxTitle}>
+          {title}
+        </div>
+
+        <div style={styles.actionBoxText}>
+          {text}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// OPPORTUNITY CARD
+// ============================================================
+
+function OpportunityCard({
+  item,
+  index,
+}) {
+  const title =
+    typeof item === "string"
+      ? item
+      : item?.title ||
+        item?.name ||
+        `Opportunity ${index}`;
+
+  const description =
+    typeof item === "string"
+      ? ""
+      : item?.description ||
+        item?.reason ||
+        item?.recommendation ||
+        "";
+
+  return (
+    <div style={styles.opportunityCard}>
+      <div style={styles.opportunityNumber}>
+        {index}
+      </div>
+
+      <div style={{ flex: 1 }}>
+        <div style={styles.opportunityTitle}>
+          {title}
+        </div>
+
+        <div style={styles.opportunityDescription}>
+          {description ||
+            "AI identified this as a potential business improvement opportunity."}
+        </div>
+      </div>
+
+      <FiZap
+        size={21}
+        style={{
+          color: "#7c3aed",
+          flexShrink: 0,
+        }}
+      />
+    </div>
+  );
+}
+
+// ============================================================
+// RISK CARD
+// ============================================================
+
+function RiskCard({ item }) {
+  const title =
+    typeof item === "string"
+      ? item
+      : item?.title ||
+        item?.name ||
+        "Business Risk";
+
+  const description =
+    typeof item === "string"
+      ? ""
+      : item?.description ||
+        item?.reason ||
+        "";
+
+  return (
+    <div style={styles.riskCard}>
+      <div style={styles.riskIcon}>
+        <FiAlertTriangle size={21} />
+      </div>
+
+      <div>
+        <div style={styles.riskTitle}>
+          {title}
+        </div>
+
+        <div style={styles.riskDescription}>
+          {description ||
+            "AI recommends monitoring this area carefully."}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// STRATEGY CARD
+// ============================================================
+
+function StrategyCard({
+  icon,
+  title,
+  text,
+}) {
+  return (
+    <div style={styles.strategyCard}>
+      <div style={styles.strategyIcon}>
+        {icon}
+      </div>
+
+      <div style={styles.strategyTitle}>
+        {title}
+      </div>
+
+      <div style={styles.strategyText}>
+        {text}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// ACTION PLAN ROW
+// ============================================================
+
+function ActionPlanRow({
+  number,
+  title,
+  description,
+}) {
+  return (
+    <div style={styles.actionPlanRow}>
+      <div style={styles.actionNumber}>
+        {number}
+      </div>
+
+      <div style={{ flex: 1 }}>
+        <div style={styles.actionTitle}>
+          {title}
+        </div>
+
+        <div style={styles.actionDescription}>
+          {description}
+        </div>
+      </div>
+
+      <FiCheckCircle
+        size={20}
+        style={{ color: "#16a34a" }}
+      />
+    </div>
+  );
+}
+
+// ============================================================
+// COLOR THEMES
+// ============================================================
+
+function getTheme(type) {
+  const themes = {
+    green: {
+      main: "#16a34a",
+      background: "#f0fdf4",
+    },
+
+    blue: {
+      main: "#2563eb",
+      background: "#eff6ff",
+    },
+
+    purple: {
+      main: "#7c3aed",
+      background: "#f5f3ff",
+    },
+
+    pink: {
+      main: "#db2777",
+      background: "#fdf2f8",
+    },
+
+    red: {
+      main: "#dc2626",
+      background: "#fef2f2",
+    },
+
+    orange: {
+      main: "#ea580c",
+      background: "#fff7ed",
+    },
+
+    gray: {
+      main: "#64748b",
+      background: "#f8fafc",
+    },
+  };
+
+  return themes[type] || themes.blue;
+}
+
+// ============================================================
+// STYLES
+// ============================================================
+
+const styles = {
+  page: {
+    minHeight: "100vh",
+    background:
+      "linear-gradient(135deg, #f5f7fb 0%, #e8edf5 100%)",
+    padding: "30px",
+    color: "#1a2332",
+  },
+
+  header: {
+    maxWidth: "1400px",
+    margin: "0 auto 25px",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "20px",
+    flexWrap: "wrap",
+  },
+
+  headerLeft: {
+    display: "flex",
+    alignItems: "center",
+    gap: "18px",
+  },
+
+  backButton: {
+    display: "flex",
+    alignItems: "center",
+    gap: "7px",
+    padding: "10px 15px",
+    background: "#fff",
+    color: "#475569",
+    border: "1px solid #e2e8f0",
+    borderRadius: "10px",
+    cursor: "pointer",
+    fontSize: "14px",
+    fontWeight: "600",
+  },
+
+  titleRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: "13px",
+  },
+
+  aiIcon: {
+    width: "52px",
+    height: "52px",
+    borderRadius: "15px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background:
+      "linear-gradient(135deg, #7c3aed, #2563eb)",
+    color: "#fff",
+    boxShadow:
+      "0 8px 20px rgba(99,102,241,.25)",
+  },
+
+  title: {
+    margin: 0,
+    fontSize: "30px",
+    fontWeight: "800",
+    letterSpacing: "-0.5px",
+  },
+
+  subtitle: {
+    margin: "5px 0 0",
+    color: "#64748b",
+    fontSize: "14px",
+  },
+
+  analyzeButton: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "9px",
+    padding: "13px 20px",
+    border: "none",
+    borderRadius: "11px",
+    background:
+      "linear-gradient(135deg, #7c3aed, #2563eb)",
+    color: "#fff",
+    cursor: "pointer",
+    fontWeight: "700",
+    fontSize: "14px",
+    boxShadow:
+      "0 7px 18px rgba(99,102,241,.25)",
+  },
+
+  businessBanner: {
+    maxWidth: "1400px",
+    margin: "0 auto 30px",
+    padding: "28px 32px",
+    borderRadius: "20px",
+    background:
+      "linear-gradient(135deg, #111827 0%, #1e293b 50%, #312e81 100%)",
+    color: "#fff",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "20px",
+    flexWrap: "wrap",
+    boxShadow:
+      "0 12px 35px rgba(15,23,42,.16)",
+  },
+
+  bannerSmall: {
+    fontSize: "11px",
+    letterSpacing: "1.5px",
+    opacity: 0.65,
+    fontWeight: "700",
+    marginBottom: "7px",
+  },
+
+  bannerName: {
+    fontSize: "25px",
+    fontWeight: "800",
+  },
+
+  bannerDescription: {
+    marginTop: "6px",
+    fontSize: "13px",
+    opacity: 0.7,
+    maxWidth: "650px",
+  },
+
+  bannerAI: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: "7px",
+    padding: "18px 24px",
+    borderRadius: "15px",
+    background: "rgba(255,255,255,.08)",
+    border: "1px solid rgba(255,255,255,.12)",
+    fontSize: "11px",
+    fontWeight: "800",
+    letterSpacing: "1px",
+  },
+
+  sectionHeader: {
+    maxWidth: "1400px",
+    margin: "38px auto 17px",
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+  },
+
+  sectionIcon: {
+    width: "40px",
+    height: "40px",
+    borderRadius: "11px",
+    background: "#fff",
+    color: "#7c3aed",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    boxShadow: "0 3px 10px rgba(0,0,0,.05)",
+  },
+
+  sectionTitle: {
+    margin: 0,
+    fontSize: "21px",
+    fontWeight: "750",
+  },
+
+  sectionDescription: {
+    margin: "3px 0 0",
+    color: "#64748b",
+    fontSize: "13px",
+  },
+
+  cardGrid: {
+    maxWidth: "1400px",
+    margin: "0 auto",
+    display: "grid",
+    gridTemplateColumns:
+      "repeat(auto-fit, minmax(230px, 1fr))",
+    gap: "18px",
+  },
+
+  metricCard: {
+    background: "#fff",
+    borderRadius: "16px",
+    padding: "21px",
+    boxShadow: "0 4px 14px rgba(0,0,0,.055)",
+    borderLeft: "1px solid #edf1f6",
+    borderRight: "1px solid #edf1f6",
+    borderBottom: "1px solid #edf1f6",
+  },
+
+  metricIcon: {
+    width: "43px",
+    height: "43px",
+    borderRadius: "12px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: "15px",
+  },
+
+  metricTitle: {
+    color: "#64748b",
+    fontSize: "13px",
+    fontWeight: "600",
+  },
+
+  metricValue: {
+    marginTop: "5px",
+    fontSize: "27px",
+    fontWeight: "800",
+    color: "#172033",
+  },
+
+  metricDescription: {
+    marginTop: "5px",
+    color: "#94a3b8",
+    fontSize: "12px",
+  },
+
+  twoColumn: {
+    maxWidth: "1400px",
+    margin: "0 auto",
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: "18px",
+  },
+
+  largeCard: {
+    maxWidth: "1400px",
+    margin: "0 auto 18px",
+    background: "#fff",
+    borderRadius: "16px",
+    padding: "24px",
+    boxShadow: "0 4px 14px rgba(0,0,0,.055)",
+    border: "1px solid rgba(0,0,0,.035)",
+  },
+
+  cardTitle: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    marginBottom: "20px",
+  },
+
+  cardTitleIcon: {
+    color: "#7c3aed",
+    width: "35px",
+    height: "35px",
+    borderRadius: "9px",
+    background: "#f5f3ff",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  cardTitleText: {
+    margin: 0,
+    fontSize: "17px",
+    fontWeight: "700",
+  },
+
+  insightList: {
+    display: "flex",
+    flexDirection: "column",
+  },
+
+  insightRow: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "14px 0",
+    borderBottom: "1px solid #eef2f7",
+  },
+
+  insightLabel: {
+    color: "#64748b",
+    fontSize: "14px",
+  },
+
+  insightValue: {
+    color: "#172033",
+    fontSize: "15px",
+  },
+
+  aiInsight: {
+    display: "flex",
+    gap: "14px",
+    padding: "18px",
+    borderRadius: "14px",
+    background:
+      "linear-gradient(135deg, #f5f3ff, #eff6ff)",
+    border: "1px solid #e5e7eb",
+  },
+
+  aiInsightIcon: {
+    width: "42px",
+    height: "42px",
+    flexShrink: 0,
+    borderRadius: "11px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background:
+      "linear-gradient(135deg, #7c3aed, #2563eb)",
+    color: "#fff",
+  },
+
+  aiLabel: {
+    fontSize: "10px",
+    fontWeight: "800",
+    letterSpacing: "1px",
+    color: "#7c3aed",
+    marginBottom: "5px",
+  },
+
+  aiText: {
+    color: "#334155",
+    lineHeight: "1.65",
+    fontSize: "14px",
+  },
+
+  actionGrid: {
+    display: "grid",
+    gridTemplateColumns:
+      "repeat(auto-fit, minmax(250px, 1fr))",
+    gap: "14px",
+  },
+
+  actionBox: {
+    display: "flex",
+    gap: "13px",
+    padding: "17px",
+    borderRadius: "13px",
+    border: "1px solid",
+  },
+
+  actionIcon: {
+    width: "38px",
+    height: "38px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+
+  actionBoxTitle: {
+    fontWeight: "700",
+    fontSize: "14px",
+    marginBottom: "5px",
+  },
+
+  actionBoxText: {
+    color: "#64748b",
+    fontSize: "12px",
+    lineHeight: "1.55",
+  },
+
+  opportunityGrid: {
+    maxWidth: "1400px",
+    margin: "0 auto",
+    display: "grid",
+    gridTemplateColumns:
+      "repeat(auto-fit, minmax(300px, 1fr))",
+    gap: "16px",
+  },
+
+  opportunityCard: {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: "13px",
+    background: "#fff",
+    borderRadius: "15px",
+    padding: "19px",
+    boxShadow: "0 4px 14px rgba(0,0,0,.055)",
+    border: "1px solid #eeeafc",
+  },
+
+  opportunityNumber: {
+    width: "35px",
+    height: "35px",
+    flexShrink: 0,
+    borderRadius: "10px",
+    background: "#f5f3ff",
+    color: "#7c3aed",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontWeight: "800",
+    fontSize: "13px",
+  },
+
+  opportunityTitle: {
+    fontWeight: "750",
+    fontSize: "15px",
+    marginBottom: "5px",
+  },
+
+  opportunityDescription: {
+    color: "#64748b",
+    fontSize: "12px",
+    lineHeight: "1.55",
+  },
+
+  riskGrid: {
+    maxWidth: "1400px",
+    margin: "0 auto",
+    display: "grid",
+    gridTemplateColumns:
+      "repeat(auto-fit, minmax(300px, 1fr))",
+    gap: "16px",
+  },
+
+  riskCard: {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: "13px",
+    background: "#fff",
+    borderRadius: "15px",
+    padding: "19px",
+    border: "1px solid #fee2e2",
+    boxShadow: "0 4px 14px rgba(0,0,0,.04)",
+  },
+
+  riskIcon: {
+    width: "40px",
+    height: "40px",
+    flexShrink: 0,
+    borderRadius: "11px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: "#dc2626",
+    background: "#fef2f2",
+  },
+
+  riskTitle: {
+    fontWeight: "750",
+    fontSize: "15px",
+    marginBottom: "5px",
+  },
+
+  riskDescription: {
+    color: "#64748b",
+    fontSize: "12px",
+    lineHeight: "1.55",
+  },
+
+  strategyGrid: {
+    maxWidth: "1400px",
+    margin: "0 auto",
+    display: "grid",
+    gridTemplateColumns:
+      "repeat(auto-fit, minmax(260px, 1fr))",
+    gap: "16px",
+  },
+
+  strategyCard: {
+    background: "#fff",
+    padding: "22px",
+    borderRadius: "16px",
+    boxShadow: "0 4px 14px rgba(0,0,0,.055)",
+    borderTop: "3px solid #7c3aed",
+  },
+
+  strategyIcon: {
+    width: "40px",
+    height: "40px",
+    borderRadius: "10px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: "#7c3aed",
+    background: "#f5f3ff",
+    marginBottom: "14px",
+  },
+
+  strategyTitle: {
+    fontSize: "16px",
+    fontWeight: "800",
+    marginBottom: "8px",
+  },
+
+  strategyText: {
+    color: "#64748b",
+    fontSize: "13px",
+    lineHeight: "1.65",
+  },
+
+  actionPlan: {
+    maxWidth: "1400px",
+    margin: "0 auto",
+    background: "#fff",
+    borderRadius: "16px",
+    padding: "8px 22px",
+    boxShadow: "0 4px 14px rgba(0,0,0,.055)",
+  },
+
+  actionPlanRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: "14px",
+    padding: "17px 5px",
+    borderBottom: "1px solid #eef2f7",
+  },
+
+  actionNumber: {
+    width: "34px",
+    height: "34px",
+    flexShrink: 0,
+    borderRadius: "50%",
+    background: "#eff6ff",
+    color: "#2563eb",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "13px",
+    fontWeight: "800",
+  },
+
+  actionTitle: {
+    fontSize: "14px",
+    fontWeight: "700",
+    color: "#1e293b",
+  },
+
+  actionDescription: {
+    marginTop: "4px",
+    color: "#64748b",
+    fontSize: "12px",
+    lineHeight: "1.5",
+  },
+
+  footerAI: {
+    maxWidth: "1400px",
+    margin: "35px auto 0",
+    padding: "22px 25px",
+    borderRadius: "16px",
+    background:
+      "linear-gradient(135deg, #111827, #312e81)",
+    color: "#fff",
+    display: "flex",
+    alignItems: "center",
+    gap: "14px",
+  },
+
+  footerIcon: {
+    width: "45px",
+    height: "45px",
+    borderRadius: "12px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    background: "rgba(255,255,255,.1)",
+  },
+
+  footerTitle: {
+    fontSize: "15px",
+    fontWeight: "800",
+  },
+
+  footerText: {
+    marginTop: "4px",
+    fontSize: "12px",
+    opacity: 0.7,
+  },
+
+  activeBadge: {
+    marginLeft: "auto",
+    display: "flex",
+    alignItems: "center",
+    gap: "7px",
+    padding: "7px 12px",
+    borderRadius: "20px",
+    background: "rgba(34,197,94,.12)",
+    color: "#86efac",
+    fontSize: "12px",
+    fontWeight: "700",
+  },
+
+  activeDot: {
+    width: "7px",
+    height: "7px",
+    borderRadius: "50%",
+    background: "#22c55e",
+    animation: "aiPulse 1.5s infinite",
+  },
+
+  errorBox: {
+    maxWidth: "1400px",
+    margin: "0 auto 25px",
+    padding: "16px 18px",
+    borderRadius: "13px",
+    background: "#fef2f2",
+    color: "#b91c1c",
+    border: "1px solid #fecaca",
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+  },
+
+  errorText: {
+    marginTop: "3px",
+    fontSize: "12px",
+  },
+
+  retryButton: {
+    marginLeft: "auto",
+    border: "none",
+    background: "#dc2626",
+    color: "#fff",
+    padding: "8px 14px",
+    borderRadius: "8px",
+    cursor: "pointer",
+    fontWeight: "600",
+  },
+
+  loadingBox: {
+    minHeight: "80vh",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  aiLoadingIcon: {
+    width: "70px",
+    height: "70px",
+    borderRadius: "20px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: "#fff",
+    background:
+      "linear-gradient(135deg, #7c3aed, #2563eb)",
+    boxShadow:
+      "0 12px 30px rgba(99,102,241,.25)",
+  },
+
+  loadingTitle: {
+    margin: "18px 0 5px",
+    fontSize: "23px",
+  },
+
+  loadingText: {
+    color: "#64748b",
+    fontSize: "14px",
+  },
+
+  spinner: {
+    width: "28px",
+    height: "28px",
+    marginTop: "15px",
+    borderRadius: "50%",
+    border: "3px solid #e2e8f0",
+    borderTop: "3px solid #7c3aed",
+    animation: "aiSpin 1s linear infinite",
+  },
 };
-
-
-export default AIBusiness;
