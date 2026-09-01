@@ -45,7 +45,7 @@ import PublicQRMenu from "./pages/PublicQRMenu";
 
 
 import AdminDashboard from "./pages/admin/AdminDashboard";
-
+import AIBusiness from "./pages/AIBusiness";
 function App() {
     return (
         <Routes>
@@ -80,6 +80,13 @@ function App() {
         element={<AdminDashboard />}
     />
 </Route>
+
+
+
+<Route
+    path="/ai-business"
+    element={<AIBusiness />}
+/>
 
 
 
