@@ -9,7 +9,7 @@ import {
 
 import {
     getQROrders,
-    updateQROrdOrderStatus,
+    updateQROrderStatus,
     updateQRPayment
 } from "../services/qrOrderApi";
 
@@ -41,7 +41,7 @@ const statusLabels = {
 
 
 // =========================================================
-// FIND ORDERS ARRAY SAFELY
+// EXTRACT ORDERS SAFELY
 // =========================================================
 
 function extractOrders(response) {
@@ -52,9 +52,7 @@ function extractOrders(response) {
     );
 
 
-    // -----------------------------------------
     // Direct array
-    // -----------------------------------------
 
     if (
         Array.isArray(response)
@@ -65,88 +63,72 @@ function extractOrders(response) {
     }
 
 
-    // -----------------------------------------
-    // Axios response
-    //
-    // response.data
-    // -----------------------------------------
-
-    const axiosData =
-        response?.data;
-
-
-    if (
-        Array.isArray(axiosData)
-    ) {
-
-        return axiosData;
-
-    }
-
-
-    // -----------------------------------------
-    // response.data.data
-    // -----------------------------------------
+    // Axios response.data
 
     if (
         Array.isArray(
-            axiosData?.data
+            response?.data
         )
     ) {
 
-        return axiosData.data;
+        return response.data;
 
     }
 
 
-    // -----------------------------------------
+    // Axios response.data.data
+
+    if (
+        Array.isArray(
+            response?.data?.data
+        )
+    ) {
+
+        return response.data.data;
+
+    }
+
+
     // response.data.data.data
-    // -----------------------------------------
 
     if (
         Array.isArray(
-            axiosData?.data?.data
+            response?.data?.data?.data
         )
     ) {
 
-        return axiosData.data.data;
+        return response.data.data.data;
 
     }
 
 
-    // -----------------------------------------
     // response.data.orders
-    // -----------------------------------------
 
     if (
         Array.isArray(
-            axiosData?.orders
+            response?.data?.orders
         )
     ) {
 
-        return axiosData.orders;
+        return response.data.orders;
 
     }
 
 
-    // -----------------------------------------
     // response.data.data.orders
-    // -----------------------------------------
 
     if (
         Array.isArray(
-            axiosData?.data?.orders
+            response?.data?.data?.orders
         )
     ) {
 
-        return axiosData.data.orders;
+        return response.data.data.orders;
 
     }
 
 
-    // -----------------------------------------
     // response.orders
-    // -----------------------------------------
 
     if (
         Array.isArray(
@@ -159,12 +141,8 @@ function extractOrders(response) {
     }
 
 
-    // -----------------------------------------
-    // Nothing found
-    // -----------------------------------------
-
     console.warn(
-        "QR ORDERS: No array found in response",
+        "QR ORDERS: No array found",
         response
     );
 
@@ -181,8 +159,6 @@ export default function QROrders() {
 
     const navigate = useNavigate();
 
-
-    // ALWAYS START AS ARRAY
 
     const [orders, setOrders] =
         useState([]);
@@ -237,16 +213,6 @@ export default function QROrders() {
             );
 
 
-            // -----------------------------------------
-            // IMPORTANT
-            //
-            // Never directly do:
-            //
-            // setOrders(response.data)
-            //
-            // because response.data may be an object.
-            // -----------------------------------------
-
             const receivedOrders =
                 extractOrders(
                     response
@@ -258,10 +224,6 @@ export default function QROrders() {
                 receivedOrders
             );
 
-
-            // -----------------------------------------
-            // FINAL SAFETY CHECK
-            // -----------------------------------------
 
             if (
                 Array.isArray(
@@ -333,7 +295,7 @@ export default function QROrders() {
 
 
     // =========================================================
-    // CHANGE ORDER STATUS
+    // CHANGE STATUS
     // =========================================================
 
     const changeStatus = async (
@@ -361,7 +323,15 @@ export default function QROrders() {
             );
 
 
-            await updateQROrdOrderStatus(
+            // =========================================
+            // IMPORTANT
+            //
+            // Correct function from qrOrderApi.js:
+            //
+            // updateQROrderStatus
+            // =========================================
+
+            await updateQROrderStatus(
                 order.id,
                 status
             );
@@ -524,7 +494,7 @@ export default function QROrders() {
 
 
     // =========================================================
-    // DATE
+    // FORMAT DATE
     // =========================================================
 
     const formatDate = (
@@ -549,6 +519,7 @@ export default function QROrders() {
                 {
                     dateStyle:
                         "medium",
+
                     timeStyle:
                         "short"
                 }
@@ -616,7 +587,7 @@ export default function QROrders() {
 
 
     // =========================================================
-    // SAFE ORDERS ARRAY
+    // ALWAYS USE ARRAY
     // =========================================================
 
     const safeOrders =
@@ -668,9 +639,7 @@ export default function QROrders() {
         <div className="qr-orders-page">
 
 
-            {/* =================================================
-                HEADER
-            ================================================= */}
+            {/* HEADER */}
 
             <div className="orders-header">
 
@@ -744,9 +713,7 @@ export default function QROrders() {
             </div>
 
 
-            {/* =================================================
-                ERROR
-            ================================================= */}
+            {/* ERROR */}
 
             {
                 errorMessage && (
@@ -776,16 +743,11 @@ export default function QROrders() {
             }
 
 
-            {/* =================================================
-                FILTERS
-            ================================================= */}
+            {/* FILTERS */}
 
             <div className="order-filters">
 
                 {
-                    Array.isArray(
-                        statusFilters
-                    ) &&
                     statusFilters.map(
                         (status) => (
 
@@ -823,9 +785,7 @@ export default function QROrders() {
             </div>
 
 
-            {/* =================================================
-                SUMMARY
-            ================================================= */}
+            {/* SUMMARY */}
 
             <div className="order-summary">
 
@@ -854,9 +814,7 @@ export default function QROrders() {
             </div>
 
 
-            {/* =================================================
-                ORDERS
-            ================================================= */}
+            {/* ORDERS */}
 
             {
                 safeOrders.length === 0 ? (
@@ -896,7 +854,7 @@ export default function QROrders() {
                             safeOrders.map(
                                 (
                                     order,
-                                    orderIndex
+                                    index
                                 ) => {
 
                                     const items =
@@ -914,14 +872,11 @@ export default function QROrders() {
                                             key={
                                                 order?.id ||
                                                 order?.order_no ||
-                                                orderIndex
+                                                index
                                             }
                                         >
 
-
-                                            {/* =================================
-                                                HEADER
-                                            ================================= */}
+                                            {/* ORDER HEADER */}
 
                                             <div className="order-card-header">
 
@@ -975,9 +930,7 @@ export default function QROrders() {
                                             </div>
 
 
-                                            {/* =================================
-                                                CUSTOMER
-                                            ================================= */}
+                                            {/* CUSTOMER */}
 
                                             <div className="customer-info">
 
@@ -1014,9 +967,7 @@ export default function QROrders() {
                                             </div>
 
 
-                                            {/* =================================
-                                                PAYMENT
-                                            ================================= */}
+                                            {/* PAYMENT */}
 
                                             <div className="payment-status-row">
 
@@ -1047,9 +998,7 @@ export default function QROrders() {
                                             </div>
 
 
-                                            {/* =================================
-                                                ITEMS
-                                            ================================= */}
+                                            {/* ITEMS */}
 
                                             <div className="order-items">
 
@@ -1065,7 +1014,7 @@ export default function QROrders() {
                                                             items.map(
                                                                 (
                                                                     item,
-                                                                    index
+                                                                    itemIndex
                                                                 ) => {
 
                                                                     const quantity =
@@ -1098,7 +1047,7 @@ export default function QROrders() {
                                                                             className="order-item"
                                                                             key={
                                                                                 item?.id ||
-                                                                                `${order?.id}-${index}`
+                                                                                `${order?.id}-${itemIndex}`
                                                                             }
                                                                         >
 
@@ -1166,9 +1115,7 @@ export default function QROrders() {
                                             </div>
 
 
-                                            {/* =================================
-                                                TOTAL
-                                            ================================= */}
+                                            {/* TOTAL */}
 
                                             <div className="order-total">
 
@@ -1225,9 +1172,7 @@ export default function QROrders() {
                                             </div>
 
 
-                                            {/* =================================
-                                                NOTES
-                                            ================================= */}
+                                            {/* NOTES */}
 
                                             {
                                                 order?.notes && (
@@ -1250,9 +1195,7 @@ export default function QROrders() {
                                             }
 
 
-                                            {/* =================================
-                                                ACTIONS
-                                            ================================= */}
+                                            {/* ACTIONS */}
 
                                             <div className="order-actions">
 
@@ -1435,7 +1378,7 @@ export default function QROrders() {
                                                 }
 
 
-                                                {/* PAYMENT PAID */}
+                                                {/* PAYMENT */}
 
                                                 {
                                                     order?.payment_status ===
@@ -1645,7 +1588,6 @@ export default function QROrders() {
                     border-radius: 8px;
                     cursor: pointer;
                     font-weight: 600;
-                    transition: 0.2s;
                 }
 
                 .filter:hover {
@@ -1923,17 +1865,11 @@ export default function QROrders() {
                     cursor: pointer;
                     font-size: 12px;
                     font-weight: 700;
-                    transition: 0.2s;
-                }
-
-                .order-actions button:hover {
-                    transform: translateY(-1px);
                 }
 
                 .order-actions button:disabled {
                     opacity: 0.55;
                     cursor: not-allowed;
-                    transform: none;
                 }
 
                 .reject-btn {
