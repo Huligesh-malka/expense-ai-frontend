@@ -8,6 +8,7 @@ import {
     updateQRStatus
 } from "../services/qrOrderApi";
 
+
 export default function QROrdering() {
 
     const [qr, setQr] = useState(null);
@@ -33,15 +34,108 @@ export default function QROrdering() {
                 await getQR();
 
 
-            const payload =
+            console.log(
+                "QR API RESPONSE:",
+                response
+            );
+
+
+            /*
+             * Expected backend response:
+             *
+             * {
+             *   success: true,
+             *
+             *   data: {
+             *      id: 1,
+             *      business_id: 2,
+             *      qr_token: "55080..."
+             *   }
+             * }
+             */
+
+
+            const responseData =
                 response?.data;
 
 
-            setQr(
-                payload?.data ||
-                payload ||
-                null
+            const qrData =
+                responseData?.data ||
+                responseData;
+
+
+            console.log(
+                "QR DATA:",
+                qrData
             );
+
+
+            if (!qrData) {
+
+                throw new Error(
+                    "QR data was not returned by the server"
+                );
+            }
+
+
+            if (!qrData.qr_token) {
+
+                throw new Error(
+                    "QR token was not returned by the server"
+                );
+            }
+
+
+            // =================================================
+            // IMPORTANT FIX
+            //
+            // Do NOT depend on backend qr_url.
+            //
+            // Build customer URL directly from the
+            // current frontend domain.
+            // =================================================
+
+            const frontendOrigin =
+                window.location.origin;
+
+
+            const customerQRUrl =
+                `${frontendOrigin}/qr/${qrData.qr_token}`;
+
+
+            console.log(
+                "CUSTOMER QR URL:",
+                customerQRUrl
+            );
+
+
+            // =================================================
+            // CREATE FINAL QR OBJECT
+            // =================================================
+
+            const finalQR = {
+
+                ...qrData,
+
+                qr_url:
+                    customerQRUrl,
+
+                // If backend does not send status,
+                // assume active because the API returned it.
+                status:
+                    qrData.status ||
+                    "active"
+            };
+
+
+            console.log(
+                "FINAL QR:",
+                finalQR
+            );
+
+
+            setQr(finalQR);
+
 
         } catch (error) {
 
@@ -49,6 +143,7 @@ export default function QROrdering() {
                 "QR Ordering Load Error:",
                 error
             );
+
 
             alert(
                 error.response?.data?.message ||
@@ -62,6 +157,10 @@ export default function QROrdering() {
         }
     };
 
+
+    // =========================================================
+    // INITIAL LOAD
+    // =========================================================
 
     useEffect(() => {
 
@@ -97,7 +196,19 @@ export default function QROrdering() {
             );
 
 
-            await loadQR();
+            /*
+             * Update UI immediately.
+             */
+
+            setQr(
+                (current) => ({
+                    ...current,
+
+                    status:
+                        newStatus
+                })
+            );
+
 
         } catch (error) {
 
@@ -147,6 +258,7 @@ export default function QROrdering() {
                 "QR ordering link copied"
             );
 
+
         } catch (error) {
 
             console.error(
@@ -155,7 +267,42 @@ export default function QROrdering() {
             );
 
 
-            alert(qr.qr_url);
+            /*
+             * Fallback for browsers where
+             * clipboard permission is blocked.
+             */
+
+            const input =
+                document.createElement(
+                    "input"
+                );
+
+
+            input.value =
+                qr.qr_url;
+
+
+            document.body.appendChild(
+                input
+            );
+
+
+            input.select();
+
+
+            document.execCommand(
+                "copy"
+            );
+
+
+            document.body.removeChild(
+                input
+            );
+
+
+            alert(
+                "QR ordering link copied"
+            );
         }
     };
 
@@ -177,6 +324,29 @@ export default function QROrdering() {
 
 
         window.print();
+    };
+
+
+    // =========================================================
+    // OPEN CUSTOMER PAGE
+    // =========================================================
+
+    const openCustomerPage = () => {
+
+        if (!qr?.qr_url) {
+
+            alert(
+                "QR link is not available"
+            );
+
+            return;
+        }
+
+
+        window.open(
+            qr.qr_url,
+            "_blank"
+        );
     };
 
 
@@ -254,9 +424,11 @@ export default function QROrdering() {
                         CUSTOMER ORDERING
                     </div>
 
+
                     <h1>
                         QR Ordering
                     </h1>
+
 
                     <p>
                         Let customers scan your QR code,
@@ -268,22 +440,34 @@ export default function QROrdering() {
 
 
                 <button
+
                     className={
                         qr.status === "active"
                             ? "danger-btn"
                             : "success-btn"
                     }
 
-                    onClick={toggleQR}
+                    onClick={
+                        toggleQR
+                    }
 
-                    disabled={qrUpdating}
+                    disabled={
+                        qrUpdating
+                    }
+
                 >
 
                     {qrUpdating
+
                         ? "Updating..."
+
                         : qr.status === "active"
+
                             ? "Disable QR"
-                            : "Enable QR"}
+
+                            : "Enable QR"
+
+                    }
 
                 </button>
 
@@ -298,9 +482,12 @@ export default function QROrdering() {
             <div className="qr-card">
 
 
+                {/* ================================================= */}
                 {/* LEFT */}
+                {/* ================================================= */}
 
                 <div className="qr-card-left">
+
 
                     <div className="qr-badge">
                         BUSINESS QR
@@ -319,64 +506,103 @@ export default function QROrdering() {
                     </p>
 
 
+
                     {/* STATUS */}
 
                     <div className="qr-status">
 
                         <span
+
                             className={
                                 qr.status === "active"
                                     ? "status-dot active"
                                     : "status-dot inactive"
                             }
+
                         />
+
 
                         <span>
 
                             {qr.status === "active"
+
                                 ? "QR Ordering Active"
-                                : "QR Ordering Disabled"}
+
+                                : "QR Ordering Disabled"
+
+                            }
 
                         </span>
 
                     </div>
 
 
-                    {/* LINK */}
+
+                    {/* CUSTOMER LINK */}
 
                     <div className="qr-link-label">
+
                         Customer ordering link
+
                     </div>
 
 
                     <div className="qr-url">
 
-                        {qr.qr_url ||
-                            "QR link unavailable"}
+                        {qr.qr_url}
 
                     </div>
+
 
 
                     {/* ACTIONS */}
 
                     <div className="qr-actions">
 
+
                         <button
+
                             className="secondary-btn"
-                            onClick={copyQRLink}
-                            disabled={!qr.qr_url}
+
+                            onClick={
+                                copyQRLink
+                            }
+
                         >
                             Copy Link
+
                         </button>
+
 
 
                         <button
+
                             className="primary-btn"
-                            onClick={printQR}
-                            disabled={!qr.qr_url}
+
+                            onClick={
+                                printQR
+                            }
+
                         >
                             Print QR
+
                         </button>
+
+
+
+                        <button
+
+                            className="secondary-btn"
+
+                            onClick={
+                                openCustomerPage
+                            }
+
+                        >
+                            Open Customer Page
+
+                        </button>
+
 
                     </div>
 
@@ -384,41 +610,114 @@ export default function QROrdering() {
 
 
 
-                {/* RIGHT - QR IMAGE */}
+                {/* ================================================= */}
+                {/* QR IMAGE */}
+                {/* ================================================= */}
 
                 <div className="qr-image-box">
 
-                    {qr.qr_url ? (
 
-                        <img
-                            src={
-                                `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(
-                                    qr.qr_url
-                                )}`
-                            }
+                    <img
 
-                            alt="Business QR Code"
+                        src={
+                            `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(
+                                qr.qr_url
+                            )}`
+                        }
 
-                            width="320"
+                        alt="Business QR Code"
 
-                            height="320"
-                        />
+                        width="320"
 
-                    ) : (
+                        height="320"
 
-                        <div className="qr-unavailable">
+                    />
 
-                            <div>
-                                QR
-                            </div>
 
-                            <span>
-                                QR unavailable
-                            </span>
+                </div>
 
-                        </div>
+            </div>
 
-                    )}
+
+
+            {/* ================================================= */}
+            {/* QR TOKEN INFORMATION */}
+            {/* ================================================= */}
+
+            <div className="section-card">
+
+                <div className="section-header">
+
+                    <div>
+
+                        <h2>
+                            QR Code Information
+                        </h2>
+
+                        <p>
+                            This QR code is permanently
+                            connected to your business.
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div className="qr-info-grid">
+
+
+                    <div>
+
+                        <span>
+                            QR Token
+                        </span>
+
+                        <strong>
+                            {qr.qr_token}
+                        </strong>
+
+                    </div>
+
+
+                    <div>
+
+                        <span>
+                            Business ID
+                        </span>
+
+                        <strong>
+                            {qr.business_id}
+                        </strong>
+
+                    </div>
+
+
+                    <div>
+
+                        <span>
+                            Status
+                        </span>
+
+                        <strong>
+                            {qr.status}
+                        </strong>
+
+                    </div>
+
+
+                    <div>
+
+                        <span>
+                            Customer URL
+                        </span>
+
+                        <strong>
+                            {qr.qr_url}
+                        </strong>
+
+                    </div>
+
 
                 </div>
 
@@ -431,6 +730,7 @@ export default function QROrdering() {
             {/* ================================================= */}
 
             <div className="section-card">
+
 
                 <div className="section-header">
 
@@ -448,6 +748,7 @@ export default function QROrdering() {
                     </div>
 
                 </div>
+
 
 
                 <div className="qr-flow">
@@ -527,6 +828,7 @@ export default function QROrdering() {
 
                     </div>
 
+
                 </div>
 
             </div>
@@ -538,6 +840,7 @@ export default function QROrdering() {
             {/* ================================================= */}
 
             <div className="section-card">
+
 
                 <div className="section-header">
 
@@ -555,6 +858,7 @@ export default function QROrdering() {
                     </div>
 
                 </div>
+
 
 
                 <div className="qr-benefits">
@@ -617,6 +921,7 @@ export default function QROrdering() {
 
                     </div>
 
+
                 </div>
 
             </div>
@@ -628,6 +933,7 @@ export default function QROrdering() {
             {/* ================================================= */}
 
             <div className="section-card">
+
 
                 <div className="section-header">
 
@@ -647,45 +953,59 @@ export default function QROrdering() {
                 </div>
 
 
+
                 <div className="owner-flow">
+
 
                     <span>
                         Customer Order
                     </span>
 
+
                     <b>→</b>
+
 
                     <span>
                         Owner Dashboard
                     </span>
 
+
                     <b>→</b>
+
 
                     <span>
                         Accept
                     </span>
 
+
                     <b>→</b>
+
 
                     <span>
                         Payment
                     </span>
 
+
                     <b>→</b>
+
 
                     <span>
                         Bill & Sale
                     </span>
 
+
                     <b>→</b>
+
 
                     <span>
                         Inventory Updated
                     </span>
 
+
                 </div>
 
             </div>
+
 
         </div>
     );
