@@ -9,7 +9,7 @@ import {
 
 import {
     getQROrders,
-    updateQROrdersStatus,
+    updateQROrdOrderStatus,
     updateQRPayment
 } from "../services/qrOrderApi";
 
@@ -50,17 +50,13 @@ export default function QROrders() {
 
     const [orders, setOrders] = useState([]);
 
-    const [filter, setFilter] =
-        useState("new");
+    const [filter, setFilter] = useState("new");
 
-    const [loading, setLoading] =
-        useState(true);
+    const [loading, setLoading] = useState(true);
 
-    const [actionId, setActionId] =
-        useState(null);
+    const [actionId, setActionId] = useState(null);
 
-    const [errorMessage, setErrorMessage] =
-        useState("");
+    const [errorMessage, setErrorMessage] = useState("");
 
 
     // =========================================================
@@ -80,53 +76,37 @@ export default function QROrders() {
                     ? ""
                     : `?status=${encodeURIComponent(filter)}`;
 
+            const response = await getQROrders(query);
 
-            const response =
-                await getQROrders(query);
-
-
-            console.log(
-                "QR ORDERS:",
-                response
-            );
+            console.log("QR ORDERS RESPONSE:", response);
 
 
-            /*
-             * BACKEND RESPONSE:
-             *
-             * {
-             *     success: true,
-             *     total: 1,
-             *     data: [
-             *         {...},
-             *         {...}
-             *     ]
-             * }
-             *
-             * Axios:
-             *
-             * response.data
-             *       ↓
-             * {
-             *     success: true,
-             *     total: 1,
-             *     data: [...]
-             * }
-             *
-             * Therefore orders are:
-             *
-             * response.data.data
-             */
-
+            // =================================================
+            // IMPORTANT
+            //
+            // Backend response:
+            //
+            // {
+            //     success: true,
+            //     total: 1,
+            //     data: [...]
+            // }
+            //
+            // Axios response:
+            //
+            // response.data.data
+            //
+            // Therefore actual orders array is:
+            //
+            // response.data.data
+            // =================================================
 
             let receivedOrders = [];
 
 
-            // =================================================
             // CASE 1
             // Axios response
             // response.data.data = [...]
-            // =================================================
 
             if (
                 Array.isArray(
@@ -140,15 +120,9 @@ export default function QROrders() {
             }
 
 
-            // =================================================
             // CASE 2
             // API service already returned:
-            //
-            // {
-            //     success: true,
-            //     data: [...]
-            // }
-            // =================================================
+            // { success: true, data: [...] }
 
             else if (
                 Array.isArray(
@@ -162,10 +136,8 @@ export default function QROrders() {
             }
 
 
-            // =================================================
             // CASE 3
             // API service returned array directly
-            // =================================================
 
             else if (
                 Array.isArray(
@@ -179,9 +151,7 @@ export default function QROrders() {
             }
 
 
-            // =================================================
             // INVALID RESPONSE
-            // =================================================
 
             else {
 
@@ -196,8 +166,7 @@ export default function QROrders() {
             );
 
 
-            // IMPORTANT
-            // Always keep orders as ARRAY
+            // ALWAYS KEEP orders AS ARRAY
 
             setOrders(
                 receivedOrders
@@ -210,9 +179,7 @@ export default function QROrders() {
                 error
             );
 
-
             setOrders([]);
-
 
             setErrorMessage(
                 error?.response?.data?.message ||
@@ -225,6 +192,7 @@ export default function QROrders() {
             setLoading(false);
 
         }
+
     };
 
 
@@ -236,13 +204,10 @@ export default function QROrders() {
 
         loadOrders();
 
-
-        const timer =
-            setInterval(
-                loadOrders,
-                5000
-            );
-
+        const timer = setInterval(
+            loadOrders,
+            5000
+        );
 
         return () => {
 
@@ -274,13 +239,15 @@ export default function QROrders() {
 
             }
 
-
             setActionId(
                 order.id
             );
 
 
-            await updateQROrderStatus(
+            // IMPORTANT:
+            // Correct function name
+
+            await updateQROrdOrderStatus(
                 order.id,
                 status
             );
@@ -295,7 +262,6 @@ export default function QROrders() {
                 error
             );
 
-
             alert(
                 error?.response?.data?.message ||
                 error?.message ||
@@ -307,6 +273,7 @@ export default function QROrders() {
             setActionId(null);
 
         }
+
     };
 
 
@@ -377,6 +344,7 @@ export default function QROrders() {
             setActionId(null);
 
         }
+
     };
 
 
@@ -411,6 +379,7 @@ export default function QROrders() {
             order,
             "rejected"
         );
+
     };
 
 
@@ -453,11 +422,8 @@ export default function QROrders() {
             ).toLocaleString(
                 "en-IN",
                 {
-                    dateStyle:
-                        "medium",
-
-                    timeStyle:
-                        "short"
+                    dateStyle: "medium",
+                    timeStyle: "short"
                 }
             );
 
@@ -468,6 +434,7 @@ export default function QROrders() {
             );
 
         }
+
     };
 
 
@@ -479,9 +446,10 @@ export default function QROrders() {
         value
     ) => {
 
-        return `₹${Number(
-            value || 0
-        ).toFixed(2)}`;
+        const number =
+            Number(value || 0);
+
+        return `₹${number.toFixed(2)}`;
 
     };
 
@@ -584,7 +552,6 @@ export default function QROrders() {
 
                 <div className="header-actions">
 
-
                     <button
                         type="button"
                         className="header-btn blue"
@@ -676,9 +643,7 @@ export default function QROrders() {
 
                         <button
                             type="button"
-                            key={
-                                status
-                            }
+                            key={status}
                             className={
                                 filter === status
                                     ? "filter active"
@@ -718,6 +683,7 @@ export default function QROrders() {
                 </strong>
 
                 <span>
+
                     {
                         filter === "all"
                             ? "total orders"
@@ -725,6 +691,7 @@ export default function QROrders() {
                                 filter
                             ).toLowerCase()} orders`
                     }
+
                 </span>
 
                 <span className="live-dot">
@@ -824,7 +791,8 @@ export default function QROrders() {
 
                                         {
                                             getStatusLabel(
-                                                order.order_status
+                                                order.order_status ||
+                                                "new"
                                             )
                                         }
 
@@ -924,76 +892,88 @@ export default function QROrders() {
                                                     (
                                                         item,
                                                         index
-                                                    ) => (
+                                                    ) => {
 
-                                                        <div
-                                                            className="order-item"
-                                                            key={
-                                                                item.id ||
-                                                                `${order.id}-${index}`
-                                                            }
-                                                        >
+                                                        const quantity =
+                                                            Number(
+                                                                item?.quantity ||
+                                                                0
+                                                            );
 
-                                                            <div>
+                                                        const unitPrice =
+                                                            Number(
+                                                                item?.unit_price ||
+                                                                0
+                                                            );
+
+                                                        const calculatedTotal =
+                                                            quantity *
+                                                            unitPrice;
+
+                                                        const itemTotal =
+                                                            item?.total ??
+                                                            calculatedTotal;
+
+
+                                                        return (
+
+                                                            <div
+                                                                className="order-item"
+                                                                key={
+                                                                    item?.id ||
+                                                                    `${order.id}-${index}`
+                                                                }
+                                                            >
+
+                                                                <div>
+
+                                                                    <strong>
+                                                                        {
+                                                                            item?.product_name ||
+                                                                            item?.name ||
+                                                                            "Product"
+                                                                        }
+                                                                    </strong>
+
+                                                                    <span>
+
+                                                                        {
+                                                                            quantity
+                                                                        }
+
+                                                                        {" "}
+
+                                                                        {
+                                                                            item?.unit ||
+                                                                            "pcs"
+                                                                        }
+
+                                                                        {" × "}
+
+                                                                        {
+                                                                            money(
+                                                                                unitPrice
+                                                                            )
+                                                                        }
+
+                                                                    </span>
+
+                                                                </div>
+
 
                                                                 <strong>
                                                                     {
-                                                                        item.product_name ||
-                                                                        item.name ||
-                                                                        "Product"
+                                                                        money(
+                                                                            itemTotal
+                                                                        )
                                                                     }
                                                                 </strong>
 
-                                                                <span>
-
-                                                                    {
-                                                                        item.quantity ||
-                                                                        0
-                                                                    }
-
-                                                                    {" "}
-
-                                                                    {
-                                                                        item.unit ||
-                                                                        "pcs"
-                                                                    }
-
-                                                                    {" × "}
-
-                                                                    {
-                                                                        money(
-                                                                            item.unit_price
-                                                                        )
-                                                                    }
-
-                                                                </span>
-
                                                             </div>
 
+                                                        );
 
-                                                            <strong>
-
-                                                                {
-                                                                    money(
-                                                                        item.total ??
-                                                                        (
-                                                                            Number(
-                                                                                item.quantity ||
-                                                                                0
-                                                                            ) *
-                                                                            Number(
-                                                                                item.unit_price ||
-                                                                                0
-                                                                            )
-                                                                        )
-                                                                    )
-                                                                }
-
-                                                            </strong>
-
-                                                        </div>
-
-                                                    )
+                                                    }
                                                 )
 
                                             )
@@ -1098,9 +1078,7 @@ export default function QROrders() {
                                 <div className="order-actions">
 
 
-                                    {/* =================================
-                                        NEW
-                                    ================================= */}
+                                    {/* NEW */}
 
                                     {order.order_status ===
                                     "new" && (
@@ -1153,9 +1131,7 @@ export default function QROrders() {
                                     )}
 
 
-                                    {/* =================================
-                                        ACCEPTED
-                                    ================================= */}
+                                    {/* ACCEPTED */}
 
                                     {order.order_status ===
                                     "accepted" && (
@@ -1222,9 +1198,7 @@ export default function QROrders() {
                                     )}
 
 
-                                    {/* =================================
-                                        PROCESSING
-                                    ================================= */}
+                                    {/* PROCESSING */}
 
                                     {order.order_status ===
                                     "processing" && (
@@ -1249,9 +1223,7 @@ export default function QROrders() {
                                     )}
 
 
-                                    {/* =================================
-                                        READY
-                                    ================================= */}
+                                    {/* READY */}
 
                                     {order.order_status ===
                                     "ready" && (
@@ -1276,9 +1248,7 @@ export default function QROrders() {
                                     )}
 
 
-                                    {/* =================================
-                                        PAYMENT CONFIRMED
-                                    ================================= */}
+                                    {/* PAYMENT CONFIRMED */}
 
                                     {order.payment_status ===
                                     "paid" && (
@@ -1290,9 +1260,7 @@ export default function QROrders() {
                                     )}
 
 
-                                    {/* =================================
-                                        COMPLETED
-                                    ================================= */}
+                                    {/* COMPLETED */}
 
                                     {order.order_status ===
                                     "completed" && (
@@ -1304,9 +1272,7 @@ export default function QROrders() {
                                     )}
 
 
-                                    {/* =================================
-                                        REJECTED
-                                    ================================= */}
+                                    {/* REJECTED */}
 
                                     {order.order_status ===
                                     "rejected" && (
@@ -1318,9 +1284,7 @@ export default function QROrders() {
                                     )}
 
 
-                                    {/* =================================
-                                        CANCELLED
-                                    ================================= */}
+                                    {/* CANCELLED */}
 
                                     {order.order_status ===
                                     "cancelled" && (
@@ -1353,7 +1317,6 @@ export default function QROrders() {
                     box-sizing: border-box;
                 }
 
-
                 .qr-orders-page {
                     min-height: 100vh;
                     padding: 25px;
@@ -1365,10 +1328,7 @@ export default function QROrders() {
                         sans-serif;
                 }
 
-
-                /* =========================================
-                   HEADER
-                ========================================= */
+                /* HEADER */
 
                 .orders-header {
                     display: flex;
@@ -1420,12 +1380,7 @@ export default function QROrders() {
                     transform: translateY(-1px);
                     box-shadow:
                         0 3px 10px
-                        rgba(
-                            0,
-                            0,
-                            0,
-                            0.08
-                        );
+                        rgba(0, 0, 0, 0.08);
                 }
 
                 .header-btn:disabled {
@@ -1446,10 +1401,7 @@ export default function QROrders() {
                     border-color: #111827;
                 }
 
-
-                /* =========================================
-                   ERROR
-                ========================================= */
+                /* ERROR */
 
                 .error-box {
                     display: flex;
@@ -1483,10 +1435,7 @@ export default function QROrders() {
                     font-weight: 600;
                 }
 
-
-                /* =========================================
-                   FILTERS
-                ========================================= */
+                /* FILTERS */
 
                 .order-filters {
                     display: flex;
@@ -1516,10 +1465,7 @@ export default function QROrders() {
                     border-color: #111827;
                 }
 
-
-                /* =========================================
-                   SUMMARY
-                ========================================= */
+                /* SUMMARY */
 
                 .order-summary {
                     display: flex;
@@ -1541,28 +1487,17 @@ export default function QROrders() {
                     font-weight: 700;
                 }
 
-
-                /* =========================================
-                   ORDER LIST
-                ========================================= */
+                /* ORDERS */
 
                 .orders-list {
                     display: grid;
                     grid-template-columns:
                         repeat(
                             2,
-                            minmax(
-                                0,
-                                1fr
-                            )
+                            minmax(0, 1fr)
                         );
                     gap: 18px;
                 }
-
-
-                /* =========================================
-                   CARD
-                ========================================= */
 
                 .order-card {
                     background: white;
@@ -1571,18 +1506,10 @@ export default function QROrders() {
                     overflow: hidden;
                     box-shadow:
                         0 3px 12px
-                        rgba(
-                            0,
-                            0,
-                            0,
-                            0.05
-                        );
+                        rgba(0, 0, 0, 0.05);
                 }
 
-
-                /* =========================================
-                   ORDER HEADER
-                ========================================= */
+                /* ORDER HEADER */
 
                 .order-card-header {
                     display: flex;
@@ -1612,10 +1539,7 @@ export default function QROrders() {
                     margin-top: 5px;
                 }
 
-
-                /* =========================================
-                   STATUS
-                ========================================= */
+                /* STATUS */
 
                 .order-status {
                     padding: 7px 11px !important;
@@ -1661,10 +1585,7 @@ export default function QROrders() {
                     color: #6b7280;
                 }
 
-
-                /* =========================================
-                   CUSTOMER
-                ========================================= */
+                /* CUSTOMER */
 
                 .customer-info {
                     display: flex;
@@ -1698,10 +1619,7 @@ export default function QROrders() {
                     font-size: 12px;
                 }
 
-
-                /* =========================================
-                   PAYMENT
-                ========================================= */
+                /* PAYMENT */
 
                 .payment-status-row {
                     display: flex;
@@ -1736,10 +1654,7 @@ export default function QROrders() {
                     font-size: 11px;
                 }
 
-
-                /* =========================================
-                   ITEMS
-                ========================================= */
+                /* ITEMS */
 
                 .order-items {
                     padding: 17px 18px;
@@ -1779,10 +1694,7 @@ export default function QROrders() {
                     font-size: 13px;
                 }
 
-
-                /* =========================================
-                   TOTAL
-                ========================================= */
+                /* TOTAL */
 
                 .order-total {
                     padding: 15px 18px;
@@ -1804,10 +1716,7 @@ export default function QROrders() {
                     font-size: 17px !important;
                 }
 
-
-                /* =========================================
-                   NOTES
-                ========================================= */
+                /* NOTES */
 
                 .order-notes {
                     margin: 0 18px;
@@ -1824,10 +1733,7 @@ export default function QROrders() {
                     color: #6b7280;
                 }
 
-
-                /* =========================================
-                   ACTIONS
-                ========================================= */
+                /* ACTIONS */
 
                 .order-actions {
                     display: flex;
@@ -1907,10 +1813,7 @@ export default function QROrders() {
                     color: #6b7280;
                 }
 
-
-                /* =========================================
-                   LOADING / EMPTY
-                ========================================= */
+                /* LOADING / EMPTY */
 
                 .qr-loading-page,
                 .empty-orders {
@@ -1947,13 +1850,11 @@ export default function QROrders() {
                 @keyframes spin {
 
                     from {
-                        transform:
-                            rotate(0deg);
+                        transform: rotate(0deg);
                     }
 
                     to {
-                        transform:
-                            rotate(360deg);
+                        transform: rotate(360deg);
                     }
 
                 }
@@ -1972,22 +1873,17 @@ export default function QROrders() {
                     font-weight: 600;
                 }
 
-
-                /* =========================================
-                   RESPONSIVE
-                ========================================= */
+                /* RESPONSIVE */
 
                 @media (
                     max-width: 1000px
                 ) {
 
                     .orders-list {
-                        grid-template-columns:
-                            1fr;
+                        grid-template-columns: 1fr;
                     }
 
                 }
-
 
                 @media (
                     max-width: 700px
@@ -1998,8 +1894,7 @@ export default function QROrders() {
                     }
 
                     .orders-header {
-                        flex-direction:
-                            column;
+                        flex-direction: column;
                     }
 
                     .header-actions {
@@ -2011,20 +1906,17 @@ export default function QROrders() {
                     }
 
                     .order-card-header {
-                        flex-direction:
-                            column;
+                        flex-direction: column;
                     }
 
                 }
-
 
                 @media (
                     max-width: 450px
                 ) {
 
                     .header-actions {
-                        flex-direction:
-                            column;
+                        flex-direction: column;
                     }
 
                     .header-btn {
@@ -2033,7 +1925,6 @@ export default function QROrders() {
 
                     .order-filters {
                         display: grid;
-
                         grid-template-columns:
                             repeat(
                                 2,
@@ -2046,11 +1937,8 @@ export default function QROrders() {
                     }
 
                     .order-actions {
-                        flex-direction:
-                            column;
-
-                        align-items:
-                            stretch;
+                        flex-direction: column;
+                        align-items: stretch;
                     }
 
                     .order-actions button {
@@ -2058,8 +1946,7 @@ export default function QROrders() {
                     }
 
                     .order-notes {
-                        flex-direction:
-                            column;
+                        flex-direction: column;
                     }
 
                 }
@@ -2069,4 +1956,5 @@ export default function QROrders() {
         </div>
 
     );
+
 }
