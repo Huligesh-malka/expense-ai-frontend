@@ -855,7 +855,14 @@ export default function BusinessDashboard() {
             label="QR Ordering"
             color="#0ea5e9"
           />
-          {/* ⚡ AI Business Engine - NEW BUTTON */}
+          {/* ✅ NEW: QR Orders button */}
+          <QuickActionButton
+            to="/qr-orders"
+            icon={<FiShoppingCart size={20} />}
+            label="QR Orders"
+            color="#16a34a"
+          />
+          {/* ⚡ AI Business Engine */}
           <QuickActionButton
             to="/ai-business"
             icon={<FiZap size={20} />}
