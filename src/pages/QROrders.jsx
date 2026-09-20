@@ -9,7 +9,7 @@ import {
 
 import {
     getQROrders,
-    updateQROrderStatus,
+    updateQROrdersStatus,
     updateQRPayment
 } from "../services/qrOrderApi";
 
@@ -59,6 +59,9 @@ export default function QROrders() {
     const [actionId, setActionId] =
         useState(null);
 
+    const [errorMessage, setErrorMessage] =
+        useState("");
+
 
     // =========================================================
     // LOAD ORDERS
@@ -70,21 +73,134 @@ export default function QROrders() {
 
             setLoading(true);
 
+            setErrorMessage("");
+
             const query =
                 filter === "all"
                     ? ""
-                    : `?status=${filter}`;
+                    : `?status=${encodeURIComponent(filter)}`;
+
 
             const response =
                 await getQROrders(query);
+
 
             console.log(
                 "QR ORDERS:",
                 response
             );
 
+
+            /*
+             * BACKEND RESPONSE:
+             *
+             * {
+             *     success: true,
+             *     total: 1,
+             *     data: [
+             *         {...},
+             *         {...}
+             *     ]
+             * }
+             *
+             * Axios:
+             *
+             * response.data
+             *       ↓
+             * {
+             *     success: true,
+             *     total: 1,
+             *     data: [...]
+             * }
+             *
+             * Therefore orders are:
+             *
+             * response.data.data
+             */
+
+
+            let receivedOrders = [];
+
+
+            // =================================================
+            // CASE 1
+            // Axios response
+            // response.data.data = [...]
+            // =================================================
+
+            if (
+                Array.isArray(
+                    response?.data?.data
+                )
+            ) {
+
+                receivedOrders =
+                    response.data.data;
+
+            }
+
+
+            // =================================================
+            // CASE 2
+            // API service already returned:
+            //
+            // {
+            //     success: true,
+            //     data: [...]
+            // }
+            // =================================================
+
+            else if (
+                Array.isArray(
+                    response?.data
+                )
+            ) {
+
+                receivedOrders =
+                    response.data;
+
+            }
+
+
+            // =================================================
+            // CASE 3
+            // API service returned array directly
+            // =================================================
+
+            else if (
+                Array.isArray(
+                    response
+                )
+            ) {
+
+                receivedOrders =
+                    response;
+
+            }
+
+
+            // =================================================
+            // INVALID RESPONSE
+            // =================================================
+
+            else {
+
+                receivedOrders = [];
+
+            }
+
+
+            console.log(
+                "QR ORDERS ARRAY:",
+                receivedOrders
+            );
+
+
+            // IMPORTANT
+            // Always keep orders as ARRAY
+
             setOrders(
-                response?.data || []
+                receivedOrders
             );
 
         } catch (error) {
@@ -94,10 +210,14 @@ export default function QROrders() {
                 error
             );
 
-            alert(
-                error.response?.data?.message ||
-                error.message ||
-                "Failed to load orders"
+
+            setOrders([]);
+
+
+            setErrorMessage(
+                error?.response?.data?.message ||
+                error?.message ||
+                "Failed to load QR orders"
             );
 
         } finally {
@@ -116,14 +236,18 @@ export default function QROrders() {
 
         loadOrders();
 
+
         const timer =
             setInterval(
                 loadOrders,
                 5000
             );
 
+
         return () => {
+
             clearInterval(timer);
+
         };
 
     }, [filter]);
@@ -140,12 +264,27 @@ export default function QROrders() {
 
         try {
 
-            setActionId(order.id);
+            if (!order?.id) {
+
+                alert(
+                    "Order ID is missing."
+                );
+
+                return;
+
+            }
+
+
+            setActionId(
+                order.id
+            );
+
 
             await updateQROrderStatus(
                 order.id,
                 status
             );
+
 
             await loadOrders();
 
@@ -156,9 +295,10 @@ export default function QROrders() {
                 error
             );
 
+
             alert(
-                error.response?.data?.message ||
-                error.message ||
+                error?.response?.data?.message ||
+                error?.message ||
                 "Failed to update order"
             );
 
@@ -178,20 +318,31 @@ export default function QROrders() {
         order
     ) => {
 
+        const amount =
+            Number(
+                order?.total_amount || 0
+            ).toFixed(2);
+
+
         const confirmed =
             window.confirm(
-                `Confirm that payment of ₹${Number(
-                    order.total_amount
-                ).toFixed(2)} has been received from the customer?`
+                `Confirm that payment of ₹${amount} has been received from the customer?`
             );
 
+
         if (!confirmed) {
+
             return;
+
         }
+
 
         try {
 
-            setActionId(order.id);
+            setActionId(
+                order.id
+            );
+
 
             await updateQRPayment(
                 order.id,
@@ -199,9 +350,11 @@ export default function QROrders() {
                 "paid"
             );
 
+
             alert(
                 "Payment confirmed successfully."
             );
+
 
             await loadOrders();
 
@@ -212,9 +365,10 @@ export default function QROrders() {
                 error
             );
 
+
             alert(
-                error.response?.data?.message ||
-                error.message ||
+                error?.response?.data?.message ||
+                error?.message ||
                 "Failed to confirm payment"
             );
 
@@ -234,14 +388,24 @@ export default function QROrders() {
         order
     ) => {
 
+        const orderNumber =
+            order?.order_no ||
+            order?.id ||
+            "";
+
+
         const confirmed =
             window.confirm(
-                `Reject order #${order.order_no}?`
+                `Reject order #${orderNumber}?`
             );
 
+
         if (!confirmed) {
+
             return;
+
         }
+
 
         await changeStatus(
             order,
@@ -260,8 +424,10 @@ export default function QROrders() {
 
         return (
             statusLabels[status] ||
-            status
+            status ||
+            "Unknown"
         );
+
     };
 
 
@@ -274,8 +440,11 @@ export default function QROrders() {
     ) => {
 
         if (!date) {
+
             return "-";
+
         }
+
 
         try {
 
@@ -284,14 +453,19 @@ export default function QROrders() {
             ).toLocaleString(
                 "en-IN",
                 {
-                    dateStyle: "medium",
-                    timeStyle: "short"
+                    dateStyle:
+                        "medium",
+
+                    timeStyle:
+                        "short"
                 }
             );
 
         } catch {
 
-            return date;
+            return String(
+                date
+            );
 
         }
     };
@@ -308,6 +482,38 @@ export default function QROrders() {
         return `₹${Number(
             value || 0
         ).toFixed(2)}`;
+
+    };
+
+
+    // =========================================================
+    // PAYMENT LABEL
+    // =========================================================
+
+    const getPaymentLabel = (
+        status
+    ) => {
+
+        if (
+            status === "paid"
+        ) {
+
+            return "✓ Paid";
+
+        }
+
+
+        if (
+            status === "failed"
+        ) {
+
+            return "✕ Failed";
+
+        }
+
+
+        return "Payment Pending";
+
     };
 
 
@@ -351,6 +557,7 @@ export default function QROrders() {
 
         <div className="qr-orders-page">
 
+
             {/* =================================================
                 HEADER
             ================================================= */}
@@ -376,6 +583,7 @@ export default function QROrders() {
 
 
                 <div className="header-actions">
+
 
                     <button
                         type="button"
@@ -406,17 +614,55 @@ export default function QROrders() {
                     <button
                         type="button"
                         className="header-btn"
-                        onClick={loadOrders}
-                        disabled={loading}
+                        onClick={
+                            loadOrders
+                        }
+                        disabled={
+                            loading
+                        }
                     >
-                        {loading
-                            ? "Refreshing..."
-                            : "↻ Refresh"}
+
+                        {
+                            loading
+                                ? "Refreshing..."
+                                : "↻ Refresh"
+                        }
+
                     </button>
 
                 </div>
 
             </div>
+
+
+            {/* =================================================
+                ERROR
+            ================================================= */}
+
+            {errorMessage && (
+
+                <div className="error-box">
+
+                    <strong>
+                        Unable to load orders
+                    </strong>
+
+                    <span>
+                        {errorMessage}
+                    </span>
+
+                    <button
+                        type="button"
+                        onClick={
+                            loadOrders
+                        }
+                    >
+                        Try Again
+                    </button>
+
+                </div>
+
+            )}
 
 
             {/* =================================================
@@ -429,14 +675,15 @@ export default function QROrders() {
                     (status) => (
 
                         <button
-                            key={status}
-
+                            type="button"
+                            key={
+                                status
+                            }
                             className={
                                 filter === status
                                     ? "filter active"
                                     : "filter"
                             }
-
                             onClick={() =>
                                 setFilter(
                                     status
@@ -444,16 +691,45 @@ export default function QROrders() {
                             }
                         >
 
-                            {status === "all"
-                                ? "All"
-                                : getStatusLabel(
-                                    status
-                                )}
+                            {
+                                status === "all"
+                                    ? "All"
+                                    : getStatusLabel(
+                                        status
+                                    )
+                            }
 
                         </button>
 
                     )
                 )}
+
+            </div>
+
+
+            {/* =================================================
+                ORDER SUMMARY
+            ================================================= */}
+
+            <div className="order-summary">
+
+                <strong>
+                    {orders.length}
+                </strong>
+
+                <span>
+                    {
+                        filter === "all"
+                            ? "total orders"
+                            : `${getStatusLabel(
+                                filter
+                            ).toLowerCase()} orders`
+                    }
+                </span>
+
+                <span className="live-dot">
+                    ● Live
+                </span>
 
             </div>
 
@@ -480,8 +756,11 @@ export default function QROrders() {
                     </p>
 
                     <button
+                        type="button"
                         className="empty-btn"
-                        onClick={loadOrders}
+                        onClick={
+                            loadOrders
+                        }
                     >
                         Refresh Orders
                     </button>
@@ -497,8 +776,11 @@ export default function QROrders() {
 
                             <div
                                 className="order-card"
-                                key={order.id}
+                                key={
+                                    order.id
+                                }
                             >
+
 
                                 {/* =================================
                                     ORDER HEADER
@@ -511,7 +793,8 @@ export default function QROrders() {
                                         <strong>
                                             #
                                             {
-                                                order.order_no
+                                                order.order_no ||
+                                                order.id
                                             }
                                         </strong>
 
@@ -532,14 +815,19 @@ export default function QROrders() {
 
                                     <span
                                         className={
-                                            `order-status ${order.order_status}`
+                                            `order-status ${
+                                                order.order_status ||
+                                                "new"
+                                            }`
                                         }
                                     >
+
                                         {
                                             getStatusLabel(
                                                 order.order_status
                                             )
                                         }
+
                                     </span>
 
                                 </div>
@@ -563,6 +851,7 @@ export default function QROrders() {
                                                 "Customer"
                                             }
                                         </strong>
+
 
                                         {order.customer_phone && (
 
@@ -602,13 +891,11 @@ export default function QROrders() {
                                         }
                                     >
 
-                                        {order.payment_status ===
-                                        "paid"
-                                            ? "✓ Paid"
-                                            : order.payment_status ===
-                                              "failed"
-                                            ? "✕ Failed"
-                                            : "Payment Pending"}
+                                        {
+                                            getPaymentLabel(
+                                                order.payment_status
+                                            )
+                                        }
 
                                     </strong>
 
@@ -625,69 +912,99 @@ export default function QROrders() {
                                         Order Items
                                     </h3>
 
-                                    {order.items &&
-                                    order.items.length > 0 ? (
 
-                                        order.items.map(
-                                            (item) => (
+                                    {
+                                        Array.isArray(
+                                            order.items
+                                        ) &&
+                                        order.items.length > 0
+                                            ? (
 
-                                                <div
-                                                    className="order-item"
-                                                    key={
-                                                        item.id
-                                                    }
-                                                >
+                                                order.items.map(
+                                                    (
+                                                        item,
+                                                        index
+                                                    ) => (
 
-                                                    <div>
-
-                                                        <strong>
-                                                            {
-                                                                item.product_name
+                                                        <div
+                                                            className="order-item"
+                                                            key={
+                                                                item.id ||
+                                                                `${order.id}-${index}`
                                                             }
-                                                        </strong>
+                                                        >
 
-                                                        <span>
+                                                            <div>
 
-                                                            {
-                                                                item.quantity
-                                                            }
+                                                                <strong>
+                                                                    {
+                                                                        item.product_name ||
+                                                                        item.name ||
+                                                                        "Product"
+                                                                    }
+                                                                </strong>
 
-                                                            {" "}
+                                                                <span>
 
-                                                            {
-                                                                item.unit ||
-                                                                "pcs"
-                                                            }
+                                                                    {
+                                                                        item.quantity ||
+                                                                        0
+                                                                    }
 
-                                                            {" × "}
+                                                                    {" "}
 
-                                                            {money(
-                                                                item.unit_price
-                                                            )}
+                                                                    {
+                                                                        item.unit ||
+                                                                        "pcs"
+                                                                    }
 
-                                                        </span>
+                                                                    {" × "}
 
-                                                    </div>
+                                                                    {
+                                                                        money(
+                                                                            item.unit_price
+                                                                        )
+                                                                    }
+
+                                                                </span>
+
+                                                            </div>
 
 
-                                                    <strong>
-                                                        {money(
-                                                            item.total
-                                                        )}
-                                                    </strong>
+                                                            <strong>
 
+                                                                {
+                                                                    money(
+                                                                        item.total ??
+                                                                        (
+                                                                            Number(
+                                                                                item.quantity ||
+                                                                                0
+                                                                            ) *
+                                                                            Number(
+                                                                                item.unit_price ||
+                                                                                0
+                                                                            )
+                                                                        )
+                                                                    )
+                                                                }
+
+                                                            </strong>
+
+                                                        </div>
+
+                                                    )
+                                                )
+
+                                            )
+                                            : (
+
+                                                <div className="no-items">
+                                                    No items found
                                                 </div>
 
                                             )
-                                        )
-
-                                    ) : (
-
-                                        <div className="no-items">
-                                            No items found
-                                        </div>
-
-                                    )}
+                                    }
 
                                 </div>
 
@@ -699,28 +1016,36 @@ export default function QROrders() {
                                 <div className="order-total">
 
                                     <div>
+
                                         <span>
                                             Subtotal
                                         </span>
 
                                         <strong>
-                                            {money(
-                                                order.subtotal
-                                            )}
+                                            {
+                                                money(
+                                                    order.subtotal
+                                                )
+                                            }
                                         </strong>
+
                                     </div>
 
 
                                     <div>
+
                                         <span>
                                             Tax
                                         </span>
 
                                         <strong>
-                                            {money(
-                                                order.tax
-                                            )}
+                                            {
+                                                money(
+                                                    order.tax
+                                                )
+                                            }
                                         </strong>
+
                                     </div>
 
 
@@ -731,9 +1056,11 @@ export default function QROrders() {
                                         </span>
 
                                         <strong>
-                                            {money(
-                                                order.total_amount
-                                            )}
+                                            {
+                                                money(
+                                                    order.total_amount
+                                                )
+                                            }
                                         </strong>
 
                                     </div>
@@ -770,9 +1097,10 @@ export default function QROrders() {
 
                                 <div className="order-actions">
 
-                                    {/* =============================
+
+                                    {/* =================================
                                         NEW
-                                    ============================= */}
+                                    ================================= */}
 
                                     {order.order_status ===
                                     "new" && (
@@ -780,6 +1108,7 @@ export default function QROrders() {
                                         <>
 
                                             <button
+                                                type="button"
                                                 className="reject-btn"
                                                 disabled={
                                                     actionId ===
@@ -796,6 +1125,7 @@ export default function QROrders() {
 
 
                                             <button
+                                                type="button"
                                                 className="accept-btn"
                                                 disabled={
                                                     actionId ===
@@ -809,10 +1139,12 @@ export default function QROrders() {
                                                 }
                                             >
 
-                                                {actionId ===
-                                                order.id
-                                                    ? "Accepting..."
-                                                    : "✓ Accept Order"}
+                                                {
+                                                    actionId ===
+                                                    order.id
+                                                        ? "Accepting..."
+                                                        : "✓ Accept Order"
+                                                }
 
                                             </button>
 
@@ -821,75 +1153,84 @@ export default function QROrders() {
                                     )}
 
 
-                                    {/* =============================
+                                    {/* =================================
                                         ACCEPTED
-                                    ============================= */}
+                                    ================================= */}
 
                                     {order.order_status ===
                                     "accepted" && (
 
                                         <>
 
-                                            {order.payment_status !==
-                                            "paid" && (
+                                            {
+                                                order.payment_status !==
+                                                "paid" && (
 
-                                                <button
-                                                    className="payment-btn"
-                                                    disabled={
-                                                        actionId ===
-                                                        order.id
-                                                    }
-                                                    onClick={() =>
-                                                        markPaid(
-                                                            order
-                                                        )
-                                                    }
-                                                >
+                                                    <button
+                                                        type="button"
+                                                        className="payment-btn"
+                                                        disabled={
+                                                            actionId ===
+                                                            order.id
+                                                        }
+                                                        onClick={() =>
+                                                            markPaid(
+                                                                order
+                                                            )
+                                                        }
+                                                    >
 
-                                                    {actionId ===
-                                                    order.id
-                                                        ? "Confirming..."
-                                                        : "₹ Confirm Payment"}
+                                                        {
+                                                            actionId ===
+                                                            order.id
+                                                                ? "Confirming..."
+                                                                : "₹ Confirm Payment"
+                                                        }
 
-                                                </button>
+                                                    </button>
 
-                                            )}
+                                                )
+                                            }
 
 
-                                            {order.payment_status ===
-                                            "paid" && (
+                                            {
+                                                order.payment_status ===
+                                                "paid" && (
 
-                                                <button
-                                                    className="primary-btn"
-                                                    disabled={
-                                                        actionId ===
-                                                        order.id
-                                                    }
-                                                    onClick={() =>
-                                                        changeStatus(
-                                                            order,
-                                                            "processing"
-                                                        )
-                                                    }
-                                                >
-                                                    🔄 Start Processing
-                                                </button>
+                                                    <button
+                                                        type="button"
+                                                        className="primary-btn"
+                                                        disabled={
+                                                            actionId ===
+                                                            order.id
+                                                        }
+                                                        onClick={() =>
+                                                            changeStatus(
+                                                                order,
+                                                                "processing"
+                                                            )
+                                                        }
+                                                    >
+                                                        🔄 Start Processing
+                                                    </button>
 
-                                            )}
+                                                )
+                                            }
 
                                         </>
 
                                     )}
 
 
-                                    {/* =============================
+                                    {/* =================================
                                         PROCESSING
-                                    ============================= */}
+                                    ================================= */}
 
                                     {order.order_status ===
                                     "processing" && (
 
                                         <button
+                                            type="button"
                                             className="primary-btn"
                                             disabled={
                                                 actionId ===
@@ -908,14 +1249,15 @@ export default function QROrders() {
                                     )}
 
 
-                                    {/* =============================
+                                    {/* =================================
                                         READY
-                                    ============================= */}
+                                    ================================= */}
 
                                     {order.order_status ===
                                     "ready" && (
 
                                         <button
+                                            type="button"
                                             className="primary-btn"
                                             disabled={
                                                 actionId ===
@@ -934,9 +1276,9 @@ export default function QROrders() {
                                     )}
 
 
-                                    {/* =============================
+                                    {/* =================================
                                         PAYMENT CONFIRMED
-                                    ============================= */}
+                                    ================================= */}
 
                                     {order.payment_status ===
                                     "paid" && (
@@ -948,9 +1290,9 @@ export default function QROrders() {
                                     )}
 
 
-                                    {/* =============================
+                                    {/* =================================
                                         COMPLETED
-                                    ============================= */}
+                                    ================================= */}
 
                                     {order.order_status ===
                                     "completed" && (
@@ -962,9 +1304,9 @@ export default function QROrders() {
                                     )}
 
 
-                                    {/* =============================
+                                    {/* =================================
                                         REJECTED
-                                    ============================= */}
+                                    ================================= */}
 
                                     {order.order_status ===
                                     "rejected" && (
@@ -976,9 +1318,9 @@ export default function QROrders() {
                                     )}
 
 
-                                    {/* =============================
+                                    {/* =================================
                                         CANCELLED
-                                    ============================= */}
+                                    ================================= */}
 
                                     {order.order_status ===
                                     "cancelled" && (
@@ -1011,13 +1353,12 @@ export default function QROrders() {
                     box-sizing: border-box;
                 }
 
+
                 .qr-orders-page {
                     min-height: 100vh;
                     padding: 25px;
-                    background:
-                        #f5f7fb;
-                    color:
-                        #172033;
+                    background: #f5f7fb;
+                    color: #172033;
                     font-family:
                         Arial,
                         Helvetica,
@@ -1025,9 +1366,9 @@ export default function QROrders() {
                 }
 
 
-                /* =============================================
+                /* =========================================
                    HEADER
-                ============================================= */
+                ========================================= */
 
                 .orders-header {
                     display: flex;
@@ -1038,69 +1379,45 @@ export default function QROrders() {
                 }
 
                 .page-eyebrow {
-                    color:
-                        #2563eb;
-                    font-size:
-                        12px;
-                    font-weight:
-                        700;
-                    letter-spacing:
-                        1px;
-                    margin-bottom:
-                        6px;
+                    color: #2563eb;
+                    font-size: 12px;
+                    font-weight: 700;
+                    letter-spacing: 1px;
+                    margin-bottom: 6px;
                 }
 
                 .orders-header h1 {
-                    margin:
-                        0 0 7px;
-                    font-size:
-                        32px;
-                    font-weight:
-                        700;
+                    margin: 0 0 7px;
+                    font-size: 32px;
+                    font-weight: 700;
                 }
 
                 .orders-header p {
-                    margin:
-                        0;
-                    color:
-                        #6b7280;
-                    font-size:
-                        14px;
+                    margin: 0;
+                    color: #6b7280;
+                    font-size: 14px;
                 }
 
                 .header-actions {
-                    display:
-                        flex;
-                    gap:
-                        10px;
-                    align-items:
-                        center;
-                    flex-wrap:
-                        wrap;
+                    display: flex;
+                    gap: 10px;
+                    align-items: center;
+                    flex-wrap: wrap;
                 }
 
                 .header-btn {
-                    border:
-                        1px solid #d1d5db;
-                    background:
-                        white;
-                    color:
-                        #374151;
-                    padding:
-                        10px 16px;
-                    border-radius:
-                        9px;
-                    cursor:
-                        pointer;
-                    font-weight:
-                        600;
-                    transition:
-                        0.2s;
+                    border: 1px solid #d1d5db;
+                    background: white;
+                    color: #374151;
+                    padding: 10px 16px;
+                    border-radius: 9px;
+                    cursor: pointer;
+                    font-weight: 600;
+                    transition: 0.2s;
                 }
 
                 .header-btn:hover {
-                    transform:
-                        translateY(-1px);
+                    transform: translateY(-1px);
                     box-shadow:
                         0 3px 10px
                         rgba(
@@ -1111,81 +1428,126 @@ export default function QROrders() {
                         );
                 }
 
+                .header-btn:disabled {
+                    opacity: 0.55;
+                    cursor: not-allowed;
+                    transform: none;
+                }
+
                 .header-btn.blue {
-                    background:
-                        #2563eb;
-                    color:
-                        white;
-                    border-color:
-                        #2563eb;
+                    background: #2563eb;
+                    color: white;
+                    border-color: #2563eb;
                 }
 
                 .header-btn.dark {
-                    background:
-                        #111827;
-                    color:
-                        white;
-                    border-color:
-                        #111827;
+                    background: #111827;
+                    color: white;
+                    border-color: #111827;
                 }
 
 
-                /* =============================================
+                /* =========================================
+                   ERROR
+                ========================================= */
+
+                .error-box {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    flex-wrap: wrap;
+                    margin-bottom: 18px;
+                    padding: 14px 16px;
+                    background: #fef2f2;
+                    border: 1px solid #fecaca;
+                    border-radius: 10px;
+                    color: #991b1b;
+                }
+
+                .error-box strong {
+                    font-size: 13px;
+                }
+
+                .error-box span {
+                    flex: 1;
+                    font-size: 13px;
+                }
+
+                .error-box button {
+                    border: none;
+                    background: #991b1b;
+                    color: white;
+                    padding: 8px 12px;
+                    border-radius: 7px;
+                    cursor: pointer;
+                    font-weight: 600;
+                }
+
+
+                /* =========================================
                    FILTERS
-                ============================================= */
+                ========================================= */
 
                 .order-filters {
-                    display:
-                        flex;
-                    gap:
-                        8px;
-                    flex-wrap:
-                        wrap;
-                    margin-bottom:
-                        22px;
+                    display: flex;
+                    gap: 8px;
+                    flex-wrap: wrap;
+                    margin-bottom: 15px;
                 }
 
                 .filter {
-                    border:
-                        1px solid #d1d5db;
-                    background:
-                        white;
-                    color:
-                        #4b5563;
-                    padding:
-                        9px 15px;
-                    border-radius:
-                        8px;
-                    cursor:
-                        pointer;
-                    font-weight:
-                        600;
-                    transition:
-                        0.2s;
+                    border: 1px solid #d1d5db;
+                    background: white;
+                    color: #4b5563;
+                    padding: 9px 15px;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    font-weight: 600;
+                    transition: 0.2s;
                 }
 
                 .filter:hover {
-                    border-color:
-                        #2563eb;
+                    border-color: #2563eb;
                 }
 
                 .filter.active {
-                    background:
-                        #111827;
-                    color:
-                        white;
-                    border-color:
-                        #111827;
+                    background: #111827;
+                    color: white;
+                    border-color: #111827;
                 }
 
 
-                /* =============================================
-                   ORDERS LIST
-                ============================================= */
+                /* =========================================
+                   SUMMARY
+                ========================================= */
+
+                .order-summary {
+                    display: flex;
+                    align-items: center;
+                    gap: 7px;
+                    margin-bottom: 20px;
+                    color: #6b7280;
+                    font-size: 13px;
+                }
+
+                .order-summary strong {
+                    color: #111827;
+                    font-size: 18px;
+                }
+
+                .live-dot {
+                    margin-left: 8px;
+                    color: #16a34a;
+                    font-weight: 700;
+                }
+
+
+                /* =========================================
+                   ORDER LIST
+                ========================================= */
 
                 .orders-list {
-                    display:
-                        grid;
+                    display: grid;
                     grid-template-columns:
                         repeat(
                             2,
@@ -1194,19 +1556,19 @@ export default function QROrders() {
                                 1fr
                             )
                         );
-                    gap:
-                        18px;
+                    gap: 18px;
                 }
 
+
+                /* =========================================
+                   CARD
+                ========================================= */
+
                 .order-card {
-                    background:
-                        white;
-                    border:
-                        1px solid #e5e7eb;
-                    border-radius:
-                        15px;
-                    overflow:
-                        hidden;
+                    background: white;
+                    border: 1px solid #e5e7eb;
+                    border-radius: 15px;
+                    overflow: hidden;
                     box-shadow:
                         0 3px 12px
                         rgba(
@@ -1218,549 +1580,366 @@ export default function QROrders() {
                 }
 
 
-                /* =============================================
+                /* =========================================
                    ORDER HEADER
-                ============================================= */
+                ========================================= */
 
                 .order-card-header {
-                    display:
-                        flex;
-                    justify-content:
-                        space-between;
-                    align-items:
-                        flex-start;
-                    gap:
-                        15px;
-                    padding:
-                        18px;
-                    border-bottom:
-                        1px solid #eef0f4;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-start;
+                    gap: 15px;
+                    padding: 18px;
+                    border-bottom: 1px solid #eef0f4;
                 }
 
                 .order-card-header strong {
-                    display:
-                        block;
-                    font-size:
-                        18px;
-                    margin-bottom:
-                        4px;
+                    display: block;
+                    font-size: 18px;
+                    margin-bottom: 4px;
                 }
 
                 .order-card-header span {
-                    display:
-                        block;
-                    color:
-                        #6b7280;
-                    font-size:
-                        12px;
+                    display: block;
+                    color: #6b7280;
+                    font-size: 12px;
                 }
 
                 .order-card-header small {
-                    display:
-                        block;
-                    color:
-                        #9ca3af;
-                    font-size:
-                        11px;
-                    margin-top:
-                        5px;
+                    display: block;
+                    color: #9ca3af;
+                    font-size: 11px;
+                    margin-top: 5px;
                 }
 
 
-                /* =============================================
+                /* =========================================
                    STATUS
-                ============================================= */
+                ========================================= */
 
                 .order-status {
-                    padding:
-                        7px 11px !important;
-                    border-radius:
-                        20px;
-                    font-size:
-                        11px !important;
-                    font-weight:
-                        700;
-                    text-transform:
-                        uppercase;
-                    white-space:
-                        nowrap;
+                    padding: 7px 11px !important;
+                    border-radius: 20px;
+                    font-size: 11px !important;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    white-space: nowrap;
                 }
 
                 .order-status.new {
-                    background:
-                        #fff7ed;
-                    color:
-                        #c2410c;
+                    background: #fff7ed;
+                    color: #c2410c;
                 }
 
                 .order-status.accepted {
-                    background:
-                        #eff6ff;
-                    color:
-                        #1d4ed8;
+                    background: #eff6ff;
+                    color: #1d4ed8;
                 }
 
                 .order-status.processing {
-                    background:
-                        #f5f3ff;
-                    color:
-                        #6d28d9;
+                    background: #f5f3ff;
+                    color: #6d28d9;
                 }
 
                 .order-status.ready {
-                    background:
-                        #ecfdf5;
-                    color:
-                        #047857;
+                    background: #ecfdf5;
+                    color: #047857;
                 }
 
                 .order-status.completed {
-                    background:
-                        #dcfce7;
-                    color:
-                        #15803d;
+                    background: #dcfce7;
+                    color: #15803d;
                 }
 
                 .order-status.rejected {
-                    background:
-                        #fee2e2;
-                    color:
-                        #b91c1c;
+                    background: #fee2e2;
+                    color: #b91c1c;
                 }
 
                 .order-status.cancelled {
-                    background:
-                        #f3f4f6;
-                    color:
-                        #6b7280;
+                    background: #f3f4f6;
+                    color: #6b7280;
                 }
 
 
-                /* =============================================
+                /* =========================================
                    CUSTOMER
-                ============================================= */
+                ========================================= */
 
                 .customer-info {
-                    display:
-                        flex;
-                    align-items:
-                        center;
-                    gap:
-                        12px;
-                    padding:
-                        15px 18px;
-                    background:
-                        #fafbfc;
-                    border-bottom:
-                        1px solid #eef0f4;
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 15px 18px;
+                    background: #fafbfc;
+                    border-bottom: 1px solid #eef0f4;
                 }
 
                 .customer-icon {
-                    width:
-                        40px;
-                    height:
-                        40px;
-                    display:
-                        flex;
-                    align-items:
-                        center;
-                    justify-content:
-                        center;
-                    border-radius:
-                        50%;
-                    background:
-                        #e0edff;
-                    font-size:
-                        18px;
+                    width: 40px;
+                    height: 40px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 50%;
+                    background: #e0edff;
+                    font-size: 18px;
                 }
 
                 .customer-info strong {
-                    display:
-                        block;
-                    font-size:
-                        14px;
+                    display: block;
+                    font-size: 14px;
                 }
 
                 .customer-info span {
-                    display:
-                        block;
-                    margin-top:
-                        4px;
-                    color:
-                        #6b7280;
-                    font-size:
-                        12px;
+                    display: block;
+                    margin-top: 4px;
+                    color: #6b7280;
+                    font-size: 12px;
                 }
 
 
-                /* =============================================
+                /* =========================================
                    PAYMENT
-                ============================================= */
+                ========================================= */
 
                 .payment-status-row {
-                    display:
-                        flex;
-                    justify-content:
-                        space-between;
-                    align-items:
-                        center;
-                    padding:
-                        12px 18px;
-                    border-bottom:
-                        1px solid #eef0f4;
-                    font-size:
-                        13px;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 12px 18px;
+                    border-bottom: 1px solid #eef0f4;
+                    font-size: 13px;
                 }
 
                 .payment-paid {
-                    background:
-                        #dcfce7;
-                    color:
-                        #166534;
-                    padding:
-                        5px 10px;
-                    border-radius:
-                        15px;
-                    font-size:
-                        11px;
+                    background: #dcfce7;
+                    color: #166534;
+                    padding: 5px 10px;
+                    border-radius: 15px;
+                    font-size: 11px;
                 }
 
                 .payment-pending {
-                    background:
-                        #fef3c7;
-                    color:
-                        #92400e;
-                    padding:
-                        5px 10px;
-                    border-radius:
-                        15px;
-                    font-size:
-                        11px;
+                    background: #fef3c7;
+                    color: #92400e;
+                    padding: 5px 10px;
+                    border-radius: 15px;
+                    font-size: 11px;
                 }
 
                 .payment-failed {
-                    background:
-                        #fee2e2;
-                    color:
-                        #991b1b;
-                    padding:
-                        5px 10px;
-                    border-radius:
-                        15px;
-                    font-size:
-                        11px;
+                    background: #fee2e2;
+                    color: #991b1b;
+                    padding: 5px 10px;
+                    border-radius: 15px;
+                    font-size: 11px;
                 }
 
 
-                /* =============================================
+                /* =========================================
                    ITEMS
-                ============================================= */
+                ========================================= */
 
                 .order-items {
-                    padding:
-                        17px 18px;
+                    padding: 17px 18px;
                 }
 
                 .order-items h3 {
-                    margin:
-                        0 0 12px;
-                    font-size:
-                        14px;
+                    margin: 0 0 12px;
+                    font-size: 14px;
                 }
 
                 .order-item {
-                    display:
-                        flex;
-                    justify-content:
-                        space-between;
-                    align-items:
-                        center;
-                    gap:
-                        15px;
-                    padding:
-                        10px 0;
-                    border-bottom:
-                        1px dashed #e5e7eb;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    gap: 15px;
+                    padding: 10px 0;
+                    border-bottom: 1px dashed #e5e7eb;
                 }
 
                 .order-item:last-child {
-                    border-bottom:
-                        none;
+                    border-bottom: none;
                 }
 
                 .order-item strong {
-                    font-size:
-                        13px;
+                    font-size: 13px;
                 }
 
                 .order-item span {
-                    display:
-                        block;
-                    color:
-                        #6b7280;
-                    font-size:
-                        11px;
-                    margin-top:
-                        4px;
+                    display: block;
+                    color: #6b7280;
+                    font-size: 11px;
+                    margin-top: 4px;
                 }
 
                 .no-items {
-                    color:
-                        #9ca3af;
-                    font-size:
-                        13px;
+                    color: #9ca3af;
+                    font-size: 13px;
                 }
 
 
-                /* =============================================
+                /* =========================================
                    TOTAL
-                ============================================= */
+                ========================================= */
 
                 .order-total {
-                    padding:
-                        15px 18px;
-                    background:
-                        #fafbfc;
-                    border-top:
-                        1px solid #eef0f4;
+                    padding: 15px 18px;
+                    background: #fafbfc;
+                    border-top: 1px solid #eef0f4;
                 }
 
                 .order-total > div {
-                    display:
-                        flex;
-                    justify-content:
-                        space-between;
-                    padding:
-                        5px 0;
-                    font-size:
-                        13px;
+                    display: flex;
+                    justify-content: space-between;
+                    padding: 5px 0;
+                    font-size: 13px;
                 }
 
                 .grand-total {
-                    border-top:
-                        1px solid #dfe3e8;
-                    margin-top:
-                        8px;
-                    padding-top:
-                        12px !important;
-                    font-size:
-                        17px !important;
+                    border-top: 1px solid #dfe3e8;
+                    margin-top: 8px;
+                    padding-top: 12px !important;
+                    font-size: 17px !important;
                 }
 
 
-                /* =============================================
+                /* =========================================
                    NOTES
-                ============================================= */
+                ========================================= */
 
                 .order-notes {
-                    margin:
-                        0 18px;
-                    padding:
-                        10px 12px;
-                    background:
-                        #fffbeb;
-                    border:
-                        1px solid #fde68a;
-                    border-radius:
-                        8px;
-                    display:
-                        flex;
-                    gap:
-                        8px;
-                    font-size:
-                        12px;
+                    margin: 0 18px;
+                    padding: 10px 12px;
+                    background: #fffbeb;
+                    border: 1px solid #fde68a;
+                    border-radius: 8px;
+                    display: flex;
+                    gap: 8px;
+                    font-size: 12px;
                 }
 
                 .order-notes span {
-                    color:
-                        #6b7280;
+                    color: #6b7280;
                 }
 
 
-                /* =============================================
+                /* =========================================
                    ACTIONS
-                ============================================= */
+                ========================================= */
 
                 .order-actions {
-                    display:
-                        flex;
-                    gap:
-                        8px;
-                    flex-wrap:
-                        wrap;
-                    align-items:
-                        center;
-                    padding:
-                        15px 18px 18px;
+                    display: flex;
+                    gap: 8px;
+                    flex-wrap: wrap;
+                    align-items: center;
+                    padding: 15px 18px 18px;
                 }
 
                 .order-actions button {
-                    border:
-                        none;
-                    border-radius:
-                        8px;
-                    padding:
-                        10px 14px;
-                    cursor:
-                        pointer;
-                    font-size:
-                        12px;
-                    font-weight:
-                        700;
-                    transition:
-                        0.2s;
+                    border: none;
+                    border-radius: 8px;
+                    padding: 10px 14px;
+                    cursor: pointer;
+                    font-size: 12px;
+                    font-weight: 700;
+                    transition: 0.2s;
                 }
 
                 .order-actions button:hover {
-                    transform:
-                        translateY(-1px);
+                    transform: translateY(-1px);
                 }
 
                 .order-actions button:disabled {
-                    opacity:
-                        0.55;
-                    cursor:
-                        not-allowed;
-                    transform:
-                        none;
+                    opacity: 0.55;
+                    cursor: not-allowed;
+                    transform: none;
                 }
 
                 .reject-btn {
-                    background:
-                        #fee2e2;
-                    color:
-                        #b91c1c;
+                    background: #fee2e2;
+                    color: #b91c1c;
                 }
 
                 .accept-btn {
-                    background:
-                        #16a34a;
-                    color:
-                        white;
+                    background: #16a34a;
+                    color: white;
                 }
 
                 .payment-btn {
-                    background:
-                        #2563eb;
-                    color:
-                        white;
+                    background: #2563eb;
+                    color: white;
                 }
 
                 .primary-btn {
-                    background:
-                        #7c3aed;
-                    color:
-                        white;
+                    background: #7c3aed;
+                    color: white;
+                }
+
+                .paid-badge,
+                .completed-badge,
+                .rejected-badge,
+                .cancelled-badge {
+                    padding: 7px 10px;
+                    border-radius: 7px;
+                    font-size: 11px;
+                    font-weight: 700;
                 }
 
                 .paid-badge {
-                    background:
-                        #dcfce7;
-                    color:
-                        #166534;
-                    padding:
-                        7px 10px;
-                    border-radius:
-                        7px;
-                    font-size:
-                        11px;
-                    font-weight:
-                        700;
+                    background: #dcfce7;
+                    color: #166534;
                 }
 
                 .completed-badge {
-                    background:
-                        #dcfce7;
-                    color:
-                        #15803d;
-                    padding:
-                        7px 10px;
-                    border-radius:
-                        7px;
-                    font-size:
-                        11px;
-                    font-weight:
-                        700;
+                    background: #dcfce7;
+                    color: #15803d;
                 }
 
                 .rejected-badge {
-                    background:
-                        #fee2e2;
-                    color:
-                        #b91c1c;
-                    padding:
-                        7px 10px;
-                    border-radius:
-                        7px;
-                    font-size:
-                        11px;
-                    font-weight:
-                        700;
+                    background: #fee2e2;
+                    color: #b91c1c;
                 }
 
                 .cancelled-badge {
-                    background:
-                        #f3f4f6;
-                    color:
-                        #6b7280;
-                    padding:
-                        7px 10px;
-                    border-radius:
-                        7px;
-                    font-size:
-                        11px;
-                    font-weight:
-                        700;
+                    background: #f3f4f6;
+                    color: #6b7280;
                 }
 
 
-                /* =============================================
-                   EMPTY / LOADING
-                ============================================= */
+                /* =========================================
+                   LOADING / EMPTY
+                ========================================= */
 
                 .qr-loading-page,
                 .empty-orders {
-                    min-height:
-                        400px;
-                    background:
-                        white;
-                    border:
-                        1px solid #e5e7eb;
-                    border-radius:
-                        15px;
-                    display:
-                        flex;
-                    flex-direction:
-                        column;
-                    justify-content:
-                        center;
-                    align-items:
-                        center;
-                    text-align:
-                        center;
-                    padding:
-                        40px;
-                    margin:
-                        20px;
+                    min-height: 400px;
+                    background: white;
+                    border: 1px solid #e5e7eb;
+                    border-radius: 15px;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    align-items: center;
+                    text-align: center;
+                    padding: 40px;
+                    margin: 20px 0;
                 }
 
                 .qr-loading-page h2,
                 .empty-orders h2 {
-                    margin:
-                        10px 0 7px;
+                    margin: 10px 0 7px;
                 }
 
                 .qr-loading-page p,
                 .empty-orders p {
-                    color:
-                        #6b7280;
-                    margin:
-                        0 0 20px;
+                    color: #6b7280;
+                    margin: 0 0 20px;
                 }
 
                 .loading-spinner {
-                    font-size:
-                        40px;
+                    font-size: 40px;
                     animation:
                         spin 1s linear infinite;
                 }
@@ -1780,31 +1959,23 @@ export default function QROrders() {
                 }
 
                 .empty-icon {
-                    font-size:
-                        50px;
+                    font-size: 50px;
                 }
 
                 .empty-btn {
-                    border:
-                        none;
-                    background:
-                        #111827;
-                    color:
-                        white;
-                    padding:
-                        10px 18px;
-                    border-radius:
-                        8px;
-                    cursor:
-                        pointer;
-                    font-weight:
-                        600;
+                    border: none;
+                    background: #111827;
+                    color: white;
+                    padding: 10px 18px;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    font-weight: 600;
                 }
 
 
-                /* =============================================
+                /* =========================================
                    RESPONSIVE
-                ============================================= */
+                ========================================= */
 
                 @media (
                     max-width: 1000px
@@ -1823,8 +1994,7 @@ export default function QROrders() {
                 ) {
 
                     .qr-orders-page {
-                        padding:
-                            14px;
+                        padding: 14px;
                     }
 
                     .orders-header {
@@ -1833,13 +2003,11 @@ export default function QROrders() {
                     }
 
                     .header-actions {
-                        width:
-                            100%;
+                        width: 100%;
                     }
 
                     .header-btn {
-                        flex:
-                            1;
+                        flex: 1;
                     }
 
                     .order-card-header {
@@ -1860,13 +2028,12 @@ export default function QROrders() {
                     }
 
                     .header-btn {
-                        width:
-                            100%;
+                        width: 100%;
                     }
 
                     .order-filters {
-                        display:
-                            grid;
+                        display: grid;
+
                         grid-template-columns:
                             repeat(
                                 2,
@@ -1875,20 +2042,24 @@ export default function QROrders() {
                     }
 
                     .filter {
-                        width:
-                            100%;
+                        width: 100%;
                     }
 
                     .order-actions {
                         flex-direction:
                             column;
+
                         align-items:
                             stretch;
                     }
 
                     .order-actions button {
-                        width:
-                            100%;
+                        width: 100%;
+                    }
+
+                    .order-notes {
+                        flex-direction:
+                            column;
                     }
 
                 }
