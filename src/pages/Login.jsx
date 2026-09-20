@@ -32,15 +32,52 @@ const CONFIG = {
 const LAST_EMAIL_KEY = "financepro_last_email";
 
 /* ==========================================================================
-   Features — the five chips. Each one drives the live preview on the left.
-   Sample data only (clearly labelled in the UI).
+   Features — the five chips. Each one drives the preview on the left.
+   Describes what the product does. No sample transactions or invented numbers.
+   `line` is the short version (shown on small screens where the preview is hidden).
+   Give a feature `tags` (capability chips) or `flow` (an ordered sequence).
    ========================================================================== */
 const FEATURES = [
-    { id: "billing", label: "Billing", line: "Bill in seconds. Get paid faster." },
-    { id: "qr", label: "QR Orders", line: "Customers scan and order. You just serve." },
-    { id: "inventory", label: "Inventory", line: "Know what is running low before it runs out." },
-    { id: "expenses", label: "Expenses", line: "See exactly where every rupee went." },
-    { id: "ai", label: "AI", line: "Ask your business a question. Get an answer." },
+    {
+        id: "billing",
+        label: "Billing",
+        line: "Create professional bills and keep every sale organized.",
+        headline: "Simple billing. Organized sales.",
+        text: "Create bills, record payments and keep your sales history in one place.",
+        tags: ["Fast billing", "Payment tracking", "Digital bills"],
+    },
+    {
+        id: "qr",
+        label: "QR Ordering",
+        line: "Let customers scan, choose products and place orders from their phone.",
+        headline: "Let customers order from their phones.",
+        text: "Customers scan your QR, browse your products, add items to their cart and place an order.",
+        flow: ["Scan QR", "Select", "Order", "Owner accepts"],
+    },
+    {
+        id: "inventory",
+        label: "Inventory",
+        line: "Track stock automatically and know what needs to be reordered.",
+        headline: "Know your stock at a glance.",
+        text: "Track products, quantities and low-stock items so you can manage inventory before you run out.",
+        tags: ["Products", "Stock levels", "Low-stock alerts"],
+    },
+    {
+        id: "expenses",
+        label: "Expenses",
+        line: "Record business expenses and see where your money is going.",
+        headline: "Know where your money goes.",
+        text: "Record purchases and business expenses in one place and understand your spending.",
+        tags: ["Purchases", "Expenses", "Reports"],
+    },
+    {
+        id: "ai",
+        label: "AI Business",
+        line: "Turn your business data into clear answers and useful insights.",
+        headline: "Ask your business. Get clear answers.",
+        text: "Let AI analyze your sales, expenses, inventory and business activity to help you understand what's happening.",
+        tags: ["Sales insights", "Expense analysis", "Business questions"],
+    },
 ];
 
 /* ==========================================================================
@@ -72,7 +109,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 function useIsNarrow(breakpoint = 900) {
     const [isNarrow, setIsNarrow] = useState(
-        typeof window !== "undefined" ? window.innerWidth < breakpoint : false
+        typeof window !== "undefined" ? window.innerWidth < breakpoint : false,
     );
     useEffect(() => {
         const onResize = () => setIsNarrow(window.innerWidth < breakpoint);
@@ -88,143 +125,6 @@ function getGreeting() {
     if (h < 17) return "Good afternoon";
     return "Good evening";
 }
-
-/* ==========================================================================
-   Feature previews (sample data, decorative)
-   ========================================================================== */
-function BillingPreview() {
-    const rows = [
-        ["Masala dosa × 2", "₹160"],
-        ["Filter coffee × 2", "₹80"],
-        ["GST 5%", "₹12"],
-    ];
-    return (
-        <>
-            {rows.map(([a, b]) => (
-                <div style={styles.pvRow} key={a}>
-                    <span>{a}</span>
-                    <span style={styles.pvDots} />
-                    <span style={styles.pvAmt}>{b}</span>
-                </div>
-            ))}
-            <div style={{ ...styles.pvRow, ...styles.pvTotal }}>
-                <span>Total</span>
-                <span style={styles.pvDots} />
-                <span style={styles.pvAmt}>₹252</span>
-            </div>
-            <div style={styles.pvBadgeRow}>
-                <span style={{ ...styles.pvBadge, ...styles.pvBadgeGreen }}>Paid via UPI</span>
-                <span style={styles.pvHint}>Bill sent on WhatsApp</span>
-            </div>
-        </>
-    );
-}
-
-function QrPreview() {
-    const orders = [
-        ["Table 4", "3 items", "₹380", "New", "gold"],
-        ["Table 1", "2 items", "₹160", "Preparing", "plain"],
-        ["Table 7", "4 items", "₹520", "Ready", "green"],
-    ];
-    return (
-        <>
-            {orders.map(([t, n, amt, status, tone]) => (
-                <div style={styles.pvRow} key={t}>
-                    <span style={styles.pvStrong}>{t}</span>
-                    <span style={styles.pvMuted}>{n}</span>
-                    <span style={styles.pvDots} />
-                    <span style={styles.pvAmt}>{amt}</span>
-                    <span
-                        style={{
-                            ...styles.pvBadge,
-                            ...(tone === "green" ? styles.pvBadgeGreen : {}),
-                            ...(tone === "gold" ? styles.pvBadgeGold : {}),
-                        }}
-                    >
-                        {status}
-                    </span>
-                </div>
-            ))}
-            <div style={styles.pvHint}>Orders arrive here the moment a customer scans.</div>
-        </>
-    );
-}
-
-function InventoryPreview() {
-    const items = [
-        ["Basmati rice", "5 kg left", 12, true],
-        ["Tea powder", "3 kg left", 9, true],
-        ["Sugar", "24 kg", 70, false],
-    ];
-    return (
-        <>
-            {items.map(([name, qty, pct, low]) => (
-                <div style={styles.pvBarBlock} key={name}>
-                    <div style={styles.pvRow}>
-                        <span>{name}</span>
-                        <span style={styles.pvDots} />
-                        <span style={{ ...styles.pvAmt, color: low ? "#E39A8A" : "#F1E9D6" }}>{qty}</span>
-                    </div>
-                    <div style={styles.pvTrack}>
-                        <div
-                            className="fp-bar"
-                            style={{
-                                ...styles.pvFill,
-                                width: `${pct}%`,
-                                background: low ? "#A64B3C" : "#1F6F54",
-                            }}
-                        />
-                    </div>
-                </div>
-            ))}
-            <div style={styles.pvHint}>2 items need reordering this week.</div>
-        </>
-    );
-}
-
-function ExpensesPreview() {
-    const cats = [
-        ["Rent", "₹42,000", 100],
-        ["Stock", "₹18,500", 44],
-        ["Vendors", "₹9,200", 22],
-    ];
-    return (
-        <>
-            {cats.map(([name, amt, pct]) => (
-                <div style={styles.pvBarBlock} key={name}>
-                    <div style={styles.pvRow}>
-                        <span>{name}</span>
-                        <span style={styles.pvDots} />
-                        <span style={styles.pvAmt}>{amt}</span>
-                    </div>
-                    <div style={styles.pvTrack}>
-                        <div className="fp-bar" style={{ ...styles.pvFill, width: `${pct}%`, background: "#C9A227" }} />
-                    </div>
-                </div>
-            ))}
-            <div style={styles.pvHint}>Scan a receipt and it files itself.</div>
-        </>
-    );
-}
-
-function AiPreview() {
-    return (
-        <>
-            <div style={styles.pvBubbleUser}>Which item earned me the most last week?</div>
-            <div style={styles.pvBubbleAi}>
-                Filter coffee — ₹6,240 across 312 cups. Want me to draft a restock order?
-            </div>
-        </>
-    );
-}
-
-const PREVIEWS = {
-    billing: BillingPreview,
-    qr: QrPreview,
-    inventory: InventoryPreview,
-    expenses: ExpensesPreview,
-    ai: AiPreview,
-};
 
 /* ==========================================================================
    Component
@@ -294,9 +194,15 @@ export default function Login() {
     };
 
     const forgetReturning = () => {
-        ["userId", "userName", "userEmail", "businessId", "businessName", "businessType", LAST_EMAIL_KEY].forEach(
-            safeRemove
-        );
+        [
+            "userId",
+            "userName",
+            "userEmail",
+            "businessId",
+            "businessName",
+            "businessType",
+            LAST_EMAIL_KEY,
+        ].forEach(safeRemove);
         setReturning({ name: "", business: "" });
         setFormData({ email: "", password: "" });
         setTimeout(() => emailRef.current?.focus(), 0);
@@ -375,20 +281,20 @@ export default function Login() {
                 const idToken = await result.user.getIdToken();
                 return API.post("/auth/google", { idToken });
             },
-            "Google sign-in failed. Please try again."
+            "Google sign-in failed. Please try again.",
         );
 
     const handleDemo = () =>
         runAuth(
             "demo",
             () => API.post("/auth/login", { email: CONFIG.demo.email, password: CONFIG.demo.password }),
-            "The demo is unavailable right now. Please try again."
+            "The demo is unavailable right now. Please try again.",
         );
 
     /* ---------- derived ---------- */
 
     const emailInvalid = emailTouched && formData.email.length > 0 && !EMAIL_RE.test(formData.email);
-    const Preview = PREVIEWS[FEATURES[active].id];
+    const current = FEATURES[active];
     const greeting = getGreeting();
     const title = returning.name ? `${greeting}, ${returning.name}` : greeting;
     const subtitle = returning.business
@@ -451,18 +357,54 @@ export default function Login() {
                         ))}
                     </div>
 
-                    {!isCompact && (
+                    {isCompact ? (
+                        <p style={styles.compactLine}>{current.line}</p>
+                    ) : (
                         <div
+                            role="tabpanel"
+                            aria-label={current.label}
                             style={styles.previewWrap}
                             onMouseEnter={() => setPaused(true)}
                             onMouseLeave={() => setPaused(false)}
                         >
-                            <div style={styles.previewCaption}>
-                                <span>{FEATURES[active].line}</span>
-                                <span style={styles.previewSample}>Sample</span>
-                            </div>
-                            <div key={FEATURES[active].id} className="fp-preview-enter" style={styles.previewBody}>
-                                <Preview />
+                            <div key={current.id} className="fp-preview-enter" style={styles.previewBody}>
+                                <h3 style={styles.previewHeadline}>{current.headline}</h3>
+                                <p style={styles.previewText}>{current.text}</p>
+
+                                {current.tags && (
+                                    <div style={styles.tagRow}>
+                                        {current.tags.map((t) => (
+                                            <span key={t} style={styles.tag}>
+                                                {t}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {current.flow && (
+                                    <ol style={styles.flowRow} aria-label="How ordering works">
+                                        {current.flow.map((step, i) => (
+                                            <li
+                                                key={step}
+                                                className="fp-flow-step"
+                                                style={{
+                                                    ...styles.flowStep,
+                                                    ...(i === current.flow.length - 1
+                                                        ? styles.flowStepFinal
+                                                        : {}),
+                                                    animationDelay: `${i * 120}ms`,
+                                                }}
+                                            >
+                                                {step}
+                                                {i < current.flow.length - 1 && (
+                                                    <span style={styles.flowArrow} aria-hidden="true">
+                                                        →
+                                                    </span>
+                                                )}
+                                            </li>
+                                        ))}
+                                    </ol>
+                                )}
                             </div>
                         </div>
                     )}
@@ -503,7 +445,12 @@ export default function Login() {
                         <h2 style={styles.cardTitle}>{title}</h2>
                         <p style={styles.cardSubtitle}>{subtitle}</p>
                         {returning.name && (
-                            <button type="button" className="ledger-link" style={styles.notYou} onClick={forgetReturning}>
+                            <button
+                                type="button"
+                                className="ledger-link"
+                                style={styles.notYou}
+                                onClick={forgetReturning}
+                            >
                                 Not {returning.name}? Use a different account
                             </button>
                         )}
@@ -533,7 +480,9 @@ export default function Login() {
                                 }}
                             />
                             {emailInvalid && (
-                                <span style={styles.fieldHint}>That email looks incomplete. Try name@business.in</span>
+                                <span style={styles.fieldHint}>
+                                    That email looks incomplete. Try name@business.in
+                                </span>
                             )}
                         </div>
 
@@ -633,10 +582,22 @@ export default function Login() {
                             ) : (
                                 <>
                                     <svg style={styles.socialIcon} viewBox="0 0 24 24" aria-hidden="true">
-                                        <path fill="#EA4335" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
-                                        <path fill="#4285F4" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                                        <path fill="#34A853" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                                        <path
+                                            fill="#EA4335"
+                                            d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
+                                        />
+                                        <path
+                                            fill="#4285F4"
+                                            d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                                        />
+                                        <path
+                                            fill="#FBBC05"
+                                            d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                                        />
+                                        <path
+                                            fill="#34A853"
+                                            d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                                        />
                                     </svg>
                                     Continue with Google
                                 </>
@@ -687,10 +648,6 @@ const FONT_AND_MOTION_CSS = `
         from { opacity: 0; transform: translateY(6px); }
         to { opacity: 1; transform: translateY(0); }
     }
-    @keyframes fpGrow {
-        from { transform: scaleX(0); }
-        to { transform: scaleX(1); }
-    }
     @keyframes fpShake {
         0%, 100% { transform: translateX(0); }
         20% { transform: translateX(-5px); }
@@ -701,11 +658,11 @@ const FONT_AND_MOTION_CSS = `
 
     .ledger-card-enter { animation: ledgerCardIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
     .fp-preview-enter { animation: fpPreviewIn 0.35s ease both; }
-    .fp-bar { transform-origin: left center; animation: fpGrow 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
     .fp-shake { animation: fpShake 0.4s ease both; }
+    .fp-flow-step { animation: fpPreviewIn 0.4s ease both; }
 
     @media (prefers-reduced-motion: reduce) {
-        .ledger-card-enter, .fp-preview-enter, .fp-bar, .fp-shake { animation: none; }
+        .ledger-card-enter, .fp-preview-enter, .fp-flow-step, .fp-shake { animation: none; }
     }
 
     .ledger-input:hover { border-color: #b9ab84; }
@@ -757,8 +714,7 @@ const styles = {
         justifyContent: "space-between",
         gap: "32px",
         padding: "56px 56px 48px",
-        background:
-            "radial-gradient(circle at 20% 15%, rgba(201,162,39,0.08) 0%, transparent 45%), #101C2C",
+        background: "radial-gradient(circle at 20% 15%, rgba(201,162,39,0.08) 0%, transparent 45%), #101C2C",
         boxSizing: "border-box",
         position: "relative",
     },
@@ -831,89 +787,73 @@ const styles = {
         borderTop: "1px solid rgba(241,233,214,0.15)",
         paddingTop: "16px",
     },
-    previewCaption: {
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "baseline",
-        gap: "12px",
-        fontFamily: "'Fraunces', serif",
-        fontStyle: "italic",
-        fontSize: "16px",
-        color: "rgba(241,233,214,0.85)",
-        marginBottom: "14px",
-    },
-    previewSample: {
-        fontFamily: "'IBM Plex Mono', monospace",
-        fontStyle: "normal",
-        fontSize: "10px",
-        letterSpacing: "1.5px",
-        textTransform: "uppercase",
-        color: "rgba(241,233,214,0.35)",
-        flexShrink: 0,
-    },
     previewBody: {
         borderLeft: "2px solid #A64B3C",
-        paddingLeft: "16px",
+        paddingLeft: "18px",
         display: "flex",
         flexDirection: "column",
-        gap: "10px",
-        minHeight: "168px",
+        gap: "12px",
+        minHeight: "170px",
+    },
+    previewHeadline: {
+        fontFamily: "'Fraunces', serif",
+        fontStyle: "italic",
+        fontWeight: 500,
+        fontSize: "22px",
+        lineHeight: 1.25,
+        color: "#F1E9D6",
+        margin: 0,
+    },
+    previewText: {
+        fontSize: "14.5px",
+        lineHeight: 1.6,
+        color: "rgba(241,233,214,0.72)",
+        margin: 0,
+        maxWidth: "420px",
+    },
+    tagRow: {
+        display: "flex",
+        flexWrap: "wrap",
+        gap: "8px",
+        marginTop: "2px",
+    },
+    tag: {
+        padding: "5px 10px",
+        border: "1px solid rgba(241,233,214,0.22)",
+        borderRadius: "4px",
         fontFamily: "'IBM Plex Mono', monospace",
-        fontSize: "12.5px",
+        fontSize: "11.5px",
         color: "rgba(241,233,214,0.8)",
     },
-    pvRow: {
+    flowRow: {
+        listStyle: "none",
+        margin: "2px 0 0",
+        padding: 0,
         display: "flex",
-        alignItems: "baseline",
+        flexWrap: "wrap",
+        alignItems: "center",
+        gap: "8px 10px",
+    },
+    flowStep: {
+        display: "inline-flex",
+        alignItems: "center",
         gap: "10px",
+        fontFamily: "'IBM Plex Mono', monospace",
+        fontSize: "12px",
+        color: "rgba(241,233,214,0.85)",
     },
-    pvDots: {
-        flex: 1,
-        borderBottom: "1px dotted rgba(241,233,214,0.25)",
-        transform: "translateY(-3px)",
-    },
-    pvAmt: { color: "#F1E9D6", flexShrink: 0 },
-    pvStrong: { color: "#F1E9D6", flexShrink: 0 },
-    pvMuted: { color: "rgba(241,233,214,0.4)", flexShrink: 0 },
-    pvTotal: {
-        marginTop: "4px",
-        paddingTop: "10px",
-        borderTop: "1px solid rgba(241,233,214,0.2)",
-        color: "#F1E9D6",
+    flowStepFinal: {
+        color: "#C9A227",
         fontWeight: 500,
     },
-    pvBadgeRow: { display: "flex", alignItems: "center", gap: "10px", marginTop: "2px" },
-    pvBadge: {
-        padding: "2px 8px",
-        border: "1px solid rgba(241,233,214,0.25)",
-        borderRadius: "3px",
-        fontSize: "10.5px",
-        color: "rgba(241,233,214,0.75)",
-        flexShrink: 0,
+    flowArrow: {
+        color: "rgba(241,233,214,0.35)",
     },
-    pvBadgeGreen: { borderColor: "#2E9A76", color: "#6FD0AC" },
-    pvBadgeGold: { borderColor: "#C9A227", color: "#C9A227" },
-    pvHint: { fontSize: "11.5px", color: "rgba(241,233,214,0.45)" },
-    pvBarBlock: { display: "flex", flexDirection: "column", gap: "6px" },
-    pvTrack: { height: "4px", background: "rgba(241,233,214,0.1)", borderRadius: "2px", overflow: "hidden" },
-    pvFill: { height: "100%", borderRadius: "2px" },
-    pvBubbleUser: {
-        alignSelf: "flex-end",
-        maxWidth: "85%",
-        padding: "9px 12px",
-        background: "rgba(241,233,214,0.1)",
-        borderRadius: "10px 10px 2px 10px",
-        color: "#F1E9D6",
-    },
-    pvBubbleAi: {
-        alignSelf: "flex-start",
-        maxWidth: "90%",
-        padding: "9px 12px",
-        background: "rgba(31,111,84,0.35)",
-        border: "1px solid rgba(46,154,118,0.5)",
-        borderRadius: "10px 10px 10px 2px",
-        color: "#F1E9D6",
+    compactLine: {
+        margin: 0,
+        fontSize: "14px",
         lineHeight: 1.5,
+        color: "rgba(241,233,214,0.72)",
     },
 
     // Left footer
