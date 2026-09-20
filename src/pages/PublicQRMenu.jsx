@@ -1,757 +1,440 @@
-import React, {
-    useEffect,
-    useMemo,
-    useState
-} from "react";
-
-import {
-    useParams
-} from "react-router-dom";
-
+import React, { useEffect, useMemo, useState } from "react";
+import { useParams } from "react-router-dom";
 import {
     getPublicQRMenu,
     createQROrder
 } from "../services/qrOrderApi";
 
+/*
+ * PUBLIC BUSINESS QR ORDERING
+ *
+ * Flow:
+ * Scan QR -> View business products -> Add to cart ->
+ * Place order -> Owner receives order -> Owner accepts ->
+ * Customer pays directly to owner.
+ *
+ * No table selection is used.
+ * Customer only receives customer-facing product information.
+ */
 
 export default function PublicQRMenu() {
+    const { token } = useParams();
 
-    const { token } =
-        useParams();
+    const [business, setBusiness] = useState(null);
+    const [products, setProducts] = useState([]);
 
+    const [search, setSearch] = useState("");
+    const [category, setCategory] = useState("All");
 
-    // =========================================================
-    // DATA
-    // =========================================================
+    const [cart, setCart] = useState([]);
+    const [showCart, setShowCart] = useState(false);
 
-    const [business, setBusiness] =
-        useState(null);
+    const [customerName, setCustomerName] = useState("");
+    const [customerPhone, setCustomerPhone] = useState("");
+    const [notes, setNotes] = useState("");
 
-    const [products, setProducts] =
-        useState([]);
+    const [loading, setLoading] = useState(true);
+    const [placing, setPlacing] = useState(false);
+    const [error, setError] = useState("");
+    const [successOrder, setSuccessOrder] = useState(null);
 
-
-    // =========================================================
-    // CART
-    // =========================================================
-
-    const [cart, setCart] =
-        useState([]);
-
-
-    // =========================================================
-    // SEARCH / CATEGORY
-    // =========================================================
-
-    const [search, setSearch] =
-        useState("");
-
-    const [category, setCategory] =
-        useState("All");
-
-
-    // =========================================================
-    // CUSTOMER
-    // =========================================================
-
-    const [customerName, setCustomerName] =
-        useState("");
-
-    const [customerPhone, setCustomerPhone] =
-        useState("");
-
-    const [notes, setNotes] =
-        useState("");
-
-
-    // =========================================================
-    // UI
-    // =========================================================
-
-    const [loading, setLoading] =
-        useState(true);
-
-    const [placing, setPlacing] =
-        useState(false);
-
-    const [successOrder, setSuccessOrder] =
-        useState(null);
-
-
-    // =========================================================
-    // LOAD BUSINESS MENU
-    // =========================================================
+    // ------------------------------------------------------------
+    // LOAD BUSINESS + PRODUCTS
+    // ------------------------------------------------------------
 
     useEffect(() => {
+        let mounted = true;
 
         const loadMenu = async () => {
-
             try {
-
                 setLoading(true);
+                setError("");
 
+                const response = await getPublicQRMenu(token);
+                const payload = response?.data || response || {};
 
-                const response =
-                    await getPublicQRMenu(
-                        token
-                    );
+                if (!mounted) return;
 
-
-                /*
-                 * Backend response:
-                 *
-                 * {
-                 *   success: true,
-                 *   business: {...},
-                 *   products: [...]
-                 * }
-                 */
-
-
-                const payload =
-                    response?.data ||
-                    response;
-
-
-                setBusiness(
-                    payload?.business ||
-                    null
-                );
-
-
+                setBusiness(payload.business || null);
                 setProducts(
-                    payload?.products ||
-                    []
+                    Array.isArray(payload.products)
+                        ? payload.products
+                        : []
                 );
+            } catch (err) {
+                console.error("QR Menu Error:", err);
 
+                if (!mounted) return;
 
-            } catch (error) {
-
-                console.error(
-                    "QR Menu Error:",
-                    error
-                );
-
-
-                alert(
-                    error.response?.data?.message ||
-                    error.message ||
+                setBusiness(null);
+                setProducts([]);
+                setError(
+                    err?.response?.data?.message ||
+                    err?.message ||
                     "Failed to load business menu"
                 );
-
             } finally {
-
-                setLoading(false);
+                if (mounted) setLoading(false);
             }
         };
 
-
         if (token) {
             loadMenu();
+        } else {
+            setLoading(false);
+            setError("Invalid QR code.");
         }
 
+        return () => {
+            mounted = false;
+        };
     }, [token]);
 
-
-    // =========================================================
+    // ------------------------------------------------------------
     // CATEGORIES
-    // =========================================================
+    // ------------------------------------------------------------
 
-    const categories =
-        useMemo(() => {
+    const categories = useMemo(() => {
+        const values = products
+            .map(product => product.category)
+            .filter(Boolean);
 
-            const values =
-                products
-                    .map(
-                        (product) =>
-                            product.category
-                    )
-                    .filter(Boolean);
+        return ["All", ...new Set(values)];
+    }, [products]);
 
+    // ------------------------------------------------------------
+    // FILTER
+    // ------------------------------------------------------------
 
-            return [
-                "All",
-                ...new Set(values)
-            ];
+    const filteredProducts = useMemo(() => {
+        const text = search.trim().toLowerCase();
 
-        }, [products]);
+        return products.filter(product => {
+            const name = String(
+                product.product_name || ""
+            ).toLowerCase();
 
+            const description = String(
+                product.description || ""
+            ).toLowerCase();
 
-    // =========================================================
-    // FILTER PRODUCTS
-    // =========================================================
+            const code = String(
+                product.product_code || ""
+            ).toLowerCase();
 
-    const filteredProducts =
-        useMemo(() => {
+            const matchesSearch =
+                !text ||
+                name.includes(text) ||
+                description.includes(text) ||
+                code.includes(text);
 
-            return products.filter(
-                (product) => {
+            const matchesCategory =
+                category === "All" ||
+                product.category === category;
 
-                    const productName =
-                        String(
-                            product.product_name ||
-                            ""
-                        );
+            return matchesSearch && matchesCategory;
+        });
+    }, [products, search, category]);
 
+    // ------------------------------------------------------------
+    // HELPERS
+    // ------------------------------------------------------------
 
-                    const matchesSearch =
-                        !search ||
-                        productName
-                            .toLowerCase()
-                            .includes(
-                                search.toLowerCase()
-                            );
+    const getStock = product =>
+        Number(product?.stock || 0);
 
+    const getTax = product =>
+        Number(product?.tax || 0);
 
-                    const matchesCategory =
-                        category === "All" ||
-                        product.category ===
-                            category;
-
-
-                    return (
-                        matchesSearch &&
-                        matchesCategory
-                    );
-                }
-            );
-
-        }, [
-            products,
-            search,
-            category
-        ]);
-
-
-    // =========================================================
-    // GET UNIT PRICE
-    //
-    // Same calculation used by backend.
-    // =========================================================
-
-    const getUnitPrice = (
-        product
-    ) => {
-
-        const sellingPrice =
-            Number(
-                product.selling_price || 0
-            );
-
-
-        const pricePer =
-            Number(
-                product.price_per || 1
-            );
-
-
-        return (
-            sellingPrice /
-            pricePer
+    const getUnitPrice = product => {
+        const sellingPrice = Number(
+            product?.selling_price || 0
         );
+
+        const pricePer = Number(
+            product?.price_per || 1
+        );
+
+        if (!Number.isFinite(sellingPrice)) return 0;
+        if (!Number.isFinite(pricePer) || pricePer <= 0) {
+            return sellingPrice;
+        }
+
+        return sellingPrice / pricePer;
     };
 
+    const money = value =>
+        `₹${Number(value || 0).toFixed(2)}`;
 
-    // =========================================================
-    // ADD TO CART
-    // =========================================================
+    // ------------------------------------------------------------
+    // CART
+    // ------------------------------------------------------------
 
-    const addToCart = (
-        product
-    ) => {
+    const addToCart = product => {
+        const stock = getStock(product);
 
-        const availableStock =
-            Number(
-                product.stock || 0
-            );
-
-
-        if (
-            availableStock <= 0
-        ) {
-
-            alert(
-                "This product is currently out of stock."
-            );
-
+        if (stock <= 0) {
+            alert("This product is currently out of stock.");
             return;
         }
 
+        setCart(current => {
+            const existing = current.find(
+                item => item.id === product.id
+            );
 
-        setCart(
-            (current) => {
-
-                const existing =
-                    current.find(
-                        (item) =>
-                            item.id ===
-                            product.id
-                    );
-
-
-                if (existing) {
-
-                    if (
-                        existing.quantity >=
-                        availableStock
-                    ) {
-
-                        alert(
-                            `Only ${availableStock} available.`
-                        );
-
-                        return current;
-                    }
-
-
-                    return current.map(
-                        (item) =>
-                            item.id ===
-                            product.id
-                                ? {
-                                    ...item,
-                                    quantity:
-                                        item.quantity +
-                                        1
-                                }
-                                : item
-                    );
+            if (existing) {
+                if (existing.quantity >= stock) {
+                    alert(`Only ${stock} available.`);
+                    return current;
                 }
 
+                return current.map(item =>
+                    item.id === product.id
+                        ? {
+                              ...item,
+                              quantity: item.quantity + 1
+                          }
+                        : item
+                );
+            }
 
-                return [
+            return [
+                ...current,
+                {
+                    ...product,
+                    quantity: 1
+                }
+            ];
+        });
 
-                    ...current,
+        setShowCart(true);
+    };
 
-                    {
-                        ...product,
-                        quantity: 1
+    const changeQuantity = (productId, amount) => {
+        setCart(current =>
+            current
+                .map(item => {
+                    if (item.id !== productId) return item;
+
+                    const quantity =
+                        Number(item.quantity) + amount;
+
+                    if (quantity <= 0) return null;
+
+                    const stock = getStock(item);
+
+                    if (quantity > stock) {
+                        alert(`Only ${stock} available.`);
+                        return item;
                     }
 
-                ];
-            }
+                    return {
+                        ...item,
+                        quantity
+                    };
+                })
+                .filter(Boolean)
         );
     };
 
-
-    // =========================================================
-    // CHANGE QUANTITY
-    // =========================================================
-
-    const changeQuantity = (
-        productId,
-        amount
-    ) => {
-
-        setCart(
-            (current) => {
-
-                return current
-                    .map(
-                        (item) => {
-
-                            if (
-                                item.id !==
-                                productId
-                            ) {
-                                return item;
-                            }
-
-
-                            const newQuantity =
-                                item.quantity +
-                                amount;
-
-
-                            if (
-                                newQuantity <= 0
-                            ) {
-                                return null;
-                            }
-
-
-                            const stock =
-                                Number(
-                                    item.stock ||
-                                    0
-                                );
-
-
-                            if (
-                                newQuantity >
-                                stock
-                            ) {
-
-                                alert(
-                                    `Only ${stock} available.`
-                                );
-
-                                return item;
-                            }
-
-
-                            return {
-                                ...item,
-                                quantity:
-                                    newQuantity
-                            };
-                        }
-                    )
-                    .filter(Boolean);
-            }
+    const removeFromCart = productId => {
+        setCart(current =>
+            current.filter(item => item.id !== productId)
         );
     };
 
+    // ------------------------------------------------------------
+    // TOTALS
+    // ------------------------------------------------------------
 
-    // =========================================================
-    // REMOVE FROM CART
-    // =========================================================
-
-    const removeFromCart = (
-        productId
-    ) => {
-
-        setCart(
-            (current) =>
-                current.filter(
-                    (item) =>
-                        item.id !==
-                        productId
-                )
-        );
-    };
-
-
-    // =========================================================
-    // CART SUBTOTAL
-    // =========================================================
-
-    const subtotal =
-        cart.reduce(
-            (
-                sum,
-                item
-            ) => {
-
-                const price =
-                    getUnitPrice(
-                        item
-                    );
-
-
-                return (
+    const subtotal = useMemo(
+        () =>
+            cart.reduce(
+                (sum, item) =>
                     sum +
-                    price *
-                    Number(
-                        item.quantity
-                    )
-                );
+                    getUnitPrice(item) *
+                        Number(item.quantity),
+                0
+            ),
+        [cart]
+    );
 
-            },
-            0
-        );
-
-
-    // =========================================================
-    // TAX
-    // =========================================================
-
-    const tax =
-        cart.reduce(
-            (
-                sum,
-                item
-            ) => {
-
+    const tax = useMemo(
+        () =>
+            cart.reduce((sum, item) => {
                 const itemSubtotal =
-                    getUnitPrice(
-                        item
-                    ) *
-                    Number(
-                        item.quantity
-                    );
-
-
-                const taxRate =
-                    Number(
-                        item.tax || 0
-                    );
-
+                    getUnitPrice(item) *
+                    Number(item.quantity);
 
                 return (
                     sum +
                     itemSubtotal *
-                    (
-                        taxRate /
-                        100
-                    )
+                        (getTax(item) / 100)
                 );
+            }, 0),
+        [cart]
+    );
 
-            },
-            0
-        );
+    const total = subtotal + tax;
 
+    const cartItemCount = cart.reduce(
+        (sum, item) =>
+            sum + Number(item.quantity),
+        0
+    );
 
-    // =========================================================
-    // TOTAL
-    // =========================================================
-
-    const total =
-        subtotal +
-        tax;
-
-
-    // =========================================================
-    // TOTAL CART ITEMS
-    // =========================================================
-
-    const cartItemCount =
-        cart.reduce(
-            (
-                totalItems,
-                item
-            ) =>
-                totalItems +
-                Number(
-                    item.quantity
-                ),
-            0
-        );
-
-
-    // =========================================================
+    // ------------------------------------------------------------
     // PLACE ORDER
-    //
-    // NO TABLE ID
-    // =========================================================
+    // ------------------------------------------------------------
 
     const placeOrder = async () => {
-
-        if (
-            cart.length === 0
-        ) {
-
-            alert(
-                "Please add products to your cart."
-            );
-
+        if (!cart.length) {
+            alert("Please add products to your cart.");
             return;
         }
 
+        if (placing) return;
 
         try {
-
             setPlacing(true);
 
+            const response = await createQROrder({
+                qr_token: token,
 
-            const response =
-                await createQROrder({
+                customer_name:
+                    customerName.trim() || null,
 
-                    qr_token:
-                        token,
+                customer_phone:
+                    customerPhone.trim() || null,
 
+                notes:
+                    notes.trim() || null,
 
-                    customer_name:
-                        customerName.trim() ||
-                        null,
-
-
-                    customer_phone:
-                        customerPhone.trim() ||
-                        null,
-
-
-                    notes:
-                        notes.trim() ||
-                        null,
-
-
-                    items:
-                        cart.map(
-                            (item) => ({
-
-                                product_id:
-                                    item.id,
-
-                                quantity:
-                                    item.quantity
-
-                            })
-                        )
-
-                });
-
+                items: cart.map(item => ({
+                    product_id: item.id,
+                    quantity: Number(item.quantity)
+                }))
+            });
 
             const payload =
-                response?.data ||
-                response;
-
+                response?.data || response || {};
 
             setSuccessOrder(
                 payload?.data ||
+                payload?.order ||
                 payload
             );
 
-
             setCart([]);
-
             setCustomerName("");
-
             setCustomerPhone("");
-
             setNotes("");
-
-
-        } catch (error) {
-
+            setShowCart(false);
+        } catch (err) {
             console.error(
                 "Place QR Order Error:",
-                error
+                err
             );
-
 
             alert(
-                error.response?.data?.message ||
-                error.message ||
+                err?.response?.data?.message ||
+                err?.message ||
                 "Failed to place order"
             );
-
         } finally {
-
             setPlacing(false);
         }
     };
 
-
-    // =========================================================
+    // ------------------------------------------------------------
     // LOADING
-    // =========================================================
+    // ------------------------------------------------------------
 
     if (loading) {
-
         return (
-
             <div className="customer-loading">
-
-                <div className="loading-spinner">
-                    ⟳
-                </div>
-
-                <h2>
-                    Loading...
-                </h2>
-
+                <div className="loading-spinner">⟳</div>
+                <h2>Loading menu...</h2>
                 <p>
-                    Preparing the business menu.
+                    Preparing the business products.
                 </p>
-
             </div>
         );
     }
 
+    // ------------------------------------------------------------
+    // ERROR
+    // ------------------------------------------------------------
 
-    // =========================================================
-    // BUSINESS NOT FOUND
-    // =========================================================
-
-    if (!business) {
-
+    if (!business || error) {
         return (
-
             <div className="customer-error">
+                <div className="error-icon">!</div>
 
-                <div className="error-icon">
-                    !
-                </div>
-
-                <h1>
-                    QR Ordering Unavailable
-                </h1>
+                <h1>QR Ordering Unavailable</h1>
 
                 <p>
-                    This QR code is invalid,
-                    inactive or no longer available.
+                    {error ||
+                        "This QR code is invalid, inactive or no longer available."}
                 </p>
-
             </div>
         );
     }
 
-
-    // =========================================================
+    // ------------------------------------------------------------
     // ORDER SUCCESS
-    // =========================================================
+    // ------------------------------------------------------------
 
     if (successOrder) {
+        const orderNumber =
+            successOrder?.order_no ||
+            successOrder?.orderNumber ||
+            successOrder?.id ||
+            "Received";
+
+        const orderTotal = Number(
+            successOrder?.total_amount ||
+            total ||
+            0
+        );
 
         return (
-
             <div className="order-success">
+                <div className="success-icon">✓</div>
 
-                <div className="success-icon">
-                    ✓
-                </div>
-
-
-                <h1>
-                    Order Placed
-                </h1>
-
+                <h1>Order Placed</h1>
 
                 <p>
-                    Your order has been sent
-                    to the business.
+                    Your order has been sent to{" "}
+                    <strong>
+                        {business.business_name}
+                    </strong>.
                 </p>
 
-
                 <div className="success-card">
-
-
                     <div className="success-row">
-
-                        <span>
-                            Order
-                        </span>
-
+                        <span>Order</span>
                         <strong>
-                            #{successOrder.order_no}
+                            #{orderNumber}
                         </strong>
-
                     </div>
 
-
                     <div className="success-row">
-
-                        <span>
-                            Amount
-                        </span>
-
+                        <span>Amount</span>
                         <strong>
-                            ₹
-                            {Number(
-                                successOrder.total_amount ||
-                                0
-                            ).toFixed(2)}
+                            {money(orderTotal)}
                         </strong>
-
                     </div>
 
-
                     <div className="success-row">
-
-                        <span>
-                            Status
-                        </span>
-
+                        <span>Status</span>
                         <strong className="order-status new">
                             Waiting for owner
                         </strong>
-
                     </div>
 
-
                     <div className="success-message">
-
                         <strong>
                             What happens next?
                         </strong>
@@ -759,258 +442,229 @@ export default function PublicQRMenu() {
                         <p>
                             The owner will review and
                             accept your order. After the
-                            order is accepted, follow the
-                            payment instructions provided
-                            by the business.
+                            owner accepts it, pay the
+                            amount directly to the owner
+                            using the payment method
+                            provided by the business.
                         </p>
-
                     </div>
-
                 </div>
-
 
                 <button
                     className="primary-btn"
                     onClick={() =>
-                        setSuccessOrder(
-                            null
-                        )
+                        setSuccessOrder(null)
                     }
                 >
                     Continue Shopping
                 </button>
-
             </div>
         );
     }
 
-
-    // =========================================================
-    // MAIN CUSTOMER PAGE
-    // =========================================================
+    // ------------------------------------------------------------
+    // CUSTOMER MENU
+    // ------------------------------------------------------------
 
     return (
-
         <div className="customer-menu">
 
-
-            {/* ================================================= */}
-            {/* HEADER */}
-            {/* ================================================= */}
+            {/* BUSINESS HEADER */}
 
             <header className="customer-header">
+                <div className="business-identity">
 
+                    {business.logo ? (
+                        <img
+                            src={business.logo}
+                            alt={
+                                business.business_name ||
+                                "Business"
+                            }
+                        />
+                    ) : (
+                        <div className="business-logo-placeholder">
+                            {String(
+                                business.business_name ||
+                                "B"
+                            )
+                                .charAt(0)
+                                .toUpperCase()}
+                        </div>
+                    )}
 
-                {business.logo && (
+                    <div>
+                        <h1>
+                            {business.business_name}
+                        </h1>
 
-                    <img
-                        src={
-                            business.logo
-                        }
-
-                        alt={
-                            business.business_name ||
-                            "Business"
-                        }
-                    />
-
-                )}
-
-
-                <div>
-
-                    <h1>
-                        {
-                            business.business_name
-                        }
-                    </h1>
-
-                    <p>
-                        Order Online
-                    </p>
-
+                        <p>
+                            Order Online
+                        </p>
+                    </div>
                 </div>
-
             </header>
 
-
-
-            {/* ================================================= */}
-            {/* BUSINESS INFO */}
-            {/* ================================================= */}
+            {/* BUSINESS INFORMATION */}
 
             {(business.address ||
                 business.city ||
                 business.phone) && (
-
                 <div className="business-info">
 
                     {business.address && (
-
                         <span>
                             📍 {business.address}
                         </span>
-
                     )}
 
-
                     {business.city && (
-
                         <span>
                             {business.city}
                             {business.state
                                 ? `, ${business.state}`
                                 : ""}
                         </span>
-
                     )}
 
-
                     {business.phone && (
-
                         <span>
                             📞 {business.phone}
                         </span>
-
                     )}
-
                 </div>
-
             )}
 
-
-
-            {/* ================================================= */}
             {/* SEARCH */}
-            {/* ================================================= */}
 
             <div className="menu-search">
+                <span>🔎</span>
 
                 <input
                     value={search}
-
-                    onChange={(e) =>
-                        setSearch(
-                            e.target.value
-                        )
+                    onChange={e =>
+                        setSearch(e.target.value)
                     }
-
                     placeholder="Search products..."
                 />
 
+                {search && (
+                    <button
+                        onClick={() =>
+                            setSearch("")
+                        }
+                    >
+                        ×
+                    </button>
+                )}
             </div>
 
-
-
-            {/* ================================================= */}
             {/* CATEGORIES */}
-            {/* ================================================= */}
 
             <div className="category-scroll">
-
-                {categories.map(
-                    (item) => (
-
-                        <button
-                            key={item}
-
-                            className={
-                                category === item
-                                    ? "category active"
-                                    : "category"
-                            }
-
-                            onClick={() =>
-                                setCategory(
-                                    item
-                                )
-                            }
-                        >
-                            {item}
-                        </button>
-
-                    )
-                )}
-
+                {categories.map(item => (
+                    <button
+                        key={item}
+                        className={
+                            category === item
+                                ? "category active"
+                                : "category"
+                        }
+                        onClick={() =>
+                            setCategory(item)
+                        }
+                    >
+                        {item}
+                    </button>
+                ))}
             </div>
 
+            {/* PRODUCT COUNT */}
 
+            <div className="product-count">
+                <strong>
+                    {filteredProducts.length}
+                </strong>{" "}
+                products available
+            </div>
 
-            {/* ================================================= */}
             {/* PRODUCTS */}
-            {/* ================================================= */}
 
             <main className="product-grid">
-
-                {filteredProducts.length ===
-                    0 ? (
-
+                {filteredProducts.length === 0 ? (
                     <div className="empty-products">
+                        <div className="empty-icon">
+                            🛍️
+                        </div>
 
                         <h2>
                             No products found
                         </h2>
 
                         <p>
-                            Try another search or category.
+                            Try another search or
+                            category.
                         </p>
 
+                        {(search ||
+                            category !== "All") && (
+                            <button
+                                className="secondary-btn"
+                                onClick={() => {
+                                    setSearch("");
+                                    setCategory("All");
+                                }}
+                            >
+                                Clear filters
+                            </button>
+                        )}
                     </div>
-
                 ) : (
+                    filteredProducts.map(product => {
+                        const stock =
+                            getStock(product);
 
-                    filteredProducts.map(
-                        (product) => (
+                        const outOfStock =
+                            stock <= 0;
 
-                            <div
+                        return (
+                            <article
                                 className="menu-product"
                                 key={product.id}
                             >
-
-
-                                {/* IMAGE */}
-
                                 <div className="product-image">
 
                                     {product.image ? (
-
                                         <img
                                             src={
                                                 product.image
                                             }
-
                                             alt={
                                                 product.product_name
                                             }
                                         />
-
                                     ) : (
-
                                         <div className="no-image">
-                                            Product
+                                            🛍️
                                         </div>
-
                                     )}
 
+                                    {outOfStock && (
+                                        <span className="stock-badge">
+                                            Out of stock
+                                        </span>
+                                    )}
                                 </div>
-
-
-
-                                {/* CONTENT */}
 
                                 <div className="product-content">
 
-
                                     {product.category && (
-
                                         <span className="product-category">
                                             {
                                                 product.category
                                             }
                                         </span>
-
                                     )}
-
 
                                     <h3>
                                         {
@@ -1018,125 +672,141 @@ export default function PublicQRMenu() {
                                         }
                                     </h3>
 
-
                                     {product.description && (
-
                                         <p>
                                             {
                                                 product.description
                                             }
                                         </p>
-
                                     )}
-
 
                                     <div className="product-bottom">
 
                                         <div>
-
                                             <strong>
-                                                ₹
-                                                {getUnitPrice(
-                                                    product
-                                                ).toFixed(2)}
+                                                {money(
+                                                    getUnitPrice(
+                                                        product
+                                                    )
+                                                )}
                                             </strong>
 
-
                                             <small>
-                                                /
+                                                {" "}
+                                                /{" "}
                                                 {
                                                     product.price_unit ||
                                                     "unit"
                                                 }
                                             </small>
 
+                                            {getTax(
+                                                product
+                                            ) > 0 && (
+                                                <div className="product-tax">
+                                                    Tax{" "}
+                                                    {
+                                                        getTax(
+                                                            product
+                                                        )
+                                                    }
+                                                    %
+                                                </div>
+                                            )}
                                         </div>
 
-
                                         <button
+                                            disabled={
+                                                outOfStock
+                                            }
                                             onClick={() =>
                                                 addToCart(
                                                     product
                                                 )
                                             }
-
-                                            disabled={
-                                                Number(
-                                                    product.stock ||
-                                                    0
-                                                ) <= 0
-                                            }
                                         >
-
-                                            {Number(
-                                                product.stock ||
-                                                0
-                                            ) <= 0
-                                                ? "Out of Stock"
+                                            {outOfStock
+                                                ? "Unavailable"
                                                 : "+ Add"}
-
                                         </button>
-
                                     </div>
-
                                 </div>
-
-                            </div>
-
-                        )
-                    )
-
+                            </article>
+                        );
+                    })
                 )}
-
             </main>
 
-
-
-            {/* ================================================= */}
-            {/* CART */}
-            {/* ================================================= */}
+            {/* FLOATING CART */}
 
             {cart.length > 0 && (
+                <button
+                    className="floating-cart"
+                    onClick={() =>
+                        setShowCart(true)
+                    }
+                >
+                    <span>
+                        🛒 {cartItemCount}{" "}
+                        {cartItemCount === 1
+                            ? "item"
+                            : "items"}
+                    </span>
 
-                <div className="cart-panel">
+                    <strong>
+                        {money(total)}
+                    </strong>
+                </button>
+            )}
 
+            {/* CART */}
 
-                    <div className="cart-header">
+            {showCart && (
+                <div
+                    className="cart-overlay"
+                    onClick={e => {
+                        if (
+                            e.target ===
+                            e.currentTarget
+                        ) {
+                            setShowCart(false);
+                        }
+                    }}
+                >
+                    <aside className="cart-drawer">
 
-                        <div>
+                        <div className="cart-header">
+                            <div>
+                                <h2>
+                                    Your Cart
+                                </h2>
 
-                            <h2>
-                                Your Cart
-                            </h2>
+                                <span>
+                                    {cartItemCount}{" "}
+                                    {cartItemCount === 1
+                                        ? "item"
+                                        : "items"}
+                                </span>
+                            </div>
 
-                            <span>
-                                {cartItemCount}{" "}
-                                {cartItemCount === 1
-                                    ? "item"
-                                    : "items"}
-                            </span>
-
+                            <button
+                                onClick={() =>
+                                    setShowCart(false)
+                                }
+                            >
+                                ×
+                            </button>
                         </div>
 
-                    </div>
+                        {/* CART ITEMS */}
 
-
-
-                    {/* CART ITEMS */}
-
-                    <div className="cart-items">
-
-                        {cart.map(
-                            (item) => (
-
+                        <div className="cart-items">
+                            {cart.map(item => (
                                 <div
                                     className="cart-item"
                                     key={item.id}
                                 >
-
-
                                     <div className="cart-item-info">
-
                                         <strong>
                                             {
                                                 item.product_name
@@ -1144,18 +814,20 @@ export default function PublicQRMenu() {
                                         </strong>
 
                                         <span>
-                                            ₹
-                                            {getUnitPrice(
-                                                item
-                                            ).toFixed(2)}
+                                            {money(
+                                                getUnitPrice(
+                                                    item
+                                                )
+                                            )}
+                                            {" / "}
+                                            {
+                                                item.price_unit ||
+                                                "unit"
+                                            }
                                         </span>
-
                                     </div>
 
-
-
                                     <div className="quantity">
-
                                         <button
                                             onClick={() =>
                                                 changeQuantity(
@@ -1167,13 +839,11 @@ export default function PublicQRMenu() {
                                             −
                                         </button>
 
-
                                         <span>
                                             {
                                                 item.quantity
                                             }
                                         </span>
-
 
                                         <button
                                             onClick={() =>
@@ -1185,9 +855,7 @@ export default function PublicQRMenu() {
                                         >
                                             +
                                         </button>
-
                                     </div>
-
 
                                     <button
                                         className="remove-item"
@@ -1199,161 +867,119 @@ export default function PublicQRMenu() {
                                     >
                                         ×
                                     </button>
-
                                 </div>
-
-                            )
-                        )}
-
-                    </div>
-
-
-
-                    {/* ================================================= */}
-                    {/* SUMMARY */}
-                    {/* ================================================= */}
-
-                    <div className="cart-summary">
-
-
-                        <div>
-
-                            <span>
-                                Subtotal
-                            </span>
-
-                            <strong>
-                                ₹
-                                {subtotal.toFixed(2)}
-                            </strong>
-
+                            ))}
                         </div>
 
+                        {/* SUMMARY */}
 
-                        <div>
+                        <div className="cart-summary">
+                            <div>
+                                <span>
+                                    Subtotal
+                                </span>
 
-                            <span>
-                                Tax
-                            </span>
+                                <strong>
+                                    {money(subtotal)}
+                                </strong>
+                            </div>
 
-                            <strong>
-                                ₹
-                                {tax.toFixed(2)}
-                            </strong>
+                            <div>
+                                <span>
+                                    Tax
+                                </span>
 
+                                <strong>
+                                    {money(tax)}
+                                </strong>
+                            </div>
+
+                            <div className="grand-total">
+                                <strong>
+                                    Total
+                                </strong>
+
+                                <strong>
+                                    {money(total)}
+                                </strong>
+                            </div>
                         </div>
 
+                        {/* CUSTOMER DETAILS */}
 
-                        <div className="grand-total">
+                        <div className="customer-fields">
+                            <h3>
+                                Order Details
+                            </h3>
 
-                            <span>
-                                Total
-                            </span>
+                            <input
+                                value={
+                                    customerName
+                                }
+                                onChange={e =>
+                                    setCustomerName(
+                                        e.target.value
+                                    )
+                                }
+                                placeholder="Your name (optional)"
+                            />
 
-                            <strong>
-                                ₹
-                                {total.toFixed(2)}
-                            </strong>
+                            <input
+                                value={
+                                    customerPhone
+                                }
+                                onChange={e =>
+                                    setCustomerPhone(
+                                        e.target.value
+                                    )
+                                }
+                                placeholder="Phone number (optional)"
+                                type="tel"
+                            />
 
+                            <textarea
+                                value={notes}
+                                onChange={e =>
+                                    setNotes(
+                                        e.target.value
+                                    )
+                                }
+                                placeholder="Order note (optional)"
+                                rows="3"
+                            />
                         </div>
 
-                    </div>
+                        {/* PAYMENT MESSAGE */}
 
+                        <div className="payment-notice">
+                            <strong>
+                                Pay directly to the owner
+                            </strong>
 
+                            <p>
+                                Place the order first.
+                                The owner will accept
+                                it and provide the
+                                payment instructions.
+                            </p>
+                        </div>
 
-                    {/* ================================================= */}
-                    {/* CUSTOMER DETAILS */}
-                    {/* ================================================= */}
+                        {/* PLACE ORDER */}
 
-                    <div className="customer-fields">
-
-
-                        <h3>
-                            Order Details
-                        </h3>
-
-
-                        <input
-                            value={
-                                customerName
-                            }
-
-                            onChange={(e) =>
-                                setCustomerName(
-                                    e.target.value
-                                )
-                            }
-
-                            placeholder="Your name (optional)"
-                        />
-
-
-                        <input
-                            value={
-                                customerPhone
-                            }
-
-                            onChange={(e) =>
-                                setCustomerPhone(
-                                    e.target.value
-                                )
-                            }
-
-                            placeholder="Phone number (optional)"
-                            type="tel"
-                        />
-
-
-                        <textarea
-                            value={
-                                notes
-                            }
-
-                            onChange={(e) =>
-                                setNotes(
-                                    e.target.value
-                                )
-                            }
-
-                            placeholder="Order note (optional)"
-                            rows="3"
-                        />
-
-                    </div>
-
-
-
-                    {/* ================================================= */}
-                    {/* PLACE ORDER */}
-                    {/* ================================================= */}
-
-                    <button
-                        className="place-order-btn"
-
-                        onClick={
-                            placeOrder
-                        }
-
-                        disabled={
-                            placing
-                        }
-                    >
-
-                        {placing
-
-                            ? "Placing Order..."
-
-                            : `Place Order • ₹${total.toFixed(2)}`
-
-                        }
-
-                    </button>
-
-
+                        <button
+                            className="place-order-btn"
+                            disabled={placing}
+                            onClick={placeOrder}
+                        >
+                            {placing
+                                ? "Placing Order..."
+                                : `Place Order • ${money(
+                                      total
+                                  )}`}
+                        </button>
+                    </aside>
                 </div>
-
             )}
-
         </div>
     );
 }
