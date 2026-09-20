@@ -1,4 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, {
+    useEffect,
+    useState
+} from "react";
 
 import {
     getQROrders,
@@ -6,18 +9,49 @@ import {
     updateQRPayment
 } from "../services/qrOrderApi";
 
-const statusButtons = [
+
+// =========================================================
+// ORDER STATUSES
+// =========================================================
+
+const statusFilters = [
     "new",
     "accepted",
-    "preparing",
+    "processing",
     "ready",
-    "served",
-    "completed"
+    "completed",
+    "rejected",
+    "cancelled",
+    "all"
 ];
+
+
+const statusLabels = {
+
+    new: "New",
+
+    accepted: "Accepted",
+
+    processing: "Processing",
+
+    ready: "Ready",
+
+    completed: "Completed",
+
+    rejected: "Rejected",
+
+    cancelled: "Cancelled"
+};
+
+
+// =========================================================
+// COMPONENT
+// =========================================================
 
 export default function QROrders() {
 
-    const [orders, setOrders] = useState([]);
+    const [orders, setOrders] =
+        useState([]);
 
     const [filter, setFilter] =
         useState("new");
@@ -25,50 +59,82 @@ export default function QROrders() {
     const [loading, setLoading] =
         useState(true);
 
+    const [actionId, setActionId] =
+        useState(null);
+
+
+    // =========================================================
+    // LOAD ORDERS
+    // =========================================================
 
     const loadOrders = async () => {
 
         try {
+
+            setLoading(true);
+
 
             const query =
                 filter === "all"
                     ? ""
                     : `?status=${filter}`;
 
+
             const response =
                 await getQROrders(query);
 
-            setOrders(response.data || []);
+
+            setOrders(
+                response?.data || []
+            );
 
         } catch (error) {
 
-            console.error(error);
-            alert(error.message);
+            console.error(
+                "Load QR Orders Error:",
+                error
+            );
+
+
+            alert(
+                error.response?.data?.message ||
+                error.message ||
+                "Failed to load orders"
+            );
 
         } finally {
 
             setLoading(false);
-
         }
     };
 
+
+    // =========================================================
+    // AUTO REFRESH
+    // =========================================================
 
     useEffect(() => {
 
         loadOrders();
 
-        // Automatically refresh
-        // for live restaurant orders.
-        const timer = setInterval(
-            loadOrders,
-            5000
-        );
 
-        return () =>
+        const timer =
+            setInterval(
+                loadOrders,
+                5000
+            );
+
+
+        return () => {
             clearInterval(timer);
+        };
 
     }, [filter]);
 
+
+    // =========================================================
+    // CHANGE ORDER STATUS
+    // =========================================================
 
     const changeStatus = async (
         order,
@@ -77,53 +143,194 @@ export default function QROrders() {
 
         try {
 
+            setActionId(order.id);
+
+
             await updateQROrderStatus(
                 order.id,
                 status
             );
 
+
             await loadOrders();
 
         } catch (error) {
 
-            alert(error.message);
+            console.error(
+                "Change Order Status Error:",
+                error
+            );
 
+
+            alert(
+                error.response?.data?.message ||
+                error.message ||
+                "Failed to update order"
+            );
+
+        } finally {
+
+            setActionId(null);
         }
     };
 
 
-    const markPaid = async (order) => {
+    // =========================================================
+    // CONFIRM PAYMENT
+    //
+    // Current flow:
+    // Customer pays owner directly.
+    // Owner confirms payment here.
+    // =========================================================
+
+    const markPaid = async (
+        order
+    ) => {
+
+        const confirmed =
+            window.confirm(
+                `Confirm that payment of ₹${Number(
+                    order.total_amount
+                ).toFixed(2)} has been received from the customer?`
+            );
+
+
+        if (!confirmed) {
+            return;
+        }
+
 
         try {
 
+            setActionId(order.id);
+
+
             await updateQRPayment(
                 order.id,
-                "Cash",
+                "UPI",
                 "paid"
             );
+
 
             await loadOrders();
 
         } catch (error) {
 
-            alert(error.message);
+            console.error(
+                "Confirm Payment Error:",
+                error
+            );
 
+
+            alert(
+                error.response?.data?.message ||
+                error.message ||
+                "Failed to confirm payment"
+            );
+
+        } finally {
+
+            setActionId(null);
         }
     };
 
 
+    // =========================================================
+    // REJECT
+    // =========================================================
+
+    const rejectOrder = async (
+        order
+    ) => {
+
+        const confirmed =
+            window.confirm(
+                `Reject order #${order.order_no}?`
+            );
+
+
+        if (!confirmed) {
+            return;
+        }
+
+
+        await changeStatus(
+            order,
+            "rejected"
+        );
+    };
+
+
+    // =========================================================
+    // STATUS BADGE
+    // =========================================================
+
+    const getStatusLabel = (
+        status
+    ) => {
+
+        return (
+            statusLabels[status] ||
+            status
+        );
+    };
+
+
+    // =========================================================
+    // LOADING
+    // =========================================================
+
+    if (loading && orders.length === 0) {
+
+        return (
+
+            <div className="empty-orders">
+
+                <div className="loading-spinner">
+                    ⟳
+                </div>
+
+                <h2>
+                    Loading QR orders...
+                </h2>
+
+                <p>
+                    Checking for new customer orders.
+                </p>
+
+            </div>
+        );
+    }
+
+
+    // =========================================================
+    // PAGE
+    // =========================================================
+
     return (
+
         <div className="qr-orders-page">
+
+
+            {/* ================================================= */}
+            {/* HEADER */}
+            {/* ================================================= */}
 
             <div className="orders-header">
 
                 <div>
 
-                    <h1>QR Orders</h1>
+                    <div className="page-eyebrow">
+                        CUSTOMER ORDERS
+                    </div>
+
+                    <h1>
+                        QR Orders
+                    </h1>
 
                     <p>
-                        Orders received from
-                        restaurant QR menu.
+                        Orders placed by customers
+                        through your business QR code.
                     </p>
 
                 </div>
@@ -132,67 +339,67 @@ export default function QROrders() {
                 <button
                     className="refresh-btn"
                     onClick={loadOrders}
+                    disabled={loading}
                 >
-                    ↻ Refresh
+
+                    {loading
+                        ? "Refreshing..."
+                        : "↻ Refresh"}
+
                 </button>
 
             </div>
 
 
-            {/* FILTERS */}
+
+            {/* ================================================= */}
+            {/* STATUS FILTERS */}
+            {/* ================================================= */}
 
             <div className="order-filters">
 
-                {[
-                    "new",
-                    "accepted",
-                    "preparing",
-                    "ready",
-                    "served",
-                    "completed",
-                    "all"
-                ].map((status) => (
+                {statusFilters.map(
+                    (status) => (
 
-                    <button
-                        key={status}
-                        className={
-                            filter === status
-                                ? "filter active"
-                                : "filter"
-                        }
-                        onClick={() =>
-                            setFilter(status)
-                        }
-                    >
-                        {status === "new"
-                            ? "New"
-                            : status === "all"
+                        <button
+                            key={status}
+
+                            className={
+                                filter === status
+                                    ? "filter active"
+                                    : "filter"
+                            }
+
+                            onClick={() =>
+                                setFilter(status)
+                            }
+                        >
+
+                            {status === "all"
                                 ? "All"
-                                : status
-                                    .charAt(0)
-                                    .toUpperCase() +
-                                  status.slice(1)}
-                    </button>
+                                : getStatusLabel(
+                                    status
+                                )}
 
-                ))}
+                        </button>
+
+                    )
+                )}
 
             </div>
 
 
+
+            {/* ================================================= */}
             {/* ORDERS */}
+            {/* ================================================= */}
 
-            {loading ? (
-
-                <div className="empty-orders">
-                    Loading orders...
-                </div>
-
-            ) : orders.length === 0 ? (
+            {orders.length === 0 ? (
 
                 <div className="empty-orders">
 
                     <div className="empty-icon">
-                        🛎️
+                        🛒
                     </div>
 
                     <h2>
@@ -200,8 +407,8 @@ export default function QROrders() {
                     </h2>
 
                     <p>
-                        New customer orders
-                        will appear here.
+                        New customer orders will
+                        appear here automatically.
                     </p>
 
                 </div>
@@ -210,281 +417,435 @@ export default function QROrders() {
 
                 <div className="orders-list">
 
-                    {orders.map((order) => (
+                    {orders.map(
+                        (order) => (
 
-                        <div
-                            className="order-card"
-                            key={order.id}
-                        >
+                            <div
+                                className="order-card"
+                                key={order.id}
+                            >
 
-                            {/* HEADER */}
 
-                            <div className="order-card-header">
+                                {/* ================================= */}
+                                {/* HEADER */}
+                                {/* ================================= */}
 
-                                <div>
+                                <div className="order-card-header">
 
-                                    <strong>
-                                        #{order.order_no}
-                                    </strong>
+                                    <div>
 
-                                    <span>
-                                        Table{" "}
-                                        {order.table_number}
+                                        <strong>
+                                            #{order.order_no}
+                                        </strong>
+
+                                        <span>
+                                            Customer Order
+                                        </span>
+
+                                    </div>
+
+
+                                    <span
+                                        className={
+                                            `order-status ${order.order_status}`
+                                        }
+                                    >
+                                        {
+                                            getStatusLabel(
+                                                order.order_status
+                                            )
+                                        }
                                     </span>
 
                                 </div>
 
 
-                                <span
-                                    className={`order-status ${order.order_status}`}
-                                >
-                                    {order.order_status}
-                                </span>
 
-                            </div>
+                                {/* ================================= */}
+                                {/* CUSTOMER */}
+                                {/* ================================= */}
+
+                                {(order.customer_name ||
+                                    order.customer_phone) && (
+
+                                    <div className="customer-info">
+
+                                        <strong>
+                                            {
+                                                order.customer_name ||
+                                                "Customer"
+                                            }
+                                        </strong>
 
 
-                            {/* CUSTOMER */}
+                                        {order.customer_phone && (
 
-                            {(order.customer_name ||
-                              order.customer_phone) && (
+                                            <span>
+                                                {
+                                                    order.customer_phone
+                                                }
+                                            </span>
 
-                                <div className="customer-info">
+                                        )}
 
-                                    <strong>
-                                        {order.customer_name ||
-                                            "Customer"}
+                                    </div>
+
+                                )}
+
+
+
+                                {/* ================================= */}
+                                {/* PAYMENT STATUS */}
+                                {/* ================================= */}
+
+                                <div className="payment-status-row">
+
+                                    <span>
+                                        Payment
+                                    </span>
+
+
+                                    <strong
+                                        className={
+                                            order.payment_status ===
+                                                "paid"
+                                                ? "payment-paid"
+                                                : "payment-pending"
+                                        }
+                                    >
+
+                                        {order.payment_status ===
+                                            "paid"
+                                            ? "✓ Paid"
+                                            : "Payment Pending"}
+
                                     </strong>
 
-                                    {order.customer_phone && (
-                                        <span>
-                                            {
-                                                order.customer_phone
-                                            }
-                                        </span>
+                                </div>
+
+
+
+                                {/* ================================= */}
+                                {/* ITEMS */}
+                                {/* ================================= */}
+
+                                <div className="order-items">
+
+                                    {order.items?.map(
+                                        (item) => (
+
+                                            <div
+                                                className="order-item"
+                                                key={item.id}
+                                            >
+
+                                                <div>
+
+                                                    <strong>
+                                                        {
+                                                            item.product_name
+                                                        }
+                                                    </strong>
+
+
+                                                    <span>
+
+                                                        {item.quantity}
+
+                                                        {" "}
+
+                                                        {item.unit || "pcs"}
+
+                                                        {" × ₹"}
+
+                                                        {Number(
+                                                            item.unit_price
+                                                        ).toFixed(2)}
+
+                                                    </span>
+
+                                                </div>
+
+
+                                                <strong>
+
+                                                    ₹
+
+                                                    {Number(
+                                                        item.total
+                                                    ).toFixed(2)}
+
+                                                </strong>
+
+                                            </div>
+
+                                        )
                                     )}
 
                                 </div>
 
-                            )}
 
 
-                            {/* ITEMS */}
+                                {/* ================================= */}
+                                {/* TOTAL */}
+                                {/* ================================= */}
 
-                            <div className="order-items">
+                                <div className="order-total">
 
-                                {order.items?.map(
-                                    (item) => (
-
-                                        <div
-                                            className="order-item"
-                                            key={item.id}
-                                        >
-
-                                            <div>
-
-                                                <strong>
-                                                    {
-                                                        item.product_name
-                                                    }
-                                                </strong>
-
-                                                <span>
-                                                    {
-                                                        item.quantity
-                                                    }{" "}
-                                                    {
-                                                        item.unit
-                                                    } × ₹
-                                                    {
-                                                        Number(
-                                                            item.unit_price
-                                                        ).toFixed(2)
-                                                    }
-                                                </span>
-
-                                            </div>
-
-
-                                            <strong>
-                                                ₹
-                                                {
-                                                    Number(
-                                                        item.total
-                                                    ).toFixed(2)
-                                                }
-                                            </strong>
-
-                                        </div>
-
-                                    )
-                                )}
-
-                            </div>
-
-
-                            {/* TOTAL */}
-
-                            <div className="order-total">
-
-                                <span>
-                                    Total
-                                </span>
-
-                                <strong>
-                                    ₹
-                                    {Number(
-                                        order.total_amount
-                                    ).toFixed(2)}
-                                </strong>
-
-                            </div>
-
-
-                            {/* NOTES */}
-
-                            {order.notes && (
-
-                                <div className="order-notes">
+                                    <span>
+                                        Total
+                                    </span>
 
                                     <strong>
-                                        Note:
-                                    </strong>
 
-                                    {order.notes}
+                                        ₹
+
+                                        {Number(
+                                            order.total_amount
+                                        ).toFixed(2)}
+
+                                    </strong>
 
                                 </div>
 
-                            )}
 
 
-                            {/* ACTIONS */}
+                                {/* ================================= */}
+                                {/* NOTES */}
+                                {/* ================================= */}
 
-                            <div className="order-actions">
+                                {order.notes && (
 
-                                {order.order_status ===
-                                    "new" && (
+                                    <div className="order-notes">
 
-                                    <>
+                                        <strong>
+                                            Note:
+                                        </strong>
+
+                                        <span>
+                                            {order.notes}
+                                        </span>
+
+                                    </div>
+
+                                )}
+
+
+
+                                {/* ================================= */}
+                                {/* ACTIONS */}
+                                {/* ================================= */}
+
+                                <div className="order-actions">
+
+
+                                    {/* -------------------------------- */}
+                                    {/* NEW */}
+                                    {/* -------------------------------- */}
+
+                                    {order.order_status ===
+                                        "new" && (
+
+                                        <>
+
+                                            <button
+                                                className="reject-btn"
+
+                                                disabled={
+                                                    actionId ===
+                                                    order.id
+                                                }
+
+                                                onClick={() =>
+                                                    rejectOrder(
+                                                        order
+                                                    )
+                                                }
+                                            >
+
+                                                Reject
+
+                                            </button>
+
+
+                                            <button
+                                                className="accept-btn"
+
+                                                disabled={
+                                                    actionId ===
+                                                    order.id
+                                                }
+
+                                                onClick={() =>
+                                                    changeStatus(
+                                                        order,
+                                                        "accepted"
+                                                    )
+                                                }
+                                            >
+
+                                                {actionId ===
+                                                    order.id
+                                                    ? "Accepting..."
+                                                    : "Accept Order"}
+
+                                            </button>
+
+                                        </>
+
+                                    )}
+
+
+
+                                    {/* -------------------------------- */}
+                                    {/* ACCEPTED */}
+                                    {/* -------------------------------- */}
+
+                                    {order.order_status ===
+                                        "accepted" && (
+
+                                        <>
+
+                                            {order.payment_status !==
+                                                "paid" && (
+
+                                                <button
+                                                    className="payment-btn"
+
+                                                    disabled={
+                                                        actionId ===
+                                                        order.id
+                                                    }
+
+                                                    onClick={() =>
+                                                        markPaid(
+                                                            order
+                                                        )
+                                                    }
+                                                >
+
+                                                    {actionId ===
+                                                        order.id
+                                                        ? "Confirming..."
+                                                        : "Confirm Payment"}
+
+                                                </button>
+
+                                            )}
+
+
+                                            {order.payment_status ===
+                                                "paid" && (
+
+                                                <button
+                                                    className="primary-btn"
+
+                                                    disabled={
+                                                        actionId ===
+                                                        order.id
+                                                    }
+
+                                                    onClick={() =>
+                                                        changeStatus(
+                                                            order,
+                                                            "processing"
+                                                        )
+                                                    }
+                                                >
+
+                                                    Start Processing
+
+                                                </button>
+
+                                            )}
+
+                                        </>
+
+                                    )}
+
+
+
+                                    {/* -------------------------------- */}
+                                    {/* PROCESSING */}
+                                    {/* -------------------------------- */}
+
+                                    {order.order_status ===
+                                        "processing" && (
+
                                         <button
-                                            className="reject-btn"
+                                            className="primary-btn"
+
+                                            disabled={
+                                                actionId ===
+                                                order.id
+                                            }
+
                                             onClick={() =>
                                                 changeStatus(
                                                     order,
-                                                    "rejected"
+                                                    "ready"
                                                 )
                                             }
                                         >
-                                            Reject
+
+                                            Mark Ready
+
                                         </button>
 
+                                    )}
+
+
+
+                                    {/* -------------------------------- */}
+                                    {/* READY */}
+                                    {/* -------------------------------- */}
+
+                                    {order.order_status ===
+                                        "ready" && (
+
                                         <button
-                                            className="accept-btn"
+                                            className="primary-btn"
+
+                                            disabled={
+                                                actionId ===
+                                                order.id
+                                            }
+
                                             onClick={() =>
                                                 changeStatus(
                                                     order,
-                                                    "accepted"
+                                                    "completed"
                                                 )
                                             }
                                         >
-                                            Accept Order
+
+                                            Complete Order
+
                                         </button>
-                                    </>
 
-                                )}
-
-
-                                {order.order_status ===
-                                    "accepted" && (
-
-                                    <button
-                                        className="primary-btn"
-                                        onClick={() =>
-                                            changeStatus(
-                                                order,
-                                                "preparing"
-                                            )
-                                        }
-                                    >
-                                        Start Preparing
-                                    </button>
-
-                                )}
+                                    )}
 
 
-                                {order.order_status ===
-                                    "preparing" && (
 
-                                    <button
-                                        className="primary-btn"
-                                        onClick={() =>
-                                            changeStatus(
-                                                order,
-                                                "ready"
-                                            )
-                                        }
-                                    >
-                                        Mark Ready
-                                    </button>
+                                    {/* -------------------------------- */}
+                                    {/* PAID INDICATOR */}
+                                    {/* -------------------------------- */}
 
-                                )}
+                                    {order.payment_status ===
+                                        "paid" && (
 
+                                        <span className="paid-badge">
+                                            ✓ Payment Confirmed
+                                        </span>
 
-                                {order.order_status ===
-                                    "ready" && (
+                                    )}
 
-                                    <button
-                                        className="primary-btn"
-                                        onClick={() =>
-                                            changeStatus(
-                                                order,
-                                                "served"
-                                            )
-                                        }
-                                    >
-                                        Mark Served
-                                    </button>
-
-                                )}
-
-
-                                {order.order_status ===
-                                    "served" && (
-
-                                    <button
-                                        className="primary-btn"
-                                        onClick={() =>
-                                            changeStatus(
-                                                order,
-                                                "completed"
-                                            )
-                                        }
-                                    >
-                                        Complete Order
-                                    </button>
-
-                                )}
-
-
-                                {order.payment_status !==
-                                    "paid" && (
-
-                                    <button
-                                        className="payment-btn"
-                                        onClick={() =>
-                                            markPaid(order)
-                                        }
-                                    >
-                                        Mark Paid
-                                    </button>
-
-                                )}
+                                </div>
 
                             </div>
 
-                        </div>
-
-                    ))}
+                        )
+                    )}
 
                 </div>
 

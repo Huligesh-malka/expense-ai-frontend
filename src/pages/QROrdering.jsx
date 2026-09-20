@@ -1,60 +1,46 @@
-import React, { useEffect, useState } from "react";
+import React, {
+    useEffect,
+    useState
+} from "react";
 
 import {
     getQR,
-    updateQRStatus,
-    getTables,
-    createTable,
-    deleteTable
+    updateQRStatus
 } from "../services/qrOrderApi";
 
 export default function QROrdering() {
 
     const [qr, setQr] = useState(null);
-    const [tables, setTables] = useState([]);
 
-    const [tableNumber, setTableNumber] = useState("");
-    const [tableName, setTableName] = useState("");
+    const [loading, setLoading] =
+        useState(true);
 
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
-    const [qrUpdating, setQrUpdating] = useState(false);
+    const [qrUpdating, setQrUpdating] =
+        useState(false);
 
-    // =========================================
-    // LOAD QR + TABLES
-    // =========================================
 
-    const loadData = async () => {
+    // =========================================================
+    // LOAD BUSINESS QR
+    // =========================================================
+
+    const loadQR = async () => {
+
         try {
+
             setLoading(true);
 
-            const [qrResponse, tableResponse] =
-                await Promise.all([
-                    getQR(),
-                    getTables()
-                ]);
+            const response =
+                await getQR();
 
-            // Axios response:
-            // qrResponse.data = backend JSON
-            //
-            // Backend:
-            // {
-            //   success: true,
-            //   data: {...}
-            // }
 
-            const qrPayload = qrResponse?.data;
-            const tablePayload = tableResponse?.data;
+            const payload =
+                response?.data;
+
 
             setQr(
-                qrPayload?.data ||
-                qrPayload ||
+                payload?.data ||
+                payload ||
                 null
-            );
-
-            setTables(
-                tablePayload?.data ||
-                []
             );
 
         } catch (error) {
@@ -73,105 +59,20 @@ export default function QROrdering() {
         } finally {
 
             setLoading(false);
-
         }
     };
 
 
     useEffect(() => {
-        loadData();
+
+        loadQR();
+
     }, []);
 
 
-    // =========================================
-    // ADD TABLE
-    // =========================================
-
-    const addTable = async () => {
-
-        if (!tableNumber.trim()) {
-            alert("Enter table number");
-            return;
-        }
-
-        try {
-
-            setSaving(true);
-
-            await createTable({
-                table_number:
-                    tableNumber.trim(),
-
-                table_name:
-                    tableName.trim() || null
-            });
-
-            setTableNumber("");
-            setTableName("");
-
-            await loadData();
-
-        } catch (error) {
-
-            console.error(
-                "Create Table Error:",
-                error
-            );
-
-            alert(
-                error.response?.data?.message ||
-                error.message ||
-                "Failed to create table"
-            );
-
-        } finally {
-
-            setSaving(false);
-
-        }
-    };
-
-
-    // =========================================
-    // DELETE TABLE
-    // =========================================
-
-    const removeTable = async (id) => {
-
-        const confirmed = window.confirm(
-            "Delete this table?"
-        );
-
-        if (!confirmed) {
-            return;
-        }
-
-        try {
-
-            await deleteTable(id);
-
-            await loadData();
-
-        } catch (error) {
-
-            console.error(
-                "Delete Table Error:",
-                error
-            );
-
-            alert(
-                error.response?.data?.message ||
-                error.message ||
-                "Failed to delete table"
-            );
-
-        }
-    };
-
-
-    // =========================================
+    // =========================================================
     // ENABLE / DISABLE QR
-    // =========================================
+    // =========================================================
 
     const toggleQR = async () => {
 
@@ -179,20 +80,24 @@ export default function QROrdering() {
             return;
         }
 
+
         const newStatus =
             qr.status === "active"
                 ? "inactive"
                 : "active";
 
+
         try {
 
             setQrUpdating(true);
+
 
             await updateQRStatus(
                 newStatus
             );
 
-            await loadData();
+
+            await loadQR();
 
         } catch (error) {
 
@@ -200,6 +105,7 @@ export default function QROrdering() {
                 "Update QR Status Error:",
                 error
             );
+
 
             alert(
                 error.response?.data?.message ||
@@ -210,21 +116,25 @@ export default function QROrdering() {
         } finally {
 
             setQrUpdating(false);
-
         }
     };
 
 
-    // =========================================
+    // =========================================================
     // COPY QR LINK
-    // =========================================
+    // =========================================================
 
     const copyQRLink = async () => {
 
         if (!qr?.qr_url) {
-            alert("QR link is not available");
+
+            alert(
+                "QR link is not available"
+            );
+
             return;
         }
+
 
         try {
 
@@ -232,7 +142,10 @@ export default function QROrdering() {
                 qr.qr_url
             );
 
-            alert("QR link copied");
+
+            alert(
+                "QR ordering link copied"
+            );
 
         } catch (error) {
 
@@ -241,69 +154,114 @@ export default function QROrdering() {
                 error
             );
 
-            alert(qr.qr_url);
 
+            alert(qr.qr_url);
         }
     };
 
 
-    // =========================================
+    // =========================================================
     // PRINT QR
-    // =========================================
+    // =========================================================
 
     const printQR = () => {
 
         if (!qr?.qr_url) {
-            alert("QR code is not available");
+
+            alert(
+                "QR code is not available"
+            );
+
             return;
         }
+
 
         window.print();
     };
 
 
-    // =========================================
+    // =========================================================
     // LOADING
-    // =========================================
+    // =========================================================
 
     if (loading) {
 
         return (
+
             <div className="qr-loading">
-                <h2>Loading QR Ordering...</h2>
+
+                <h2>
+                    Loading QR Ordering...
+                </h2>
+
                 <p>
-                    Connecting to your business
-                    QR service.
+                    Preparing your business QR code.
                 </p>
+
             </div>
         );
-
     }
 
 
-    // =========================================
+    // =========================================================
+    // QR NOT AVAILABLE
+    // =========================================================
+
+    if (!qr) {
+
+        return (
+
+            <div className="qr-loading">
+
+                <h2>
+                    QR code unavailable
+                </h2>
+
+                <p>
+                    We could not load your business QR code.
+                </p>
+
+                <button
+                    className="primary-btn"
+                    onClick={loadQR}
+                >
+                    Try Again
+                </button>
+
+            </div>
+        );
+    }
+
+
+    // =========================================================
     // PAGE
-    // =========================================
+    // =========================================================
 
     return (
 
         <div className="qr-page">
 
-            {/* ================================= */}
+
+            {/* ================================================= */}
             {/* HEADER */}
-            {/* ================================= */}
+            {/* ================================================= */}
 
             <div className="qr-page-header">
 
                 <div>
+
+                    <div className="page-eyebrow">
+                        CUSTOMER ORDERING
+                    </div>
 
                     <h1>
                         QR Ordering
                     </h1>
 
                     <p>
-                        Customers scan one QR
-                        code to open your menu.
+                        Let customers scan your QR code,
+                        browse products, add items to their
+                        cart and place orders from their phone.
                     </p>
 
                 </div>
@@ -311,17 +269,19 @@ export default function QROrdering() {
 
                 <button
                     className={
-                        qr?.status === "active"
+                        qr.status === "active"
                             ? "danger-btn"
                             : "success-btn"
                     }
+
                     onClick={toggleQR}
+
                     disabled={qrUpdating}
                 >
 
                     {qrUpdating
                         ? "Updating..."
-                        : qr?.status === "active"
+                        : qr.status === "active"
                             ? "Disable QR"
                             : "Enable QR"}
 
@@ -330,21 +290,32 @@ export default function QROrdering() {
             </div>
 
 
-            {/* ================================= */}
-            {/* QR CODE */}
-            {/* ================================= */}
+
+            {/* ================================================= */}
+            {/* QR CARD */}
+            {/* ================================================= */}
 
             <div className="qr-card">
 
+
+                {/* LEFT */}
+
                 <div className="qr-card-left">
 
+                    <div className="qr-badge">
+                        BUSINESS QR
+                    </div>
+
+
                     <h2>
-                        Your Restaurant QR
+                        Your Business QR
                     </h2>
 
+
                     <p>
-                        Place this QR code on
-                        tables, counters or bills.
+                        Place this QR code at your
+                        counter, entrance, store or
+                        any customer-facing location.
                     </p>
 
 
@@ -354,40 +325,36 @@ export default function QROrdering() {
 
                         <span
                             className={
-                                qr?.status === "active"
+                                qr.status === "active"
                                     ? "status-dot active"
                                     : "status-dot inactive"
                             }
                         />
 
                         <span>
-                            {qr?.status === "active"
-                                ? "QR Menu Active"
-                                : "QR Menu Disabled"}
+
+                            {qr.status === "active"
+                                ? "QR Ordering Active"
+                                : "QR Ordering Disabled"}
+
                         </span>
 
                     </div>
 
 
-                    {/* QR URL */}
+                    {/* LINK */}
 
-                    {qr?.qr_url ? (
+                    <div className="qr-link-label">
+                        Customer ordering link
+                    </div>
 
-                        <div className="qr-url">
 
-                            {qr.qr_url}
+                    <div className="qr-url">
 
-                        </div>
+                        {qr.qr_url ||
+                            "QR link unavailable"}
 
-                    ) : (
-
-                        <div className="qr-url">
-
-                            QR link unavailable
-
-                        </div>
-
-                    )}
+                    </div>
 
 
                     {/* ACTIONS */}
@@ -395,18 +362,18 @@ export default function QROrdering() {
                     <div className="qr-actions">
 
                         <button
-                            onClick={copyQRLink}
                             className="secondary-btn"
-                            disabled={!qr?.qr_url}
+                            onClick={copyQRLink}
+                            disabled={!qr.qr_url}
                         >
                             Copy Link
                         </button>
 
 
                         <button
-                            onClick={printQR}
                             className="primary-btn"
-                            disabled={!qr?.qr_url}
+                            onClick={printQR}
+                            disabled={!qr.qr_url}
                         >
                             Print QR
                         </button>
@@ -416,23 +383,25 @@ export default function QROrdering() {
                 </div>
 
 
-                {/* ================================= */}
-                {/* QR IMAGE */}
-                {/* ================================= */}
+
+                {/* RIGHT - QR IMAGE */}
 
                 <div className="qr-image-box">
 
-                    {qr?.qr_url ? (
+                    {qr.qr_url ? (
 
                         <img
                             src={
-                                `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
+                                `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(
                                     qr.qr_url
                                 )}`
                             }
-                            alt="Restaurant QR Code"
-                            width="300"
-                            height="300"
+
+                            alt="Business QR Code"
+
+                            width="320"
+
+                            height="320"
                         />
 
                     ) : (
@@ -440,7 +409,7 @@ export default function QROrdering() {
                         <div className="qr-unavailable">
 
                             <div>
-                                📱
+                                QR
                             </div>
 
                             <span>
@@ -456,9 +425,10 @@ export default function QROrdering() {
             </div>
 
 
-            {/* ================================= */}
-            {/* TABLES */}
-            {/* ================================= */}
+
+            {/* ================================================= */}
+            {/* HOW IT WORKS */}
+            {/* ================================================= */}
 
             <div className="section-card">
 
@@ -467,150 +437,256 @@ export default function QROrdering() {
                     <div>
 
                         <h2>
-                            Restaurant Tables
+                            How QR Ordering Works
                         </h2>
 
                         <p>
-                            Add your tables so customers
-                            can select their table after
-                            scanning the QR.
+                            A simple ordering experience
+                            for your customers.
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div className="qr-flow">
+
+
+                    <div className="qr-flow-item">
+
+                        <div className="qr-flow-number">
+                            01
+                        </div>
+
+                        <h3>
+                            Customer Scans
+                        </h3>
+
+                        <p>
+                            The customer scans your
+                            business QR code.
                         </p>
 
                     </div>
 
 
-                    <span className="count-badge">
-                        {tables.length}{" "}
-                        {tables.length === 1
-                            ? "Table"
-                            : "Tables"}
+
+                    <div className="qr-flow-item">
+
+                        <div className="qr-flow-number">
+                            02
+                        </div>
+
+                        <h3>
+                            Select Products
+                        </h3>
+
+                        <p>
+                            They browse your products
+                            and add items to their cart.
+                        </p>
+
+                    </div>
+
+
+
+                    <div className="qr-flow-item">
+
+                        <div className="qr-flow-number">
+                            03
+                        </div>
+
+                        <h3>
+                            Place Order
+                        </h3>
+
+                        <p>
+                            The order is sent directly
+                            to your business dashboard.
+                        </p>
+
+                    </div>
+
+
+
+                    <div className="qr-flow-item">
+
+                        <div className="qr-flow-number">
+                            04
+                        </div>
+
+                        <h3>
+                            Accept & Process
+                        </h3>
+
+                        <p>
+                            Review the order, accept it
+                            and process the payment.
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            {/* ================================================= */}
+            {/* CUSTOMER EXPERIENCE */}
+            {/* ================================================= */}
+
+            <div className="section-card">
+
+                <div className="section-header">
+
+                    <div>
+
+                        <h2>
+                            One QR. Simple Ordering.
+                        </h2>
+
+                        <p>
+                            Your customers do not need
+                            another application.
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div className="qr-benefits">
+
+
+                    <div>
+
+                        <strong>
+                            No App Required
+                        </strong>
+
+                        <span>
+                            Customers order directly
+                            from their browser.
+                        </span>
+
+                    </div>
+
+
+
+                    <div>
+
+                        <strong>
+                            Product Ordering
+                        </strong>
+
+                        <span>
+                            Customers see your products,
+                            prices and available items.
+                        </span>
+
+                    </div>
+
+
+
+                    <div>
+
+                        <strong>
+                            Instant Orders
+                        </strong>
+
+                        <span>
+                            New orders appear directly
+                            in your business dashboard.
+                        </span>
+
+                    </div>
+
+
+
+                    <div>
+
+                        <strong>
+                            Simple Experience
+                        </strong>
+
+                        <span>
+                            Scan → Select → Cart → Order.
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+
+            {/* ================================================= */}
+            {/* OWNER FLOW */}
+            {/* ================================================= */}
+
+            <div className="section-card">
+
+                <div className="section-header">
+
+                    <div>
+
+                        <h2>
+                            Designed for Your Business
+                        </h2>
+
+                        <p>
+                            Orders connect directly with
+                            your existing business system.
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <div className="owner-flow">
+
+                    <span>
+                        Customer Order
+                    </span>
+
+                    <b>→</b>
+
+                    <span>
+                        Owner Dashboard
+                    </span>
+
+                    <b>→</b>
+
+                    <span>
+                        Accept
+                    </span>
+
+                    <b>→</b>
+
+                    <span>
+                        Payment
+                    </span>
+
+                    <b>→</b>
+
+                    <span>
+                        Bill & Sale
+                    </span>
+
+                    <b>→</b>
+
+                    <span>
+                        Inventory Updated
                     </span>
 
                 </div>
 
-
-                {/* ADD TABLE */}
-
-                <div className="add-table">
-
-                    <input
-                        type="text"
-                        value={tableNumber}
-                        onChange={(e) =>
-                            setTableNumber(
-                                e.target.value
-                            )
-                        }
-                        placeholder="Table number"
-                        disabled={saving}
-                    />
-
-
-                    <input
-                        type="text"
-                        value={tableName}
-                        onChange={(e) =>
-                            setTableName(
-                                e.target.value
-                            )
-                        }
-                        placeholder="Table name (optional)"
-                        disabled={saving}
-                    />
-
-
-                    <button
-                        onClick={addTable}
-                        disabled={saving}
-                        className="primary-btn"
-                    >
-
-                        {saving
-                            ? "Adding..."
-                            : "+ Add Table"}
-
-                    </button>
-
-                </div>
-
-
-                {/* TABLE LIST */}
-
-                {tables.length === 0 ? (
-
-                    <div className="empty-tables">
-
-                        <div>
-                            🪑
-                        </div>
-
-                        <h3>
-                            No tables added
-                        </h3>
-
-                        <p>
-                            Add your restaurant tables
-                            above.
-                        </p>
-
-                    </div>
-
-                ) : (
-
-                    <div className="table-grid">
-
-                        {tables.map((table) => (
-
-                            <div
-                                className="table-box"
-                                key={table.id}
-                            >
-
-                                <div className="table-icon">
-                                    🪑
-                                </div>
-
-
-                                <strong>
-                                    Table{" "}
-                                    {table.table_number}
-                                </strong>
-
-
-                                {table.table_name && (
-
-                                    <span>
-                                        {
-                                            table.table_name
-                                        }
-                                    </span>
-
-                                )}
-
-
-                                <button
-                                    className="delete-btn"
-                                    onClick={() =>
-                                        removeTable(
-                                            table.id
-                                        )
-                                    }
-                                >
-                                    Delete
-                                </button>
-
-                            </div>
-
-                        ))}
-
-                    </div>
-
-                )}
-
             </div>
 
         </div>
-
     );
-
 }
