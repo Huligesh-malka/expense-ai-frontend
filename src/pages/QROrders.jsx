@@ -41,6 +41,139 @@ const statusLabels = {
 
 
 // =========================================================
+// FIND ORDERS ARRAY SAFELY
+// =========================================================
+
+function extractOrders(response) {
+
+    console.log(
+        "QR ORDERS RAW RESPONSE:",
+        response
+    );
+
+
+    // -----------------------------------------
+    // Direct array
+    // -----------------------------------------
+
+    if (
+        Array.isArray(response)
+    ) {
+
+        return response;
+
+    }
+
+
+    // -----------------------------------------
+    // Axios response
+    //
+    // response.data
+    // -----------------------------------------
+
+    const axiosData =
+        response?.data;
+
+
+    if (
+        Array.isArray(axiosData)
+    ) {
+
+        return axiosData;
+
+    }
+
+
+    // -----------------------------------------
+    // response.data.data
+    // -----------------------------------------
+
+    if (
+        Array.isArray(
+            axiosData?.data
+        )
+    ) {
+
+        return axiosData.data;
+
+    }
+
+
+    // -----------------------------------------
+    // response.data.data.data
+    // -----------------------------------------
+
+    if (
+        Array.isArray(
+            axiosData?.data?.data
+        )
+    ) {
+
+        return axiosData.data.data;
+
+    }
+
+
+    // -----------------------------------------
+    // response.data.orders
+    // -----------------------------------------
+
+    if (
+        Array.isArray(
+            axiosData?.orders
+        )
+    ) {
+
+        return axiosData.orders;
+
+    }
+
+
+    // -----------------------------------------
+    // response.data.data.orders
+    // -----------------------------------------
+
+    if (
+        Array.isArray(
+            axiosData?.data?.orders
+        )
+    ) {
+
+        return axiosData.data.orders;
+
+    }
+
+
+    // -----------------------------------------
+    // response.orders
+    // -----------------------------------------
+
+    if (
+        Array.isArray(
+            response?.orders
+        )
+    ) {
+
+        return response.orders;
+
+    }
+
+
+    // -----------------------------------------
+    // Nothing found
+    // -----------------------------------------
+
+    console.warn(
+        "QR ORDERS: No array found in response",
+        response
+    );
+
+    return [];
+
+}
+
+
+// =========================================================
 // COMPONENT
 // =========================================================
 
@@ -48,15 +181,27 @@ export default function QROrders() {
 
     const navigate = useNavigate();
 
-    const [orders, setOrders] = useState([]);
 
-    const [filter, setFilter] = useState("new");
+    // ALWAYS START AS ARRAY
 
-    const [loading, setLoading] = useState(true);
+    const [orders, setOrders] =
+        useState([]);
 
-    const [actionId, setActionId] = useState(null);
 
-    const [errorMessage, setErrorMessage] = useState("");
+    const [filter, setFilter] =
+        useState("new");
+
+
+    const [loading, setLoading] =
+        useState(true);
+
+
+    const [actionId, setActionId] =
+        useState(null);
+
+
+    const [errorMessage, setErrorMessage] =
+        useState("");
 
 
     // =========================================================
@@ -71,93 +216,41 @@ export default function QROrders() {
 
             setErrorMessage("");
 
+
             const query =
                 filter === "all"
                     ? ""
-                    : `?status=${encodeURIComponent(filter)}`;
-
-            const response = await getQROrders(query);
-
-            console.log("QR ORDERS RESPONSE:", response);
+                    : `?status=${encodeURIComponent(
+                        filter
+                    )}`;
 
 
-            // =================================================
+            const response =
+                await getQROrders(
+                    query
+                );
+
+
+            console.log(
+                "QR ORDERS:",
+                response
+            );
+
+
+            // -----------------------------------------
             // IMPORTANT
             //
-            // Backend response:
+            // Never directly do:
             //
-            // {
-            //     success: true,
-            //     total: 1,
-            //     data: [...]
-            // }
+            // setOrders(response.data)
             //
-            // Axios response:
-            //
-            // response.data.data
-            //
-            // Therefore actual orders array is:
-            //
-            // response.data.data
-            // =================================================
+            // because response.data may be an object.
+            // -----------------------------------------
 
-            let receivedOrders = [];
-
-
-            // CASE 1
-            // Axios response
-            // response.data.data = [...]
-
-            if (
-                Array.isArray(
-                    response?.data?.data
-                )
-            ) {
-
-                receivedOrders =
-                    response.data.data;
-
-            }
-
-
-            // CASE 2
-            // API service already returned:
-            // { success: true, data: [...] }
-
-            else if (
-                Array.isArray(
-                    response?.data
-                )
-            ) {
-
-                receivedOrders =
-                    response.data;
-
-            }
-
-
-            // CASE 3
-            // API service returned array directly
-
-            else if (
-                Array.isArray(
+            const receivedOrders =
+                extractOrders(
                     response
-                )
-            ) {
-
-                receivedOrders =
-                    response;
-
-            }
-
-
-            // INVALID RESPONSE
-
-            else {
-
-                receivedOrders = [];
-
-            }
+                );
 
 
             console.log(
@@ -166,11 +259,25 @@ export default function QROrders() {
             );
 
 
-            // ALWAYS KEEP orders AS ARRAY
+            // -----------------------------------------
+            // FINAL SAFETY CHECK
+            // -----------------------------------------
 
-            setOrders(
-                receivedOrders
-            );
+            if (
+                Array.isArray(
+                    receivedOrders
+                )
+            ) {
+
+                setOrders(
+                    receivedOrders
+                );
+
+            } else {
+
+                setOrders([]);
+
+            }
 
         } catch (error) {
 
@@ -179,7 +286,9 @@ export default function QROrders() {
                 error
             );
 
+
             setOrders([]);
+
 
             setErrorMessage(
                 error?.response?.data?.message ||
@@ -204,14 +313,19 @@ export default function QROrders() {
 
         loadOrders();
 
-        const timer = setInterval(
-            loadOrders,
-            5000
-        );
+
+        const timer =
+            setInterval(
+                loadOrders,
+                5000
+            );
+
 
         return () => {
 
-            clearInterval(timer);
+            clearInterval(
+                timer
+            );
 
         };
 
@@ -229,7 +343,9 @@ export default function QROrders() {
 
         try {
 
-            if (!order?.id) {
+            if (
+                !order?.id
+            ) {
 
                 alert(
                     "Order ID is missing."
@@ -239,13 +355,11 @@ export default function QROrders() {
 
             }
 
+
             setActionId(
                 order.id
             );
 
-
-            // IMPORTANT:
-            // Correct function name
 
             await updateQROrdOrderStatus(
                 order.id,
@@ -262,6 +376,7 @@ export default function QROrders() {
                 error
             );
 
+
             alert(
                 error?.response?.data?.message ||
                 error?.message ||
@@ -270,7 +385,9 @@ export default function QROrders() {
 
         } finally {
 
-            setActionId(null);
+            setActionId(
+                null
+            );
 
         }
 
@@ -278,7 +395,7 @@ export default function QROrders() {
 
 
     // =========================================================
-    // CONFIRM PAYMENT
+    // MARK PAYMENT PAID
     // =========================================================
 
     const markPaid = async (
@@ -297,7 +414,9 @@ export default function QROrders() {
             );
 
 
-        if (!confirmed) {
+        if (
+            !confirmed
+        ) {
 
             return;
 
@@ -341,7 +460,9 @@ export default function QROrders() {
 
         } finally {
 
-            setActionId(null);
+            setActionId(
+                null
+            );
 
         }
 
@@ -368,7 +489,9 @@ export default function QROrders() {
             );
 
 
-        if (!confirmed) {
+        if (
+            !confirmed
+        ) {
 
             return;
 
@@ -392,7 +515,7 @@ export default function QROrders() {
     ) => {
 
         return (
-            statusLabels[status] ||
+            statusLabels?.[status] ||
             status ||
             "Unknown"
         );
@@ -401,14 +524,16 @@ export default function QROrders() {
 
 
     // =========================================================
-    // FORMAT DATE
+    // DATE
     // =========================================================
 
     const formatDate = (
         date
     ) => {
 
-        if (!date) {
+        if (
+            !date
+        ) {
 
             return "-";
 
@@ -422,8 +547,10 @@ export default function QROrders() {
             ).toLocaleString(
                 "en-IN",
                 {
-                    dateStyle: "medium",
-                    timeStyle: "short"
+                    dateStyle:
+                        "medium",
+                    timeStyle:
+                        "short"
                 }
             );
 
@@ -447,7 +574,10 @@ export default function QROrders() {
     ) => {
 
         const number =
-            Number(value || 0);
+            Number(
+                value || 0
+            );
+
 
         return `₹${number.toFixed(2)}`;
 
@@ -486,12 +616,24 @@ export default function QROrders() {
 
 
     // =========================================================
+    // SAFE ORDERS ARRAY
+    // =========================================================
+
+    const safeOrders =
+        Array.isArray(
+            orders
+        )
+            ? orders
+            : [];
+
+
+    // =========================================================
     // LOADING
     // =========================================================
 
     if (
         loading &&
-        orders.length === 0
+        safeOrders.length === 0
     ) {
 
         return (
@@ -606,80 +748,91 @@ export default function QROrders() {
                 ERROR
             ================================================= */}
 
-            {errorMessage && (
+            {
+                errorMessage && (
 
-                <div className="error-box">
+                    <div className="error-box">
 
-                    <strong>
-                        Unable to load orders
-                    </strong>
+                        <strong>
+                            Unable to load orders
+                        </strong>
 
-                    <span>
-                        {errorMessage}
-                    </span>
+                        <span>
+                            {errorMessage}
+                        </span>
 
-                    <button
-                        type="button"
-                        onClick={
-                            loadOrders
-                        }
-                    >
-                        Try Again
-                    </button>
+                        <button
+                            type="button"
+                            onClick={
+                                loadOrders
+                            }
+                        >
+                            Try Again
+                        </button>
 
-                </div>
+                    </div>
 
-            )}
+                )
+            }
 
 
             {/* =================================================
-                STATUS FILTERS
+                FILTERS
             ================================================= */}
 
             <div className="order-filters">
 
-                {statusFilters.map(
-                    (status) => (
+                {
+                    Array.isArray(
+                        statusFilters
+                    ) &&
+                    statusFilters.map(
+                        (status) => (
 
-                        <button
-                            type="button"
-                            key={status}
-                            className={
-                                filter === status
-                                    ? "filter active"
-                                    : "filter"
-                            }
-                            onClick={() =>
-                                setFilter(
+                            <button
+                                type="button"
+                                key={
                                     status
-                                )
-                            }
-                        >
-
-                            {
-                                status === "all"
-                                    ? "All"
-                                    : getStatusLabel(
+                                }
+                                className={
+                                    filter === status
+                                        ? "filter active"
+                                        : "filter"
+                                }
+                                onClick={() =>
+                                    setFilter(
                                         status
                                     )
-                            }
+                                }
+                            >
 
-                        </button>
+                                {
+                                    status === "all"
+                                        ? "All"
+                                        : getStatusLabel(
+                                            status
+                                        )
+                                }
 
+                            </button>
+
+                        )
                     )
-                )}
+                }
 
             </div>
 
 
             {/* =================================================
-                ORDER SUMMARY
+                SUMMARY
             ================================================= */}
 
             <div className="order-summary">
 
                 <strong>
-                    {orders.length}
+                    {
+                        safeOrders.length
+                    }
                 </strong>
 
                 <span>
@@ -705,606 +858,652 @@ export default function QROrders() {
                 ORDERS
             ================================================= */}
 
-            {orders.length === 0 ? (
+            {
+                safeOrders.length === 0 ? (
 
-                <div className="empty-orders">
+                    <div className="empty-orders">
 
-                    <div className="empty-icon">
-                        🛒
+                        <div className="empty-icon">
+                            🛒
+                        </div>
+
+                        <h2>
+                            No QR orders
+                        </h2>
+
+                        <p>
+                            New customer orders will
+                            appear here automatically.
+                        </p>
+
+                        <button
+                            type="button"
+                            className="empty-btn"
+                            onClick={
+                                loadOrders
+                            }
+                        >
+                            Refresh Orders
+                        </button>
+
                     </div>
 
-                    <h2>
-                        No QR orders
-                    </h2>
+                ) : (
 
-                    <p>
-                        New customer orders will
-                        appear here automatically.
-                    </p>
+                    <div className="orders-list">
 
-                    <button
-                        type="button"
-                        className="empty-btn"
-                        onClick={
-                            loadOrders
-                        }
-                    >
-                        Refresh Orders
-                    </button>
+                        {
+                            safeOrders.map(
+                                (
+                                    order,
+                                    orderIndex
+                                ) => {
 
-                </div>
-
-            ) : (
-
-                <div className="orders-list">
-
-                    {orders.map(
-                        (order) => (
-
-                            <div
-                                className="order-card"
-                                key={
-                                    order.id
-                                }
-                            >
+                                    const items =
+                                        Array.isArray(
+                                            order?.items
+                                        )
+                                            ? order.items
+                                            : [];
 
 
-                                {/* =================================
-                                    ORDER HEADER
-                                ================================= */}
+                                    return (
 
-                                <div className="order-card-header">
-
-                                    <div>
-
-                                        <strong>
-                                            #
-                                            {
-                                                order.order_no ||
-                                                order.id
+                                        <div
+                                            className="order-card"
+                                            key={
+                                                order?.id ||
+                                                order?.order_no ||
+                                                orderIndex
                                             }
-                                        </strong>
+                                        >
 
-                                        <span>
-                                            Customer Order
-                                        </span>
 
-                                        <small>
+                                            {/* =================================
+                                                HEADER
+                                            ================================= */}
+
+                                            <div className="order-card-header">
+
+                                                <div>
+
+                                                    <strong>
+
+                                                        #
+
+                                                        {
+                                                            order?.order_no ||
+                                                            order?.id ||
+                                                            "N/A"
+                                                        }
+
+                                                    </strong>
+
+                                                    <span>
+                                                        Customer Order
+                                                    </span>
+
+                                                    <small>
+                                                        {
+                                                            formatDate(
+                                                                order?.created_at
+                                                            )
+                                                        }
+                                                    </small>
+
+                                                </div>
+
+
+                                                <span
+                                                    className={
+                                                        `order-status ${
+                                                            order?.order_status ||
+                                                            "new"
+                                                        }`
+                                                    }
+                                                >
+
+                                                    {
+                                                        getStatusLabel(
+                                                            order?.order_status ||
+                                                            "new"
+                                                        )
+                                                    }
+
+                                                </span>
+
+                                            </div>
+
+
+                                            {/* =================================
+                                                CUSTOMER
+                                            ================================= */}
+
+                                            <div className="customer-info">
+
+                                                <div className="customer-icon">
+                                                    👤
+                                                </div>
+
+                                                <div>
+
+                                                    <strong>
+                                                        {
+                                                            order?.customer_name ||
+                                                            "Customer"
+                                                        }
+                                                    </strong>
+
+
+                                                    {
+                                                        order?.customer_phone && (
+
+                                                            <span>
+                                                                📞{" "}
+
+                                                                {
+                                                                    order.customer_phone
+                                                                }
+                                                            </span>
+
+                                                        )
+                                                    }
+
+                                                </div>
+
+                                            </div>
+
+
+                                            {/* =================================
+                                                PAYMENT
+                                            ================================= */}
+
+                                            <div className="payment-status-row">
+
+                                                <span>
+                                                    Payment
+                                                </span>
+
+                                                <strong
+                                                    className={
+                                                        order?.payment_status ===
+                                                        "paid"
+                                                            ? "payment-paid"
+                                                            : order?.payment_status ===
+                                                              "failed"
+                                                            ? "payment-failed"
+                                                            : "payment-pending"
+                                                    }
+                                                >
+
+                                                    {
+                                                        getPaymentLabel(
+                                                            order?.payment_status
+                                                        )
+                                                    }
+
+                                                </strong>
+
+                                            </div>
+
+
+                                            {/* =================================
+                                                ITEMS
+                                            ================================= */}
+
+                                            <div className="order-items">
+
+                                                <h3>
+                                                    Order Items
+                                                </h3>
+
+
+                                                {
+                                                    items.length > 0
+                                                        ? (
+
+                                                            items.map(
+                                                                (
+                                                                    item,
+                                                                    index
+                                                                ) => {
+
+                                                                    const quantity =
+                                                                        Number(
+                                                                            item?.quantity ||
+                                                                            0
+                                                                        );
+
+
+                                                                    const unitPrice =
+                                                                        Number(
+                                                                            item?.unit_price ||
+                                                                            0
+                                                                        );
+
+
+                                                                    const calculatedTotal =
+                                                                        quantity *
+                                                                        unitPrice;
+
+
+                                                                    const itemTotal =
+                                                                        item?.total ??
+                                                                        calculatedTotal;
+
+
+                                                                    return (
+
+                                                                        <div
+                                                                            className="order-item"
+                                                                            key={
+                                                                                item?.id ||
+                                                                                `${order?.id}-${index}`
+                                                                            }
+                                                                        >
+
+                                                                            <div>
+
+                                                                                <strong>
+                                                                                    {
+                                                                                        item?.product_name ||
+                                                                                        item?.name ||
+                                                                                        "Product"
+                                                                                    }
+                                                                                </strong>
+
+                                                                                <span>
+
+                                                                                    {
+                                                                                        quantity
+                                                                                    }
+
+                                                                                    {" "}
+
+                                                                                    {
+                                                                                        item?.unit ||
+                                                                                        "pcs"
+                                                                                    }
+
+                                                                                    {" × "}
+
+                                                                                    {
+                                                                                        money(
+                                                                                            unitPrice
+                                                                                        )
+                                                                                    }
+
+                                                                                </span>
+
+                                                                            </div>
+
+
+                                                                            <strong>
+                                                                                {
+                                                                                    money(
+                                                                                        itemTotal
+                                                                                    )
+                                                                                }
+                                                                            </strong>
+
+                                                                        </div>
+
+                                                                    );
+
+                                                                }
+                                                            )
+
+                                                        )
+                                                        : (
+
+                                                            <div className="no-items">
+                                                                No items found
+                                                            </div>
+
+                                                        )
+                                                }
+
+                                            </div>
+
+
+                                            {/* =================================
+                                                TOTAL
+                                            ================================= */}
+
+                                            <div className="order-total">
+
+                                                <div>
+
+                                                    <span>
+                                                        Subtotal
+                                                    </span>
+
+                                                    <strong>
+                                                        {
+                                                            money(
+                                                                order?.subtotal
+                                                            )
+                                                        }
+                                                    </strong>
+
+                                                </div>
+
+
+                                                <div>
+
+                                                    <span>
+                                                        Tax
+                                                    </span>
+
+                                                    <strong>
+                                                        {
+                                                            money(
+                                                                order?.tax
+                                                            )
+                                                        }
+                                                    </strong>
+
+                                                </div>
+
+
+                                                <div className="grand-total">
+
+                                                    <span>
+                                                        Total
+                                                    </span>
+
+                                                    <strong>
+                                                        {
+                                                            money(
+                                                                order?.total_amount
+                                                            )
+                                                        }
+                                                    </strong>
+
+                                                </div>
+
+                                            </div>
+
+
+                                            {/* =================================
+                                                NOTES
+                                            ================================= */}
+
                                             {
-                                                formatDate(
-                                                    order.created_at
+                                                order?.notes && (
+
+                                                    <div className="order-notes">
+
+                                                        <strong>
+                                                            Note:
+                                                        </strong>
+
+                                                        <span>
+                                                            {
+                                                                order.notes
+                                                            }
+                                                        </span>
+
+                                                    </div>
+
                                                 )
                                             }
-                                        </small>
-
-                                    </div>
 
 
-                                    <span
-                                        className={
-                                            `order-status ${
-                                                order.order_status ||
-                                                "new"
-                                            }`
-                                        }
-                                    >
+                                            {/* =================================
+                                                ACTIONS
+                                            ================================= */}
 
-                                        {
-                                            getStatusLabel(
-                                                order.order_status ||
-                                                "new"
-                                            )
-                                        }
-
-                                    </span>
-
-                                </div>
+                                            <div className="order-actions">
 
 
-                                {/* =================================
-                                    CUSTOMER
-                                ================================= */}
+                                                {/* NEW */}
 
-                                <div className="customer-info">
-
-                                    <div className="customer-icon">
-                                        👤
-                                    </div>
-
-                                    <div>
-
-                                        <strong>
-                                            {
-                                                order.customer_name ||
-                                                "Customer"
-                                            }
-                                        </strong>
-
-
-                                        {order.customer_phone && (
-
-                                            <span>
-                                                📞{" "}
                                                 {
-                                                    order.customer_phone
-                                                }
-                                            </span>
+                                                    order?.order_status ===
+                                                    "new" && (
 
-                                        )}
+                                                        <>
 
-                                    </div>
-
-                                </div>
-
-
-                                {/* =================================
-                                    PAYMENT
-                                ================================= */}
-
-                                <div className="payment-status-row">
-
-                                    <span>
-                                        Payment
-                                    </span>
-
-                                    <strong
-                                        className={
-                                            order.payment_status ===
-                                            "paid"
-                                                ? "payment-paid"
-                                                : order.payment_status ===
-                                                  "failed"
-                                                ? "payment-failed"
-                                                : "payment-pending"
-                                        }
-                                    >
-
-                                        {
-                                            getPaymentLabel(
-                                                order.payment_status
-                                            )
-                                        }
-
-                                    </strong>
-
-                                </div>
+                                                            <button
+                                                                type="button"
+                                                                className="reject-btn"
+                                                                disabled={
+                                                                    actionId ===
+                                                                    order.id
+                                                                }
+                                                                onClick={() =>
+                                                                    rejectOrder(
+                                                                        order
+                                                                    )
+                                                                }
+                                                            >
+                                                                Reject
+                                                            </button>
 
 
-                                {/* =================================
-                                    ITEMS
-                                ================================= */}
-
-                                <div className="order-items">
-
-                                    <h3>
-                                        Order Items
-                                    </h3>
-
-
-                                    {
-                                        Array.isArray(
-                                            order.items
-                                        ) &&
-                                        order.items.length > 0
-                                            ? (
-
-                                                order.items.map(
-                                                    (
-                                                        item,
-                                                        index
-                                                    ) => {
-
-                                                        const quantity =
-                                                            Number(
-                                                                item?.quantity ||
-                                                                0
-                                                            );
-
-                                                        const unitPrice =
-                                                            Number(
-                                                                item?.unit_price ||
-                                                                0
-                                                            );
-
-                                                        const calculatedTotal =
-                                                            quantity *
-                                                            unitPrice;
-
-                                                        const itemTotal =
-                                                            item?.total ??
-                                                            calculatedTotal;
-
-
-                                                        return (
-
-                                                            <div
-                                                                className="order-item"
-                                                                key={
-                                                                    item?.id ||
-                                                                    `${order.id}-${index}`
+                                                            <button
+                                                                type="button"
+                                                                className="accept-btn"
+                                                                disabled={
+                                                                    actionId ===
+                                                                    order.id
+                                                                }
+                                                                onClick={() =>
+                                                                    changeStatus(
+                                                                        order,
+                                                                        "accepted"
+                                                                    )
                                                                 }
                                                             >
 
-                                                                <div>
+                                                                {
+                                                                    actionId ===
+                                                                    order.id
+                                                                        ? "Accepting..."
+                                                                        : "✓ Accept Order"
+                                                                }
 
-                                                                    <strong>
-                                                                        {
-                                                                            item?.product_name ||
-                                                                            item?.name ||
-                                                                            "Product"
-                                                                        }
-                                                                    </strong>
+                                                            </button>
 
-                                                                    <span>
+                                                        </>
 
-                                                                        {
-                                                                            quantity
-                                                                        }
-
-                                                                        {" "}
-
-                                                                        {
-                                                                            item?.unit ||
-                                                                            "pcs"
-                                                                        }
-
-                                                                        {" × "}
-
-                                                                        {
-                                                                            money(
-                                                                                unitPrice
-                                                                            )
-                                                                        }
-
-                                                                    </span>
-
-                                                                </div>
-
-
-                                                                <strong>
-                                                                    {
-                                                                        money(
-                                                                            itemTotal
-                                                                        )
-                                                                    }
-                                                                </strong>
-
-                                                            </div>
-
-                                                        );
-
-                                                    }
-                                                )
-
-                                            )
-                                            : (
-
-                                                <div className="no-items">
-                                                    No items found
-                                                </div>
-
-                                            )
-                                    }
-
-                                </div>
-
-
-                                {/* =================================
-                                    TOTAL
-                                ================================= */}
-
-                                <div className="order-total">
-
-                                    <div>
-
-                                        <span>
-                                            Subtotal
-                                        </span>
-
-                                        <strong>
-                                            {
-                                                money(
-                                                    order.subtotal
-                                                )
-                                            }
-                                        </strong>
-
-                                    </div>
-
-
-                                    <div>
-
-                                        <span>
-                                            Tax
-                                        </span>
-
-                                        <strong>
-                                            {
-                                                money(
-                                                    order.tax
-                                                )
-                                            }
-                                        </strong>
-
-                                    </div>
-
-
-                                    <div className="grand-total">
-
-                                        <span>
-                                            Total
-                                        </span>
-
-                                        <strong>
-                                            {
-                                                money(
-                                                    order.total_amount
-                                                )
-                                            }
-                                        </strong>
-
-                                    </div>
-
-                                </div>
-
-
-                                {/* =================================
-                                    NOTES
-                                ================================= */}
-
-                                {order.notes && (
-
-                                    <div className="order-notes">
-
-                                        <strong>
-                                            Note:
-                                        </strong>
-
-                                        <span>
-                                            {
-                                                order.notes
-                                            }
-                                        </span>
-
-                                    </div>
-
-                                )}
-
-
-                                {/* =================================
-                                    ACTIONS
-                                ================================= */}
-
-                                <div className="order-actions">
-
-
-                                    {/* NEW */}
-
-                                    {order.order_status ===
-                                    "new" && (
-
-                                        <>
-
-                                            <button
-                                                type="button"
-                                                className="reject-btn"
-                                                disabled={
-                                                    actionId ===
-                                                    order.id
-                                                }
-                                                onClick={() =>
-                                                    rejectOrder(
-                                                        order
                                                     )
                                                 }
-                                            >
-                                                Reject
-                                            </button>
 
 
-                                            <button
-                                                type="button"
-                                                className="accept-btn"
-                                                disabled={
-                                                    actionId ===
-                                                    order.id
-                                                }
-                                                onClick={() =>
-                                                    changeStatus(
-                                                        order,
-                                                        "accepted"
-                                                    )
-                                                }
-                                            >
+                                                {/* ACCEPTED */}
 
                                                 {
-                                                    actionId ===
-                                                    order.id
-                                                        ? "Accepting..."
-                                                        : "✓ Accept Order"
+                                                    order?.order_status ===
+                                                    "accepted" && (
+
+                                                        <>
+
+                                                            {
+                                                                order?.payment_status !==
+                                                                "paid" && (
+
+                                                                    <button
+                                                                        type="button"
+                                                                        className="payment-btn"
+                                                                        disabled={
+                                                                            actionId ===
+                                                                            order.id
+                                                                        }
+                                                                        onClick={() =>
+                                                                            markPaid(
+                                                                                order
+                                                                            )
+                                                                        }
+                                                                    >
+
+                                                                        {
+                                                                            actionId ===
+                                                                            order.id
+                                                                                ? "Confirming..."
+                                                                                : "₹ Confirm Payment"
+                                                                        }
+
+                                                                    </button>
+
+                                                                )
+                                                            }
+
+
+                                                            {
+                                                                order?.payment_status ===
+                                                                "paid" && (
+
+                                                                    <button
+                                                                        type="button"
+                                                                        className="primary-btn"
+                                                                        disabled={
+                                                                            actionId ===
+                                                                            order.id
+                                                                        }
+                                                                        onClick={() =>
+                                                                            changeStatus(
+                                                                                order,
+                                                                                "processing"
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        🔄 Start Processing
+                                                                    </button>
+
+                                                                )
+                                                            }
+
+                                                        </>
+
+                                                    )
                                                 }
 
-                                            </button>
 
-                                        </>
+                                                {/* PROCESSING */}
 
-                                    )}
+                                                {
+                                                    order?.order_status ===
+                                                    "processing" && (
 
+                                                        <button
+                                                            type="button"
+                                                            className="primary-btn"
+                                                            disabled={
+                                                                actionId ===
+                                                                order.id
+                                                            }
+                                                            onClick={() =>
+                                                                changeStatus(
+                                                                    order,
+                                                                    "ready"
+                                                                )
+                                                            }
+                                                        >
+                                                            📦 Mark Ready
+                                                        </button>
 
-                                    {/* ACCEPTED */}
-
-                                    {order.order_status ===
-                                    "accepted" && (
-
-                                        <>
-
-                                            {
-                                                order.payment_status !==
-                                                "paid" && (
-
-                                                    <button
-                                                        type="button"
-                                                        className="payment-btn"
-                                                        disabled={
-                                                            actionId ===
-                                                            order.id
-                                                        }
-                                                        onClick={() =>
-                                                            markPaid(
-                                                                order
-                                                            )
-                                                        }
-                                                    >
-
-                                                        {
-                                                            actionId ===
-                                                            order.id
-                                                                ? "Confirming..."
-                                                                : "₹ Confirm Payment"
-                                                        }
-
-                                                    </button>
-
-                                                )
-                                            }
+                                                    )
+                                                }
 
 
-                                            {
-                                                order.payment_status ===
-                                                "paid" && (
+                                                {/* READY */}
 
-                                                    <button
-                                                        type="button"
-                                                        className="primary-btn"
-                                                        disabled={
-                                                            actionId ===
-                                                            order.id
-                                                        }
-                                                        onClick={() =>
-                                                            changeStatus(
-                                                                order,
-                                                                "processing"
-                                                            )
-                                                        }
-                                                    >
-                                                        🔄 Start Processing
-                                                    </button>
+                                                {
+                                                    order?.order_status ===
+                                                    "ready" && (
 
-                                                )
-                                            }
+                                                        <button
+                                                            type="button"
+                                                            className="primary-btn"
+                                                            disabled={
+                                                                actionId ===
+                                                                order.id
+                                                            }
+                                                            onClick={() =>
+                                                                changeStatus(
+                                                                    order,
+                                                                    "completed"
+                                                                )
+                                                            }
+                                                        >
+                                                            ✓ Complete Order
+                                                        </button>
 
-                                        </>
-
-                                    )}
+                                                    )
+                                                }
 
 
-                                    {/* PROCESSING */}
+                                                {/* PAYMENT PAID */}
 
-                                    {order.order_status ===
-                                    "processing" && (
+                                                {
+                                                    order?.payment_status ===
+                                                    "paid" && (
 
-                                        <button
-                                            type="button"
-                                            className="primary-btn"
-                                            disabled={
-                                                actionId ===
-                                                order.id
-                                            }
-                                            onClick={() =>
-                                                changeStatus(
-                                                    order,
-                                                    "ready"
-                                                )
-                                            }
-                                        >
-                                            📦 Mark Ready
-                                        </button>
+                                                        <span className="paid-badge">
+                                                            ✓ Payment Confirmed
+                                                        </span>
 
-                                    )}
+                                                    )
+                                                }
 
 
-                                    {/* READY */}
+                                                {/* COMPLETED */}
 
-                                    {order.order_status ===
-                                    "ready" && (
+                                                {
+                                                    order?.order_status ===
+                                                    "completed" && (
 
-                                        <button
-                                            type="button"
-                                            className="primary-btn"
-                                            disabled={
-                                                actionId ===
-                                                order.id
-                                            }
-                                            onClick={() =>
-                                                changeStatus(
-                                                    order,
-                                                    "completed"
-                                                )
-                                            }
-                                        >
-                                            ✓ Complete Order
-                                        </button>
+                                                        <span className="completed-badge">
+                                                            ✓ Order Completed
+                                                        </span>
 
-                                    )}
+                                                    )
+                                                }
 
 
-                                    {/* PAYMENT CONFIRMED */}
+                                                {/* REJECTED */}
 
-                                    {order.payment_status ===
-                                    "paid" && (
+                                                {
+                                                    order?.order_status ===
+                                                    "rejected" && (
 
-                                        <span className="paid-badge">
-                                            ✓ Payment Confirmed
-                                        </span>
+                                                        <span className="rejected-badge">
+                                                            ✕ Order Rejected
+                                                        </span>
 
-                                    )}
-
-
-                                    {/* COMPLETED */}
-
-                                    {order.order_status ===
-                                    "completed" && (
-
-                                        <span className="completed-badge">
-                                            ✓ Order Completed
-                                        </span>
-
-                                    )}
+                                                    )
+                                                }
 
 
-                                    {/* REJECTED */}
+                                                {/* CANCELLED */}
 
-                                    {order.order_status ===
-                                    "rejected" && (
+                                                {
+                                                    order?.order_status ===
+                                                    "cancelled" && (
 
-                                        <span className="rejected-badge">
-                                            ✕ Order Rejected
-                                        </span>
+                                                        <span className="cancelled-badge">
+                                                            Order Cancelled
+                                                        </span>
 
-                                    )}
+                                                    )
+                                                }
 
+                                            </div>
 
-                                    {/* CANCELLED */}
+                                        </div>
 
-                                    {order.order_status ===
-                                    "cancelled" && (
+                                    );
 
-                                        <span className="cancelled-badge">
-                                            Order Cancelled
-                                        </span>
+                                }
+                            )
+                        }
 
-                                    )}
+                    </div>
 
-                                </div>
-
-                            </div>
-
-                        )
-                    )}
-
-                </div>
-
-            )}
+                )
+            }
 
 
             {/* =================================================
@@ -1327,8 +1526,6 @@ export default function QROrders() {
                         Helvetica,
                         sans-serif;
                 }
-
-                /* HEADER */
 
                 .orders-header {
                     display: flex;
@@ -1401,8 +1598,6 @@ export default function QROrders() {
                     border-color: #111827;
                 }
 
-                /* ERROR */
-
                 .error-box {
                     display: flex;
                     align-items: center;
@@ -1435,8 +1630,6 @@ export default function QROrders() {
                     font-weight: 600;
                 }
 
-                /* FILTERS */
-
                 .order-filters {
                     display: flex;
                     gap: 8px;
@@ -1465,8 +1658,6 @@ export default function QROrders() {
                     border-color: #111827;
                 }
 
-                /* SUMMARY */
-
                 .order-summary {
                     display: flex;
                     align-items: center;
@@ -1487,8 +1678,6 @@ export default function QROrders() {
                     font-weight: 700;
                 }
 
-                /* ORDERS */
-
                 .orders-list {
                     display: grid;
                     grid-template-columns:
@@ -1508,8 +1697,6 @@ export default function QROrders() {
                         0 3px 12px
                         rgba(0, 0, 0, 0.05);
                 }
-
-                /* ORDER HEADER */
 
                 .order-card-header {
                     display: flex;
@@ -1538,8 +1725,6 @@ export default function QROrders() {
                     font-size: 11px;
                     margin-top: 5px;
                 }
-
-                /* STATUS */
 
                 .order-status {
                     padding: 7px 11px !important;
@@ -1585,8 +1770,6 @@ export default function QROrders() {
                     color: #6b7280;
                 }
 
-                /* CUSTOMER */
-
                 .customer-info {
                     display: flex;
                     align-items: center;
@@ -1618,8 +1801,6 @@ export default function QROrders() {
                     color: #6b7280;
                     font-size: 12px;
                 }
-
-                /* PAYMENT */
 
                 .payment-status-row {
                     display: flex;
@@ -1653,8 +1834,6 @@ export default function QROrders() {
                     border-radius: 15px;
                     font-size: 11px;
                 }
-
-                /* ITEMS */
 
                 .order-items {
                     padding: 17px 18px;
@@ -1694,8 +1873,6 @@ export default function QROrders() {
                     font-size: 13px;
                 }
 
-                /* TOTAL */
-
                 .order-total {
                     padding: 15px 18px;
                     background: #fafbfc;
@@ -1716,8 +1893,6 @@ export default function QROrders() {
                     font-size: 17px !important;
                 }
 
-                /* NOTES */
-
                 .order-notes {
                     margin: 0 18px;
                     padding: 10px 12px;
@@ -1732,8 +1907,6 @@ export default function QROrders() {
                 .order-notes span {
                     color: #6b7280;
                 }
-
-                /* ACTIONS */
 
                 .order-actions {
                     display: flex;
@@ -1813,8 +1986,6 @@ export default function QROrders() {
                     color: #6b7280;
                 }
 
-                /* LOADING / EMPTY */
-
                 .qr-loading-page,
                 .empty-orders {
                     min-height: 400px;
@@ -1872,8 +2043,6 @@ export default function QROrders() {
                     cursor: pointer;
                     font-weight: 600;
                 }
-
-                /* RESPONSIVE */
 
                 @media (
                     max-width: 1000px
