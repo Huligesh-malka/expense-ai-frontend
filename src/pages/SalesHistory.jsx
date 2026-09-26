@@ -394,13 +394,7 @@ export default function SalesHistory() {
                                                     >
                                                         <FiDownload size={14} />
                                                     </button>
-                                                    <button
-                                                        style={styles.deleteButton}
-                                                        onClick={() => (item.id)}
-                                                        title="Delete Invoice"
-                                                    >
-                                                        < size={14} />
-                                                    </button>
+
                                                 </div>
                                             </td>
                                         </tr>
@@ -950,38 +944,3 @@ const styles = {
         fontWeight: "850"
     }
 };
-
-<style>
-@media (max-width: 1100px) {
-    .sales-stats {
-        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    }
-}
-@media (max-width: 760px) {
-    .sales-page {
-        padding: 14px !important;
-    }
-    .sales-header {
-        align-items: flex-start !important;
-        flex-direction: column !important;
-        padding: 20px !important;
-    }
-    .sales-title {
-        font-size: 24px !important;
-    }
-    .sales-stats {
-        grid-template-columns: 1fr !important;
-    }
-}
-@media print {
-    .sales-header a,
-    .insightAction,
-    button {
-        display: none !important;
-    }
-    .sales-page {
-        background: #fff !important;
-        padding: 0 !important;
-    }
-}
-</style>
