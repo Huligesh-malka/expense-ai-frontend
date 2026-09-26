@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+
 import { Link } from "react-router-dom";
 import API from "../services/api";
-import { FiSearch, FiPlus, FiEye, FiTrash2, FiFilter, FiDownload, FiCalendar, FiUser, FiCreditCard, FiTrendingUp, FiPrinter, FiRefreshCw, FiActivity, FiArrowUpRight } from "react-icons/fi";
+import { FiSearch, FiPlus, FiEye, FiFilter, FiDownload, FiCalendar, FiUser, FiCreditCard, FiTrendingUp, FiPrinter, FiRefreshCw, FiActivity, FiArrowUpRight } from "react-icons/fi";
 
 export default function SalesHistory() {
     const [sales, setSales] = useState([]);
@@ -29,18 +29,7 @@ export default function SalesHistory() {
         }
     };
 
-    const deleteSale = async (id) => {
-        if (!window.confirm("Are you sure you want to delete this sale? This action cannot be undone.")) return;
 
-        try {
-            await API.delete(`/sales/${id}`);
-            await loadSales();
-            alert("Sale deleted successfully");
-        } catch (err) {
-            console.error("Error deleting sale:", err);
-            alert(err.response?.data?.message || "Failed to delete sale");
-        }
-    };
 
     const getStatusConfig = (status) => {
         const configs = {
@@ -87,14 +76,7 @@ export default function SalesHistory() {
         return { total, count, paid, pending };
     };
 
-    const getItemsSummary = (items) => {
-        if (!items || items.length === 0) return "No items";
-        return items.map(item => {
-            const qty = item.entered_quantity || item.quantity || 1;
-            const unit = item.entered_unit || item.unit || "pcs";
-            return `${item.product_name} (${qty} ${unit})`;
-        }).join(", ");
-    };
+
 
     const stats = getPeriodStats();
 
@@ -144,7 +126,7 @@ export default function SalesHistory() {
             <div className="sales-header" style={styles.header}>
                 <div>
                     <h1 className="sales-title" style={styles.title}>Sales History</h1>
-                    <p style={styles.subtitle}>Track and manage all your sales transactions</p>
+                    <p style={styles.subtitle}>Quickly find a sale and open the invoice. Product details are kept inside the invoice.</p>
                 </div>
                 <Link to="/billing-pos" style={styles.primaryButton}>
                     <FiPlus size={18} />
@@ -256,14 +238,26 @@ export default function SalesHistory() {
                         </select>
                     </div>
                 </div>
-                <div style={styles.filtersRight}>
-                    <span style={styles.resultCount}>
-                        {filtered.length} result{filtered.length !== 1 ? "s" : ""}
-                    </span>
-                    <button style={styles.iconButton} onClick={() => window.print()}>
-                        <FiDownload size={18} />
-                    </button>
-                </div>
+                                <div style={styles.filtersRight}>
+                     <div style={styles.liveIndicator}>
+                         <span style={styles.liveDot}></span>
+                         Live
+                     </div>
+                     <span style={styles.resultCount}>
+                         {filtered.length} result{filtered.length !== 1 ? "s" : ""}
+                     </span>
+                     {lastUpdated && (
+                         <span style={styles.updatedText}>
+                             Updated {lastUpdated.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+                         </span>
+                     )}
+                     <button style={styles.iconButton} onClick={() => loadSales()} title="Refresh sales">
+                         <FiRefreshCw size={16} />
+                     </button>
+                     <button style={styles.iconButton} onClick={() => window.print()} title="Print page">
+                         <FiDownload size={16} />
+                     </button>
+                 </div>
             </div>
 
             {/* Table */}
@@ -284,7 +278,7 @@ export default function SalesHistory() {
                                 <th style={styles.th}>Payment</th>
                                 <th style={styles.th}>Status</th>
                                 <th style={{...styles.th, textAlign: "right"}}>Total</th>
-                                <th style={{...styles.th, textAlign: "center"}}>Actions</th>
+                                <th style={{...styles.th, textAlign: "center"}}>Invoice Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -352,26 +346,12 @@ export default function SalesHistory() {
                                             <td>
                                                 <div style={styles.itemsCell}>
                                                     <div style={styles.itemsCount}>
-                                                        {itemsList.length} {itemsList.length === 1 ? 'item' : 'items'}
+                                                        {itemsList.length} {itemsList.length === 1 ? "item" : "items"}
                                                     </div>
-                                                    <div style={styles.itemsSummary}>
-                                                        {itemsList.slice(0, 3).map((product, idx) => {
-                                                            const qty = product.entered_quantity || product.quantity || 1;
-                                                            const unit = product.entered_unit || product.unit || "pcs";
-                                                            return (
-                                                                <div key={idx} style={styles.itemChip}>
-                                                                    {product.product_name} ({qty} {unit})
-                                                                </div>
-                                                            );
-                                                        })}
-                                                        {itemsList.length > 3 && (
-                                                            <div style={styles.moreItems}>
-                                                                +{itemsList.length - 3} more
-                                                            </div>
-                                                        )}
+                                                    <div style={styles.itemHint}>
+                                                        View invoice for details
                                                     </div>
-                                                </div>
-                                            </td>
+                                                </div></td>
                                             <td>
                                                 <span style={styles.paymentMethodBadge}>
                                                     {getPaymentIcon(item.payment_method)} {item.payment_method || "N/A"}
@@ -416,10 +396,10 @@ export default function SalesHistory() {
                                                     </button>
                                                     <button
                                                         style={styles.deleteButton}
-                                                        onClick={() => deleteSale(item.id)}
+                                                        onClick={() => (item.id)}
                                                         title="Delete Invoice"
                                                     >
-                                                        <FiTrash2 size={14} />
+                                                        < size={14} />
                                                     </button>
                                                 </div>
                                             </td>
@@ -438,16 +418,15 @@ export default function SalesHistory() {
 const styles = {
     container: {
         minHeight: "100vh",
-        padding: "26px 28px 40px",
+        padding: "24px 28px 40px",
         maxWidth: "1600px",
         margin: "0 auto",
-        background: "#f4f7fb",
+        background: "#f5f7fb",
         color: "#0f172a",
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
     },
 
     header: {
-        position: "relative",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
@@ -455,8 +434,8 @@ const styles = {
         marginBottom: "18px",
         padding: "24px 26px",
         borderRadius: "22px",
-        background: "linear-gradient(135deg, #0b1220 0%, #111c35 52%, #172554 100%)",
-        boxShadow: "0 18px 45px rgba(15, 23, 42, .18)",
+        background: "linear-gradient(135deg, #0b1220 0%, #16213d 55%, #1d4ed8 100%)",
+        boxShadow: "0 16px 42px rgba(15, 23, 42, .17)",
         overflow: "hidden"
     },
 
@@ -466,12 +445,13 @@ const styles = {
         fontSize: "30px",
         lineHeight: 1.15,
         fontWeight: "850",
-        letterSpacing: "-.9px"
+        letterSpacing: "-.8px"
     },
 
     subtitle: {
         margin: "7px 0 0",
-        color: "#b9c5d8",
+        maxWidth: "720px",
+        color: "#cbd5e1",
         fontSize: "13px",
         lineHeight: 1.5
     },
@@ -507,8 +487,8 @@ const styles = {
         padding: "18px",
         borderRadius: "17px",
         background: "#fff",
-        border: "1px solid #e6ebf2",
-        boxShadow: "0 8px 25px rgba(15, 23, 42, .055)"
+        border: "1px solid #e5eaf1",
+        boxShadow: "0 7px 24px rgba(15, 23, 42, .05)"
     },
 
     statIcon: {
@@ -527,7 +507,7 @@ const styles = {
         fontWeight: "850",
         color: "#64748b",
         textTransform: "uppercase",
-        letterSpacing: ".75px"
+        letterSpacing: ".7px"
     },
 
     statValue: {
@@ -731,7 +711,7 @@ const styles = {
 
     table: {
         width: "100%",
-        minWidth: "1120px",
+        minWidth: "980px",
         borderCollapse: "separate",
         borderSpacing: 0,
         fontSize: "13px"
@@ -758,7 +738,7 @@ const styles = {
     invoiceNumber: {
         display: "inline-flex",
         alignItems: "center",
-        padding: "6px 8px",
+        padding: "7px 9px",
         borderRadius: "8px",
         background: "#eef2ff",
         color: "#4338ca",
@@ -819,36 +799,18 @@ const styles = {
     itemsCell: {
         display: "flex",
         flexDirection: "column",
-        gap: "5px",
-        maxWidth: "280px"
+        gap: "3px"
     },
 
     itemsCount: {
-        color: "#334155",
-        fontSize: "11px",
+        color: "#0f172a",
+        fontSize: "13px",
         fontWeight: "850"
     },
 
-    itemsSummary: {
-        display: "flex",
-        flexWrap: "wrap",
-        gap: "4px"
-    },
-
-    itemChip: {
-        padding: "4px 7px",
-        borderRadius: "6px",
-        background: "#f1f5f9",
-        color: "#475569",
-        fontSize: "10px",
-        whiteSpace: "nowrap"
-    },
-
-    moreItems: {
-        padding: "4px 6px",
-        color: "#64748b",
-        fontSize: "10px",
-        fontWeight: "750"
+    itemHint: {
+        color: "#94a3b8",
+        fontSize: "10px"
     },
 
     paymentMethodBadge: {
@@ -894,8 +856,8 @@ const styles = {
     viewButton: {
         display: "inline-flex",
         alignItems: "center",
-        gap: "4px",
-        padding: "7px 10px",
+        gap: "5px",
+        padding: "8px 11px",
         borderRadius: "8px",
         background: "#0f172a",
         color: "#fff",
@@ -905,8 +867,8 @@ const styles = {
     },
 
     printButton: {
-        width: "30px",
-        height: "30px",
+        width: "32px",
+        height: "32px",
         display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
@@ -918,8 +880,8 @@ const styles = {
     },
 
     pdfButton: {
-        width: "30px",
-        height: "30px",
+        width: "32px",
+        height: "32px",
         display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
@@ -927,19 +889,6 @@ const styles = {
         borderRadius: "8px",
         background: "#7c3aed",
         color: "#fff",
-        cursor: "pointer"
-    },
-
-    deleteButton: {
-        width: "30px",
-        height: "30px",
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        border: "none",
-        borderRadius: "8px",
-        background: "#fff1f2",
-        color: "#e11d48",
         cursor: "pointer"
     },
 
@@ -1001,3 +950,38 @@ const styles = {
         fontWeight: "850"
     }
 };
+
+<style>
+@media (max-width: 1100px) {
+    .sales-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+}
+@media (max-width: 760px) {
+    .sales-page {
+        padding: 14px !important;
+    }
+    .sales-header {
+        align-items: flex-start !important;
+        flex-direction: column !important;
+        padding: 20px !important;
+    }
+    .sales-title {
+        font-size: 24px !important;
+    }
+    .sales-stats {
+        grid-template-columns: 1fr !important;
+    }
+}
+@media print {
+    .sales-header a,
+    .insightAction,
+    button {
+        display: none !important;
+    }
+    .sales-page {
+        background: #fff !important;
+        padding: 0 !important;
+    }
+}
+</style>
