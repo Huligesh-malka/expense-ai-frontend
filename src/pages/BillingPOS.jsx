@@ -1,4 +1,4 @@
-
+import { useEffect, useState, useRef } from "react";
 import API from "../services/api";
 import BarcodeScanner from "../pages/BarcodeScanner";
 
@@ -1199,6 +1199,29 @@ export default function BillingPOS() {
       const name = normalize(p.product_name);
 
       return (
+        name.includes(searchName) ||
+        searchName.includes(name)
+      );
+    });
+
+    if (product) return product;
+
+    // Word-based matching
+    const words = String(voiceName)
+      .toLowerCase()
+      .split(/\s+/)
+      .filter(Boolean);
+
+    product = products.find((p) => {
+      const name = String(p.product_name || "").toLowerCase();
+
+      return words.every((word) => name.includes(word));
+    });
+
+    return product || null;
+  };
+
+  return (
     <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
