@@ -61,21 +61,13 @@ export default function BusinessDashboard() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [businessLogo, setBusinessLogo] = useState("");
 
-  const businessId = localStorage.getItem("businessId");
+  
 
   useEffect(() => {
-    if (!businessId) {
-      setLoading(false);
-      setError("Business information not found. Please create/select your business.");
-      return;
-    }
-
     loadAll();
-  }, [businessId]);
+  }, []);
 
   const loadAll = async (showRefresh = false) => {
-    if (!businessId) return;
-
     if (showRefresh) setRefreshing(true);
 
     try {
@@ -115,7 +107,7 @@ export default function BusinessDashboard() {
 
   const loadDashboard = async () => {
     try {
-      const res = await API.get(`/dashboard?business_id=${businessId}`);
+      const res = await API.get("/dashboard");
       setDashboard((prev) => ({ ...prev, ...(res.data || {}) }));
     } catch (err) {
       console.error("Failed to load dashboard:", err);
@@ -127,7 +119,7 @@ export default function BusinessDashboard() {
 
   const loadRecentSales = async () => {
     try {
-      const res = await API.get(`/sales?business_id=${businessId}&limit=5`);
+      const res = await API.get("/sales?limit=5");
       const salesData = res.data.data || [];
       setRecentSales(salesData.slice(0, 5));
     } catch (err) {
@@ -190,11 +182,11 @@ export default function BusinessDashboard() {
             <button
               className="primary-btn"
               onClick={() =>
-                !businessId ? navigate("/business-setup") : loadAll(true)
+                loadAll(true)
               }
             >
               <FiRefreshCw />
-              {!businessId ? "Set Up Business" : "Try Again"}
+              Try Again
             </button>
             <Link className="ghost-btn" to="/settings">
               Settings
