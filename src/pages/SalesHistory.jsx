@@ -4,7 +4,6 @@ import API from "../services/api";
 import { FiSearch, FiPlus, FiEye, FiTrash2, FiFilter, FiDownload, FiCalendar, FiUser, FiCreditCard, FiTrendingUp, FiPrinter } from "react-icons/fi";
 
 export default function SalesHistory() {
-    const businessId = localStorage.getItem("businessId");
     const [sales, setSales] = useState([]);
     const [search, setSearch] = useState("");
     const [loading, setLoading] = useState(false);
@@ -18,7 +17,7 @@ export default function SalesHistory() {
     const loadSales = async () => {
         setLoading(true);
         try {
-            const res = await API.get(`/sales?business_id=${businessId}`);
+            const res = await API.get("/sales");
             setSales(res.data.data || []);
         } catch (err) {
             console.error("Error loading sales:", err);
@@ -138,11 +137,11 @@ export default function SalesHistory() {
     };
 
     return (
-        <div style={styles.container}>
+        <div className="sales-history-container" style={styles.container}>
             {/* Header */}
-            <div style={styles.header}>
+            <div className="sales-history-header" style={styles.header}>
                 <div>
-                    <h1 style={styles.title}>Sales History</h1>
+                    <h1 className="sales-history-title" style={styles.title}>Sales History</h1>
                     <p style={styles.subtitle}>Track and manage all your sales transactions</p>
                 </div>
                 <Link to="/billing-pos" style={styles.primaryButton}>
@@ -152,7 +151,7 @@ export default function SalesHistory() {
             </div>
 
             {/* Stats Cards */}
-            <div style={styles.statsGrid}>
+            <div className="sales-history-stats-grid" style={styles.statsGrid}>
                 <div style={styles.statCard}>
                     <div style={styles.statIcon}>
                         <FiTrendingUp size={20} color="#3b82f6" />
@@ -418,397 +417,490 @@ export default function SalesHistory() {
 
 const styles = {
     container: {
-        padding: "30px",
-        maxWidth: "1440px",
-        margin: "0 auto",
-        background: "#f8fafc",
         minHeight: "100vh",
+        padding: "28px",
+        maxWidth: "1600px",
+        margin: "0 auto",
+        background: "#f5f7fb",
+        color: "#0f172a",
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
     },
+
     header: {
         display: "flex",
+        alignItems: "center",
         justifyContent: "space-between",
-        alignItems: "flex-start",
-        marginBottom: "30px",
-        flexWrap: "wrap",
-        gap: "15px"
+        gap: "20px",
+        marginBottom: "22px",
+        padding: "22px 24px",
+        borderRadius: "20px",
+        background: "linear-gradient(135deg, #0f172a 0%, #172554 55%, #1e3a8a 100%)",
+        boxShadow: "0 18px 45px rgba(15, 23, 42, 0.18)",
+        position: "relative",
+        overflow: "hidden"
     },
+
     title: {
         margin: 0,
-        fontSize: "28px",
-        fontWeight: "700",
-        color: "#0f172a",
-        letterSpacing: "-0.5px"
+        color: "#ffffff",
+        fontSize: "30px",
+        lineHeight: 1.15,
+        fontWeight: "800",
+        letterSpacing: "-0.8px"
     },
+
     subtitle: {
-        margin: "4px 0 0",
-        color: "#64748b",
-        fontSize: "14px",
-        fontWeight: "400"
+        margin: "7px 0 0",
+        color: "#cbd5e1",
+        fontSize: "13px",
+        lineHeight: 1.5
     },
+
     primaryButton: {
-        display: "flex",
+        display: "inline-flex",
         alignItems: "center",
+        justifyContent: "center",
         gap: "8px",
-        background: "#3b82f6",
-        padding: "12px 24px",
-        color: "#fff",
+        padding: "12px 18px",
+        borderRadius: "12px",
+        background: "#a3e635",
+        color: "#172554",
         textDecoration: "none",
-        borderRadius: "10px",
-        fontWeight: "600",
-        fontSize: "14px",
-        transition: "all 0.2s",
-        border: "none",
-        cursor: "pointer",
-        boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)"
+        fontSize: "13px",
+        fontWeight: "800",
+        boxShadow: "0 8px 24px rgba(163, 230, 53, 0.25)",
+        whiteSpace: "nowrap",
+        transition: "transform .2s ease, box-shadow .2s ease"
     },
+
     statsGrid: {
         display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-        gap: "16px",
-        marginBottom: "30px"
+        gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+        gap: "14px",
+        marginBottom: "18px"
     },
+
     statCard: {
+        minWidth: 0,
         display: "flex",
         alignItems: "center",
-        gap: "16px",
-        background: "#fff",
-        padding: "20px",
-        borderRadius: "12px",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-        border: "1px solid #e2e8f0",
-        transition: "all 0.2s"
+        gap: "14px",
+        padding: "18px",
+        borderRadius: "16px",
+        background: "#ffffff",
+        border: "1px solid #e7ebf2",
+        boxShadow: "0 8px 25px rgba(15, 23, 42, 0.05)",
+        transition: "transform .2s ease, box-shadow .2s ease"
     },
+
     statIcon: {
-        width: "44px",
-        height: "44px",
-        borderRadius: "10px",
-        background: "#dbeafe",
+        width: "46px",
+        height: "46px",
+        borderRadius: "13px",
+        background: "#e8f0ff",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         flexShrink: 0
     },
+
     statLabel: {
-        fontSize: "12px",
-        fontWeight: "500",
+        fontSize: "11px",
+        fontWeight: "800",
         color: "#64748b",
         textTransform: "uppercase",
-        letterSpacing: "0.5px"
+        letterSpacing: "0.65px"
     },
+
     statValue: {
+        margin: "3px 0 2px",
         fontSize: "22px",
-        fontWeight: "700",
+        lineHeight: 1.2,
+        fontWeight: "800",
         color: "#0f172a",
-        margin: "2px 0"
+        letterSpacing: "-0.3px"
     },
+
     statSub: {
-        fontSize: "12px",
+        fontSize: "11px",
         color: "#94a3b8"
     },
+
     filtersSection: {
         display: "flex",
-        justifyContent: "space-between",
         alignItems: "center",
+        justifyContent: "space-between",
+        gap: "14px",
         flexWrap: "wrap",
-        gap: "15px",
-        marginBottom: "24px",
-        background: "#fff",
-        padding: "16px 20px",
-        borderRadius: "12px",
-        border: "1px solid #e2e8f0"
+        padding: "13px",
+        marginBottom: "16px",
+        borderRadius: "16px",
+        background: "#ffffff",
+        border: "1px solid #e7ebf2",
+        boxShadow: "0 6px 22px rgba(15, 23, 42, 0.04)"
     },
+
     filtersLeft: {
         display: "flex",
         alignItems: "center",
-        gap: "12px",
+        gap: "9px",
         flexWrap: "wrap",
-        flex: 1
-    },
-    filtersRight: {
-        display: "flex",
-        alignItems: "center",
-        gap: "12px"
-    },
-    searchWrapper: {
-        display: "flex",
-        alignItems: "center",
-        background: "#f1f5f9",
-        borderRadius: "8px",
-        padding: "0 12px",
         flex: 1,
-        minWidth: "200px",
-        transition: "all 0.2s"
+        minWidth: "280px"
     },
-    searchIcon: {
-        marginRight: "8px"
-    },
-    searchInput: {
-        border: "none",
-        background: "transparent",
-        padding: "10px 0",
-        fontSize: "14px",
-        outline: "none",
-        width: "100%",
-        color: "#0f172a"
-    },
-    filterGroup: {
-        display: "flex",
-        alignItems: "center",
-        gap: "8px",
-        background: "#f1f5f9",
-        borderRadius: "8px",
-        padding: "0 12px"
-    },
-    filterSelect: {
-        border: "none",
-        background: "transparent",
-        padding: "10px 4px",
-        fontSize: "13px",
-        outline: "none",
-        color: "#0f172a",
-        cursor: "pointer"
-    },
-    resultCount: {
-        fontSize: "14px",
-        color: "#64748b",
-        fontWeight: "500"
-    },
-    iconButton: {
-        background: "#f1f5f9",
-        border: "none",
-        padding: "8px",
-        borderRadius: "8px",
-        cursor: "pointer",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        color: "#64748b",
-        transition: "all 0.2s"
-    },
-    tableContainer: {
-        background: "#fff",
-        borderRadius: "12px",
-        border: "1px solid #e2e8f0",
-        overflowX: "auto",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.05)"
-    },
-    table: {
-        width: "100%",
-        borderCollapse: "collapse",
-        fontSize: "14px",
-        minWidth: "1100px"
-    },
-    th: {
-        padding: "16px 20px",
-        textAlign: "left",
-        fontWeight: "600",
-        color: "#475569",
-        borderBottom: "2px solid #e2e8f0",
-        background: "#f8fafc",
-        fontSize: "12px",
-        textTransform: "uppercase",
-        letterSpacing: "0.5px"
-    },
-    tableRow: {
-        borderBottom: "1px solid #f1f5f9",
-        transition: "background 0.15s"
-    },
-    invoiceNumber: {
-        fontWeight: "600",
-        color: "#3b82f6",
-        fontSize: "14px"
-    },
-    dateTime: {
-        display: "flex",
-        flexDirection: "column"
-    },
-    date: {
-        fontWeight: "500",
-        color: "#0f172a"
-    },
-    time: {
-        fontSize: "12px",
-        color: "#94a3b8"
-    },
-    customerCell: {
+
+    filtersRight: {
         display: "flex",
         alignItems: "center",
         gap: "10px"
     },
-    customerAvatar: {
-        width: "32px",
-        height: "32px",
-        borderRadius: "50%",
-        background: "#dbeafe",
-        color: "#3b82f6",
+
+    searchWrapper: {
+        display: "flex",
+        alignItems: "center",
+        minWidth: "260px",
+        flex: "1 1 300px",
+        height: "42px",
+        padding: "0 13px",
+        border: "1px solid #e2e8f0",
+        borderRadius: "11px",
+        background: "#f8fafc",
+        transition: "border-color .2s ease, box-shadow .2s ease"
+    },
+
+    searchIcon: {
+        marginRight: "8px",
+        flexShrink: 0
+    },
+
+    searchInput: {
+        width: "100%",
+        border: "none",
+        outline: "none",
+        background: "transparent",
+        color: "#0f172a",
+        fontSize: "13px"
+    },
+
+    filterGroup: {
+        display: "flex",
+        alignItems: "center",
+        gap: "5px",
+        height: "42px",
+        padding: "0 10px",
+        border: "1px solid #e2e8f0",
+        borderRadius: "11px",
+        background: "#f8fafc"
+    },
+
+    filterSelect: {
+        border: "none",
+        outline: "none",
+        background: "transparent",
+        color: "#334155",
+        fontSize: "12px",
+        fontWeight: "700",
+        cursor: "pointer"
+    },
+
+    resultCount: {
+        color: "#64748b",
+        fontSize: "12px",
+        fontWeight: "700",
+        whiteSpace: "nowrap"
+    },
+
+    iconButton: {
+        width: "40px",
+        height: "40px",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        fontWeight: "600",
-        fontSize: "14px",
+        border: "1px solid #e2e8f0",
+        borderRadius: "10px",
+        background: "#f8fafc",
+        color: "#475569",
+        cursor: "pointer"
+    },
+
+    tableContainer: {
+        overflowX: "auto",
+        borderRadius: "18px",
+        background: "#ffffff",
+        border: "1px solid #e7ebf2",
+        boxShadow: "0 10px 30px rgba(15, 23, 42, 0.055)"
+    },
+
+    table: {
+        width: "100%",
+        minWidth: "1120px",
+        borderCollapse: "separate",
+        borderSpacing: 0,
+        fontSize: "13px"
+    },
+
+    th: {
+        padding: "14px 16px",
+        textAlign: "left",
+        fontSize: "10px",
+        fontWeight: "800",
+        color: "#64748b",
+        textTransform: "uppercase",
+        letterSpacing: "0.75px",
+        background: "#f8fafc",
+        borderBottom: "1px solid #e7ebf2",
+        whiteSpace: "nowrap"
+    },
+
+    tableRow: {
+        borderBottom: "1px solid #eef2f7",
+        transition: "background .15s ease"
+    },
+
+    invoiceNumber: {
+        display: "inline-flex",
+        alignItems: "center",
+        padding: "5px 8px",
+        borderRadius: "8px",
+        background: "#eef2ff",
+        color: "#4338ca",
+        fontWeight: "800",
+        fontSize: "12px",
+        whiteSpace: "nowrap"
+    },
+
+    dateTime: {
+        display: "flex",
+        flexDirection: "column",
+        gap: "2px"
+    },
+
+    date: {
+        color: "#1e293b",
+        fontWeight: "700",
+        fontSize: "12px"
+    },
+
+    time: {
+        color: "#94a3b8",
+        fontSize: "11px"
+    },
+
+    customerCell: {
+        display: "flex",
+        alignItems: "center",
+        gap: "9px"
+    },
+
+    customerAvatar: {
+        width: "34px",
+        height: "34px",
+        borderRadius: "10px",
+        background: "linear-gradient(135deg, #dbeafe, #e0e7ff)",
+        color: "#3730a3",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontWeight: "800",
+        fontSize: "13px",
         flexShrink: 0
     },
+
     customerName: {
-        fontWeight: "500",
-        color: "#0f172a"
+        color: "#1e293b",
+        fontWeight: "700",
+        fontSize: "12px"
     },
+
     customerPhone: {
-        fontSize: "12px",
-        color: "#94a3b8"
+        marginTop: "2px",
+        color: "#94a3b8",
+        fontSize: "10px"
     },
+
     itemsCell: {
         display: "flex",
         flexDirection: "column",
-        gap: "4px"
+        gap: "6px",
+        maxWidth: "280px"
     },
+
     itemsCount: {
-        fontSize: "12px",
-        fontWeight: "600",
-        color: "#0f172a"
+        color: "#334155",
+        fontSize: "11px",
+        fontWeight: "800"
     },
+
     itemsSummary: {
         display: "flex",
         flexWrap: "wrap",
         gap: "4px"
     },
+
     itemChip: {
-        fontSize: "11px",
+        padding: "4px 7px",
+        borderRadius: "6px",
         background: "#f1f5f9",
-        padding: "2px 8px",
-        borderRadius: "4px",
         color: "#475569",
+        fontSize: "10px",
         whiteSpace: "nowrap"
     },
+
     moreItems: {
-        fontSize: "11px",
-        color: "#94a3b8",
-        padding: "2px 4px"
+        padding: "4px 6px",
+        color: "#64748b",
+        fontSize: "10px",
+        fontWeight: "700"
     },
+
     paymentMethodBadge: {
-        background: "#f1f5f9",
-        padding: "4px 12px",
-        borderRadius: "6px",
-        fontSize: "12px",
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "5px",
+        padding: "6px 9px",
+        borderRadius: "8px",
+        background: "#f8fafc",
+        border: "1px solid #e2e8f0",
         color: "#475569",
-        display: "inline-block"
-    },
-    statusBadge: {
-        padding: "4px 12px",
-        borderRadius: "6px",
-        fontSize: "12px",
-        fontWeight: "500",
-        display: "inline-block",
+        fontSize: "11px",
+        fontWeight: "700",
         whiteSpace: "nowrap"
     },
-    amount: {
-        fontWeight: "600",
-        color: "#0f172a",
-        fontSize: "15px"
+
+    statusBadge: {
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "4px",
+        padding: "6px 9px",
+        borderRadius: "999px",
+        fontSize: "10px",
+        fontWeight: "800",
+        whiteSpace: "nowrap"
     },
+
+    amount: {
+        color: "#0f172a",
+        fontSize: "14px",
+        fontWeight: "900",
+        whiteSpace: "nowrap"
+    },
+
     actionButtons: {
         display: "flex",
-        gap: "4px",
+        alignItems: "center",
         justifyContent: "center",
+        gap: "5px",
         flexWrap: "wrap"
     },
+
     viewButton: {
-        display: "flex",
+        display: "inline-flex",
         alignItems: "center",
         gap: "4px",
-        background: "#10b981",
-        color: "#fff",
-        padding: "6px 12px",
+        padding: "7px 9px",
+        borderRadius: "8px",
+        background: "#0f172a",
+        color: "#ffffff",
         textDecoration: "none",
-        borderRadius: "6px",
-        fontSize: "12px",
-        fontWeight: "500",
-        transition: "all 0.2s",
+        fontSize: "10px",
+        fontWeight: "800"
+    },
+
+    printButton: {
+        width: "30px",
+        height: "30px",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
         border: "none",
+        borderRadius: "8px",
+        background: "#2563eb",
+        color: "#ffffff",
         cursor: "pointer"
     },
-    printButton: {
-        background: "#3b82f6",
-        border: "none",
-        color: "#fff",
-        padding: "6px 10px",
-        cursor: "pointer",
-        borderRadius: "6px",
-        transition: "all 0.2s",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center"
-    },
+
     pdfButton: {
-        background: "#8b5cf6",
-        border: "none",
-        color: "#fff",
-        padding: "6px 10px",
-        cursor: "pointer",
-        borderRadius: "6px",
-        transition: "all 0.2s",
-        display: "flex",
+        width: "30px",
+        height: "30px",
+        display: "inline-flex",
         alignItems: "center",
-        justifyContent: "center"
+        justifyContent: "center",
+        border: "none",
+        borderRadius: "8px",
+        background: "#7c3aed",
+        color: "#ffffff",
+        cursor: "pointer"
     },
+
     deleteButton: {
-        background: "#fee2e2",
-        border: "none",
-        color: "#dc2626",
-        padding: "6px 10px",
-        cursor: "pointer",
-        borderRadius: "6px",
-        transition: "all 0.2s",
-        display: "flex",
+        width: "30px",
+        height: "30px",
+        display: "inline-flex",
         alignItems: "center",
-        justifyContent: "center"
+        justifyContent: "center",
+        border: "none",
+        borderRadius: "8px",
+        background: "#fff1f2",
+        color: "#e11d48",
+        cursor: "pointer"
     },
+
     loadingContainer: {
+        minHeight: "360px",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        padding: "60px",
-        background: "#fff",
-        borderRadius: "12px",
-        border: "1px solid #e2e8f0"
+        borderRadius: "18px",
+        background: "#ffffff",
+        border: "1px solid #e7ebf2"
     },
+
     loadingSpinner: {
-        border: "3px solid #f1f5f9",
-        borderTop: "3px solid #3b82f6",
+        width: "38px",
+        height: "38px",
+        border: "3px solid #e2e8f0",
+        borderTop: "3px solid #2563eb",
         borderRadius: "50%",
-        width: "40px",
-        height: "40px",
-        animation: "spin 0.8s linear infinite"
+        animation: "spin .8s linear infinite"
     },
+
     loadingText: {
-        marginTop: "16px",
+        marginTop: "14px",
         color: "#64748b",
-        fontSize: "14px"
+        fontSize: "13px",
+        fontWeight: "600"
     },
+
     emptyState: {
         textAlign: "center",
-        padding: "60px 20px",
+        padding: "80px 20px",
         color: "#94a3b8"
     },
+
     emptyIcon: {
-        fontSize: "48px",
-        marginBottom: "16px"
+        fontSize: "46px",
+        marginBottom: "12px"
     },
+
     emptyText: {
-        fontSize: "16px",
-        marginBottom: "12px",
-        color: "#64748b"
+        margin: "0 0 14px",
+        color: "#64748b",
+        fontSize: "14px",
+        fontWeight: "600"
     },
+
     emptyButton: {
-        display: "inline-block",
-        padding: "10px 24px",
-        background: "#3b82f6",
-        color: "#fff",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "10px 16px",
+        borderRadius: "10px",
+        background: "#2563eb",
+        color: "#ffffff",
         textDecoration: "none",
-        borderRadius: "8px",
-        fontWeight: "500",
-        transition: "all 0.2s"
+        fontSize: "12px",
+        fontWeight: "800"
     }
 };
 
@@ -821,3 +913,15 @@ styleSheet.textContent = `
     }
 `;
 document.head.appendChild(styleSheet);
+
+<style>
+@media (max-width: 1050px) {
+    .sales-history-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+@media (max-width: 720px) {
+    .sales-history-container { padding: 14px !important; }
+    .sales-history-header { align-items: flex-start !important; flex-direction: column !important; }
+    .sales-history-title { font-size: 24px !important; }
+    .sales-history-stats-grid { grid-template-columns: 1fr !important; }
+}
+</style>
