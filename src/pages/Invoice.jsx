@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+
 import { useParams, Link } from "react-router-dom";
 import API from "../services/api";
 import {
@@ -497,376 +497,627 @@ function numberToWords(num) {
     return "Amount in words: " + result.trim();
 }
 
-// Palette: paper #F3EFE6 · card #FFFEFB · ink #2A2621 · counter green #1F6D4C
-// Type: display "Rozha One" (signboard feel), body "Work Sans", ledger digits "JetBrains Mono"
+// Modern BusinessOS / trading-style invoice theme.
+// Data, API calls and invoice calculations above remain unchanged so every owner
+// gets the same interface while seeing only their own invoice data.
 const styles = {
     page: {
-        background: "#F3EFE6",
-        padding: "28px 20px",
         minHeight: "100vh",
-        fontFamily: "'Work Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        background: "#eef1f6",
+        padding: "24px 18px 50px",
+        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        color: "#0f172a",
     },
+
     actionBar: {
-        maxWidth: "760px",
-        margin: "0 auto 20px",
+        maxWidth: "980px",
+        margin: "0 auto 16px",
         display: "flex",
-        justifyContent: "space-between",
         alignItems: "center",
+        justifyContent: "space-between",
+        gap: "14px",
         flexWrap: "wrap",
-        gap: "15px",
-        background: "#FFFEFB",
-        padding: "12px 18px",
-        borderRadius: "10px",
-        border: "1px solid #E4DCC4",
+        padding: "11px 14px",
+        background: "#0b1220",
+        border: "1px solid #1e293b",
+        borderRadius: "14px",
+        boxShadow: "0 12px 30px rgba(15,23,42,.12)",
     },
+
     backLink: {
-        display: "flex",
+        display: "inline-flex",
         alignItems: "center",
         gap: "8px",
-        color: "#6B6355",
+        padding: "9px 11px",
+        borderRadius: "9px",
+        color: "#e2e8f0",
         textDecoration: "none",
-        fontWeight: "600",
-        fontSize: "14px",
-        padding: "6px 10px",
-        borderRadius: "6px",
+        fontSize: "12px",
+        fontWeight: "800",
     },
-    actionButtons: { display: "flex", gap: "8px" },
-    actionButton: {
+
+    actionButtons: {
         display: "flex",
         alignItems: "center",
-        gap: "6px",
-        padding: "8px 14px",
-        background: "#FFFEFB",
-        border: "1px solid #D8CFB0",
-        borderRadius: "7px",
-        fontSize: "13px",
-        fontWeight: "600",
-        color: "#2A2621",
-        cursor: "pointer",
-        transition: "all 0.2s",
-    },
-    printOptions: {
-        maxWidth: "760px",
-        margin: "0 auto 20px",
-        background: "#FFFEFB",
-        padding: "10px",
-        borderRadius: "10px",
-        border: "1px solid #E4DCC4",
-        display: "flex",
-        gap: "8px",
-    },
-    printOptionButton: {
-        display: "flex",
-        alignItems: "center",
-        gap: "6px",
-        padding: "8px 14px",
-        background: "transparent",
-        border: "none",
-        borderRadius: "6px",
-        fontSize: "13px",
-        fontWeight: "600",
-        color: "#2A2621",
-        cursor: "pointer",
-    },
-    invoiceContainer: { maxWidth: "760px", margin: "0 auto" },
-    invoice: {
-        background: "#FFFEFB",
-        borderRadius: "6px",
-        border: "1px solid #E4DCC4",
-        boxShadow: "0 10px 30px rgba(42,38,33,0.08)",
-        position: "relative",
-    },
-    perforationRow: {
-        display: "flex",
-        justifyContent: "space-between",
-        padding: "0 14px",
-        height: "12px",
-        position: "relative",
-    },
-    hole: {
-        width: "12px",
-        height: "12px",
-        borderRadius: "50%",
-        background: "#F3EFE6",
-        boxShadow: "inset 0 1px 2px rgba(42,38,33,0.18)",
-        marginTop: "-6px",
-    },
-    paperBody: { padding: "8px 36px 30px" },
-    masthead: {
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "flex-start",
+        gap: "7px",
         flexWrap: "wrap",
-        gap: "18px",
-        paddingTop: "18px",
-        position: "relative",
     },
-    businessBlock: { flex: 1, minWidth: "220px" },
-    businessLogo: { 
-        maxWidth: "90px", 
-        maxHeight: "60px", 
-        objectFit: "contain", 
-        marginBottom: "8px",
-        borderRadius: "4px",
+
+    actionButton: {
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "7px",
+        minHeight: "38px",
+        padding: "8px 13px",
+        border: "1px solid #334155",
+        borderRadius: "9px",
+        background: "#172033",
+        color: "#f8fafc",
+        fontSize: "12px",
+        fontWeight: "800",
+        cursor: "pointer",
     },
-    businessLogoPlaceholder: {
-        width: "44px",
-        height: "44px",
+
+    printOptions: {
+        maxWidth: "980px",
+        margin: "0 auto 12px",
+        display: "flex",
+        justifyContent: "flex-end",
+        gap: "7px",
+        padding: "10px",
+        borderRadius: "12px",
+        background: "#fff",
+        border: "1px solid #dce2eb",
+        boxShadow: "0 8px 22px rgba(15,23,42,.06)",
+    },
+
+    printOptionButton: {
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "6px",
+        padding: "9px 12px",
+        border: "1px solid #dce2eb",
         borderRadius: "8px",
-        background: "#E7F2EC",
+        background: "#f8fafc",
+        color: "#0f172a",
+        fontSize: "12px",
+        fontWeight: "800",
+        cursor: "pointer",
+    },
+
+    invoiceContainer: {
+        maxWidth: "980px",
+        margin: "0 auto",
+    },
+
+    invoice: {
+        overflow: "hidden",
+        background: "#ffffff",
+        border: "1px solid #dce2eb",
+        borderRadius: "18px",
+        boxShadow: "0 18px 55px rgba(15,23,42,.10)",
+    },
+
+    perforationRow: {
+        display: "none",
+    },
+
+    hole: {
+        display: "none",
+    },
+
+    paperBody: {
+        padding: "0 34px 34px",
+    },
+
+    masthead: {
+        position: "relative",
+        display: "grid",
+        gridTemplateColumns: "1fr auto",
+        gap: "24px",
+        alignItems: "center",
+        margin: "0 -34px 26px",
+        padding: "30px 34px",
+        minHeight: "205px",
+        overflow: "hidden",
+        background: "linear-gradient(135deg, #0b1220 0%, #111827 60%, #18243c 100%)",
+        color: "#fff",
+    },
+
+    businessBlock: {
+        position: "relative",
+        zIndex: 2,
+        minWidth: 0,
+    },
+
+    businessLogo: {
+        width: "58px",
+        height: "58px",
+        objectFit: "contain",
+        padding: "7px",
+        marginBottom: "12px",
+        borderRadius: "13px",
+        background: "#ffffff",
+        border: "1px solid rgba(255,255,255,.18)",
+    },
+
+    businessLogoPlaceholder: {
+        width: "58px",
+        height: "58px",
+        marginBottom: "12px",
+        borderRadius: "13px",
+        background: "#c8ff00",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        marginBottom: "8px",
+        color: "#0b1220",
     },
+
     businessName: {
-        margin: "0 0 6px 0",
-        fontSize: "26px",
-        fontWeight: "700",
-        color: "#1F2A22",
-        fontFamily: "'Rozha One', 'Georgia', serif",
-        letterSpacing: "0.3px",
+        margin: "0 0 8px",
+        fontSize: "30px",
+        lineHeight: 1.05,
+        fontWeight: "900",
+        letterSpacing: "-1px",
+        color: "#ffffff",
     },
-    businessMeta: { fontSize: "12.5px", color: "#6B6355", lineHeight: "1.7" },
-    metaLine: { display: "flex", alignItems: "flex-start", gap: "6px", margin: "0" },
+
+    businessMeta: {
+        color: "#aeb9ca",
+        fontSize: "12px",
+        lineHeight: 1.75,
+    },
+
+    metaLine: {
+        display: "flex",
+        alignItems: "flex-start",
+        gap: "7px",
+        margin: 0,
+    },
+
     gstTag: {
-        display: "inline-block",
-        marginTop: "8px",
-        padding: "3px 10px",
-        border: "1px dashed #C9BE9C",
-        borderRadius: "4px",
-        fontSize: "11px",
-        fontFamily: "'JetBrains Mono', monospace",
-        color: "#6B6355",
-        letterSpacing: "0.4px",
+        display: "inline-flex",
+        marginTop: "10px",
+        padding: "5px 9px",
+        borderRadius: "7px",
+        background: "rgba(200,255,0,.10)",
+        border: "1px solid rgba(200,255,0,.30)",
+        color: "#d9ff65",
+        fontSize: "10px",
+        fontWeight: "800",
+        letterSpacing: ".5px",
     },
+
     billTag: {
+        position: "relative",
+        zIndex: 2,
+        minWidth: "235px",
+        padding: "17px",
+        borderRadius: "14px",
+        background: "rgba(255,255,255,.07)",
+        border: "1px solid rgba(255,255,255,.12)",
         textAlign: "right",
         display: "flex",
         flexDirection: "column",
-        gap: "3px",
-        minWidth: "150px",
-        paddingTop: "4px",
+        gap: "5px",
     },
+
     billTagLabel: {
-        fontSize: "10.5px",
-        letterSpacing: "1.4px",
+        fontSize: "9px",
         textTransform: "uppercase",
-        color: "#9C6B15",
-        fontWeight: "700",
+        letterSpacing: "1.4px",
+        color: "#aeb9ca",
+        fontWeight: "900",
     },
+
     billTagNo: {
         fontSize: "20px",
-        fontWeight: "700",
-        color: "#1F2A22",
-        fontFamily: "'JetBrains Mono', monospace",
+        fontWeight: "900",
+        color: "#c8ff00",
+        letterSpacing: "-.3px",
+        overflowWrap: "anywhere",
     },
-    billTagDate: { fontSize: "12px", color: "#6B6355", fontFamily: "'JetBrains Mono', monospace" },
+
+    billTagDate: {
+        fontSize: "11px",
+        color: "#cbd5e1",
+    },
+
     stamp: {
         position: "absolute",
-        top: "8px",
-        right: "0",
-        display: "flex",
+        right: "34px",
+        bottom: "20px",
+        zIndex: 3,
+        display: "inline-flex",
         alignItems: "center",
         gap: "6px",
-        padding: "6px 16px",
-        border: "2.5px double currentColor",
-        borderRadius: "6px",
-        fontSize: "13px",
-        fontWeight: "800",
-        letterSpacing: "2px",
+        padding: "6px 11px",
+        border: "2px solid currentColor",
+        borderRadius: "7px",
+        background: "rgba(11,18,32,.72)",
+        fontSize: "10px",
+        fontWeight: "900",
+        letterSpacing: "1.5px",
         textTransform: "uppercase",
-        background: "rgba(255,255,255,0.4)",
-        mixBlendMode: "multiply",
-        opacity: 0.9,
+        opacity: .95,
         pointerEvents: "none",
     },
+
     tornDivider: {
-        marginTop: "26px",
-        marginBottom: "22px",
         height: "1px",
-        backgroundImage: "repeating-linear-gradient(90deg, #D8CFB0 0 6px, transparent 6px 11px)",
+        margin: "0 0 22px",
+        background: "#e5eaf1",
     },
+
     ledgerGrid: {
         display: "grid",
         gridTemplateColumns: "1fr 1fr",
-        gap: "24px",
-        marginBottom: "26px",
+        gap: "14px",
+        marginBottom: "24px",
     },
-    ledgerCol: {},
+
+    ledgerCol: {
+        padding: "16px",
+        border: "1px solid #e5eaf1",
+        borderRadius: "13px",
+        background: "#f8fafc",
+    },
+
     ledgerColTitle: {
-        fontSize: "11px",
-        fontWeight: "700",
-        letterSpacing: "1.2px",
-        textTransform: "uppercase",
-        color: "#1F6D4C",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
         marginBottom: "10px",
+        fontSize: "10px",
+        fontWeight: "900",
+        letterSpacing: "1px",
+        textTransform: "uppercase",
+        color: "#64748b",
     },
+
     ledgerField: {
         display: "flex",
         alignItems: "baseline",
-        gap: "6px",
-        fontSize: "13px",
-        padding: "4px 0",
+        gap: "7px",
+        minHeight: "29px",
+        padding: "3px 0",
+        fontSize: "12px",
     },
+
     ledgerLabel: {
-        color: "#6B6355",
-        whiteSpace: "nowrap",
         display: "flex",
         alignItems: "center",
         gap: "4px",
+        color: "#94a3b8",
+        whiteSpace: "nowrap",
     },
+
     ledgerLeader: {
         flex: 1,
-        borderBottom: "1px dotted #C9BE9C",
+        minWidth: "10px",
+        borderBottom: "1px dotted #cbd5e1",
         transform: "translateY(-3px)",
-        minWidth: "12px",
     },
-    ledgerValue: { color: "#1F2A22", fontWeight: "600", textAlign: "right" },
-    tableSection: { marginBottom: "22px" },
-    tableHeader: { marginBottom: "10px" },
+
+    ledgerValue: {
+        color: "#0f172a",
+        fontWeight: "800",
+        textAlign: "right",
+        overflowWrap: "anywhere",
+    },
+
+    tableSection: {
+        marginBottom: "22px",
+    },
+
+    tableHeader: {
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        marginBottom: "9px",
+    },
+
     tableTitle: {
         display: "flex",
         alignItems: "center",
         gap: "7px",
-        fontSize: "13px",
-        fontWeight: "700",
-        color: "#1F2A22",
-        letterSpacing: "0.4px",
-        textTransform: "uppercase",
         margin: 0,
-    },
-    tableWrapper: { overflowX: "auto" },
-    table: { width: "100%", borderCollapse: "collapse", fontSize: "13.5px", minWidth: "560px" },
-    th: {
-        padding: "8px 8px",
-        textAlign: "left",
-        fontWeight: "700",
-        color: "#6B6355",
-        borderBottom: "2px solid #2A2621",
-        fontSize: "10.5px",
+        fontSize: "11px",
+        fontWeight: "900",
+        color: "#0f172a",
+        letterSpacing: ".8px",
         textTransform: "uppercase",
-        letterSpacing: "0.5px",
     },
-    tr: { borderBottom: "1px dashed #D8CFB0" },
-    td: { padding: "10px 8px", verticalAlign: "top" },
-    serialNumber: { color: "#9C917E", fontFamily: "'JetBrains Mono', monospace", fontSize: "12px" },
-    productName: { fontWeight: "600", color: "#1F2A22" },
-    productDescription: { fontSize: "11.5px", color: "#9C917E", marginTop: "2px" },
-    convertedQuantity: { fontSize: "10.5px", color: "#9C917E", marginTop: "2px" },
-    mono: { fontFamily: "'JetBrains Mono', monospace", color: "#2A2621", fontSize: "13px" },
-    summarySection: { display: "flex", justifyContent: "flex-end", marginBottom: "22px" },
-    summaryBox: { width: "100%", maxWidth: "300px" },
-    summaryRow: { display: "flex", justifyContent: "space-between", padding: "4px 0", fontSize: "13.5px", color: "#4A453C" },
-    summaryDashedDivider: { borderTop: "1px dashed #D8CFB0", margin: "8px 0" },
+
+    tableWrapper: {
+        overflowX: "auto",
+        border: "1px solid #e5eaf1",
+        borderRadius: "12px",
+    },
+
+    table: {
+        width: "100%",
+        minWidth: "600px",
+        borderCollapse: "collapse",
+        fontSize: "12px",
+    },
+
+    th: {
+        padding: "11px 10px",
+        textAlign: "left",
+        fontWeight: "900",
+        color: "#64748b",
+        background: "#f8fafc",
+        borderBottom: "1px solid #e2e8f0",
+        fontSize: "9px",
+        textTransform: "uppercase",
+        letterSpacing: ".7px",
+        whiteSpace: "nowrap",
+    },
+
+    tr: {
+        borderBottom: "1px solid #eef2f7",
+    },
+
+    td: {
+        padding: "12px 10px",
+        verticalAlign: "top",
+    },
+
+    serialNumber: {
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: "25px",
+        height: "25px",
+        borderRadius: "7px",
+        background: "#eef2ff",
+        color: "#4f46e5",
+        fontSize: "10px",
+        fontWeight: "900",
+    },
+
+    productName: {
+        color: "#0f172a",
+        fontWeight: "800",
+        fontSize: "12px",
+    },
+
+    productDescription: {
+        marginTop: "3px",
+        color: "#94a3b8",
+        fontSize: "10px",
+    },
+
+    convertedQuantity: {
+        marginTop: "3px",
+        color: "#94a3b8",
+        fontSize: "9px",
+    },
+
+    mono: {
+        color: "#0f172a",
+        fontSize: "11px",
+        fontVariantNumeric: "tabular-nums",
+    },
+
+    summarySection: {
+        display: "flex",
+        justifyContent: "flex-end",
+        marginBottom: "22px",
+    },
+
+    summaryBox: {
+        width: "100%",
+        maxWidth: "390px",
+        padding: "17px",
+        borderRadius: "14px",
+        border: "1px solid #e5eaf1",
+        background: "#f8fafc",
+    },
+
+    summaryRow: {
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: "18px",
+        padding: "5px 0",
+        fontSize: "12px",
+        color: "#64748b",
+    },
+
+    summaryDashedDivider: {
+        borderTop: "1px dashed #cbd5e1",
+        margin: "9px 0",
+    },
+
     grandTotal: {
-        fontSize: "19px",
-        fontWeight: "700",
-        color: "#1F6D4C",
-        background: "#E7F2EC",
-        padding: "8px 10px",
-        borderRadius: "6px",
-        borderLeft: "4px solid #1F6D4C",
+        margin: "0 -8px",
+        padding: "12px 10px",
+        borderRadius: "10px",
+        background: "#c8ff00",
+        color: "#0b1220",
+        fontSize: "18px",
+        fontWeight: "950",
     },
+
     wordsChit: {
-        marginTop: "12px",
-        fontSize: "11.5px",
-        fontStyle: "italic",
-        color: "#6B6355",
-        borderTop: "1px dotted #D8CFB0",
-        paddingTop: "8px",
+        marginTop: "10px",
+        paddingTop: "9px",
+        borderTop: "1px solid #e2e8f0",
+        color: "#64748b",
+        fontSize: "10px",
+        lineHeight: 1.5,
     },
+
     notesSection: {
         marginBottom: "22px",
         padding: "12px 14px",
-        border: "1px dashed #D8CFB0",
-        borderRadius: "6px",
-        background: "#FBF8F1",
+        border: "1px solid #e5eaf1",
+        borderLeft: "4px solid #c8ff00",
+        borderRadius: "10px",
+        background: "#f8fafc",
     },
-    notesTitle: { fontSize: "10.5px", fontWeight: "700", letterSpacing: "1px", textTransform: "uppercase", color: "#9C6B15", marginBottom: "4px" },
-    notesText: { margin: 0, fontSize: "13px", color: "#4A453C" },
+
+    notesTitle: {
+        marginBottom: "4px",
+        color: "#64748b",
+        fontSize: "9px",
+        fontWeight: "900",
+        textTransform: "uppercase",
+        letterSpacing: ".9px",
+    },
+
+    notesText: {
+        margin: 0,
+        color: "#334155",
+        fontSize: "11px",
+        lineHeight: 1.55,
+    },
+
     bottomRow: {
         display: "flex",
         justifyContent: "flex-end",
-        alignItems: "flex-end",
-        flexWrap: "wrap",
-        gap: "16px",
-        borderTop: "1px dashed #D8CFB0",
-        paddingTop: "18px",
+        paddingTop: "17px",
+        borderTop: "1px solid #e5eaf1",
     },
-    footerNote: { textAlign: "right", flex: 1 },
+
+    footerNote: {
+        textAlign: "right",
+    },
+
     thankYou: {
         margin: "0 0 4px",
-        fontSize: "16px",
-        fontFamily: "'Rozha One', serif",
-        color: "#1F2A22",
+        color: "#0f172a",
+        fontSize: "13px",
+        fontWeight: "900",
     },
-    footerSmall: { margin: 0, fontSize: "11px", color: "#9C917E" },
+
+    footerSmall: {
+        margin: 0,
+        color: "#94a3b8",
+        fontSize: "9px",
+    },
+
     loadingContainer: {
+        minHeight: "60vh",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        minHeight: "60vh",
         padding: "40px",
+        background: "#eef1f6",
     },
+
     loadingSpinner: {
-        border: "4px solid #E4DCC4",
-        borderTop: "4px solid #1F6D4C",
+        width: "42px",
+        height: "42px",
+        border: "3px solid #dbe2eb",
+        borderTop: "3px solid #c8ff00",
         borderRadius: "50%",
-        width: "44px",
-        height: "44px",
-        animation: "spin 0.8s linear infinite",
+        animation: "spin .8s linear infinite",
     },
-    loadingText: { marginTop: "18px", fontSize: "16px", fontWeight: "600", color: "#1F2A22" },
-    loadingSubtext: { marginTop: "4px", fontSize: "13px", color: "#9C917E" },
-    errorContainer: { textAlign: "center", padding: "80px 20px", maxWidth: "440px", margin: "0 auto" },
-    errorIcon: { fontSize: "56px", marginBottom: "18px" },
-    errorTitle: { fontSize: "22px", fontWeight: "700", color: "#1F2A22", marginBottom: "10px" },
-    errorText: { fontSize: "14.5px", color: "#6B6355", marginBottom: "22px" },
+
+    loadingText: {
+        marginTop: "15px",
+        marginBottom: 0,
+        color: "#0f172a",
+        fontSize: "14px",
+        fontWeight: "800",
+    },
+
+    loadingSubtext: {
+        marginTop: "5px",
+        color: "#64748b",
+        fontSize: "11px",
+    },
+
+    errorContainer: {
+        maxWidth: "460px",
+        margin: "0 auto",
+        padding: "80px 20px",
+        textAlign: "center",
+    },
+
+    errorIcon: {
+        marginBottom: "15px",
+        fontSize: "50px",
+    },
+
+    errorTitle: {
+        marginBottom: "8px",
+        color: "#0f172a",
+        fontSize: "22px",
+        fontWeight: "900",
+    },
+
+    errorText: {
+        marginBottom: "20px",
+        color: "#64748b",
+        fontSize: "13px",
+        lineHeight: 1.5,
+    },
+
     errorButton: {
         display: "inline-flex",
         alignItems: "center",
-        gap: "8px",
-        padding: "11px 22px",
-        background: "#1F6D4C",
+        gap: "7px",
+        padding: "10px 16px",
+        borderRadius: "9px",
+        background: "#0b1220",
         color: "#fff",
         textDecoration: "none",
-        borderRadius: "8px",
-        fontWeight: "600",
+        fontSize: "12px",
+        fontWeight: "850",
     },
 };
 
-// Fonts + print rules
+// Fonts + responsive + print rules.
 const styleSheet = document.createElement("style");
 styleSheet.textContent = `
-    @import url('https://fonts.googleapis.com/css2?family=Rozha+One&family=Work+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
-
     @keyframes spin {
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
     }
 
+    * { box-sizing: border-box; }
+
+    @media (max-width: 760px) {
+        .invoice-mobile-fix {}
+    }
+
     @media print {
         @page {
+            size: A4;
             margin: 8mm;
         }
 
+        html, body {
+            background: #fff !important;
+        }
+
         body {
-            background: white !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        .no-print {
+            display: none !important;
         }
 
         #invoice-content {
             width: 100% !important;
             max-width: none !important;
             margin: 0 !important;
-            box-shadow: none !important;
             border: none !important;
+            box-shadow: none !important;
         }
 
-        .no-print {
-            display: none !important;
+        #invoice-content > div {
+            box-shadow: none !important;
         }
     }
 `;
 document.head.appendChild(styleSheet);
+
