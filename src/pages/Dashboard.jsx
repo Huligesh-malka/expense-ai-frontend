@@ -1232,24 +1232,28 @@ function DashboardStyles() {
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        color: var(--lime);
+        color: #c8f31d;
         font-size: 8px;
-        letter-spacing: 1.4px;
+        letter-spacing: 1.5px;
         font-weight: 900;
+        text-shadow: 0 0 14px rgba(200,243,29,.20);
       }
 
       .hero-content h2 {
         max-width: 620px;
+        color: #ffffff;
         font-family: 'Plus Jakarta Sans', sans-serif;
         font-size: clamp(22px, 3vw, 33px);
+        font-weight: 800;
         letter-spacing: -1.1px;
         line-height: 1.13;
         margin: 10px 0 8px;
+        text-shadow: 0 2px 18px rgba(0,0,0,.18);
       }
 
       .hero-content p {
         max-width: 600px;
-        color: #a8adba;
+        color: #d4d8e2;
         font-size: 11px;
         line-height: 1.65;
         margin: 0;
@@ -1274,8 +1278,26 @@ function DashboardStyles() {
         font-weight: 800;
       }
 
-      .hero-primary { color: #111; background: var(--lime); }
-      .hero-secondary { color: #fff; border: 1px solid #383e4b; background: rgba(255,255,255,.04); }
+      .hero-primary {
+        color: #10131a;
+        background: #c8f31d;
+        border: 1px solid #c8f31d;
+        box-shadow: 0 8px 22px rgba(200,243,29,.18);
+      }
+      .hero-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 28px rgba(200,243,29,.26);
+      }
+      .hero-secondary {
+        color: #ffffff;
+        border: 1px solid rgba(255,255,255,.20);
+        background: rgba(255,255,255,.07);
+        backdrop-filter: blur(8px);
+      }
+      .hero-secondary:hover {
+        background: rgba(255,255,255,.12);
+        border-color: rgba(255,255,255,.30);
+      }
 
       .hero-side {
         position: relative;
@@ -1289,19 +1311,21 @@ function DashboardStyles() {
         backdrop-filter: blur(10px);
       }
 
-      .hero-stat-label { color: #808795; font-size: 8px; letter-spacing: 1.2px; font-weight: 800; }
+      .hero-stat-label { color: #aeb5c4; font-size: 8px; letter-spacing: 1.2px; font-weight: 800; }
       .hero-stat-value {
+        color: #ffffff;
         font-family: 'Plus Jakarta Sans', sans-serif;
         font-size: 28px;
         font-weight: 800;
         margin: 7px 0 13px;
+        letter-spacing: -.6px;
       }
 
       .hero-stat-foot {
         display: flex;
         justify-content: space-between;
         gap: 10px;
-        color: #aeb3bf;
+        color: #c4c9d4;
         font-size: 8px;
       }
 
