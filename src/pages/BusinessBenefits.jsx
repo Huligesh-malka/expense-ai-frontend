@@ -1,98 +1,232 @@
 
 const base = {
-  page: { minHeight:"100vh", background:"#f7f8f5", color:"#101c2c", fontFamily:"'Inter',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" },
-  nav: { position:"sticky", top:0, zIndex:20, display:"flex", justifyContent:"space-between", alignItems:"center", padding:"16px 5vw", background:"rgba(247,248,245,.92)", backdropFilter:"blur(16px)", borderBottom:"1px solid #e3e6df" },
-  brand: { fontFamily:"Georgia,serif", fontStyle:"italic", fontWeight:700, fontSize:24 },
-  navLinks: { display:"flex", gap:8, flexWrap:"wrap" },
-  link: { textDecoration:"none", color:"#445064", padding:"9px 12px", borderRadius:999, fontSize:13, fontWeight:600 },
-  primary: { textDecoration:"none", background:"#1f6f54", color:"#fff", padding:"11px 17px", borderRadius:10, fontWeight:700, fontSize:14 },
-  container: { width:"min(1120px,92vw)", margin:"0 auto" },
-  hero: { padding:"84px 0 56px", display:"grid", gridTemplateColumns:"1.1fr .9fr", gap:48, alignItems:"center" },
-  eyebrow: { display:"inline-flex", padding:"7px 11px", borderRadius:999, background:"#e8f1ec", color:"#1f6f54", fontSize:12, fontWeight:800, letterSpacing:".08em", textTransform:"uppercase" },
-  h1: { fontFamily:"Georgia,serif", fontStyle:"italic", fontSize:"clamp(42px,6vw,72px)", lineHeight:1.02, margin:"18px 0", letterSpacing:"-2px" },
-  accent: { color:"#c59d23" },
-  lead: { color:"#5d6878", fontSize:18, lineHeight:1.7, maxWidth:650 },
-  actions: { display:"flex", gap:12, flexWrap:"wrap", marginTop:28 },
-  secondary: { textDecoration:"none", color:"#101c2c", background:"#fff", border:"1px solid #dce1d8", padding:"11px 17px", borderRadius:10, fontWeight:700, fontSize:14 },
-  mock: { background:"#101c2c", borderRadius:24, padding:18, boxShadow:"0 24px 60px rgba(16,28,44,.18)" },
-  mockTop: { display:"flex", justifyContent:"space-between", color:"#cbd3df", fontSize:12, padding:"4px 4px 14px" },
-  screen: { background:"#f8faf7", borderRadius:16, padding:18 },
-  cards: { display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10 },
-  stat: { background:"#fff", border:"1px solid #e5e9e2", borderRadius:12, padding:14 },
-  statLabel: { color:"#718096", fontSize:11 },
-  statValue: { fontSize:22, fontWeight:800, marginTop:6 },
-  section: { padding:"70px 0" },
-  sectionTitle: { fontFamily:"Georgia,serif", fontStyle:"italic", fontSize:"clamp(30px,4vw,46px)", margin:"0 0 12px" },
-  sectionLead: { color:"#657083", lineHeight:1.7, maxWidth:760 },
-  grid3: { display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:16, marginTop:30 },
-  card: { background:"#fff", border:"1px solid #e2e7df", borderRadius:18, padding:24, boxShadow:"0 8px 28px rgba(16,28,44,.05)" },
-  number: { fontFamily:"monospace", color:"#c59d23", fontWeight:800, fontSize:13 },
-  cardTitle: { fontSize:19, margin:"12px 0 8px" },
-  cardText: { color:"#687487", lineHeight:1.65, fontSize:14 },
-  band: { background:"#101c2c", color:"#fff", borderRadius:26, padding:"42px", margin:"30px 0" },
-  footer: { padding:"35px 0 55px", color:"#718096", fontSize:13, borderTop:"1px solid #e3e6df", marginTop:50 },
+  page: {
+    minHeight: "100vh",
+    background: "#F7F8F5",
+    color: "#101C2C",
+    fontFamily: "'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+  },
+  nav: {
+    position: "sticky",
+    top: 0,
+    zIndex: 50,
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 24,
+    padding: "14px 5vw",
+    background: "rgba(247,248,245,.90)",
+    backdropFilter: "blur(18px)",
+    borderBottom: "1px solid #E3E7E0",
+  },
+  brandWrap: { display: "flex", alignItems: "center", gap: 10, textDecoration: "none", color: "#101C2C" },
+  brandMark: {
+    width: 36, height: 36, borderRadius: 10, display: "grid", placeItems: "center",
+    background: "#1F6F54", color: "#F4E8C7", fontFamily: "Georgia,serif",
+    fontStyle: "italic", fontWeight: 700, fontSize: 22,
+  },
+  brand: { fontFamily: "Georgia,serif", fontStyle: "italic", fontWeight: 700, fontSize: 23, lineHeight: 1 },
+  brandSub: { display: "block", marginTop: 4, color: "#8A938D", fontFamily: "monospace", fontSize: 8, letterSpacing: "1.3px" },
+  navLinks: { display: "flex", gap: 5, flexWrap: "wrap", justifyContent: "center" },
+  link: {
+    textDecoration: "none", color: "#445064", padding: "9px 12px", borderRadius: 9,
+    fontSize: 13, fontWeight: 650, transition: "all .2s ease",
+  },
+  primary: {
+    textDecoration: "none", background: "#2E5BFF", color: "#fff", padding: "11px 17px",
+    borderRadius: 10, fontWeight: 700, fontSize: 13, display: "inline-flex",
+    alignItems: "center", justifyContent: "center", gap: 8,
+    boxShadow: "0 8px 20px rgba(46,91,255,.14)",
+  },
+  container: { width: "min(1120px,92vw)", margin: "0 auto" },
+  hero: {
+    padding: "76px 0 66px", display: "grid", gridTemplateColumns: "1.03fr .97fr",
+    gap: 55, alignItems: "center",
+  },
+  eyebrow: {
+    display: "inline-flex", alignItems: "center", gap: 7, padding: "7px 11px",
+    borderRadius: 999, background: "#E8F4ED", color: "#1F6F54",
+    fontSize: 10, fontWeight: 800, letterSpacing: "1.1px", textTransform: "uppercase",
+  },
+  dot: { width: 7, height: 7, borderRadius: "50%", background: "#27A56A" },
+  h1: {
+    fontFamily: "Georgia,serif", fontStyle: "italic", fontWeight: 700,
+    fontSize: "clamp(43px,6vw,70px)", lineHeight: 1.02, margin: "19px 0",
+    letterSpacing: "-2.6px",
+  },
+  accent: { color: "#C59D23" },
+  lead: { color: "#5D6878", fontSize: 17, lineHeight: 1.72, maxWidth: 650, margin: 0 },
+  actions: { display: "flex", gap: 12, flexWrap: "wrap", marginTop: 28 },
+  secondary: {
+    textDecoration: "none", color: "#101C2C", background: "#fff",
+    border: "1px solid #DCE1D8", padding: "11px 17px", borderRadius: 10,
+    fontWeight: 700, fontSize: 13, display: "inline-flex", alignItems: "center",
+  },
+  mock: {
+    background: "linear-gradient(145deg,#0D1929,#182B41)", borderRadius: 24,
+    padding: 16, boxShadow: "0 28px 70px rgba(16,28,44,.20)",
+    border: "1px solid rgba(255,255,255,.07)",
+  },
+  mockTop: {
+    display: "flex", justifyContent: "space-between", alignItems: "center",
+    color: "#B9C5D2", fontSize: 9, padding: "5px 5px 13px",
+    fontFamily: "monospace", letterSpacing: "1px",
+  },
+  live: { color: "#76D7A6", fontSize: 9 },
+  screen: { background: "#F8FAF7", borderRadius: 16, padding: 16 },
+  cards: { display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 9 },
+  stat: { background: "#fff", border: "1px solid #E5E9E2", borderRadius: 11, padding: 13 },
+  statLabel: { color: "#718096", fontSize: 9, fontFamily: "monospace", letterSpacing: ".5px" },
+  statValue: { fontSize: 19, fontWeight: 800, marginTop: 7 },
+  statNote: { display: "block", marginTop: 4, color: "#8993A0", fontSize: 9 },
+  section: { padding: "76px 0" },
+  kicker: { color: "#C59D23", fontFamily: "monospace", fontSize: 10, fontWeight: 700, letterSpacing: "1.4px" },
+  sectionTitle: {
+    fontFamily: "Georgia,serif", fontStyle: "italic", fontWeight: 700,
+    fontSize: "clamp(31px,4vw,46px)", lineHeight: 1.08, margin: "8px 0 12px",
+    letterSpacing: "-1px",
+  },
+  sectionLead: { color: "#657083", lineHeight: 1.7, maxWidth: 760, margin: 0 },
+  grid3: { display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 15, marginTop: 31 },
+  card: {
+    position: "relative", background: "#fff", border: "1px solid #E1E6DE",
+    borderRadius: 17, padding: 23, minHeight: 190,
+    boxShadow: "0 8px 28px rgba(16,28,44,.045)",
+    transition: "transform .2s ease, border-color .2s ease, box-shadow .2s ease",
+  },
+  number: { color: "#C59D23", fontFamily: "monospace", fontWeight: 800, fontSize: 11, letterSpacing: "1px" },
+  cardTitle: { fontSize: 18, margin: "12px 0 8px", fontWeight: 750 },
+  cardText: { color: "#687487", lineHeight: 1.65, fontSize: 13.5, margin: 0 },
+  band: {
+    background: "#101C2C", color: "#fff", borderRadius: 25, padding: "42px",
+    margin: "10px 0 30px", boxShadow: "0 20px 55px rgba(16,28,44,.14)",
+  },
+  bandTitle: { fontFamily: "Georgia,serif", fontStyle: "italic", fontSize: "clamp(29px,4vw,43px)", margin: "9px 0 10px" },
+  bandText: { color: "#C4CED9", lineHeight: 1.7, maxWidth: 720, margin: 0, fontSize: 14 },
+  footer: {
+    padding: "34px 0 55px", color: "#718096", fontSize: 12,
+    borderTop: "1px solid #E3E6DF", marginTop: 35,
+  },
 };
 
-function ResponsiveStyle() {
-  return <style>{`
-    @media(max-width:800px){
-      .fp-hero{grid-template-columns:1fr!important;padding-top:50px!important}
-      .fp-grid3{grid-template-columns:1fr!important}
-      .fp-navlinks{display:none!important}
-      .fp-cards{grid-template-columns:1fr!important}
-    }
-  `}</style>
-}
+const responsiveCss = `
+  .fp-page-link:hover { color:#1F6F54 !important; background:#EEF4F0 !important; }
+  .fp-primary:hover { transform:translateY(-1px); box-shadow:0 12px 25px rgba(46,91,255,.20) !important; }
+  .fp-secondary:hover { border-color:#1F6F54 !important; color:#1F6F54 !important; }
+  .fp-card:hover { transform:translateY(-4px); border-color:#C9A227 !important; box-shadow:0 16px 38px rgba(16,28,44,.09) !important; }
+  @media(max-width:850px){
+    .fp-hero{grid-template-columns:1fr!important;padding-top:52px!important}
+    .fp-grid3{grid-template-columns:repeat(2,1fr)!important}
+    .fp-navlinks{display:none!important}
+    .fp-cards{grid-template-columns:1fr!important}
+    .fp-band{padding:30px!important}
+  }
+  @media(max-width:560px){
+    .fp-grid3{grid-template-columns:1fr!important}
+    .fp-nav{padding:12px 4vw!important}
+    .fp-hero{padding-bottom:45px!important}
+    .fp-brand-sub{display:none!important}
+  }
+`;
+
+const Nav = ({ active }) => (
+  <>
+    <style>{responsiveCss}</style>
+    <nav className="fp-nav" style={base.nav}>
+      <Link to="/" style={base.brandWrap}>
+        <span style={base.brandMark}>F</span>
+        <span>
+          <span style={base.brand}>FinancePro</span>
+          <span className="fp-brand-sub" style={base.brandSub}>AI BUSINESS MANAGEMENT</span>
+        </span>
+      </Link>
+      <div className="fp-navlinks" style={base.navLinks}>
+        <Link className="fp-page-link" to="/business-benefits" style={{...base.link, ...(active==="benefits" ? {color:"#1F6F54",background:"#EEF4F0"} : {})}}>Why FinancePro</Link>
+        <Link className="fp-page-link" to="/how-it-works" style={{...base.link, ...(active==="how" ? {color:"#1F6F54",background:"#EEF4F0"} : {})}}>How it works</Link>
+        <Link className="fp-page-link" to="/business-guide" style={{...base.link, ...(active==="guide" ? {color:"#1F6F54",background:"#EEF4F0"} : {})}}>Business guide</Link>
+      </div>
+      <Link className="fp-primary" to="/login" style={base.primary}>Sign in</Link>
+    </nav>
+  </>
+);
 
 import React from "react";
 import { Link } from "react-router-dom";
 
-export default function BusinessBenefits(){
-  const benefits=[
-    ["01","One place for daily work","Billing, products, stock, customers, purchases, expenses and reports stay connected instead of living in separate notebooks and spreadsheets."],
-    ["02","See the business clearly","Owners can move from today's sales to stock, payments, expenses and business activity without searching through different tools."],
-    ["03","Built for different business types","Start with a simple setup and organize the platform around the way a retail shop, grocery store, medical store, restaurant or service business operates."],
-    ["04","Less repetitive work","A sale can update business records and inventory workflows so the owner does not have to enter the same information repeatedly."],
-    ["05","AI when it is useful","AI can turn authorized business data into summaries, explanations and questions owners can understand instead of forcing them to read raw tables."],
-    ["06","Owner control and staff roles","Owners can separate daily counter work from management access using role-based permissions and business-level data isolation."]
+export default function BusinessBenefits() {
+  const benefits = [
+    ["01","One place for daily work","Billing, products, stock, customers, purchases, expenses and reports can be organized in one workspace."],
+    ["02","See the business clearly","Move from sales to stock, payments, expenses and activity without switching between unrelated tools."],
+    ["03","Built around business workflows","Start with the work your business actually does and use the relevant modules instead of a complicated setup."],
+    ["04","Reduce repeated entry","Connected workflows can reduce the need to manually re-enter information across separate business records."],
+    ["05","AI when it is useful","AI can turn authorized business data into summaries, explanations and natural-language answers."],
+    ["06","Owner and staff control","Use roles and business-level access rules so staff can work without automatically receiving owner-level access."],
   ];
-  return <div style={base.page}>
-    <ResponsiveStyle/>
-    <nav style={base.nav}><div style={base.brand}>FinancePro</div><div className="fp-navlinks" style={base.navLinks}>
-      <Link to="/business-benefits" style={{...base.link,color:"#1f6f54"}}>Why FinancePro</Link>
-      <Link to="/how-it-works" style={base.link}>How it works</Link>
-      <Link to="/business-guide" style={base.link}>Business guide</Link>
-    </div><Link to="/login" style={base.primary}>Sign in</Link></nav>
-    <main style={base.container}>
-      <section className="fp-hero" style={base.hero}>
-        <div><span style={base.eyebrow}>For business owners</span>
-          <h1 style={base.h1}>Run the work.<br/><span style={base.accent}>Understand the business.</span></h1>
-          <p style={base.lead}>FinancePro is designed around the owner's daily reality: sell, restock, collect, pay, review and decide — with the information connected in one place.</p>
-          <div style={base.actions}><Link to="/register" style={base.primary}>Create your business →</Link><Link to="/how-it-works" style={base.secondary}>See how it works</Link></div>
-        </div>
-        <div style={base.mock}><div style={base.mockTop}><span>OWNER VIEW</span><span>Live business workspace</span></div><div style={base.screen}>
-          <div style={base.cards}>
-            <div style={base.stat}><div style={base.statLabel}>TODAY'S SALES</div><div style={base.statValue}>₹24,850</div></div>
-            <div style={base.stat}><div style={base.statLabel}>LOW STOCK</div><div style={base.statValue}>8 items</div></div>
-            <div style={base.stat}><div style={base.statLabel}>PENDING</div><div style={base.statValue}>₹8,500</div></div>
-          </div>
-          <div style={{marginTop:14,padding:16,background:"#fff",border:"1px solid #e5e9e2",borderRadius:12}}>
-            <b>AI Business Brief</b><p style={{color:"#687487",lineHeight:1.6,fontSize:13}}>Review sales, inventory and expenses together. Ask questions in plain language and investigate the underlying records.</p>
-          </div>
-        </div></div>
-      </section>
 
-      <section style={base.section}>
-        <h2 style={base.sectionTitle}>Why an owner would use it</h2>
-        <p style={base.sectionLead}>The value is not another billing screen. The value is having the important operating information connected so an owner can act faster and with more context.</p>
-        <div className="fp-grid3" style={base.grid3}>{benefits.map(([n,t,d])=><article key={n} style={base.card}><div style={base.number}>{n}</div><h3 style={base.cardTitle}>{t}</h3><p style={base.cardText}>{d}</p></article>)}</div>
-      </section>
+  return (
+    <div style={base.page}>
+      <Nav active="benefits" />
+      <main style={base.container}>
+        <section className="fp-hero" style={base.hero}>
+          <div>
+            <span style={base.eyebrow}><span style={base.dot}/> Built for business owners</span>
+            <h1 style={base.h1}>Run the work.<br/><span style={base.accent}>Understand the business.</span></h1>
+            <p style={base.lead}>
+              The value is not simply another billing screen. It is having important
+              operating information organized together so the owner can understand what is happening.
+            </p>
+            <div style={base.actions}>
+              <Link className="fp-primary" to="/register" style={base.primary}>Create your business →</Link>
+              <Link className="fp-secondary" to="/how-it-works" style={base.secondary}>See how it works</Link>
+            </div>
+          </div>
 
-      <section style={base.band}><span style={{color:"#c59d23",fontFamily:"monospace",fontSize:12}}>THE OWNER LOOP</span>
-        <h2 style={{...base.sectionTitle,color:"#fff",marginTop:10}}>Sell → know → act → grow</h2>
-        <p style={{...base.sectionLead,color:"#cbd3df"}}>The platform should help an owner move from an event at the counter to a useful management decision without rebuilding the information manually.</p>
-      </section>
-      <footer style={base.footer}>FinancePro • AI Business Management • Replace example claims with your verified product capabilities before launch.</footer>
-    </main>
-  </div>
+          <div style={base.mock}>
+            <div style={base.mockTop}><span>OWNER VIEW</span><span style={base.live}>● DEMO PREVIEW</span></div>
+            <div style={base.screen}>
+              <div className="fp-cards" style={base.cards}>
+                <div style={base.stat}><div style={base.statLabel}>TODAY</div><div style={base.statValue}>Sales</div><span style={base.statNote}>Review business activity</span></div>
+                <div style={base.stat}><div style={base.statLabel}>STOCK</div><div style={base.statValue}>Alerts</div><span style={base.statNote}>Know what needs attention</span></div>
+                <div style={base.stat}><div style={base.statLabel}>AI</div><div style={base.statValue}>Answers</div><span style={base.statNote}>Ask about authorized data</span></div>
+              </div>
+              <div style={{marginTop:10,padding:15,background:"#fff",border:"1px solid #E5E9E2",borderRadius:11}}>
+                <div style={{fontSize:9,color:"#718096",fontFamily:"monospace",letterSpacing:".7px"}}>OWNER BRIEF</div>
+                <div style={{marginTop:8,fontSize:13,fontWeight:700}}>Sales → stock → expenses → decisions</div>
+                <div style={{marginTop:6,color:"#687487",lineHeight:1.5,fontSize:11}}>A connected view helps the owner investigate the underlying business records.</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section style={base.section}>
+          <span style={base.kicker}>WHY USE IT</span>
+          <h2 style={base.sectionTitle}>The benefits are about clarity and control.</h2>
+          <p style={base.sectionLead}>
+            FinancePro can be positioned around the owner's daily loop: sell, restock,
+            collect, pay, review and decide.
+          </p>
+          <div className="fp-grid3" style={base.grid3}>
+            {benefits.map(([n,t,d]) => (
+              <article className="fp-card" key={n} style={base.card}>
+                <div style={base.number}>{n}</div>
+                <h3 style={base.cardTitle}>{t}</h3>
+                <p style={base.cardText}>{d}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="fp-band" style={base.band}>
+          <span style={base.kicker}>THE OWNER LOOP</span>
+          <h2 style={base.bandTitle}>Sell → know → act → grow.</h2>
+          <p style={base.bandText}>
+            A sale, purchase or expense creates information. The platform should make
+            that information useful for the next owner decision without requiring manual rebuilding.
+          </p>
+        </section>
+
+        <footer style={base.footer}>FinancePro • AI Business Management • Keep published claims aligned with verified live capabilities.</footer>
+      </main>
+    </div>
+  );
 }
