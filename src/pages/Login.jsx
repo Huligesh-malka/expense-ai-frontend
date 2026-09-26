@@ -334,9 +334,9 @@ export default function Login() {
                 </nav>
 
                 <div style={styles.navActions}>
-                    <Link to="/login" className="fp-login-link" style={styles.navLogin}>
+                    <a href="#login" className="fp-login-link" style={styles.navLogin}>
                         Login
-                    </Link>
+                    </a>
                     <Link to="/register" className="fp-signup" style={styles.navSignup}>
                         Sign up
                     </Link>
@@ -385,6 +385,10 @@ export default function Login() {
                                 <span>✓ Owner-focused workflow</span>
                                 <span>✓ Business-level access control</span>
                             </div>
+                            <a href="#learn" className="fp-scroll-cue" style={styles.scrollCue}>
+                                <span style={styles.scrollDot}>↓</span>
+                                See how the platform works
+                            </a>
                         </div>
 
                         {/* RIGHT: LOGIN / BUSINESS WORKSPACE PREVIEW */}
@@ -463,7 +467,7 @@ export default function Login() {
                 </section>
 
                 {/* ===================== THREE OWNER PAGES ===================== */}
-                <section id="features" style={styles.educationSection}>
+                <section id="learn" style={styles.educationSection}>
                     <div style={styles.sectionContainer}>
                         <div style={styles.sectionIntro}>
                             <span style={styles.sectionKicker}>BEFORE YOU START</span>
@@ -558,9 +562,9 @@ export default function Login() {
                             <Link to="/register" style={styles.finalPrimary}>
                                 Create your business →
                             </Link>
-                            <Link to="/login" style={styles.finalSecondary}>
+                            <a href="#login" style={styles.finalSecondary}>
                                 Already have an account? Login
-                            </Link>
+                            </a>
                         </div>
                     </div>
                 </section>
@@ -572,7 +576,7 @@ export default function Login() {
                     <div style={styles.loginIntro}>
                         <span style={styles.sectionKicker}>OWNER LOGIN</span>
                         <h2 style={styles.loginTitle}>
-                            Open your business workspace.
+                            Your workspace is waiting.
                         </h2>
                         <p style={styles.loginText}>
                             Sign in to continue billing, inventory, expenses, purchases,
@@ -844,6 +848,8 @@ const FONT_AND_MOTION_CSS = `
     .fp-login-link:hover { color: #1F6F54 !important; }
     .fp-signup:hover { transform: translateY(-1px); box-shadow: 0 10px 25px rgba(31,111,84,.18); }
     .fp-primary-cta:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(31,111,84,.22); }
+    .fp-scroll-cue:hover { color: #1F6F54 !important; transform: translateY(2px); }
+    .fp-scroll-cue:hover .fp-scroll-dot { background: #1F6F54 !important; color: #fff !important; }
     .fp-secondary-cta:hover { border-color: #1F6F54 !important; color: #1F6F54 !important; }
     .fp-education-card:hover { transform: translateY(-5px); border-color: #C9A227 !important; box-shadow: 0 18px 42px rgba(16,28,44,.10) !important; }
     .fp-feature-card:hover { transform: translateY(-3px); border-color: rgba(201,162,39,.65) !important; }
@@ -885,7 +891,7 @@ const FONT_AND_MOTION_CSS = `
     @media (max-width: 640px) {
         .fp-top-nav { padding: 14px 18px !important; }
         .fp-nav-actions { gap: 8px !important; }
-        .fp-nav-login { display: none !important; }
+        .fp-nav-login { display: inline-flex !important; }
         .fp-hero-section { padding: 48px 18px 55px !important; }
         .fp-main-headline { font-size: 43px !important; }
         .fp-hero-actions { flex-direction: column !important; align-items: stretch !important; }
@@ -1023,7 +1029,7 @@ const styles = {
         background:
             "radial-gradient(circle at 82% 24%, rgba(201,162,39,.12), transparent 30%), linear-gradient(180deg,#FBFCFA 0%,#F4F6F2 100%)",
         borderBottom: "1px solid #E6E9E3",
-        padding: "74px 5vw 84px",
+        padding: "62px 5vw 72px",
     },
 
     heroContainer: {
@@ -1064,7 +1070,7 @@ const styles = {
         fontFamily: "'Fraunces', Georgia, serif",
         fontStyle: "italic",
         fontWeight: 600,
-        fontSize: "clamp(46px, 5.4vw, 72px)",
+        fontSize: "clamp(43px, 5vw, 66px)",
         lineHeight: 1.03,
         letterSpacing: "-2.6px",
         margin: "21px 0 18px",
@@ -1124,6 +1130,30 @@ const styles = {
         transition: "all .2s ease",
     },
 
+    scrollCue: {
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "9px",
+        marginTop: "18px",
+        color: "#7B857F",
+        textDecoration: "none",
+        fontSize: "11.5px",
+        fontWeight: 600,
+        transition: "all .2s ease",
+    },
+
+    scrollDot: {
+        width: "25px",
+        height: "25px",
+        display: "grid",
+        placeItems: "center",
+        borderRadius: "50%",
+        background: "#EAF0FF",
+        color: "#2E5BFF",
+        fontWeight: 800,
+        transition: "all .2s ease",
+    },
+
     heroTrust: {
         display: "flex",
         flexWrap: "wrap",
@@ -1135,7 +1165,7 @@ const styles = {
 
     heroVisual: {
         position: "relative",
-        minHeight: "450px",
+        minHeight: "420px",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -1154,7 +1184,7 @@ const styles = {
         position: "relative",
         width: "100%",
         maxWidth: "570px",
-        background: "#101C2C",
+        background: "linear-gradient(145deg,#101C2C 0%,#16283D 100%)",
         borderRadius: "22px",
         padding: "18px",
         boxShadow: "0 28px 70px rgba(16,28,44,.22)",
@@ -1536,8 +1566,8 @@ const styles = {
     },
 
     loginSection: {
-        padding: "86px 5vw",
-        background: "#EEF1EC",
+        padding: "96px 5vw 110px",
+        background: "linear-gradient(180deg,#EEF1EC 0%,#E5EAE4 100%)",
         borderTop: "1px solid #E0E5DE",
     },
 
