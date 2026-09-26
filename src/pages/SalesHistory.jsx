@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import API from "../services/api";
-import { FiSearch, FiPlus, FiEye, FiTrash2, FiFilter, FiDownload, FiCalendar, FiUser, FiCreditCard, FiTrendingUp, FiPrinter } from "react-icons/fi";
+import { FiSearch, FiPlus, FiEye, FiTrash2, FiFilter, FiDownload, FiCalendar, FiUser, FiCreditCard, FiTrendingUp, FiPrinter, FiRefreshCw, FiActivity, FiArrowUpRight } from "react-icons/fi";
 
 export default function SalesHistory() {
     const [sales, setSales] = useState([]);
@@ -9,6 +9,7 @@ export default function SalesHistory() {
     const [loading, setLoading] = useState(false);
     const [filterStatus, setFilterStatus] = useState("all");
     const [selectedPeriod, setSelectedPeriod] = useState("all");
+    const [lastUpdated, setLastUpdated] = useState(null);
 
     useEffect(() => {
         loadSales();
@@ -19,6 +20,7 @@ export default function SalesHistory() {
         try {
             const res = await API.get("/sales");
             setSales(res.data.data || []);
+            setLastUpdated(new Date());
         } catch (err) {
             console.error("Error loading sales:", err);
             alert("Failed to load sales data");
@@ -137,11 +139,11 @@ export default function SalesHistory() {
     };
 
     return (
-        <div className="sales-history-container" style={styles.container}>
+        <div className="sales-page" style={styles.container}>
             {/* Header */}
-            <div className="sales-history-header" style={styles.header}>
+            <div className="sales-header" style={styles.header}>
                 <div>
-                    <h1 className="sales-history-title" style={styles.title}>Sales History</h1>
+                    <h1 className="sales-title" style={styles.title}>Sales History</h1>
                     <p style={styles.subtitle}>Track and manage all your sales transactions</p>
                 </div>
                 <Link to="/billing-pos" style={styles.primaryButton}>
@@ -151,7 +153,7 @@ export default function SalesHistory() {
             </div>
 
             {/* Stats Cards */}
-            <div className="sales-history-stats-grid" style={styles.statsGrid}>
+            <div className="sales-stats" style={styles.statsGrid}>
                 <div style={styles.statCard}>
                     <div style={styles.statIcon}>
                         <FiTrendingUp size={20} color="#3b82f6" />
@@ -194,6 +196,24 @@ export default function SalesHistory() {
                         <div style={styles.statSub}>Unique customers</div>
                     </div>
                 </div>
+            </div>
+
+            {/* Owner insight strip */}
+            <div style={styles.insightStrip}>
+                <div style={styles.insightIcon}>
+                    <FiActivity size={18} />
+                </div>
+                <div style={styles.insightContent}>
+                    <div style={styles.insightTitle}>Sales activity</div>
+                    <div style={styles.insightText}>
+                        {stats.count > 0
+                            ? `${stats.count} transaction${stats.count === 1 ? "" : "s"} in the selected period • ${stats.paid} paid`
+                            : "No sales activity in the selected period"}
+                    </div>
+                </div>
+                <Link to="/billing-pos" style={styles.insightAction}>
+                    New Sale <FiArrowUpRight size={14} />
+                </Link>
             </div>
 
             {/* Filters */}
@@ -418,40 +438,40 @@ export default function SalesHistory() {
 const styles = {
     container: {
         minHeight: "100vh",
-        padding: "28px",
+        padding: "26px 28px 40px",
         maxWidth: "1600px",
         margin: "0 auto",
-        background: "#f5f7fb",
+        background: "#f4f7fb",
         color: "#0f172a",
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
     },
 
     header: {
+        position: "relative",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
         gap: "20px",
-        marginBottom: "22px",
-        padding: "22px 24px",
-        borderRadius: "20px",
-        background: "linear-gradient(135deg, #0f172a 0%, #172554 55%, #1e3a8a 100%)",
-        boxShadow: "0 18px 45px rgba(15, 23, 42, 0.18)",
-        position: "relative",
+        marginBottom: "18px",
+        padding: "24px 26px",
+        borderRadius: "22px",
+        background: "linear-gradient(135deg, #0b1220 0%, #111c35 52%, #172554 100%)",
+        boxShadow: "0 18px 45px rgba(15, 23, 42, .18)",
         overflow: "hidden"
     },
 
     title: {
         margin: 0,
-        color: "#ffffff",
+        color: "#fff",
         fontSize: "30px",
         lineHeight: 1.15,
-        fontWeight: "800",
-        letterSpacing: "-0.8px"
+        fontWeight: "850",
+        letterSpacing: "-.9px"
     },
 
     subtitle: {
         margin: "7px 0 0",
-        color: "#cbd5e1",
+        color: "#b9c5d8",
         fontSize: "13px",
         lineHeight: 1.5
     },
@@ -463,21 +483,20 @@ const styles = {
         gap: "8px",
         padding: "12px 18px",
         borderRadius: "12px",
-        background: "#a3e635",
-        color: "#172554",
+        background: "#b7f34a",
+        color: "#172033",
         textDecoration: "none",
         fontSize: "13px",
-        fontWeight: "800",
-        boxShadow: "0 8px 24px rgba(163, 230, 53, 0.25)",
-        whiteSpace: "nowrap",
-        transition: "transform .2s ease, box-shadow .2s ease"
+        fontWeight: "850",
+        boxShadow: "0 8px 24px rgba(183, 243, 74, .22)",
+        whiteSpace: "nowrap"
     },
 
     statsGrid: {
         display: "grid",
         gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
         gap: "14px",
-        marginBottom: "18px"
+        marginBottom: "16px"
     },
 
     statCard: {
@@ -486,18 +505,17 @@ const styles = {
         alignItems: "center",
         gap: "14px",
         padding: "18px",
-        borderRadius: "16px",
-        background: "#ffffff",
-        border: "1px solid #e7ebf2",
-        boxShadow: "0 8px 25px rgba(15, 23, 42, 0.05)",
-        transition: "transform .2s ease, box-shadow .2s ease"
+        borderRadius: "17px",
+        background: "#fff",
+        border: "1px solid #e6ebf2",
+        boxShadow: "0 8px 25px rgba(15, 23, 42, .055)"
     },
 
     statIcon: {
         width: "46px",
         height: "46px",
         borderRadius: "13px",
-        background: "#e8f0ff",
+        background: "#eaf1ff",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -505,20 +523,20 @@ const styles = {
     },
 
     statLabel: {
-        fontSize: "11px",
-        fontWeight: "800",
+        fontSize: "10px",
+        fontWeight: "850",
         color: "#64748b",
         textTransform: "uppercase",
-        letterSpacing: "0.65px"
+        letterSpacing: ".75px"
     },
 
     statValue: {
-        margin: "3px 0 2px",
+        margin: "4px 0 2px",
         fontSize: "22px",
-        lineHeight: 1.2,
-        fontWeight: "800",
+        lineHeight: 1.15,
+        fontWeight: "850",
         color: "#0f172a",
-        letterSpacing: "-0.3px"
+        letterSpacing: "-.35px"
     },
 
     statSub: {
@@ -526,46 +544,126 @@ const styles = {
         color: "#94a3b8"
     },
 
+    insightStrip: {
+        display: "flex",
+        alignItems: "center",
+        gap: "12px",
+        marginBottom: "14px",
+        padding: "11px 14px",
+        borderRadius: "14px",
+        background: "linear-gradient(90deg, #eff6ff, #f8fafc)",
+        border: "1px solid #dbe7f7"
+    },
+
+    insightIcon: {
+        width: "36px",
+        height: "36px",
+        borderRadius: "10px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "#dbeafe",
+        color: "#2563eb",
+        flexShrink: 0
+    },
+
+    insightContent: {
+        minWidth: 0,
+        flex: 1
+    },
+
+    insightTitle: {
+        fontSize: "11px",
+        fontWeight: "850",
+        color: "#1e3a8a"
+    },
+
+    insightText: {
+        marginTop: "2px",
+        color: "#64748b",
+        fontSize: "11px"
+    },
+
+    insightAction: {
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "4px",
+        padding: "8px 11px",
+        borderRadius: "9px",
+        background: "#0f172a",
+        color: "#fff",
+        textDecoration: "none",
+        fontSize: "10px",
+        fontWeight: "800",
+        whiteSpace: "nowrap"
+    },
+
     filtersSection: {
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        gap: "14px",
+        gap: "12px",
         flexWrap: "wrap",
-        padding: "13px",
-        marginBottom: "16px",
+        padding: "12px",
+        marginBottom: "14px",
         borderRadius: "16px",
-        background: "#ffffff",
-        border: "1px solid #e7ebf2",
-        boxShadow: "0 6px 22px rgba(15, 23, 42, 0.04)"
+        background: "#fff",
+        border: "1px solid #e5eaf1",
+        boxShadow: "0 6px 22px rgba(15, 23, 42, .04)"
     },
 
     filtersLeft: {
         display: "flex",
         alignItems: "center",
-        gap: "9px",
+        gap: "8px",
         flexWrap: "wrap",
         flex: 1,
-        minWidth: "280px"
+        minWidth: "300px"
     },
 
     filtersRight: {
         display: "flex",
         alignItems: "center",
-        gap: "10px"
+        gap: "9px",
+        flexWrap: "wrap"
+    },
+
+    liveIndicator: {
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "5px",
+        padding: "5px 8px",
+        borderRadius: "999px",
+        background: "#ecfdf5",
+        color: "#047857",
+        fontSize: "10px",
+        fontWeight: "850"
+    },
+
+    liveDot: {
+        width: "6px",
+        height: "6px",
+        borderRadius: "50%",
+        background: "#10b981",
+        boxShadow: "0 0 0 3px rgba(16, 185, 129, .12)"
+    },
+
+    updatedText: {
+        color: "#94a3b8",
+        fontSize: "10px",
+        whiteSpace: "nowrap"
     },
 
     searchWrapper: {
         display: "flex",
         alignItems: "center",
-        minWidth: "260px",
+        minWidth: "250px",
         flex: "1 1 300px",
         height: "42px",
         padding: "0 13px",
         border: "1px solid #e2e8f0",
         borderRadius: "11px",
-        background: "#f8fafc",
-        transition: "border-color .2s ease, box-shadow .2s ease"
+        background: "#f8fafc"
     },
 
     searchIcon: {
@@ -599,20 +697,20 @@ const styles = {
         background: "transparent",
         color: "#334155",
         fontSize: "12px",
-        fontWeight: "700",
+        fontWeight: "750",
         cursor: "pointer"
     },
 
     resultCount: {
         color: "#64748b",
-        fontSize: "12px",
-        fontWeight: "700",
+        fontSize: "11px",
+        fontWeight: "750",
         whiteSpace: "nowrap"
     },
 
     iconButton: {
-        width: "40px",
-        height: "40px",
+        width: "38px",
+        height: "38px",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -626,9 +724,9 @@ const styles = {
     tableContainer: {
         overflowX: "auto",
         borderRadius: "18px",
-        background: "#ffffff",
-        border: "1px solid #e7ebf2",
-        boxShadow: "0 10px 30px rgba(15, 23, 42, 0.055)"
+        background: "#fff",
+        border: "1px solid #e5eaf1",
+        boxShadow: "0 10px 30px rgba(15, 23, 42, .055)"
     },
 
     table: {
@@ -643,12 +741,12 @@ const styles = {
         padding: "14px 16px",
         textAlign: "left",
         fontSize: "10px",
-        fontWeight: "800",
+        fontWeight: "850",
         color: "#64748b",
         textTransform: "uppercase",
-        letterSpacing: "0.75px",
+        letterSpacing: ".7px",
         background: "#f8fafc",
-        borderBottom: "1px solid #e7ebf2",
+        borderBottom: "1px solid #e5eaf1",
         whiteSpace: "nowrap"
     },
 
@@ -660,12 +758,12 @@ const styles = {
     invoiceNumber: {
         display: "inline-flex",
         alignItems: "center",
-        padding: "5px 8px",
+        padding: "6px 8px",
         borderRadius: "8px",
         background: "#eef2ff",
         color: "#4338ca",
-        fontWeight: "800",
-        fontSize: "12px",
+        fontWeight: "850",
+        fontSize: "11px",
         whiteSpace: "nowrap"
     },
 
@@ -677,13 +775,13 @@ const styles = {
 
     date: {
         color: "#1e293b",
-        fontWeight: "700",
+        fontWeight: "750",
         fontSize: "12px"
     },
 
     time: {
         color: "#94a3b8",
-        fontSize: "11px"
+        fontSize: "10px"
     },
 
     customerCell: {
@@ -701,14 +799,14 @@ const styles = {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        fontWeight: "800",
+        fontWeight: "850",
         fontSize: "13px",
         flexShrink: 0
     },
 
     customerName: {
         color: "#1e293b",
-        fontWeight: "700",
+        fontWeight: "750",
         fontSize: "12px"
     },
 
@@ -721,14 +819,14 @@ const styles = {
     itemsCell: {
         display: "flex",
         flexDirection: "column",
-        gap: "6px",
+        gap: "5px",
         maxWidth: "280px"
     },
 
     itemsCount: {
         color: "#334155",
         fontSize: "11px",
-        fontWeight: "800"
+        fontWeight: "850"
     },
 
     itemsSummary: {
@@ -750,7 +848,7 @@ const styles = {
         padding: "4px 6px",
         color: "#64748b",
         fontSize: "10px",
-        fontWeight: "700"
+        fontWeight: "750"
     },
 
     paymentMethodBadge: {
@@ -762,8 +860,8 @@ const styles = {
         background: "#f8fafc",
         border: "1px solid #e2e8f0",
         color: "#475569",
-        fontSize: "11px",
-        fontWeight: "700",
+        fontSize: "10px",
+        fontWeight: "750",
         whiteSpace: "nowrap"
     },
 
@@ -774,7 +872,7 @@ const styles = {
         padding: "6px 9px",
         borderRadius: "999px",
         fontSize: "10px",
-        fontWeight: "800",
+        fontWeight: "850",
         whiteSpace: "nowrap"
     },
 
@@ -797,13 +895,13 @@ const styles = {
         display: "inline-flex",
         alignItems: "center",
         gap: "4px",
-        padding: "7px 9px",
+        padding: "7px 10px",
         borderRadius: "8px",
         background: "#0f172a",
-        color: "#ffffff",
+        color: "#fff",
         textDecoration: "none",
         fontSize: "10px",
-        fontWeight: "800"
+        fontWeight: "850"
     },
 
     printButton: {
@@ -815,7 +913,7 @@ const styles = {
         border: "none",
         borderRadius: "8px",
         background: "#2563eb",
-        color: "#ffffff",
+        color: "#fff",
         cursor: "pointer"
     },
 
@@ -828,7 +926,7 @@ const styles = {
         border: "none",
         borderRadius: "8px",
         background: "#7c3aed",
-        color: "#ffffff",
+        color: "#fff",
         cursor: "pointer"
     },
 
@@ -852,8 +950,8 @@ const styles = {
         alignItems: "center",
         justifyContent: "center",
         borderRadius: "18px",
-        background: "#ffffff",
-        border: "1px solid #e7ebf2"
+        background: "#fff",
+        border: "1px solid #e5eaf1"
     },
 
     loadingSpinner: {
@@ -869,7 +967,7 @@ const styles = {
         marginTop: "14px",
         color: "#64748b",
         fontSize: "13px",
-        fontWeight: "600"
+        fontWeight: "650"
     },
 
     emptyState: {
@@ -887,7 +985,7 @@ const styles = {
         margin: "0 0 14px",
         color: "#64748b",
         fontSize: "14px",
-        fontWeight: "600"
+        fontWeight: "650"
     },
 
     emptyButton: {
@@ -897,31 +995,9 @@ const styles = {
         padding: "10px 16px",
         borderRadius: "10px",
         background: "#2563eb",
-        color: "#ffffff",
+        color: "#fff",
         textDecoration: "none",
         fontSize: "12px",
-        fontWeight: "800"
+        fontWeight: "850"
     }
 };
-
-// Add keyframe animation
-const styleSheet = document.createElement("style");
-styleSheet.textContent = `
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-`;
-document.head.appendChild(styleSheet);
-
-<style>
-@media (max-width: 1050px) {
-    .sales-history-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-}
-@media (max-width: 720px) {
-    .sales-history-container { padding: 14px !important; }
-    .sales-history-header { align-items: flex-start !important; flex-direction: column !important; }
-    .sales-history-title { font-size: 24px !important; }
-    .sales-history-stats-grid { grid-template-columns: 1fr !important; }
-}
-</style>
