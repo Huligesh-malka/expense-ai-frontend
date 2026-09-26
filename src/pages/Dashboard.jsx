@@ -15,9 +15,7 @@ import {
   FiPlus,
   FiList,
   FiBarChart2,
-  FiUserPlus,
   FiGrid,
-  FiCalendar,
   FiClock,
   FiCheckCircle,
   FiXCircle,
@@ -28,14 +26,21 @@ import {
   FiChevronDown,
   FiHome,
   FiBriefcase,
-  FiZap, // ← Added AI icon
+  FiZap,
+  FiArrowUpRight,
+  FiArrowRight,
+  FiMoreHorizontal,
+  FiActivity,
+  FiBox,
+  FiCreditCard,
+  FiRefreshCw,
+  FiSearch,
 } from "react-icons/fi";
 
 export default function BusinessDashboard() {
   const navigate = useNavigate();
   const { logout } = useContext(AuthContext);
-  
-  // ---------- State ----------
+
   const [dashboard, setDashboard] = useState({
     totalProducts: 0,
     totalCategories: 0,
@@ -49,16 +54,15 @@ export default function BusinessDashboard() {
 
   const [recentSales, setRecentSales] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [businessName, setBusinessName] = useState("Your Store");
   const [businessType, setBusinessType] = useState("");
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [businessLogo, setBusinessLogo] = useState("");
 
-  // Get business_id from localStorage - NO FALLBACK
   const businessId = localStorage.getItem("businessId");
 
-  // ---------- Load Data ----------
   useEffect(() => {
     if (!businessId) {
       setLoading(false);
@@ -66,29 +70,42 @@ export default function BusinessDashboard() {
       return;
     }
 
-    loadDashboard();
-    loadRecentSales();
-    loadBusinessInfo();
+    loadAll();
   }, [businessId]);
 
-  const loadBusinessInfo = () => {
-    // Get business info from localStorage
+  const loadAll = async (showRefresh = false) => {
+    if (!businessId) return;
+
+    if (showRefresh) setRefreshing(true);
+
+    try {
+      setError("");
+      await Promise.all([
+        loadDashboard(),
+        loadRecentSales(),
+        loadBusinessInfo(),
+      ]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const loadBusinessInfo = async () => {
     const name = localStorage.getItem("businessName") || "Your Store";
     const type = localStorage.getItem("businessType") || "";
     setBusinessName(name);
     setBusinessType(type);
-    
-    // Load business logo if available
-    loadBusinessProfile();
-  };
 
-  const loadBusinessProfile = async () => {
     try {
       const res = await API.get("/business/profile");
       if (res.data.business) {
         setBusinessLogo(res.data.business.logo || "");
         if (res.data.business.business_name) {
           setBusinessName(res.data.business.business_name);
+        }
+        if (res.data.business.business_type) {
+          setBusinessType(res.data.business.business_type);
         }
       }
     } catch (err) {
@@ -97,29 +114,18 @@ export default function BusinessDashboard() {
   };
 
   const loadDashboard = async () => {
-    if (!businessId) {
-      setError("Business information not found.");
-      setLoading(false);
-      return;
-    }
-
     try {
-      setError("");
       const res = await API.get(`/dashboard?business_id=${businessId}`);
-      setDashboard(res.data);
+      setDashboard((prev) => ({ ...prev, ...(res.data || {}) }));
     } catch (err) {
       console.error("Failed to load dashboard:", err);
       setError(
         err.response?.data?.message || "Failed to load dashboard."
       );
-    } finally {
-      setLoading(false);
     }
   };
 
   const loadRecentSales = async () => {
-    if (!businessId) return;
-
     try {
       const res = await API.get(`/sales?business_id=${businessId}&limit=5`);
       const salesData = res.data.data || [];
@@ -135,1117 +141,1798 @@ export default function BusinessDashboard() {
     navigate("/login");
   };
 
-  // ---------- Format Currency ----------
   const formatCurrency = (amount) => {
-    return `₹${Number(amount).toLocaleString()}`;
+    const value = Number(amount || 0);
+    return `₹${value.toLocaleString("en-IN", {
+      maximumFractionDigits: 0,
+    })}`;
   };
 
-  // ---------- Loading State ----------
+  const formatDate = (date) => {
+    if (!date) return "-";
+    return new Date(date).toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  const formatTime = () => {
+    return new Date().toLocaleTimeString("en-IN", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
   if (loading) {
     return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          background: "#f5f7fb",
-        }}
-      >
-        <div style={{ textAlign: "center" }}>
-          <div
-            style={{
-              width: "48px",
-              height: "48px",
-              border: "4px solid #e2e8f0",
-              borderTop: "4px solid #2563eb",
-              borderRadius: "50%",
-              animation: "spin 1s linear infinite",
-              margin: "0 auto 16px",
-            }}
-          />
-          <p style={{ color: "#64748b" }}>Loading dashboard...</p>
+      <div className="modern-dashboard loading-screen">
+        <div className="loading-card">
+          <div className="loading-logo"><FiZap /></div>
+          <div className="loader" />
+          <h3>Preparing your workspace</h3>
+          <p>Loading your business intelligence...</p>
         </div>
+        <DashboardStyles />
       </div>
     );
   }
 
-  // ---------- Error State ----------
   if (error) {
     return (
-      <div
-        style={{
-          minHeight: "100vh",
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          background: "#f5f7fb",
-          padding: "20px",
-        }}
-      >
-        <div
-          style={{
-            background: "#fff",
-            padding: "40px",
-            borderRadius: "16px",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-            textAlign: "center",
-            maxWidth: "500px",
-          }}
-        >
-          <FiAlertCircle size={48} color="#ef4444" style={{ marginBottom: "16px" }} />
-          <h2 style={{ color: "#1a2332", marginBottom: "12px" }}>Unable to Load Dashboard</h2>
-          <p style={{ color: "#64748b", marginBottom: "20px" }}>{error}</p>
-          <button
-            onClick={() => {
-              if (!businessId) {
-                navigate("/business-setup");
-              } else {
-                window.location.reload();
+      <div className="modern-dashboard error-screen">
+        <div className="error-card">
+          <div className="error-icon"><FiAlertCircle /></div>
+          <span className="section-kicker">WORKSPACE ERROR</span>
+          <h2>We couldn't load your dashboard</h2>
+          <p>{error}</p>
+          <div className="error-actions">
+            <button
+              className="primary-btn"
+              onClick={() =>
+                !businessId ? navigate("/business-setup") : loadAll(true)
               }
-            }}
-            style={{
-              padding: "12px 24px",
-              background: "#2563eb",
-              color: "#fff",
-              border: "none",
-              borderRadius: "8px",
-              cursor: "pointer",
-              fontWeight: "600",
-            }}
-          >
-            {!businessId ? "Set Up Business" : "Retry"}
-          </button>
+            >
+              <FiRefreshCw />
+              {!businessId ? "Set Up Business" : "Try Again"}
+            </button>
+            <Link className="ghost-btn" to="/settings">
+              Settings
+            </Link>
+          </div>
         </div>
+        <DashboardStyles />
       </div>
     );
   }
 
-  // ---------- Render ----------
-  return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "linear-gradient(135deg, #f5f7fb 0%, #e8edf5 100%)",
-        padding: "30px",
-      }}
-    >
-      {/* Header */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "30px",
-          flexWrap: "wrap",
-          gap: "20px",
-        }}
-      >
-        <div>
-          <h1
-            style={{
-              fontSize: "32px",
-              fontWeight: "700",
-              color: "#1a2332",
-              marginBottom: "6px",
-            }}
-          >
-            Business Dashboard
-          </h1>
-          <p
-            style={{
-              fontSize: "16px",
-              color: "#64748b",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-            }}
-          >
-            Welcome back 🏢
-            <span
-              style={{
-                background: "#2563eb",
-                color: "#fff",
-                padding: "2px 12px",
-                borderRadius: "20px",
-                fontSize: "12px",
-                fontWeight: "600",
-              }}
-            >
-              {businessName}
-            </span>
-          </p>
-        </div>
-        
-        <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "center" }}>
-          <Link to="/billing-pos">
-            <button
-              style={{
-                padding: "12px 24px",
-                background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
-                color: "#fff",
-                border: "none",
-                borderRadius: "12px",
-                cursor: "pointer",
-                fontWeight: "600",
-                fontSize: "14px",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                transition: "all 0.3s ease",
-                boxShadow: "0 4px 12px rgba(37, 99, 235, 0.3)",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.boxShadow = "0 6px 20px rgba(37, 99, 235, 0.4)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "0 4px 12px rgba(37, 99, 235, 0.3)";
-              }}
-            >
-              <FiShoppingBag /> Billing (POS)
-            </button>
-          </Link>
-          <Link to="/add-product">
-            <button
-              style={{
-                padding: "12px 24px",
-                background: "linear-gradient(135deg, #16a34a, #15803d)",
-                color: "#fff",
-                border: "none",
-                borderRadius: "12px",
-                cursor: "pointer",
-                fontWeight: "600",
-                fontSize: "14px",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                transition: "all 0.3s ease",
-                boxShadow: "0 4px 12px rgba(22, 163, 74, 0.3)",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.boxShadow = "0 6px 20px rgba(22, 163, 74, 0.4)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "0 4px 12px rgba(22, 163, 74, 0.3)";
-              }}
-            >
-              <FiPlus /> Add Product
-            </button>
-          </Link>
-          <Link to="/add-purchase">
-            <button
-              style={{
-                padding: "12px 24px",
-                background: "linear-gradient(135deg, #9333ea, #7e22ce)",
-                color: "#fff",
-                border: "none",
-                borderRadius: "12px",
-                cursor: "pointer",
-                fontWeight: "600",
-                fontSize: "14px",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                transition: "all 0.3s ease",
-                boxShadow: "0 4px 12px rgba(147, 51, 234, 0.3)",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.boxShadow = "0 6px 20px rgba(147, 51, 234, 0.4)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "0 4px 12px rgba(147, 51, 234, 0.3)";
-              }}
-            >
-              <FiShoppingCart /> Add Purchase
-            </button>
-          </Link>
+  const statCards = [
+    {
+      title: "Today's Revenue",
+      value: formatCurrency(dashboard.todaySales),
+      note: "Today's completed sales",
+      icon: <FiDollarSign />,
+      tone: "lime",
+      to: "/sales",
+    },
+    {
+      title: "Monthly Revenue",
+      value: formatCurrency(dashboard.monthSales),
+      note: "Current month",
+      icon: <FiTrendingUp />,
+      tone: "violet",
+      to: "/reports",
+    },
+    {
+      title: "Products",
+      value: Number(dashboard.totalProducts || 0).toLocaleString("en-IN"),
+      note: `${dashboard.lowStock || 0} low stock`,
+      icon: <FiBox />,
+      tone: "blue",
+      to: "/products",
+    },
+    {
+      title: "Customers",
+      value: Number(dashboard.totalCustomers || 0).toLocaleString("en-IN"),
+      note: "Customer records",
+      icon: <FiUsers />,
+      tone: "orange",
+      to: "/customers",
+    },
+  ];
 
-          {/* Profile Icon with Dropdown */}
-          <div style={{ position: "relative" }}>
-            <div
-              onClick={() => setShowProfileMenu(!showProfileMenu)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                cursor: "pointer",
-                padding: "8px 12px",
-                borderRadius: "50px",
-                background: "#fff",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-                border: "2px solid transparent",
-                transition: "all 0.3s ease",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "#2563eb";
-                e.currentTarget.style.boxShadow = "0 4px 12px rgba(37, 99, 235, 0.2)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "transparent";
-                e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.08)";
-              }}
+  return (
+    <div className="modern-dashboard">
+      <aside className="side-nav">
+        <div className="side-brand">
+          <div className="brand-mark"><FiZap /></div>
+          <div>
+            <strong>BusinessOS</strong>
+            <span>Smart retail workspace</span>
+          </div>
+        </div>
+
+        <div className="nav-label">WORKSPACE</div>
+        <nav>
+          <Link className="nav-item active" to="/dashboard">
+            <FiHome />
+            <span>Overview</span>
+          </Link>
+          <Link className="nav-item" to="/billing-pos">
+            <FiShoppingBag />
+            <span>Billing POS</span>
+            <b>F2</b>
+          </Link>
+          <Link className="nav-item" to="/products">
+            <FiGrid />
+            <span>Products</span>
+          </Link>
+          <Link className="nav-item" to="/customers">
+            <FiUsers />
+            <span>Customers</span>
+          </Link>
+          <Link className="nav-item" to="/suppliers">
+            <FiTruck />
+            <span>Suppliers</span>
+          </Link>
+          <Link className="nav-item" to="/purchases">
+            <FiShoppingCart />
+            <span>Purchases</span>
+          </Link>
+        </nav>
+
+        <div className="nav-label nav-label-space">INSIGHTS</div>
+        <nav>
+          <Link className="nav-item" to="/sales">
+            <FiList />
+            <span>Sales History</span>
+          </Link>
+          <Link className="nav-item" to="/reports">
+            <FiBarChart2 />
+            <span>Reports</span>
+          </Link>
+          <Link className="nav-item" to="/ai-business">
+            <span className="ai-nav-icon"><FiZap /></span>
+            <span>AI Business Engine</span>
+            <em>AI</em>
+          </Link>
+          <Link className="nav-item" to="/create-layout">
+            <FiGrid />
+            <span>3D Shop Designer</span>
+          </Link>
+          <Link className="nav-item" to="/qr-orders">
+            <FiCreditCard />
+            <span>QR Orders</span>
+          </Link>
+        </nav>
+
+        <div className="side-bottom">
+          <div className="online-card">
+            <span className="online-dot" />
+            <div>
+              <strong>System online</strong>
+              <small>All services connected</small>
+            </div>
+          </div>
+          <Link className="nav-item" to="/settings">
+            <FiSettings />
+            <span>Settings</span>
+          </Link>
+        </div>
+      </aside>
+
+      <main className="dashboard-main">
+        <header className="topbar">
+          <div className="mobile-brand">
+            <div className="brand-mark"><FiZap /></div>
+            <strong>BusinessOS</strong>
+          </div>
+
+          <div className="breadcrumb">
+            <span>Workspace</span>
+            <FiChevronDown />
+            <strong>Overview</strong>
+          </div>
+
+          <div className="top-actions">
+            <div className="live-time">
+              <span className="live-dot" />
+              <FiClock />
+              {formatTime()}
+            </div>
+
+            <button
+              className={`icon-button ${refreshing ? "rotating" : ""}`}
+              title="Refresh dashboard"
+              onClick={() => loadAll(true)}
             >
-              {/* Profile Avatar */}
-              <div
-                style={{
-                  width: "40px",
-                  height: "40px",
-                  borderRadius: "50%",
-                  background: businessLogo ? "transparent" : "linear-gradient(135deg, #2563eb, #7c3aed)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  overflow: "hidden",
-                  flexShrink: 0,
-                }}
+              <FiRefreshCw />
+            </button>
+
+            <div className="profile-wrap">
+              <button
+                className="profile-button"
+                onClick={() => setShowProfileMenu((v) => !v)}
               >
-                {businessLogo ? (
-                  <img
-                    src={businessLogo}
-                    alt="Business Logo"
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "cover",
-                    }}
+                <div className="profile-avatar">
+                  {businessLogo ? (
+                    <img src={businessLogo} alt="Business logo" />
+                  ) : (
+                    <FiBriefcase />
+                  )}
+                </div>
+                <div className="profile-copy">
+                  <strong>
+                    {businessName.length > 18
+                      ? businessName.substring(0, 18) + "..."
+                      : businessName}
+                  </strong>
+                  <span>{businessType || "Business"}</span>
+                </div>
+                <FiChevronDown
+                  className={showProfileMenu ? "chevron-up" : ""}
+                />
+              </button>
+
+              {showProfileMenu && (
+                <>
+                  <div
+                    className="menu-backdrop"
+                    onClick={() => setShowProfileMenu(false)}
                   />
-                ) : (
-                  <FiUser size={20} color="#fff" />
-                )}
+                  <div className="profile-menu">
+                    <div className="profile-menu-head">
+                      <div className="large-avatar">
+                        {businessLogo ? (
+                          <img src={businessLogo} alt="Business logo" />
+                        ) : (
+                          <FiBriefcase />
+                        )}
+                      </div>
+                      <div>
+                        <strong>{businessName}</strong>
+                        <span>{businessType || "Business Account"}</span>
+                      </div>
+                    </div>
+
+                    <Link to="/dashboard" onClick={() => setShowProfileMenu(false)}>
+                      <FiHome /> Dashboard
+                    </Link>
+                    <Link to="/edit-business" onClick={() => setShowProfileMenu(false)}>
+                      <FiEdit /> Edit Business Profile
+                    </Link>
+                    <Link to="/settings" onClick={() => setShowProfileMenu(false)}>
+                      <FiSettings /> Settings
+                    </Link>
+                    <button onClick={handleLogout}>
+                      <FiLogOut /> Logout
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </header>
+
+        <section className="page-heading">
+          <div>
+            <div className="section-kicker">
+              <span className="kicker-line" />
+              BUSINESS COMMAND CENTER
+            </div>
+            <h1>
+              Good to see you, <span>{businessName}</span>
+            </h1>
+            <p>
+              Track sales, inventory and customers from one clean workspace.
+            </p>
+          </div>
+
+          <div className="heading-actions">
+            <Link className="outline-btn" to="/reports">
+              <FiBarChart2 /> View Reports
+            </Link>
+            <Link className="primary-btn" to="/billing-pos">
+              <FiShoppingBag /> Open POS
+              <FiArrowUpRight />
+            </Link>
+          </div>
+        </section>
+
+        <section className="hero-panel">
+          <div className="hero-glow glow-one" />
+          <div className="hero-glow glow-two" />
+          <div className="hero-content">
+            <span className="hero-tag"><FiZap /> SMART BUSINESS</span>
+            <h2>Everything you need to run today's store.</h2>
+            <p>
+              Your business activity is organized here so you can move from
+              insight to action without extra clicks.
+            </p>
+            <div className="hero-buttons">
+              <Link to="/billing-pos" className="hero-primary">
+                Start Billing <FiArrowRight />
+              </Link>
+              <Link to="/ai-business" className="hero-secondary">
+                Ask AI Business Engine <FiZap />
+              </Link>
+            </div>
+          </div>
+
+          <div className="hero-side">
+            <div className="hero-stat-label">TODAY'S REVENUE</div>
+            <div className="hero-stat-value">{formatCurrency(dashboard.todaySales)}</div>
+            <div className="hero-stat-foot">
+              <span><FiActivity /> Live dashboard</span>
+              <span>{Number(dashboard.todaySales || 0) > 0 ? "Active" : "Ready"}</span>
+            </div>
+          </div>
+        </section>
+
+        <section className="stats-grid">
+          {statCards.map((card) => (
+            <Link to={card.to} className={`stat-card ${card.tone}`} key={card.title}>
+              <div className="stat-card-top">
+                <div className="stat-icon">{card.icon}</div>
+                <FiArrowUpRight className="stat-arrow" />
               </div>
-              
-              <div style={{ lineHeight: "1.3", minWidth: "80px" }}>
-                <div style={{ fontSize: "14px", fontWeight: "600", color: "#1a2332" }}>
-                  {businessName.length > 15 ? businessName.substring(0, 15) + "..." : businessName}
-                </div>
-                <div style={{ fontSize: "11px", color: "#64748b" }}>
-                  {businessType || "Business"}
-                </div>
+              <div className="stat-title">{card.title}</div>
+              <div className="stat-value">{card.value}</div>
+              <div className="stat-note">{card.note}</div>
+            </Link>
+          ))}
+        </section>
+
+        <section className="workspace-grid">
+          <div className="content-card">
+            <div className="card-header">
+              <div>
+                <span className="section-kicker">FAST ACCESS</span>
+                <h3>What do you want to do?</h3>
               </div>
-              
-              <FiChevronDown
-                size={16}
+              <span className="shortcut-hint">Built for speed</span>
+            </div>
+
+            <div className="action-grid">
+              <QuickAction to="/add-product" icon={<FiPlus />} label="Add Product" tone="blue" />
+              <QuickAction to="/billing-pos" icon={<FiShoppingBag />} label="New Sale" tone="lime" />
+              <QuickAction to="/products" icon={<FiGrid />} label="Manage Products" tone="violet" />
+              <QuickAction to="/customers" icon={<FiUsers />} label="Customers" tone="pink" />
+              <QuickAction to="/suppliers" icon={<FiTruck />} label="Suppliers" tone="orange" />
+              <QuickAction to="/add-purchase" icon={<FiShoppingCart />} label="New Purchase" tone="cyan" />
+              <QuickAction to="/reports" icon={<FiBarChart2 />} label="Business Reports" tone="indigo" />
+              <QuickAction to="/ai-business" icon={<FiZap />} label="AI Insights" tone="gold" />
+            </div>
+          </div>
+
+          <div className="content-card inventory-card">
+            <div className="card-header">
+              <div>
+                <span className="section-kicker">INVENTORY</span>
+                <h3>Store health</h3>
+              </div>
+              <Link to="/products" className="text-link">View all <FiArrowRight /></Link>
+            </div>
+
+            <div className="health-number">
+              <div>
+                <strong>{dashboard.totalProducts || 0}</strong>
+                <span>Total products</span>
+              </div>
+              <div className={`health-badge ${(dashboard.lowStock || 0) > 0 ? "warning" : "good"}`}>
+                {(dashboard.lowStock || 0) > 0 ? <FiAlertCircle /> : <FiCheckCircle />}
+                {(dashboard.lowStock || 0) > 0 ? "Attention" : "Healthy"}
+              </div>
+            </div>
+
+            <div className="health-bar">
+              <span
                 style={{
-                  color: "#64748b",
-                  transition: "transform 0.3s ease",
-                  transform: showProfileMenu ? "rotate(180deg)" : "rotate(0deg)",
+                  width: `${Math.min(
+                    100,
+                    Number(dashboard.totalProducts || 0) === 0
+                      ? 4
+                      : Math.max(
+                          8,
+                          100 -
+                            (Number(dashboard.lowStock || 0) /
+                              Number(dashboard.totalProducts || 1)) *
+                              100
+                        )
+                  )}%`,
                 }}
               />
             </div>
 
-            {/* Dropdown Menu */}
-            {showProfileMenu && (
-              <>
-                {/* Backdrop */}
-                <div
-                  onClick={() => setShowProfileMenu(false)}
-                  style={{
-                    position: "fixed",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    zIndex: 999,
-                  }}
-                />
-                
-                {/* Menu */}
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "calc(100% + 10px)",
-                    right: 0,
-                    background: "#fff",
-                    borderRadius: "16px",
-                    boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
-                    minWidth: "280px",
-                    padding: "8px",
-                    zIndex: 1000,
-                    animation: "slideDown 0.2s ease",
-                    border: "1px solid rgba(0,0,0,0.05)",
-                  }}
-                >
-                  {/* User Info */}
-                  <div
-                    style={{
-                      padding: "16px 16px 12px",
-                      borderBottom: "1px solid #f0f0f0",
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "12px",
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: "48px",
-                          height: "48px",
-                          borderRadius: "50%",
-                          background: businessLogo ? "transparent" : "linear-gradient(135deg, #2563eb, #7c3aed)",
-                          overflow: "hidden",
-                          flexShrink: 0,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        {businessLogo ? (
-                          <img
-                            src={businessLogo}
-                            alt="Business Logo"
-                            style={{
-                              width: "100%",
-                              height: "100%",
-                              objectFit: "cover",
-                            }}
-                          />
-                        ) : (
-                          <FiBriefcase size={24} color="#fff" />
-                        )}
-                      </div>
-                      <div>
-                        <div style={{ fontWeight: "600", color: "#1a2332" }}>
-                          {businessName}
-                        </div>
-                        <div style={{ fontSize: "13px", color: "#64748b" }}>
-                          {businessType || "Business Account"}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Menu Items */}
-                  <div style={{ padding: "4px 0" }}>
-                    <Link
-                      to="/dashboard"
-                      onClick={() => setShowProfileMenu(false)}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "12px",
-                        padding: "10px 16px",
-                        color: "#1a2332",
-                        textDecoration: "none",
-                        borderRadius: "10px",
-                        transition: "all 0.2s ease",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "#f5f7fb";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "transparent";
-                      }}
-                    >
-                      <FiHome size={18} color="#64748b" />
-                      <span>Dashboard</span>
-                    </Link>
-
-                    <Link
-                      to="/edit-business"
-                      onClick={() => setShowProfileMenu(false)}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "12px",
-                        padding: "10px 16px",
-                        color: "#1a2332",
-                        textDecoration: "none",
-                        borderRadius: "10px",
-                        transition: "all 0.2s ease",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "#eff6ff";
-                        e.currentTarget.style.color = "#2563eb";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "transparent";
-                        e.currentTarget.style.color = "#1a2332";
-                      }}
-                    >
-                      <FiEdit size={18} color="#2563eb" />
-                      <span>Edit Business Profile</span>
-                    </Link>
-
-                    <Link
-                      to="/settings"
-                      onClick={() => setShowProfileMenu(false)}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "12px",
-                        padding: "10px 16px",
-                        color: "#1a2332",
-                        textDecoration: "none",
-                        borderRadius: "10px",
-                        transition: "all 0.2s ease",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "#f5f7fb";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "transparent";
-                      }}
-                    >
-                      <FiSettings size={18} color="#64748b" />
-                      <span>Settings</span>
-                    </Link>
-                  </div>
-
-                  {/* Divider */}
-                  <div
-                    style={{
-                      height: "1px",
-                      background: "#f0f0f0",
-                      margin: "4px 16px",
-                    }}
-                  />
-
-                  {/* Logout */}
-                  <div style={{ padding: "4px 0" }}>
-                    <button
-                      onClick={() => {
-                        setShowProfileMenu(false);
-                        handleLogout();
-                      }}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "12px",
-                        padding: "10px 16px",
-                        background: "transparent",
-                        border: "none",
-                        width: "100%",
-                        borderRadius: "10px",
-                        cursor: "pointer",
-                        transition: "all 0.2s ease",
-                        color: "#dc2626",
-                        fontSize: "14px",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "#fef2f2";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "transparent";
-                      }}
-                    >
-                      <FiLogOut size={18} />
-                      <span>Logout</span>
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Business Info Widget */}
-      <div
-        style={{
-          background: "linear-gradient(135deg, #1e293b, #0f172a)",
-          borderRadius: "16px",
-          padding: "20px 30px",
-          marginBottom: "30px",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          color: "#fff",
-          flexWrap: "wrap",
-          gap: "15px",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
-          <div
-            style={{
-              background: "rgba(255,255,255,0.1)",
-              padding: "12px",
-              borderRadius: "12px",
-            }}
-          >
-            <FiShoppingBag size={24} />
-          </div>
-          <div>
-            <div style={{ fontSize: "14px", opacity: 0.8 }}>
-              Business Name
+            <div className="health-row">
+              <span><i className="dot green-dot" /> Healthy stock</span>
+              <strong>
+                {Math.max(
+                  0,
+                  Number(dashboard.totalProducts || 0) -
+                    Number(dashboard.lowStock || 0)
+                )}
+              </strong>
             </div>
-            <div style={{ fontSize: "20px", fontWeight: "600" }}>
-              {businessName}
+            <div className="health-row">
+              <span><i className="dot red-dot" /> Low stock</span>
+              <strong className="danger-text">{dashboard.lowStock || 0}</strong>
+            </div>
+            <Link to="/products" className="inventory-cta">
+              Review inventory <FiArrowRight />
+            </Link>
+          </div>
+        </section>
+
+        <section className="content-card sales-card">
+          <div className="card-header sales-header">
+            <div>
+              <span className="section-kicker">LIVE ACTIVITY</span>
+              <h3>Recent sales</h3>
+            </div>
+            <div className="header-actions">
+              <span className="sales-count">
+                <FiActivity /> {recentSales.length} recent
+              </span>
+              <Link to="/sales" className="text-link">
+                View all <FiArrowRight />
+              </Link>
             </div>
           </div>
-        </div>
-        <div style={{ display: "flex", gap: "30px", flexWrap: "wrap" }}>
-          <div>
-            <div style={{ fontSize: "13px", opacity: 0.7 }}>Today's Sales</div>
-            <div style={{ fontSize: "18px", fontWeight: "600" }}>
-              {formatCurrency(dashboard.todaySales)}
-            </div>
-          </div>
-          <div>
-            <div style={{ fontSize: "13px", opacity: 0.7 }}>
-              Total Products
-            </div>
-            <div style={{ fontSize: "18px", fontWeight: "600" }}>
-              {dashboard.totalProducts}
-            </div>
-          </div>
-          <div>
-            <div style={{ fontSize: "13px", opacity: 0.7 }}>
-              Low Stock Items
-            </div>
-            <div style={{ fontSize: "18px", fontWeight: "600" }}>
-              {dashboard.lowStock}
-            </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Dashboard Cards */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-          gap: "20px",
-          marginBottom: "30px",
-        }}
-      >
-        <DashboardCard
-          icon={<FiDollarSign size={24} />}
-          title="Today's Sales"
-          value={formatCurrency(dashboard.todaySales)}
-          color="#16a34a"
-        />
-        <DashboardCard
-          icon={<FiTrendingUp size={24} />}
-          title="Monthly Sales"
-          value={formatCurrency(dashboard.monthSales)}
-          color="#f97316"
-        />
-        <DashboardCard
-          icon={<FiShoppingBag size={24} />}
-          title="Products"
-          value={dashboard.totalProducts}
-          color="#2563eb"
-        />
-        <DashboardCard
-          icon={<FiFolder size={24} />}
-          title="Categories"
-          value={dashboard.totalCategories}
-          color="#8b5cf6"
-        />
-        <DashboardCard
-          icon={<FiUsers size={24} />}
-          title="Customers"
-          value={dashboard.totalCustomers}
-          color="#ec4899"
-        />
-        <DashboardCard
-          icon={<FiTruck size={24} />}
-          title="Suppliers"
-          value={dashboard.totalSuppliers}
-          color="#14b8a6"
-        />
-        <DashboardCard
-          icon={<FiPackage size={24} />}
-          title="Total Sales"
-          value={formatCurrency(dashboard.totalSales)}
-          color="#6366f1"
-        />
-        <DashboardCard
-          icon={<FiAlertCircle size={24} />}
-          title="Low Stock"
-          value={dashboard.lowStock}
-          color="#ef4444"
-        />
-      </div>
-
-      {/* Quick Actions */}
-      <div
-        style={{
-          background: "#fff",
-          borderRadius: "16px",
-          padding: "25px 30px",
-          marginBottom: "30px",
-          boxShadow: "0 2px 8px rgba(0,0,0,.06)",
-          border: "1px solid rgba(0,0,0,.04)",
-        }}
-      >
-        <h2
-          style={{
-            fontSize: "20px",
-            fontWeight: "600",
-            color: "#1a2332",
-            marginBottom: "20px",
-          }}
-        >
-          Quick Actions
-        </h2>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-            gap: "15px",
-          }}
-        >
-          <QuickActionButton
-            to="/add-product"
-            icon={<FiPlus size={20} />}
-            label="Add Product"
-            color="#2563eb"
-          />
-          <QuickActionButton
-            to="/billing-pos"
-            icon={<FiShoppingBag size={20} />}
-            label="Billing (POS)"
-            color="#16a34a"
-          />
-          <QuickActionButton
-            to="/products"
-            icon={<FiGrid size={20} />}
-            label="Products"
-            color="#8b5cf6"
-          />
-          <QuickActionButton
-            to="/customers"
-            icon={<FiUsers size={20} />}
-            label="Customers"
-            color="#ec4899"
-          />
-          <QuickActionButton
-            to="/suppliers"
-            icon={<FiTruck size={20} />}
-            label="Suppliers"
-            color="#14b8a6"
-          />
-          <QuickActionButton
-            to="/purchases"
-            icon={<FiShoppingCart size={20} />}
-            label="Purchases"
-            color="#7c3aed"
-          />
-          <QuickActionButton
-            to="/sales"
-            icon={<FiList size={20} />}
-            label="Sales History"
-            color="#059669"
-          />
-          <QuickActionButton
-            to="/reports"
-            icon={<FiBarChart2 size={20} />}
-            label="Reports"
-            color="#f59e0b"
-          />
-          <QuickActionButton
-            to="/create-layout"
-            icon={<FiGrid size={20} />}
-            label="3D Shop Designer"
-            color="#0ea5e9"
-          />
-          <QuickActionButton
-            to="/qr-ordering"
-            icon={<FiGrid size={20} />}
-            label="QR Ordering"
-            color="#0ea5e9"
-          />
-          {/* ✅ NEW: QR Orders button */}
-          <QuickActionButton
-            to="/qr-orders"
-            icon={<FiShoppingCart size={20} />}
-            label="QR Orders"
-            color="#16a34a"
-          />
-          {/* ⚡ AI Business Engine */}
-          <QuickActionButton
-            to="/ai-business"
-            icon={<FiZap size={20} />}
-            label="AI Business Engine"
-            color="#7c3aed"
-          />
-        </div>
-      </div>
-
-      {/* Recent Sales */}
-      <div
-        style={{
-          background: "#fff",
-          borderRadius: "16px",
-          padding: "25px 30px",
-          boxShadow: "0 2px 8px rgba(0,0,0,.06)",
-          border: "1px solid rgba(0,0,0,.04)",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "20px",
-          }}
-        >
-          <h2
-            style={{
-              fontSize: "20px",
-              fontWeight: "600",
-              color: "#1a2332",
-            }}
-          >
-            Recent Sales
-          </h2>
-          <Link
-            to="/sales"
-            style={{
-              color: "#2563eb",
-              textDecoration: "none",
-              fontSize: "14px",
-              fontWeight: "500",
-            }}
-          >
-            View All →
-          </Link>
-        </div>
-        <div style={{ overflowX: "auto" }}>
           {recentSales.length === 0 ? (
-            <div
-              style={{
-                textAlign: "center",
-                padding: "40px",
-                color: "#94a3b8",
-              }}
-            >
-              No sales found. Start making sales!
+            <div className="empty-state">
+              <div className="empty-icon"><FiShoppingBag /></div>
+              <h4>No sales yet</h4>
+              <p>Start your first sale from the POS and it will appear here.</p>
+              <Link className="primary-btn small" to="/billing-pos">
+                Open Billing POS <FiArrowRight />
+              </Link>
             </div>
           ) : (
-            <table
-              width="100%"
-              cellPadding="12"
-              style={{ borderCollapse: "collapse" }}
-            >
-              <thead>
-                <tr style={{ borderBottom: "2px solid #e8edf5" }}>
-                  <th
-                    align="left"
-                    style={{
-                      color: "#64748b",
-                      fontWeight: "600",
-                      fontSize: "13px",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                    }}
-                  >
-                    Invoice No
-                  </th>
-                  <th
-                    align="left"
-                    style={{
-                      color: "#64748b",
-                      fontWeight: "600",
-                      fontSize: "13px",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                    }}
-                  >
-                    Customer Phone
-                  </th>
-                  <th
-                    align="left"
-                    style={{
-                      color: "#64748b",
-                      fontWeight: "600",
-                      fontSize: "13px",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                    }}
-                  >
-                    Items
-                  </th>
-                  <th
-                    align="left"
-                    style={{
-                      color: "#64748b",
-                      fontWeight: "600",
-                      fontSize: "13px",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                    }}
-                  >
-                    Amount
-                  </th>
-                  <th
-                    align="left"
-                    style={{
-                      color: "#64748b",
-                      fontWeight: "600",
-                      fontSize: "13px",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                    }}
-                  >
-                    Payment
-                  </th>
-                  <th
-                    align="left"
-                    style={{
-                      color: "#64748b",
-                      fontWeight: "600",
-                      fontSize: "13px",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                    }}
-                  >
-                    Date
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentSales.map((sale, idx) => (
-                  <tr
-                    key={idx}
-                    style={{
-                      borderBottom:
-                        idx < recentSales.length - 1
-                          ? "1px solid #e8edf5"
-                          : "none",
-                      transition: "background 0.2s ease",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = "#f8fafc";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = "transparent";
-                    }}
-                  >
-                    <td style={{ fontWeight: "500", color: "#1a2332" }}>
-                      #INV-{sale.invoice_no || "0001"}
-                    </td>
-                    <td style={{ color: "#1a2332" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <div
-                          style={{
-                            width: "32px",
-                            height: "32px",
-                            borderRadius: "50%",
-                            background: "#6366f1",
-                            color: "#fff",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontSize: "12px",
-                            fontWeight: "600",
-                          }}
-                        >
-                          {sale.customer_phone ? sale.customer_phone.slice(-4) : "📱"}
-                        </div>
-                        <span style={{ fontWeight: "500" }}>
-                          {sale.customer_phone || "No phone"}
-                        </span>
-                      </div>
-                    </td>
-                    <td>
-                      {sale.items && sale.items.length > 0 ? (
-                        <>
-                          <strong>{sale.items.length} Item{sale.items.length > 1 ? "s" : ""}</strong>
-                          <div style={{ marginTop: 4, fontSize: "12px", color: "#64748b" }}>
-                            {sale.items.slice(0, 2).map((item, index) => (
-                              <div key={index}>
-                                {item.product_name} ({Number(item.entered_quantity)} {item.entered_unit})
-                              </div>
-                            ))}
-                            {sale.items.length > 2 && (
-                              <div>+{sale.items.length - 2} more</div>
+            <div className="sales-table-wrap">
+              <table className="sales-table">
+                <thead>
+                  <tr>
+                    <th>Invoice</th>
+                    <th>Customer</th>
+                    <th>Items</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentSales.map((sale, idx) => {
+                    const paid =
+                      sale.payment_status === "Paid" ||
+                      sale.payment_status === "paid";
+                    const pending =
+                      sale.payment_status === "Pending" ||
+                      sale.payment_status === "pending";
+
+                    return (
+                      <tr key={sale.id || idx}>
+                        <td>
+                          <strong className="invoice-number">
+                            #{sale.invoice_no || "0001"}
+                          </strong>
+                        </td>
+                        <td>
+                          <div className="customer-cell">
+                            <div className="customer-avatar">
+                              <FiUser />
+                            </div>
+                            <span>
+                              {sale.customer_phone || "Walk-in Customer"}
+                            </span>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="item-cell">
+                            <strong>
+                              {sale.items?.length || 0} item
+                              {(sale.items?.length || 0) !== 1 ? "s" : ""}
+                            </strong>
+                            {sale.items?.length > 0 && (
+                              <small>
+                                {sale.items
+                                  .slice(0, 1)
+                                  .map((item) => item.product_name)
+                                  .join(", ")}
+                                {sale.items.length > 1 ? ` +${sale.items.length - 1}` : ""}
+                              </small>
                             )}
                           </div>
-                        </>
-                      ) : (
-                        "0 Items"
-                      )}
-                    </td>
-                    <td style={{ fontWeight: "600", color: "#16a34a" }}>
-                      {formatCurrency(sale.total_amount || 0)}
-                    </td>
-                    <td>
-                      <span
-                        style={{
-                          background:
-                            sale.payment_status === "Paid" || sale.payment_status === "paid"
-                              ? "#dcfce7"
-                              : sale.payment_status === "Pending" || sale.payment_status === "pending"
-                              ? "#fef3c7"
-                              : "#fee2e2",
-                          color:
-                            sale.payment_status === "Paid" || sale.payment_status === "paid"
-                              ? "#16a34a"
-                              : sale.payment_status === "Pending" || sale.payment_status === "pending"
-                              ? "#f59e0b"
-                              : "#dc2626",
-                          padding: "4px 12px",
-                          borderRadius: "20px",
-                          fontSize: "12px",
-                          fontWeight: "600",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: "4px",
-                        }}
-                      >
-                        {sale.payment_status === "Paid" || sale.payment_status === "paid" ? (
-                          <FiCheckCircle size={14} />
-                        ) : sale.payment_status === "Pending" || sale.payment_status === "pending" ? (
-                          <FiClock size={14} />
-                        ) : (
-                          <FiXCircle size={14} />
-                        )}
-                        {sale.payment_status || "Paid"}
-                      </span>
-                    </td>
-                    <td style={{ color: "#64748b", fontSize: "14px" }}>
-                      {sale.created_at
-                        ? new Date(sale.created_at).toLocaleDateString("en-IN", {
-                            day: "2-digit",
-                            month: "short",
-                            year: "numeric"
-                          })
-                        : "-"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                        </td>
+                        <td>
+                          <strong className="amount-cell">
+                            {formatCurrency(sale.total_amount || 0)}
+                          </strong>
+                        </td>
+                        <td>
+                          <span
+                            className={`status-pill ${
+                              paid ? "paid" : pending ? "pending" : "failed"
+                            }`}
+                          >
+                            {paid ? <FiCheckCircle /> : pending ? <FiClock /> : <FiXCircle />}
+                            {sale.payment_status || "Paid"}
+                          </span>
+                        </td>
+                        <td className="date-cell">{formatDate(sale.created_at)}</td>
+                        <td>
+                          <button className="row-menu" title="More">
+                            <FiMoreHorizontal />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
-        </div>
-      </div>
+        </section>
 
-      {/* CSS Animation */}
-      <style>
-        {`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-          
-          @keyframes slideDown {
-            from {
-              opacity: 0;
-              transform: translateY(-10px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
-          }
-        `}
-      </style>
+        <section className="bottom-grid">
+          <Link to="/ai-business" className="ai-card">
+            <div className="ai-orbit orbit-one" />
+            <div className="ai-orbit orbit-two" />
+            <div className="ai-card-icon"><FiZap /></div>
+            <div className="ai-card-content">
+              <span className="ai-label">AI BUSINESS ENGINE</span>
+              <h3>Turn your store data into actions.</h3>
+              <p>Analyze sales, stock and customer activity from one place.</p>
+            </div>
+            <div className="ai-go"><FiArrowUpRight /></div>
+          </Link>
+
+          <div className="mini-info-card">
+            <div className="mini-info-icon"><FiUsers /></div>
+            <div>
+              <span>Customers</span>
+              <strong>{dashboard.totalCustomers || 0}</strong>
+              <small>Registered customers</small>
+            </div>
+            <Link to="/customers"><FiArrowUpRight /></Link>
+          </div>
+
+          <div className="mini-info-card">
+            <div className="mini-info-icon supplier"><FiTruck /></div>
+            <div>
+              <span>Suppliers</span>
+              <strong>{dashboard.totalSuppliers || 0}</strong>
+              <small>Supplier records</small>
+            </div>
+            <Link to="/suppliers"><FiArrowUpRight /></Link>
+          </div>
+
+          <div className="mini-info-card">
+            <div className="mini-info-icon sales"><FiCreditCard /></div>
+            <div>
+              <span>Total Sales</span>
+              <strong>{formatCurrency(dashboard.totalSales)}</strong>
+              <small>All-time sales value</small>
+            </div>
+            <Link to="/sales"><FiArrowUpRight /></Link>
+          </div>
+        </section>
+
+        <footer className="dashboard-footer">
+          <span>BusinessOS • Smart retail workspace</span>
+          <span><i className="dot green-dot" /> Connected</span>
+        </footer>
+      </main>
+
+      <DashboardStyles />
     </div>
   );
 }
 
-// ---------- Dashboard Card Component ----------
-function DashboardCard({ icon, title, value, color }) {
+function QuickAction({ to, icon, label, tone }) {
   return (
-    <div
-      style={{
-        background: "#fff",
-        padding: "20px",
-        borderRadius: "16px",
-        boxShadow: "0 2px 8px rgba(0,0,0,.06)",
-        border: "1px solid rgba(0,0,0,.04)",
-        transition: "all 0.3s ease",
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.transform = "translateY(-4px)";
-        e.currentTarget.style.boxShadow = "0 12px 24px rgba(0,0,0,.1)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = "translateY(0)";
-        e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,.06)";
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "12px",
-          marginBottom: "10px",
-        }}
-      >
-        <div
-          style={{
-            background: `${color}15`,
-            padding: "10px",
-            borderRadius: "12px",
-            color: color,
-          }}
-        >
-          {icon}
-        </div>
-        <h3
-          style={{
-            fontSize: "14px",
-            fontWeight: "500",
-            color: "#64748b",
-            margin: 0,
-          }}
-        >
-          {title}
-        </h3>
-      </div>
-      <h1
-        style={{
-          fontSize: "28px",
-          fontWeight: "700",
-          color: "#1a2332",
-          margin: "5px 0 0 0",
-        }}
-      >
-        {value}
-      </h1>
-    </div>
-  );
-}
-
-// ---------- Quick Action Button Component ----------
-function QuickActionButton({ to, icon, label, color }) {
-  return (
-    <Link to={to} style={{ textDecoration: "none" }}>
-      <button
-        style={{
-          padding: "15px 20px",
-          border: "none",
-          borderRadius: "12px",
-          background: `${color}10`,
-          color: color,
-          cursor: "pointer",
-          fontSize: "14px",
-          fontWeight: "500",
-          display: "flex",
-          alignItems: "center",
-          gap: "10px",
-          width: "100%",
-          transition: "all 0.3s ease",
-          border: `1px solid ${color}20`,
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = color;
-          e.currentTarget.style.color = "#fff";
-          e.currentTarget.style.transform = "translateY(-2px)";
-          e.currentTarget.style.boxShadow = `0 6px 20px ${color}40`;
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = `${color}10`;
-          e.currentTarget.style.color = color;
-          e.currentTarget.style.transform = "translateY(0)";
-          e.currentTarget.style.boxShadow = "none";
-        }}
-      >
-        {icon}
-        {label}
-      </button>
+    <Link to={to} className={`quick-action ${tone}`}>
+      <span className="quick-icon">{icon}</span>
+      <span>{label}</span>
+      <FiArrowUpRight className="quick-arrow" />
     </Link>
+  );
+}
+
+function DashboardStyles() {
+  return (
+    <style>{`
+      @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap');
+
+      :root {
+        --bg: #f5f6fa;
+        --surface: #ffffff;
+        --ink: #10131a;
+        --muted: #737989;
+        --line: #e8eaf0;
+        --sidebar: #10131b;
+        --sidebar-soft: #181c26;
+        --lime: #c8f31d;
+        --violet: #725cff;
+        --blue: #2388ff;
+        --orange: #ff9d42;
+        --pink: #f35da9;
+        --cyan: #23c8d7;
+        --shadow: 0 12px 40px rgba(17, 21, 34, .07);
+      }
+
+      * { box-sizing: border-box; }
+
+      .modern-dashboard {
+        min-height: 100vh;
+        background:
+          radial-gradient(circle at 75% 0%, rgba(114,92,255,.07), transparent 25%),
+          radial-gradient(circle at 30% 30%, rgba(200,243,29,.035), transparent 20%),
+          var(--bg);
+        color: var(--ink);
+        font-family: 'DM Sans', sans-serif;
+        display: flex;
+      }
+
+      .modern-dashboard a { color: inherit; text-decoration: none; }
+
+      .side-nav {
+        width: 248px;
+        min-width: 248px;
+        min-height: 100vh;
+        background: var(--sidebar);
+        color: #fff;
+        padding: 24px 15px 18px;
+        position: sticky;
+        top: 0;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        z-index: 50;
+      }
+
+      .side-brand {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        padding: 2px 9px 28px;
+      }
+
+      .brand-mark {
+        width: 39px;
+        height: 39px;
+        border-radius: 12px;
+        display: grid;
+        place-items: center;
+        color: #111;
+        background: var(--lime);
+        box-shadow: 0 8px 24px rgba(200,243,29,.18);
+        font-size: 19px;
+      }
+
+      .side-brand strong {
+        display: block;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: 15px;
+        letter-spacing: -.3px;
+      }
+
+      .side-brand span {
+        display: block;
+        color: #7f8596;
+        font-size: 9px;
+        margin-top: 3px;
+      }
+
+      .nav-label {
+        color: #5f6574;
+        font-size: 9px;
+        letter-spacing: 1.5px;
+        font-weight: 800;
+        padding: 0 12px 9px;
+      }
+
+      .nav-label-space { margin-top: 20px; }
+
+      .side-nav nav {
+        display: grid;
+        gap: 4px;
+      }
+
+      .nav-item {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        min-height: 42px;
+        padding: 0 12px;
+        border-radius: 11px;
+        color: #8f95a5;
+        font-size: 12px;
+        font-weight: 600;
+        transition: .18s ease;
+      }
+
+      .nav-item svg { font-size: 16px; flex: 0 0 auto; }
+
+      .nav-item b {
+        margin-left: auto;
+        font-size: 8px;
+        color: #555c6b;
+        border: 1px solid #303541;
+        padding: 3px 5px;
+        border-radius: 5px;
+      }
+
+      .nav-item em {
+        margin-left: auto;
+        font-size: 8px;
+        font-style: normal;
+        color: #10131a;
+        background: var(--lime);
+        padding: 3px 5px;
+        border-radius: 5px;
+        font-weight: 900;
+      }
+
+      .nav-item:hover {
+        color: #fff;
+        background: rgba(255,255,255,.055);
+        transform: translateX(2px);
+      }
+
+      .nav-item.active {
+        color: #10131a;
+        background: var(--lime);
+        box-shadow: 0 8px 20px rgba(200,243,29,.12);
+      }
+
+      .nav-item.active b { color: #30351b; border-color: rgba(0,0,0,.15); }
+
+      .ai-nav-icon {
+        width: 16px;
+        height: 16px;
+        display: grid;
+        place-items: center;
+        color: #c8a6ff;
+      }
+
+      .side-bottom {
+        margin-top: auto;
+        display: grid;
+        gap: 6px;
+      }
+
+      .online-card {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 12px;
+        margin-bottom: 8px;
+        border-radius: 12px;
+        background: var(--sidebar-soft);
+        border: 1px solid #232834;
+      }
+
+      .online-card strong,
+      .online-card small {
+        display: block;
+      }
+
+      .online-card strong { font-size: 10px; }
+      .online-card small { color: #6d7381; font-size: 8px; margin-top: 2px; }
+
+      .online-dot,
+      .live-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #73e28d;
+        box-shadow: 0 0 0 4px rgba(115,226,141,.08);
+      }
+
+      .dashboard-main {
+        width: calc(100% - 248px);
+        min-width: 0;
+        padding: 0 32px 30px;
+      }
+
+      .topbar {
+        height: 76px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        border-bottom: 1px solid var(--line);
+        margin-bottom: 28px;
+      }
+
+      .mobile-brand { display: none; }
+
+      .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #999eaa;
+        font-size: 11px;
+      }
+
+      .breadcrumb svg { font-size: 12px; }
+      .breadcrumb strong { color: #252a34; }
+
+      .top-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .live-time,
+      .icon-button,
+      .profile-button {
+        height: 42px;
+        border: 1px solid var(--line);
+        background: #fff;
+        border-radius: 11px;
+      }
+
+      .live-time {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        padding: 0 11px;
+        color: #676d7b;
+        font-size: 10px;
+      }
+
+      .live-time .live-dot { margin-right: 2px; }
+
+      .icon-button {
+        width: 42px;
+        display: grid;
+        place-items: center;
+        cursor: pointer;
+        color: #626878;
+        transition: .18s;
+      }
+
+      .icon-button:hover {
+        color: var(--ink);
+        border-color: #d2d5de;
+        transform: translateY(-1px);
+      }
+
+      .rotating svg { animation: rotate .8s linear infinite; }
+
+      .profile-wrap { position: relative; }
+
+      .profile-button {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 4px 9px 4px 5px;
+        cursor: pointer;
+        min-width: 180px;
+        text-align: left;
+      }
+
+      .profile-avatar,
+      .large-avatar {
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+        color: #fff;
+        background: linear-gradient(135deg, #725cff, #9e89ff);
+      }
+
+      .profile-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 9px;
+      }
+
+      .profile-avatar img,
+      .large-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .profile-copy { flex: 1; min-width: 0; }
+      .profile-copy strong,
+      .profile-copy span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .profile-copy strong { font-size: 10px; }
+      .profile-copy span { color: #898e9a; font-size: 8px; margin-top: 2px; }
+
+      .profile-button > svg {
+        color: #8b909c;
+        font-size: 13px;
+        transition: .18s;
+      }
+
+      .chevron-up { transform: rotate(180deg); }
+
+      .menu-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 90;
+      }
+
+      .profile-menu {
+        position: absolute;
+        top: 50px;
+        right: 0;
+        width: 270px;
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 15px;
+        box-shadow: 0 24px 70px rgba(10,15,28,.16);
+        padding: 8px;
+        z-index: 100;
+        animation: menuIn .18s ease;
+      }
+
+      .profile-menu-head {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        padding: 12px;
+        border-bottom: 1px solid #f0f1f4;
+        margin-bottom: 5px;
+      }
+
+      .large-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 11px;
+        flex: 0 0 auto;
+      }
+
+      .profile-menu-head strong,
+      .profile-menu-head span { display: block; }
+      .profile-menu-head strong { font-size: 11px; }
+      .profile-menu-head span { color: var(--muted); font-size: 9px; margin-top: 3px; }
+
+      .profile-menu a,
+      .profile-menu button {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border: 0;
+        background: transparent;
+        border-radius: 9px;
+        padding: 10px 11px;
+        color: #363b46;
+        font: inherit;
+        font-size: 10px;
+        cursor: pointer;
+        text-align: left;
+      }
+
+      .profile-menu a:hover { background: #f5f6f9; }
+      .profile-menu button { color: #df454f; }
+      .profile-menu button:hover { background: #fff1f2; }
+
+      .page-heading {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 20px;
+        margin-bottom: 20px;
+      }
+
+      .section-kicker {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        color: #8a8f9d;
+        font-size: 9px;
+        letter-spacing: 1.5px;
+        font-weight: 800;
+      }
+
+      .kicker-line {
+        width: 18px;
+        height: 2px;
+        border-radius: 4px;
+        background: var(--violet);
+      }
+
+      .page-heading h1 {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: clamp(25px, 3vw, 38px);
+        line-height: 1.12;
+        letter-spacing: -1.5px;
+        margin: 8px 0 7px;
+      }
+
+      .page-heading h1 span { color: var(--violet); }
+      .page-heading p { margin: 0; color: var(--muted); font-size: 12px; }
+
+      .heading-actions { display: flex; gap: 8px; }
+
+      .primary-btn,
+      .outline-btn,
+      .ghost-btn {
+        min-height: 42px;
+        padding: 0 14px;
+        border-radius: 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        font-size: 10px;
+        font-weight: 800;
+        cursor: pointer;
+        transition: .18s;
+        text-decoration: none;
+      }
+
+      .primary-btn {
+        color: #10131a;
+        background: var(--lime);
+        border: 1px solid var(--lime);
+        box-shadow: 0 8px 22px rgba(200,243,29,.16);
+      }
+
+      .primary-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 25px rgba(200,243,29,.23); }
+
+      .outline-btn {
+        color: #303541;
+        background: #fff;
+        border: 1px solid var(--line);
+      }
+
+      .outline-btn:hover,
+      .ghost-btn:hover { border-color: #cfd2db; transform: translateY(-1px); }
+
+      .ghost-btn {
+        color: #454b58;
+        background: #f8f9fb;
+        border: 1px solid var(--line);
+      }
+
+      .primary-btn.small { min-height: 38px; }
+
+      .hero-panel {
+        position: relative;
+        overflow: hidden;
+        min-height: 230px;
+        display: flex;
+        justify-content: space-between;
+        gap: 25px;
+        padding: 30px;
+        margin-bottom: 16px;
+        border-radius: 22px;
+        color: #fff;
+        background:
+          radial-gradient(circle at 80% 20%, rgba(114,92,255,.32), transparent 30%),
+          linear-gradient(125deg, #12151e, #1b202b 55%, #12151c);
+        box-shadow: 0 22px 50px rgba(15,18,27,.15);
+      }
+
+      .hero-glow {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(3px);
+        pointer-events: none;
+      }
+
+      .glow-one {
+        width: 170px;
+        height: 170px;
+        right: 16%;
+        bottom: -100px;
+        background: rgba(200,243,29,.12);
+      }
+
+      .glow-two {
+        width: 120px;
+        height: 120px;
+        right: 4%;
+        top: -50px;
+        background: rgba(114,92,255,.2);
+      }
+
+      .hero-content { position: relative; z-index: 1; max-width: 670px; }
+      .hero-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--lime);
+        font-size: 8px;
+        letter-spacing: 1.4px;
+        font-weight: 900;
+      }
+
+      .hero-content h2 {
+        max-width: 620px;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: clamp(22px, 3vw, 33px);
+        letter-spacing: -1.1px;
+        line-height: 1.13;
+        margin: 10px 0 8px;
+      }
+
+      .hero-content p {
+        max-width: 600px;
+        color: #a8adba;
+        font-size: 11px;
+        line-height: 1.65;
+        margin: 0;
+      }
+
+      .hero-buttons {
+        display: flex;
+        gap: 8px;
+        margin-top: 20px;
+        flex-wrap: wrap;
+      }
+
+      .hero-primary,
+      .hero-secondary {
+        min-height: 38px;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 0 12px;
+        border-radius: 9px;
+        font-size: 9px;
+        font-weight: 800;
+      }
+
+      .hero-primary { color: #111; background: var(--lime); }
+      .hero-secondary { color: #fff; border: 1px solid #383e4b; background: rgba(255,255,255,.04); }
+
+      .hero-side {
+        position: relative;
+        z-index: 1;
+        min-width: 220px;
+        align-self: center;
+        padding: 20px;
+        border-radius: 15px;
+        background: rgba(255,255,255,.045);
+        border: 1px solid rgba(255,255,255,.08);
+        backdrop-filter: blur(10px);
+      }
+
+      .hero-stat-label { color: #808795; font-size: 8px; letter-spacing: 1.2px; font-weight: 800; }
+      .hero-stat-value {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: 28px;
+        font-weight: 800;
+        margin: 7px 0 13px;
+      }
+
+      .hero-stat-foot {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        color: #aeb3bf;
+        font-size: 8px;
+      }
+
+      .hero-stat-foot span { display: flex; align-items: center; gap: 4px; }
+
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+
+      .stat-card {
+        position: relative;
+        overflow: hidden;
+        min-height: 153px;
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 17px;
+        padding: 17px;
+        box-shadow: 0 5px 22px rgba(18,22,34,.035);
+        transition: .2s ease;
+      }
+
+      .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow);
+        border-color: #d9dce5;
+      }
+
+      .stat-card::after {
+        content: "";
+        position: absolute;
+        width: 95px;
+        height: 95px;
+        border-radius: 50%;
+        right: -50px;
+        bottom: -55px;
+        background: currentColor;
+        opacity: .035;
+      }
+
+      .stat-card.lime { color: #719300; }
+      .stat-card.violet { color: #725cff; }
+      .stat-card.blue { color: #2388ff; }
+      .stat-card.orange { color: #e98222; }
+
+      .stat-card-top { display: flex; justify-content: space-between; align-items: center; }
+      .stat-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        display: grid;
+        place-items: center;
+        color: inherit;
+        background: currentColor;
+        position: relative;
+      }
+
+      .stat-icon svg { color: #fff; font-size: 16px; }
+      .stat-card.lime .stat-icon { background: #dff38a; }
+      .stat-card.violet .stat-icon { background: #e8e4ff; }
+      .stat-card.blue .stat-icon { background: #dceeff; }
+      .stat-card.orange .stat-icon { background: #fff0df; }
+      .stat-card.lime .stat-icon svg { color: #718c00; }
+      .stat-card.violet .stat-icon svg { color: #725cff; }
+      .stat-card.blue .stat-icon svg { color: #2388ff; }
+      .stat-card.orange .stat-icon svg { color: #e98222; }
+
+      .stat-arrow { color: #afb3be; font-size: 14px; }
+      .stat-title { margin-top: 14px; color: #777d8b; font-size: 9px; font-weight: 700; }
+      .stat-value {
+        color: #151820;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: 22px;
+        font-weight: 800;
+        letter-spacing: -.6px;
+        margin-top: 3px;
+      }
+
+      .stat-note { color: #a0a4af; font-size: 8px; margin-top: 5px; }
+
+      .workspace-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.55fr) minmax(300px, .75fr);
+        gap: 16px;
+        margin-bottom: 16px;
+      }
+
+      .content-card {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 19px;
+        box-shadow: 0 5px 22px rgba(18,22,34,.035);
+        padding: 20px;
+        min-width: 0;
+      }
+
+      .card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+
+      .card-header h3 {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: 16px;
+        margin: 5px 0 0;
+        letter-spacing: -.4px;
+      }
+
+      .shortcut-hint {
+        color: #9da2ad;
+        font-size: 8px;
+        padding: 6px 8px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+      }
+
+      .action-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .quick-action {
+        min-height: 72px;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 7px;
+        padding: 11px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #fbfcfd;
+        transition: .18s;
+      }
+
+      .quick-action:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 25px rgba(20,25,38,.07);
+        background: #fff;
+      }
+
+      .quick-icon {
+        width: 27px;
+        height: 27px;
+        border-radius: 8px;
+        display: grid;
+        place-items: center;
+        font-size: 14px;
+      }
+
+      .quick-action span:nth-child(2) { color: #373c48; font-size: 9px; font-weight: 800; }
+      .quick-arrow { position: absolute; top: 10px; right: 10px; color: #b2b6bf; font-size: 11px; }
+
+      .quick-action.blue .quick-icon { color: #2388ff; background: #eaf4ff; }
+      .quick-action.lime .quick-icon { color: #6c8900; background: #eff9c9; }
+      .quick-action.violet .quick-icon { color: #725cff; background: #efedff; }
+      .quick-action.pink .quick-icon { color: #e24891; background: #ffebf4; }
+      .quick-action.orange .quick-icon { color: #e98222; background: #fff0df; }
+      .quick-action.cyan .quick-icon { color: #159daa; background: #e5f9fb; }
+      .quick-action.indigo .quick-icon { color: #5264d8; background: #eaedff; }
+      .quick-action.gold .quick-icon { color: #9a7a00; background: #fff7cf; }
+
+      .health-number {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 15px;
+      }
+
+      .health-number strong,
+      .health-number span { display: block; }
+      .health-number strong { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 29px; }
+      .health-number span { color: #9297a4; font-size: 9px; margin-top: 3px; }
+
+      .health-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        border-radius: 999px;
+        padding: 7px 9px;
+        font-size: 8px;
+        font-weight: 800;
+      }
+
+      .health-badge.good { color: #15985e; background: #e9f9f1; }
+      .health-badge.warning { color: #c87a10; background: #fff3dc; }
+
+      .health-bar {
+        height: 7px;
+        background: #f0f1f5;
+        border-radius: 99px;
+        overflow: hidden;
+        margin: 17px 0;
+      }
+
+      .health-bar span {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #c8f31d, #8ed32a);
+      }
+
+      .health-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 9px 0;
+        border-top: 1px solid #f0f1f4;
+        color: #757b89;
+        font-size: 9px;
+      }
+
+      .health-row span { display: flex; align-items: center; gap: 6px; }
+      .health-row strong { color: #303540; font-size: 10px; }
+      .danger-text { color: #e4545e !important; }
+
+      .dot {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+      }
+
+      .green-dot { background: #5fce7d; }
+      .red-dot { background: #ed626c; }
+
+      .inventory-cta {
+        margin-top: 11px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 36px;
+        padding: 0 10px;
+        border-radius: 9px;
+        background: #f6f7fa;
+        color: #383d48;
+        font-size: 9px;
+        font-weight: 800;
+      }
+
+      .text-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        color: #6453e8;
+        font-size: 9px;
+        font-weight: 800;
+      }
+
+      .sales-card { margin-bottom: 16px; }
+
+      .sales-header { margin-bottom: 8px; }
+      .header-actions { display: flex; align-items: center; gap: 12px; }
+      .sales-count {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        color: #8d929e;
+        font-size: 8px;
+      }
+
+      .sales-table-wrap { width: 100%; overflow-x: auto; }
+      .sales-table { width: 100%; border-collapse: collapse; min-width: 760px; }
+      .sales-table th {
+        padding: 11px 9px;
+        text-align: left;
+        color: #a0a5b0;
+        font-size: 8px;
+        letter-spacing: .7px;
+        text-transform: uppercase;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .sales-table td {
+        padding: 12px 9px;
+        border-bottom: 1px solid #f0f1f4;
+        font-size: 9px;
+        color: #4b505b;
+      }
+
+      .sales-table tbody tr { transition: .16s; }
+      .sales-table tbody tr:hover { background: #fafbfc; }
+
+      .invoice-number { color: #252a34; }
+      .customer-cell { display: flex; align-items: center; gap: 7px; }
+      .customer-avatar {
+        width: 27px;
+        height: 27px;
+        display: grid;
+        place-items: center;
+        border-radius: 8px;
+        background: #efedff;
+        color: #725cff;
+        font-size: 12px;
+      }
+
+      .item-cell strong,
+      .item-cell small { display: block; }
+      .item-cell strong { color: #343944; }
+      .item-cell small {
+        color: #a0a5b0;
+        margin-top: 3px;
+        max-width: 160px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .amount-cell { color: #15985e; }
+      .date-cell { color: #8c919d !important; white-space: nowrap; }
+
+      .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        border-radius: 999px;
+        padding: 5px 7px;
+        font-size: 8px;
+        font-weight: 800;
+      }
+
+      .status-pill.paid { color: #15985e; background: #e9f9f1; }
+      .status-pill.pending { color: #c57b10; background: #fff3dc; }
+      .status-pill.failed { color: #df4b57; background: #fff0f2; }
+
+      .row-menu {
+        width: 27px;
+        height: 27px;
+        display: grid;
+        place-items: center;
+        border: 0;
+        border-radius: 7px;
+        color: #999eaa;
+        background: transparent;
+        cursor: pointer;
+      }
+
+      .row-menu:hover { background: #f0f1f4; color: #444a56; }
+
+      .empty-state {
+        text-align: center;
+        padding: 35px 20px 25px;
+        color: #9297a4;
+      }
+
+      .empty-icon {
+        width: 46px;
+        height: 46px;
+        display: grid;
+        place-items: center;
+        margin: 0 auto 10px;
+        border-radius: 14px;
+        background: #f2f1ff;
+        color: #725cff;
+        font-size: 20px;
+      }
+
+      .empty-state h4 { color: #353a45; font-size: 12px; margin: 0 0 5px; }
+      .empty-state p { font-size: 9px; margin: 0 0 13px; }
+
+      .bottom-grid {
+        display: grid;
+        grid-template-columns: 1.65fr repeat(3, 1fr);
+        gap: 12px;
+      }
+
+      .ai-card {
+        min-height: 125px;
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        gap: 13px;
+        padding: 18px;
+        border-radius: 17px;
+        color: #fff;
+        background:
+          radial-gradient(circle at 90% 0%, rgba(200,243,29,.18), transparent 30%),
+          linear-gradient(130deg, #201b38, #2d2550);
+        border: 1px solid rgba(114,92,255,.25);
+        box-shadow: 0 12px 32px rgba(48,34,96,.13);
+      }
+
+      .ai-card:hover .ai-go { transform: translate(2px,-2px); }
+
+      .ai-card-icon {
+        width: 43px;
+        height: 43px;
+        display: grid;
+        place-items: center;
+        border-radius: 12px;
+        color: #17121f;
+        background: var(--lime);
+        box-shadow: 0 8px 20px rgba(200,243,29,.16);
+        flex: 0 0 auto;
+        position: relative;
+        z-index: 2;
+      }
+
+      .ai-card-content { position: relative; z-index: 2; }
+      .ai-label { color: #bdafff; font-size: 8px; letter-spacing: 1.1px; font-weight: 900; }
+      .ai-card h3 { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; margin: 5px 0; }
+      .ai-card p { color: #aaa5bd; font-size: 8px; line-height: 1.5; margin: 0; max-width: 350px; }
+
+      .ai-go {
+        width: 28px;
+        height: 28px;
+        display: grid;
+        place-items: center;
+        margin-left: auto;
+        color: #fff;
+        border: 1px solid rgba(255,255,255,.15);
+        border-radius: 50%;
+        position: relative;
+        z-index: 2;
+        transition: .18s;
+      }
+
+      .ai-orbit {
+        position: absolute;
+        border: 1px solid rgba(255,255,255,.08);
+        border-radius: 50%;
+      }
+
+      .orbit-one { width: 180px; height: 180px; right: -75px; top: -70px; }
+      .orbit-two { width: 110px; height: 110px; right: -40px; top: -35px; }
+
+      .mini-info-card {
+        min-height: 125px;
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 16px;
+        border-radius: 17px;
+        background: #fff;
+        border: 1px solid var(--line);
+        position: relative;
+        transition: .18s;
+      }
+
+      .mini-info-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+
+      .mini-info-icon {
+        width: 35px;
+        height: 35px;
+        display: grid;
+        place-items: center;
+        border-radius: 10px;
+        color: #725cff;
+        background: #efedff;
+        flex: 0 0 auto;
+      }
+
+      .mini-info-icon.supplier { color: #159daa; background: #e5f9fb; }
+      .mini-info-icon.sales { color: #15985e; background: #e9f9f1; }
+
+      .mini-info-card span,
+      .mini-info-card strong,
+      .mini-info-card small { display: block; }
+      .mini-info-card span { color: #9196a3; font-size: 8px; }
+      .mini-info-card strong {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: 18px;
+        margin: 2px 0;
+      }
+      .mini-info-card small { color: #a4a8b2; font-size: 7px; }
+      .mini-info-card > a {
+        position: absolute;
+        right: 12px;
+        top: 12px;
+        color: #b0b4be;
+        font-size: 12px;
+      }
+
+      .dashboard-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        color: #9da2ae;
+        font-size: 8px;
+        padding: 18px 3px 0;
+      }
+
+      .dashboard-footer span:last-child {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .loading-screen,
+      .error-screen {
+        width: 100%;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 25px;
+      }
+
+      .loading-card,
+      .error-card {
+        width: min(430px, 100%);
+        padding: 34px;
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        box-shadow: var(--shadow);
+        text-align: center;
+      }
+
+      .loading-logo,
+      .error-icon {
+        width: 55px;
+        height: 55px;
+        margin: 0 auto 15px;
+        border-radius: 16px;
+        display: grid;
+        place-items: center;
+        font-size: 23px;
+      }
+
+      .loading-logo { background: var(--lime); color: #111; }
+      .error-icon { background: #fff0f2; color: #df4b57; }
+
+      .loader {
+        width: 25px;
+        height: 25px;
+        border: 3px solid #eceef2;
+        border-top-color: #725cff;
+        border-radius: 50%;
+        animation: rotate .8s linear infinite;
+        margin: 0 auto 15px;
+      }
+
+      .loading-card h3,
+      .error-card h2 {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        margin: 0 0 7px;
+        font-size: 16px;
+      }
+
+      .loading-card p,
+      .error-card p { color: var(--muted); font-size: 10px; margin: 0; line-height: 1.6; }
+
+      .error-actions {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 18px;
+      }
+
+      @keyframes rotate { to { transform: rotate(360deg); } }
+      @keyframes menuIn {
+        from { opacity: 0; transform: translateY(-6px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      @media (max-width: 1250px) {
+        .bottom-grid { grid-template-columns: 1.4fr 1fr 1fr; }
+        .bottom-grid .mini-info-card:last-child { display: none; }
+        .action-grid { grid-template-columns: repeat(3, 1fr); }
+      }
+
+      @media (max-width: 1050px) {
+        .side-nav { width: 78px; min-width: 78px; padding-left: 9px; padding-right: 9px; }
+        .side-brand { justify-content: center; padding-left: 0; padding-right: 0; }
+        .side-brand > div:last-child,
+        .nav-label,
+        .nav-item span,
+        .nav-item b,
+        .nav-item em,
+        .online-card div,
+        .side-bottom .nav-item span { display: none; }
+        .nav-item { justify-content: center; padding: 0; }
+        .online-card { justify-content: center; padding: 11px 0; }
+        .dashboard-main { width: calc(100% - 78px); }
+        .hero-side { min-width: 190px; }
+      }
+
+      @media (max-width: 850px) {
+        .dashboard-main { padding: 0 18px 24px; }
+        .topbar { height: 68px; margin-bottom: 20px; }
+        .breadcrumb { display: none; }
+        .mobile-brand { display: flex; align-items: center; gap: 8px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12px; }
+        .mobile-brand .brand-mark { width: 30px; height: 30px; border-radius: 9px; font-size: 14px; }
+        .profile-copy { display: none; }
+        .profile-button { min-width: auto; }
+        .live-time { display: none; }
+        .page-heading { align-items: flex-start; flex-direction: column; }
+        .heading-actions { width: 100%; }
+        .heading-actions > * { flex: 1; }
+        .hero-panel { flex-direction: column; }
+        .hero-side { min-width: 0; width: 100%; }
+        .stats-grid { grid-template-columns: repeat(2, 1fr); }
+        .workspace-grid { grid-template-columns: 1fr; }
+        .bottom-grid { grid-template-columns: 1fr 1fr; }
+        .ai-card { grid-column: 1 / -1; }
+      }
+
+      @media (max-width: 600px) {
+        .side-nav { display: none; }
+        .dashboard-main { width: 100%; padding: 0 12px 22px; }
+        .topbar { margin-bottom: 17px; }
+        .page-heading h1 { font-size: 25px; }
+        .hero-panel { padding: 22px; border-radius: 18px; }
+        .hero-content h2 { font-size: 23px; }
+        .stats-grid { gap: 8px; }
+        .stat-card { min-height: 140px; padding: 13px; }
+        .stat-value { font-size: 19px; }
+        .content-card { padding: 14px; border-radius: 16px; }
+        .action-grid { grid-template-columns: repeat(2, 1fr); }
+        .bottom-grid { grid-template-columns: 1fr; }
+        .ai-card { grid-column: auto; }
+        .mini-info-card { min-height: 95px; }
+        .sales-header { align-items: flex-start; }
+        .header-actions .sales-count { display: none; }
+        .dashboard-footer { flex-direction: column; gap: 7px; align-items: flex-start; }
+      }
+    `}</style>
   );
 }
