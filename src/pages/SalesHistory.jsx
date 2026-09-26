@@ -1,7 +1,21 @@
-
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import API from "../services/api";
-import { FiSearch, FiPlus, FiEye, FiFilter, FiDownload, FiCalendar, FiUser, FiCreditCard, FiTrendingUp, FiPrinter, FiRefreshCw, FiActivity, FiArrowUpRight } from "react-icons/fi";
+import {
+    FiSearch,
+    FiPlus,
+    FiEye,
+    FiFilter,
+    FiDownload,
+    FiCalendar,
+    FiUser,
+    FiCreditCard,
+    FiTrendingUp,
+    FiPrinter,
+    FiRefreshCw,
+    FiActivity,
+    FiArrowUpRight,
+} from "react-icons/fi";
 
 export default function SalesHistory() {
     const [sales, setSales] = useState([]);
@@ -28,8 +42,6 @@ export default function SalesHistory() {
             setLoading(false);
         }
     };
-
-
 
     const getStatusConfig = (status) => {
         const configs = {
@@ -61,37 +73,30 @@ export default function SalesHistory() {
 
         let filtered = sales;
         if (selectedPeriod === "today") {
-            filtered = sales.filter(s => new Date(s.created_at) >= today);
+            filtered = sales.filter((s) => new Date(s.created_at) >= today);
         } else if (selectedPeriod === "week") {
-            filtered = sales.filter(s => new Date(s.created_at) >= weekAgo);
+            filtered = sales.filter((s) => new Date(s.created_at) >= weekAgo);
         } else if (selectedPeriod === "month") {
-            filtered = sales.filter(s => new Date(s.created_at) >= monthAgo);
+            filtered = sales.filter((s) => new Date(s.created_at) >= monthAgo);
         }
 
-        const total = filtered.reduce((sum, s) => sum + Number(s.total_amount), 0);
+        const total = filtered.reduce((sum, s) => sum + Number(s.total_amount || 0), 0);
         const count = filtered.length;
-        const paid = filtered.filter(s => s.payment_status?.toLowerCase() === "paid").length;
-        const pending = filtered.filter(s => s.payment_status?.toLowerCase() === "pending").length;
+        const paid = filtered.filter((s) => s.payment_status?.toLowerCase() === "paid").length;
+        const pending = filtered.filter((s) => s.payment_status?.toLowerCase() === "pending").length;
 
         return { total, count, paid, pending };
     };
 
-
-
     const stats = getPeriodStats();
 
     const filtered = sales.filter((item) => {
-        const matchesSearch = 
-            (item.invoice_no || "")
-                .toLowerCase()
-                .includes(search.toLowerCase()) ||
-            (item.customer_name || "")
-                .toLowerCase()
-                .includes(search.toLowerCase());
+        const matchesSearch =
+            (item.invoice_no || "").toLowerCase().includes(search.toLowerCase()) ||
+            (item.customer_name || "").toLowerCase().includes(search.toLowerCase());
 
-        const matchesStatus = 
-            filterStatus === "all" || 
-            item.payment_status?.toLowerCase() === filterStatus;
+        const matchesStatus =
+            filterStatus === "all" || item.payment_status?.toLowerCase() === filterStatus;
 
         let matchesPeriod = true;
         if (selectedPeriod === "today") {
@@ -112,12 +117,11 @@ export default function SalesHistory() {
     });
 
     const handlePrint = (id) => {
-        window.open(`/invoice/${id}?print=true`, '_blank');
+        window.open(`/invoice/${id}?print=true`, "_blank");
     };
 
     const handleDownloadPDF = (id) => {
-        // Implement PDF download logic
-        window.open(`/api/sales/invoice/${id}/pdf`, '_blank');
+        window.open(`/api/sales/invoice/${id}/pdf`, "_blank");
     };
 
     return (
@@ -126,7 +130,9 @@ export default function SalesHistory() {
             <div className="sales-header" style={styles.header}>
                 <div>
                     <h1 className="sales-title" style={styles.title}>Sales History</h1>
-                    <p style={styles.subtitle}>Quickly find a sale and open the invoice. Product details are kept inside the invoice.</p>
+                    <p style={styles.subtitle}>
+                        Quickly find a sale and open the invoice. Product details are kept inside the invoice.
+                    </p>
                 </div>
                 <Link to="/billing-pos" style={styles.primaryButton}>
                     <FiPlus size={18} />
@@ -147,17 +153,19 @@ export default function SalesHistory() {
                     </div>
                 </div>
                 <div style={styles.statCard}>
-                    <div style={{...styles.statIcon, background: "#d1fae5"}}>
+                    <div style={{ ...styles.statIcon, background: "#d1fae5" }}>
                         <FiCreditCard size={20} color="#10b981" />
                     </div>
                     <div>
                         <div style={styles.statLabel}>Paid</div>
                         <div style={styles.statValue}>{stats.paid}</div>
-                        <div style={styles.statSub}>{((stats.paid/stats.count)*100 || 0).toFixed(0)}% of total</div>
+                        <div style={styles.statSub}>
+                            {((stats.paid / stats.count) * 100 || 0).toFixed(0)}% of total
+                        </div>
                     </div>
                 </div>
                 <div style={styles.statCard}>
-                    <div style={{...styles.statIcon, background: "#fef3c7"}}>
+                    <div style={{ ...styles.statIcon, background: "#fef3c7" }}>
                         <FiCalendar size={20} color="#f59e0b" />
                     </div>
                     <div>
@@ -167,13 +175,13 @@ export default function SalesHistory() {
                     </div>
                 </div>
                 <div style={styles.statCard}>
-                    <div style={{...styles.statIcon, background: "#dbeafe"}}>
+                    <div style={{ ...styles.statIcon, background: "#dbeafe" }}>
                         <FiUser size={20} color="#3b82f6" />
                     </div>
                     <div>
                         <div style={styles.statLabel}>Customers</div>
                         <div style={styles.statValue}>
-                            {new Set(sales.map(s => s.customer_name)).size}
+                            {new Set(sales.map((s) => s.customer_name)).size}
                         </div>
                         <div style={styles.statSub}>Unique customers</div>
                     </div>
@@ -238,26 +246,30 @@ export default function SalesHistory() {
                         </select>
                     </div>
                 </div>
-                                <div style={styles.filtersRight}>
-                     <div style={styles.liveIndicator}>
-                         <span style={styles.liveDot}></span>
-                         Live
-                     </div>
-                     <span style={styles.resultCount}>
-                         {filtered.length} result{filtered.length !== 1 ? "s" : ""}
-                     </span>
-                     {lastUpdated && (
-                         <span style={styles.updatedText}>
-                             Updated {lastUpdated.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
-                         </span>
-                     )}
-                     <button style={styles.iconButton} onClick={() => loadSales()} title="Refresh sales">
-                         <FiRefreshCw size={16} />
-                     </button>
-                     <button style={styles.iconButton} onClick={() => window.print()} title="Print page">
-                         <FiDownload size={16} />
-                     </button>
-                 </div>
+                <div style={styles.filtersRight}>
+                    <div style={styles.liveIndicator}>
+                        <span style={styles.liveDot}></span>
+                        Live
+                    </div>
+                    <span style={styles.resultCount}>
+                        {filtered.length} result{filtered.length !== 1 ? "s" : ""}
+                    </span>
+                    {lastUpdated && (
+                        <span style={styles.updatedText}>
+                            Updated{" "}
+                            {lastUpdated.toLocaleTimeString("en-IN", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                            })}
+                        </span>
+                    )}
+                    <button style={styles.iconButton} onClick={() => loadSales()} title="Refresh sales">
+                        <FiRefreshCw size={16} />
+                    </button>
+                    <button style={styles.iconButton} onClick={() => window.print()} title="Print page">
+                        <FiDownload size={16} />
+                    </button>
+                </div>
             </div>
 
             {/* Table */}
@@ -277,8 +289,8 @@ export default function SalesHistory() {
                                 <th style={styles.th}>Items</th>
                                 <th style={styles.th}>Payment</th>
                                 <th style={styles.th}>Status</th>
-                                <th style={{...styles.th, textAlign: "right"}}>Total</th>
-                                <th style={{...styles.th, textAlign: "center"}}>Invoice Actions</th>
+                                <th style={{ ...styles.th, textAlign: "right" }}>Total</th>
+                                <th style={{ ...styles.th, textAlign: "center" }}>Invoice Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -305,9 +317,7 @@ export default function SalesHistory() {
                                     return (
                                         <tr key={item.id} style={styles.tableRow}>
                                             <td>
-                                                <span style={styles.invoiceNumber}>
-                                                    #{item.invoice_no}
-                                                </span>
+                                                <span style={styles.invoiceNumber}>#{item.invoice_no}</span>
                                             </td>
                                             <td>
                                                 <div style={styles.dateTime}>
@@ -315,13 +325,13 @@ export default function SalesHistory() {
                                                         {new Date(item.created_at).toLocaleDateString("en-IN", {
                                                             day: "2-digit",
                                                             month: "short",
-                                                            year: "numeric"
+                                                            year: "numeric",
                                                         })}
                                                     </div>
                                                     <div style={styles.time}>
                                                         {new Date(item.created_at).toLocaleTimeString("en-IN", {
                                                             hour: "2-digit",
-                                                            minute: "2-digit"
+                                                            minute: "2-digit",
                                                         })}
                                                     </div>
                                                 </div>
@@ -351,18 +361,22 @@ export default function SalesHistory() {
                                                     <div style={styles.itemHint}>
                                                         View invoice for details
                                                     </div>
-                                                </div></td>
+                                                </div>
+                                            </td>
                                             <td>
                                                 <span style={styles.paymentMethodBadge}>
-                                                    {getPaymentIcon(item.payment_method)} {item.payment_method || "N/A"}
+                                                    {getPaymentIcon(item.payment_method)}{" "}
+                                                    {item.payment_method || "N/A"}
                                                 </span>
                                             </td>
                                             <td>
-                                                <span style={{
-                                                    ...styles.statusBadge,
-                                                    background: statusConfig.bg,
-                                                    color: statusConfig.color
-                                                }}>
+                                                <span
+                                                    style={{
+                                                        ...styles.statusBadge,
+                                                        background: statusConfig.bg,
+                                                        color: statusConfig.color,
+                                                    }}
+                                                >
                                                     {statusConfig.icon} {item.payment_status || "N/A"}
                                                 </span>
                                             </td>
@@ -373,10 +387,7 @@ export default function SalesHistory() {
                                             </td>
                                             <td>
                                                 <div style={styles.actionButtons}>
-                                                    <Link
-                                                        to={`/invoice/${item.id}`}
-                                                        style={styles.viewButton}
-                                                    >
+                                                    <Link to={`/invoice/${item.id}`} style={styles.viewButton}>
                                                         <FiEye size={14} />
                                                         View
                                                     </Link>
@@ -394,7 +405,6 @@ export default function SalesHistory() {
                                                     >
                                                         <FiDownload size={14} />
                                                     </button>
-
                                                 </div>
                                             </td>
                                         </tr>
@@ -417,9 +427,8 @@ const styles = {
         margin: "0 auto",
         background: "#f5f7fb",
         color: "#0f172a",
-        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
     },
-
     header: {
         display: "flex",
         alignItems: "center",
@@ -430,26 +439,23 @@ const styles = {
         borderRadius: "22px",
         background: "linear-gradient(135deg, #0b1220 0%, #16213d 55%, #1d4ed8 100%)",
         boxShadow: "0 16px 42px rgba(15, 23, 42, .17)",
-        overflow: "hidden"
+        overflow: "hidden",
     },
-
     title: {
         margin: 0,
         color: "#fff",
         fontSize: "30px",
         lineHeight: 1.15,
         fontWeight: "850",
-        letterSpacing: "-.8px"
+        letterSpacing: "-.8px",
     },
-
     subtitle: {
         margin: "7px 0 0",
         maxWidth: "720px",
         color: "#cbd5e1",
         fontSize: "13px",
-        lineHeight: 1.5
+        lineHeight: 1.5,
     },
-
     primaryButton: {
         display: "inline-flex",
         alignItems: "center",
@@ -463,16 +469,14 @@ const styles = {
         fontSize: "13px",
         fontWeight: "850",
         boxShadow: "0 8px 24px rgba(183, 243, 74, .22)",
-        whiteSpace: "nowrap"
+        whiteSpace: "nowrap",
     },
-
     statsGrid: {
         display: "grid",
         gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
         gap: "14px",
-        marginBottom: "16px"
+        marginBottom: "16px",
     },
-
     statCard: {
         minWidth: 0,
         display: "flex",
@@ -482,9 +486,8 @@ const styles = {
         borderRadius: "17px",
         background: "#fff",
         border: "1px solid #e5eaf1",
-        boxShadow: "0 7px 24px rgba(15, 23, 42, .05)"
+        boxShadow: "0 7px 24px rgba(15, 23, 42, .05)",
     },
-
     statIcon: {
         width: "46px",
         height: "46px",
@@ -493,31 +496,27 @@ const styles = {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        flexShrink: 0
+        flexShrink: 0,
     },
-
     statLabel: {
         fontSize: "10px",
         fontWeight: "850",
         color: "#64748b",
         textTransform: "uppercase",
-        letterSpacing: ".7px"
+        letterSpacing: ".7px",
     },
-
     statValue: {
         margin: "4px 0 2px",
         fontSize: "22px",
         lineHeight: 1.15,
         fontWeight: "850",
         color: "#0f172a",
-        letterSpacing: "-.35px"
+        letterSpacing: "-.35px",
     },
-
     statSub: {
         fontSize: "11px",
-        color: "#94a3b8"
+        color: "#94a3b8",
     },
-
     insightStrip: {
         display: "flex",
         alignItems: "center",
@@ -526,9 +525,8 @@ const styles = {
         padding: "11px 14px",
         borderRadius: "14px",
         background: "linear-gradient(90deg, #eff6ff, #f8fafc)",
-        border: "1px solid #dbe7f7"
+        border: "1px solid #dbe7f7",
     },
-
     insightIcon: {
         width: "36px",
         height: "36px",
@@ -538,26 +536,22 @@ const styles = {
         justifyContent: "center",
         background: "#dbeafe",
         color: "#2563eb",
-        flexShrink: 0
+        flexShrink: 0,
     },
-
     insightContent: {
         minWidth: 0,
-        flex: 1
+        flex: 1,
     },
-
     insightTitle: {
         fontSize: "11px",
         fontWeight: "850",
-        color: "#1e3a8a"
+        color: "#1e3a8a",
     },
-
     insightText: {
         marginTop: "2px",
         color: "#64748b",
-        fontSize: "11px"
+        fontSize: "11px",
     },
-
     insightAction: {
         display: "inline-flex",
         alignItems: "center",
@@ -569,9 +563,8 @@ const styles = {
         textDecoration: "none",
         fontSize: "10px",
         fontWeight: "800",
-        whiteSpace: "nowrap"
+        whiteSpace: "nowrap",
     },
-
     filtersSection: {
         display: "flex",
         alignItems: "center",
@@ -583,25 +576,22 @@ const styles = {
         borderRadius: "16px",
         background: "#fff",
         border: "1px solid #e5eaf1",
-        boxShadow: "0 6px 22px rgba(15, 23, 42, .04)"
+        boxShadow: "0 6px 22px rgba(15, 23, 42, .04)",
     },
-
     filtersLeft: {
         display: "flex",
         alignItems: "center",
         gap: "8px",
         flexWrap: "wrap",
         flex: 1,
-        minWidth: "300px"
+        minWidth: "300px",
     },
-
     filtersRight: {
         display: "flex",
         alignItems: "center",
         gap: "9px",
-        flexWrap: "wrap"
+        flexWrap: "wrap",
     },
-
     liveIndicator: {
         display: "inline-flex",
         alignItems: "center",
@@ -611,23 +601,20 @@ const styles = {
         background: "#ecfdf5",
         color: "#047857",
         fontSize: "10px",
-        fontWeight: "850"
+        fontWeight: "850",
     },
-
     liveDot: {
         width: "6px",
         height: "6px",
         borderRadius: "50%",
         background: "#10b981",
-        boxShadow: "0 0 0 3px rgba(16, 185, 129, .12)"
+        boxShadow: "0 0 0 3px rgba(16, 185, 129, .12)",
     },
-
     updatedText: {
         color: "#94a3b8",
         fontSize: "10px",
-        whiteSpace: "nowrap"
+        whiteSpace: "nowrap",
     },
-
     searchWrapper: {
         display: "flex",
         alignItems: "center",
@@ -637,23 +624,20 @@ const styles = {
         padding: "0 13px",
         border: "1px solid #e2e8f0",
         borderRadius: "11px",
-        background: "#f8fafc"
+        background: "#f8fafc",
     },
-
     searchIcon: {
         marginRight: "8px",
-        flexShrink: 0
+        flexShrink: 0,
     },
-
     searchInput: {
         width: "100%",
         border: "none",
         outline: "none",
         background: "transparent",
         color: "#0f172a",
-        fontSize: "13px"
+        fontSize: "13px",
     },
-
     filterGroup: {
         display: "flex",
         alignItems: "center",
@@ -662,9 +646,8 @@ const styles = {
         padding: "0 10px",
         border: "1px solid #e2e8f0",
         borderRadius: "11px",
-        background: "#f8fafc"
+        background: "#f8fafc",
     },
-
     filterSelect: {
         border: "none",
         outline: "none",
@@ -672,16 +655,14 @@ const styles = {
         color: "#334155",
         fontSize: "12px",
         fontWeight: "750",
-        cursor: "pointer"
+        cursor: "pointer",
     },
-
     resultCount: {
         color: "#64748b",
         fontSize: "11px",
         fontWeight: "750",
-        whiteSpace: "nowrap"
+        whiteSpace: "nowrap",
     },
-
     iconButton: {
         width: "38px",
         height: "38px",
@@ -692,25 +673,22 @@ const styles = {
         borderRadius: "10px",
         background: "#f8fafc",
         color: "#475569",
-        cursor: "pointer"
+        cursor: "pointer",
     },
-
     tableContainer: {
         overflowX: "auto",
         borderRadius: "18px",
         background: "#fff",
         border: "1px solid #e5eaf1",
-        boxShadow: "0 10px 30px rgba(15, 23, 42, .055)"
+        boxShadow: "0 10px 30px rgba(15, 23, 42, .055)",
     },
-
     table: {
         width: "100%",
         minWidth: "980px",
         borderCollapse: "separate",
         borderSpacing: 0,
-        fontSize: "13px"
+        fontSize: "13px",
     },
-
     th: {
         padding: "14px 16px",
         textAlign: "left",
@@ -721,14 +699,12 @@ const styles = {
         letterSpacing: ".7px",
         background: "#f8fafc",
         borderBottom: "1px solid #e5eaf1",
-        whiteSpace: "nowrap"
+        whiteSpace: "nowrap",
     },
-
     tableRow: {
         borderBottom: "1px solid #eef2f7",
-        transition: "background .15s ease"
+        transition: "background .15s ease",
     },
-
     invoiceNumber: {
         display: "inline-flex",
         alignItems: "center",
@@ -738,32 +714,27 @@ const styles = {
         color: "#4338ca",
         fontWeight: "850",
         fontSize: "11px",
-        whiteSpace: "nowrap"
+        whiteSpace: "nowrap",
     },
-
     dateTime: {
         display: "flex",
         flexDirection: "column",
-        gap: "2px"
+        gap: "2px",
     },
-
     date: {
         color: "#1e293b",
         fontWeight: "750",
-        fontSize: "12px"
+        fontSize: "12px",
     },
-
     time: {
         color: "#94a3b8",
-        fontSize: "10px"
+        fontSize: "10px",
     },
-
     customerCell: {
         display: "flex",
         alignItems: "center",
-        gap: "9px"
+        gap: "9px",
     },
-
     customerAvatar: {
         width: "34px",
         height: "34px",
@@ -775,38 +746,32 @@ const styles = {
         justifyContent: "center",
         fontWeight: "850",
         fontSize: "13px",
-        flexShrink: 0
+        flexShrink: 0,
     },
-
     customerName: {
         color: "#1e293b",
         fontWeight: "750",
-        fontSize: "12px"
+        fontSize: "12px",
     },
-
     customerPhone: {
         marginTop: "2px",
         color: "#94a3b8",
-        fontSize: "10px"
+        fontSize: "10px",
     },
-
     itemsCell: {
         display: "flex",
         flexDirection: "column",
-        gap: "3px"
+        gap: "3px",
     },
-
     itemsCount: {
         color: "#0f172a",
         fontSize: "13px",
-        fontWeight: "850"
+        fontWeight: "850",
     },
-
     itemHint: {
         color: "#94a3b8",
-        fontSize: "10px"
+        fontSize: "10px",
     },
-
     paymentMethodBadge: {
         display: "inline-flex",
         alignItems: "center",
@@ -818,9 +783,8 @@ const styles = {
         color: "#475569",
         fontSize: "10px",
         fontWeight: "750",
-        whiteSpace: "nowrap"
+        whiteSpace: "nowrap",
     },
-
     statusBadge: {
         display: "inline-flex",
         alignItems: "center",
@@ -829,24 +793,21 @@ const styles = {
         borderRadius: "999px",
         fontSize: "10px",
         fontWeight: "850",
-        whiteSpace: "nowrap"
+        whiteSpace: "nowrap",
     },
-
     amount: {
         color: "#0f172a",
         fontSize: "14px",
         fontWeight: "900",
-        whiteSpace: "nowrap"
+        whiteSpace: "nowrap",
     },
-
     actionButtons: {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         gap: "5px",
-        flexWrap: "wrap"
+        flexWrap: "wrap",
     },
-
     viewButton: {
         display: "inline-flex",
         alignItems: "center",
@@ -857,9 +818,8 @@ const styles = {
         color: "#fff",
         textDecoration: "none",
         fontSize: "10px",
-        fontWeight: "850"
+        fontWeight: "850",
     },
-
     printButton: {
         width: "32px",
         height: "32px",
@@ -870,9 +830,8 @@ const styles = {
         borderRadius: "8px",
         background: "#2563eb",
         color: "#fff",
-        cursor: "pointer"
+        cursor: "pointer",
     },
-
     pdfButton: {
         width: "32px",
         height: "32px",
@@ -883,9 +842,8 @@ const styles = {
         borderRadius: "8px",
         background: "#7c3aed",
         color: "#fff",
-        cursor: "pointer"
+        cursor: "pointer",
     },
-
     loadingContainer: {
         minHeight: "360px",
         display: "flex",
@@ -894,43 +852,37 @@ const styles = {
         justifyContent: "center",
         borderRadius: "18px",
         background: "#fff",
-        border: "1px solid #e5eaf1"
+        border: "1px solid #e5eaf1",
     },
-
     loadingSpinner: {
         width: "38px",
         height: "38px",
         border: "3px solid #e2e8f0",
         borderTop: "3px solid #2563eb",
         borderRadius: "50%",
-        animation: "spin .8s linear infinite"
+        animation: "spin .8s linear infinite",
     },
-
     loadingText: {
         marginTop: "14px",
         color: "#64748b",
         fontSize: "13px",
-        fontWeight: "650"
+        fontWeight: "650",
     },
-
     emptyState: {
         textAlign: "center",
         padding: "80px 20px",
-        color: "#94a3b8"
+        color: "#94a3b8",
     },
-
     emptyIcon: {
         fontSize: "46px",
-        marginBottom: "12px"
+        marginBottom: "12px",
     },
-
     emptyText: {
         margin: "0 0 14px",
         color: "#64748b",
         fontSize: "14px",
-        fontWeight: "650"
+        fontWeight: "650",
     },
-
     emptyButton: {
         display: "inline-flex",
         alignItems: "center",
@@ -941,6 +893,6 @@ const styles = {
         color: "#fff",
         textDecoration: "none",
         fontSize: "12px",
-        fontWeight: "850"
-    }
+        fontWeight: "850",
+    },
 };
