@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+
 import API from "../services/api";
 import BarcodeScanner from "../pages/BarcodeScanner";
 
@@ -632,6 +632,12 @@ export default function BillingPOS() {
     const item = cart.find((i) => i.id === id && i.unit === unit);
     if (!item) return;
 
+    // delta === 0 is used by the remove button.
+    if (delta === 0) {
+      setCart(cart.filter((i) => !(i.id === id && i.unit === unit)));
+      return;
+    }
+
     const newQty = item.quantity + delta;
     if (newQty <= 0) {
       setCart(cart.filter((i) => !(i.id === id && i.unit === unit)));
@@ -1193,1637 +1199,674 @@ export default function BillingPOS() {
       const name = normalize(p.product_name);
 
       return (
-        name.includes(searchName) ||
-        searchName.includes(name)
-      );
-    });
-
-    if (product) return product;
-
-    // Word-based matching
-    const words = String(voiceName)
-      .toLowerCase()
-      .split(/\s+/)
-      .filter(Boolean);
-
-    product = products.find((p) => {
-      const name = String(p.product_name || "").toLowerCase();
-
-      return words.every((word) => name.includes(word));
-    });
-
-    return product || null;
-  };
-
-  return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800;900&family=Manrope:wght@400;500;600;700;800&family=Orbitron:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
 
         :root {
-          --pos-bg: #EEF1F4;
-          --panel-dark: #1E2633;
-          --panel-dark-2: #111720;
-          --panel-dark-3: #151D2A;
-          --gold: #FFB000;
-          --gold-soft: #FFC44D;
-          --text: #20242A;
-          --muted: #737B85;
-          --border: #D5DADF;
-          --success: #35B86B;
-          --danger: #EF5350;
-          --brass-bright: #FFB000;
-          --brass-deep: #C68A00;
-          --charcoal: #1E2633;
-          --charcoal-soft: #26303F;
-          --charcoal-line: #36404D;
-          --led-amber: #FFB000;
-          --led-red: #EF5350;
-          --ink: #20242A;
-          --ink-soft: #5B616B;
-          --line: #D5DADF;
-          --good: #35B86B;
-          --steel-panel: #FFFFFF;
-          --steel-panel-2: #F0F2F5;
-          --text-light: #F2F4F7;
-          --text-secondary: #9AA4B2;
+          --pos-bg:#f6f7fb;
+          --surface:#ffffff;
+          --surface-2:#f0f2f7;
+          --ink:#171a24;
+          --muted:#73798b;
+          --line:#e4e7ef;
+          --primary:#635bff;
+          --primary-dark:#5148e8;
+          --primary-soft:#eeedff;
+          --green:#18a66b;
+          --green-soft:#e7f8f0;
+          --orange:#f59e0b;
+          --orange-soft:#fff5df;
+          --red:#e5484d;
+          --red-soft:#fff0f1;
+          --blue:#1683f8;
+          --blue-soft:#eaf4ff;
+          --shadow:0 10px 30px rgba(24,31,56,.07);
+          --shadow-lg:0 20px 60px rgba(24,31,56,.12);
         }
 
-        * { box-sizing: border-box; }
+        * { box-sizing:border-box; }
+        button,input,select { font:inherit; }
+        button { -webkit-tap-highlight-color:transparent; }
 
-        .pos-wrap {
-          font-family: 'Manrope', sans-serif;
-          background: var(--pos-bg);
-          min-height: 100vh;
-          padding: 26px;
-        }
-
-        /* Top Status Bar */
-        .status-bar {
-          max-width: 1620px;
-          margin: 0 auto 16px;
-          background: #171A1F;
-          border-radius: 12px;
-          padding: 10px 20px;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          color: #fff;
-          font-size: 12px;
-        }
-        .status-left { display: flex; align-items: center; gap: 16px; }
-        .status-brand {
-          font-family: 'Big Shoulders Display', sans-serif;
-          font-weight: 800;
-          font-size: 18px;
-          color: var(--gold);
-        }
-        .status-online {
-          color: var(--success);
-          font-weight: 600;
-          font-size: 11px;
-          display: flex;
-          align-items: center;
-          gap: 5px;
-        }
-        .status-online::before {
-          content: '';
-          width: 7px;
-          height: 7px;
-          background: var(--success);
-          border-radius: 50%;
-          display: inline-block;
-          animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.3; }
-        }
-        .status-right {
-          display: flex;
-          gap: 20px;
-          color: #8C93A0;
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 11px;
-        }
-        .status-data {
-          display: flex;
-          align-items: center;
-          gap: 4px;
-        }
-        .status-data .label {
-          color: #6B7178;
-        }
-        .status-data .value {
-          color: #E8EAEE;
-          font-weight: 600;
-        }
-        .status-data .value.gold {
-          color: var(--gold);
+        .retail-pos {
+          min-height:100vh;
+          background:
+            radial-gradient(circle at 8% 0%, rgba(99,91,255,.08), transparent 28%),
+            radial-gradient(circle at 92% 15%, rgba(22,131,248,.06), transparent 24%),
+            var(--pos-bg);
+          color:var(--ink);
+          font-family:'DM Sans',sans-serif;
+          padding:18px;
         }
 
-        .pos-layout {
-          max-width: 1620px;
-          margin: 0 auto;
-          display: flex;
-          gap: 24px;
-          align-items: flex-start;
+        .pos-shell { max-width:1600px; margin:0 auto; }
+
+        .topbar {
+          background:rgba(255,255,255,.92);
+          backdrop-filter:blur(18px);
+          border:1px solid rgba(228,231,239,.9);
+          border-radius:20px;
+          min-height:72px;
+          padding:12px 16px;
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+          gap:16px;
+          box-shadow:var(--shadow);
+          position:sticky;
+          top:12px;
+          z-index:20;
         }
 
-        /* ============ LEFT: PRODUCT SHELF ============ */
-        .shelf-col { flex: 1.75; }
+        .brand-area { display:flex; align-items:center; gap:12px; min-width:0; }
+        .brand-logo {
+          width:46px; height:46px; border-radius:14px;
+          display:grid; place-items:center;
+          color:white; font-size:20px; font-weight:800;
+          background:linear-gradient(135deg,var(--primary),#8b84ff);
+          box-shadow:0 8px 20px rgba(99,91,255,.28);
+          flex:0 0 auto;
+        }
+        .brand-copy { min-width:0; }
+        .brand-name {
+          font-family:'Plus Jakarta Sans',sans-serif;
+          font-size:17px; font-weight:800;
+          white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+          max-width:260px;
+        }
+        .brand-sub { font-size:11px; color:var(--muted); margin-top:2px; }
 
-        .shelf-topbar {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-end;
-          margin-bottom: 16px;
-          padding-bottom: 14px;
-          border-bottom: 3px solid var(--text);
+        .top-actions { display:flex; align-items:center; gap:8px; }
+        .online-pill,.top-stat {
+          display:flex; align-items:center; gap:7px;
+          border:1px solid var(--line); background:var(--surface);
+          border-radius:12px; padding:9px 11px; font-size:12px;
         }
-        .brand-block { display: flex; align-items: baseline; gap: 12px; }
-        .brand-mark {
-          width: 34px; height: 34px;
-          border-radius: 7px;
-          background: linear-gradient(155deg, var(--gold), var(--brass-deep));
-          display: flex; align-items: center; justify-content: center;
-          font-family: 'Orbitron', sans-serif;
-          font-weight: 700;
-          font-size: 15px;
-          color: var(--text);
-          box-shadow: 0 2px 0 var(--brass-deep);
-          flex-shrink: 0;
-        }
-        .shelf-heading {
-          font-family: 'Big Shoulders Display', sans-serif;
-          font-weight: 900;
-          font-size: 34px;
-          line-height: 1;
-          color: var(--text);
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-        .shelf-heading .sub {
-          display: block;
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 10.5px;
-          font-weight: 500;
-          color: var(--ink-soft);
-          text-transform: uppercase;
-          letter-spacing: 2.5px;
-          margin-top: 2px;
-        }
-        .shelf-count {
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 12.5px;
-          color: var(--ink-soft);
-          background: var(--steel-panel-2);
-          border: 1px solid var(--border);
-          padding: 5px 10px;
-          border-radius: 20px;
-        }
+        .online-dot { width:8px; height:8px; border-radius:50%; background:var(--green); box-shadow:0 0 0 4px var(--green-soft); }
+        .top-stat strong { font-size:13px; }
+        .top-stat .label { color:var(--muted); }
 
-        .shelf-search-row {
-          display: flex;
-          gap: 10px;
-          margin-bottom: 12px;
+        .dashboard-strip {
+          display:grid;
+          grid-template-columns:repeat(4,1fr);
+          gap:12px;
+          margin:16px 0;
         }
-        .shelf-search {
-          flex: 1;
-          padding: 13px 16px;
-          border-radius: 9px;
-          border: 1.5px solid var(--border);
-          background: var(--steel-panel);
-          font-family: 'Manrope', sans-serif;
-          font-size: 14px;
-          font-weight: 500;
-          outline: none;
-          transition: border-color 0.15s, box-shadow 0.15s;
+        .mini-card {
+          background:var(--surface);
+          border:1px solid var(--line);
+          border-radius:16px;
+          padding:14px 16px;
+          display:flex; justify-content:space-between; align-items:center;
+          box-shadow:0 4px 18px rgba(24,31,56,.04);
         }
-        .shelf-search:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(255,179,0,0.18); }
-        
-        .voice-button {
-          border: none;
-          border-radius: 12px;
-          padding: 0 18px;
-          min-height: 50px;
-          background: #20242b;
-          color: #ffffff;
-          font-weight: 800;
-          cursor: pointer;
-          transition: 0.2s ease;
-          white-space: nowrap;
+        .mini-label { color:var(--muted); font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.6px; }
+        .mini-value { font-family:'Plus Jakarta Sans',sans-serif; font-size:19px; font-weight:800; margin-top:3px; }
+        .mini-icon { width:38px; height:38px; border-radius:12px; display:grid; place-items:center; font-size:17px; }
+        .mini-icon.purple { background:var(--primary-soft); }
+        .mini-icon.green { background:var(--green-soft); }
+        .mini-icon.orange { background:var(--orange-soft); }
+        .mini-icon.blue { background:var(--blue-soft); }
+
+        .main-grid {
+          display:grid;
+          grid-template-columns:minmax(0,1fr) 430px;
+          gap:16px;
+          align-items:start;
         }
 
-        .voice-button:hover {
-          transform: translateY(-1px);
+        .catalog-panel,.checkout-panel {
+          background:var(--surface);
+          border:1px solid var(--line);
+          border-radius:22px;
+          box-shadow:var(--shadow);
+        }
+        .catalog-panel { padding:18px; min-width:0; }
+        .checkout-panel {
+          position:sticky; top:100px;
+          overflow:hidden;
+          box-shadow:var(--shadow-lg);
         }
 
-        .voice-listening {
-          background: #d93025;
-          animation: voicePulse 1s infinite;
+        .catalog-head {
+          display:flex; align-items:flex-end; justify-content:space-between;
+          gap:16px; margin-bottom:14px;
         }
+        .eyebrow {
+          color:var(--primary); font-size:11px; font-weight:800;
+          text-transform:uppercase; letter-spacing:1.4px;
+        }
+        .catalog-title {
+          margin:4px 0 0;
+          font-family:'Plus Jakarta Sans',sans-serif;
+          font-size:25px; font-weight:800; letter-spacing:-.7px;
+        }
+        .catalog-desc { color:var(--muted); font-size:12px; margin-top:4px; }
 
-        @keyframes voicePulse {
-          0% {
-            box-shadow: 0 0 0 0 rgba(217, 48, 37, 0.5);
-          }
-          70% {
-            box-shadow: 0 0 0 10px rgba(217, 48, 37, 0);
-          }
-          100% {
-            box-shadow: 0 0 0 0 rgba(217, 48, 37, 0);
-          }
+        .search-row { display:flex; gap:9px; margin-bottom:12px; }
+        .search-wrap { position:relative; flex:1; }
+        .search-icon { position:absolute; left:14px; top:50%; transform:translateY(-50%); color:var(--muted); }
+        .main-search {
+          width:100%; height:48px; padding:0 16px 0 42px;
+          border:1px solid var(--line); border-radius:13px; outline:none;
+          background:#fbfcfe; color:var(--ink);
+          transition:.18s;
         }
+        .main-search:focus { border-color:var(--primary); box-shadow:0 0 0 4px rgba(99,91,255,.10); background:white; }
+        .tool-btn {
+          height:48px; border:1px solid var(--line); background:white; color:var(--ink);
+          border-radius:13px; padding:0 15px; cursor:pointer; font-weight:700;
+          display:flex; align-items:center; gap:7px; transition:.18s;
+        }
+        .tool-btn:hover { transform:translateY(-1px); border-color:#cdd1dc; box-shadow:0 7px 16px rgba(24,31,56,.07); }
+        .tool-btn.primary { background:var(--ink); color:white; border-color:var(--ink); }
 
-        .voice-status {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          margin-top: 10px;
-          padding: 12px 16px;
-          border-radius: 12px;
-          background: #151a21;
-          color: white;
+        .voice-banner {
+          background:linear-gradient(135deg,#181b2a,#292d43);
+          color:white; border-radius:15px; padding:11px 14px; margin-bottom:12px;
+          display:flex; align-items:center; gap:10px;
         }
+        .voice-orb {
+          width:34px; height:34px; border-radius:11px; display:grid; place-items:center;
+          background:rgba(255,255,255,.1);
+        }
+        .voice-banner strong { display:block; font-size:12px; }
+        .voice-banner span { color:#b8bdd0; font-size:11px; }
+        .voice-stop { margin-left:auto; border:0; background:#ff4d57; color:white; border-radius:9px; padding:7px 10px; cursor:pointer; font-size:11px; font-weight:700; }
 
-        .voice-icon {
-          font-size: 25px;
+        .category-row {
+          display:flex; gap:7px; overflow-x:auto; padding:2px 0 12px;
+          scrollbar-width:none;
         }
+        .category-row::-webkit-scrollbar { display:none; }
+        .category-pill {
+          border:1px solid var(--line); background:#fff; color:#686f80;
+          border-radius:999px; padding:8px 13px; white-space:nowrap;
+          cursor:pointer; font-size:12px; font-weight:700; transition:.15s;
+        }
+        .category-pill:hover { border-color:#c8c4ff; color:var(--primary); }
+        .category-pill.active { background:var(--primary); color:#fff; border-color:var(--primary); box-shadow:0 6px 14px rgba(99,91,255,.2); }
 
-        .voice-title {
-          font-size: 12px;
-          font-weight: 800;
-          text-transform: uppercase;
-          opacity: 0.7;
-        }
+        .catalog-meta { display:flex; justify-content:space-between; align-items:center; margin:2px 2px 10px; }
+        .result-count { color:var(--muted); font-size:11px; font-weight:600; }
 
-        .voice-result {
-          margin-top: 3px;
-          font-size: 14px;
-          font-weight: 700;
+        .product-grid {
+          display:grid;
+          grid-template-columns:repeat(auto-fill,minmax(185px,1fr));
+          gap:11px;
+          max-height:calc(100vh - 345px);
+          min-height:300px;
+          overflow:auto;
+          padding:2px 3px 10px 2px;
         }
+        .product-grid::-webkit-scrollbar { width:6px; }
+        .product-grid::-webkit-scrollbar-thumb { background:#d8dce5; border-radius:10px; }
 
-        .shelf-scan {
-          padding: 0 22px;
-          background: var(--text);
-          color: var(--gold);
-          border: none;
-          border-radius: 9px;
-          font-weight: 700;
-          font-size: 13px;
-          letter-spacing: 0.3px;
-          cursor: pointer;
-          transition: background 0.15s, transform 0.1s;
-          display: flex; align-items: center; gap: 7px;
+        .product-card {
+          border:1px solid var(--line); border-radius:17px; background:#fff;
+          padding:13px; min-height:194px; display:flex; flex-direction:column;
+          cursor:pointer; position:relative; overflow:hidden; transition:.18s;
         }
-        .shelf-scan:hover { background: var(--charcoal-soft); }
-        .shelf-scan:active { transform: scale(0.96); }
+        .product-card::after {
+          content:''; position:absolute; width:70px; height:70px; border-radius:50%;
+          background:var(--primary-soft); right:-35px; top:-35px; opacity:.7;
+        }
+        .product-card:hover { transform:translateY(-3px); border-color:#c8c4ff; box-shadow:0 13px 26px rgba(24,31,56,.09); }
+        .product-card.out { opacity:.62; cursor:not-allowed; }
+        .product-top { display:flex; justify-content:space-between; gap:7px; position:relative; z-index:1; }
+        .product-avatar {
+          width:40px; height:40px; border-radius:12px; display:grid; place-items:center;
+          background:var(--primary-soft); color:var(--primary); font-weight:800; font-size:15px;
+        }
+        .stock-pill { font-size:9px; font-weight:800; padding:5px 7px; border-radius:999px; height:max-content; }
+        .stock-pill.high { background:var(--green-soft); color:var(--green); }
+        .stock-pill.mid { background:var(--orange-soft); color:#b66c00; }
+        .stock-pill.low,.stock-pill.out { background:var(--red-soft); color:var(--red); }
+        .product-name { font-family:'Plus Jakarta Sans',sans-serif; font-size:13px; line-height:1.35; font-weight:700; margin:12px 0 5px; min-height:35px; }
+        .product-sku { font-size:9px; color:#9aa0ae; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .product-bottom { margin-top:auto; display:flex; justify-content:space-between; align-items:end; gap:8px; }
+        .product-price { font-family:'Plus Jakarta Sans',sans-serif; font-size:17px; font-weight:800; }
+        .product-rate { color:var(--muted); font-size:9px; margin-top:2px; }
+        .add-circle {
+          width:35px; height:35px; border:0; border-radius:11px; cursor:pointer;
+          background:var(--ink); color:white; font-size:19px; display:grid; place-items:center;
+          transition:.15s;
+        }
+        .add-circle:hover:not(:disabled) { background:var(--primary); transform:scale(1.05); }
+        .add-circle:disabled { background:#e6e8ee; color:#999; cursor:not-allowed; }
 
-        /* Category Filters */
-        .category-filters {
-          display: flex;
-          gap: 6px;
-          margin-bottom: 16px;
-          flex-wrap: wrap;
+        .checkout-head {
+          padding:18px 18px 14px; color:white;
+          background:linear-gradient(135deg,#171a27,#272c42);
         }
-        .cat-btn {
-          padding: 5px 14px;
-          border: 1.5px solid var(--border);
-          background: transparent;
-          border-radius: 20px;
-          font-family: 'Manrope', sans-serif;
-          font-size: 12px;
-          font-weight: 600;
-          color: var(--ink-soft);
-          cursor: pointer;
-          transition: all 0.15s;
-        }
-        .cat-btn:hover { border-color: var(--gold); color: var(--text); }
-        .cat-btn.active {
-          background: var(--text);
-          color: var(--gold);
-          border-color: var(--text);
-        }
+        .checkout-title-row { display:flex; justify-content:space-between; align-items:center; }
+        .checkout-title { font-family:'Plus Jakarta Sans',sans-serif; font-size:17px; font-weight:800; }
+        .invoice-tag { color:#b8bdd0; font-size:10px; }
+        .total-label { color:#aeb4c6; text-transform:uppercase; letter-spacing:1.3px; font-size:9px; margin-top:17px; }
+        .grand-total { font-family:'Plus Jakarta Sans',sans-serif; font-size:34px; font-weight:800; letter-spacing:-1.3px; margin-top:2px; }
+        .checkout-meta { display:flex; gap:7px; margin-top:8px; flex-wrap:wrap; }
+        .meta-chip { padding:5px 8px; border-radius:7px; background:rgba(255,255,255,.08); color:#d3d6e1; font-size:9px; }
 
-        .tag-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-          gap: 14px;
-          max-height: calc(100vh - 280px);
-          overflow-y: auto;
-          padding: 4px 6px 12px 2px;
-        }
-        .tag-grid::-webkit-scrollbar { width: 6px; }
-        .tag-grid::-webkit-scrollbar-thumb { background: #B9C0C7; border-radius: 6px; }
-
-        /* ===== COMPACT PRODUCT CARD ===== */
-        .price-tag {
-          position: relative;
-          background: var(--steel-panel);
-          border-radius: 10px;
-          padding: 0 0 12px;
-          box-shadow: 0 1px 2px rgba(20,22,26,0.06), 0 6px 16px rgba(20,22,26,0.05);
-          border: 1px solid var(--border);
-          display: flex;
-          flex-direction: column;
-          overflow: hidden;
-          transition: transform 0.14s, box-shadow 0.14s, border-color 0.14s;
-          min-height: 220px;
-        }
-        .price-tag:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 10px 20px rgba(20,22,26,0.12);
-          border-color: var(--gold);
-        }
-        .tag-brass-strip {
-          height: 3px;
-          background: linear-gradient(90deg, var(--brass-deep), var(--gold) 45%, var(--brass-deep));
-          flex-shrink: 0;
-        }
-
-        .tag-body { 
-          padding: 14px 14px 10px; 
-          display: flex; 
-          flex-direction: column; 
-          flex: 1; 
-          gap: 8px;
-        }
-
-        .tag-name {
-          font-family: 'Manrope', sans-serif;
-          font-weight: 700;
-          font-size: 14px;
-          line-height: 1.3;
-          color: var(--ink);
-          margin: 0;
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-          min-height: 36px;
-        }
-
-        .tag-price-block {
-          display: flex;
-          align-items: baseline;
-          gap: 6px;
-          margin: 4px 0;
-        }
-        .tag-price {
-          font-family: 'Orbitron', sans-serif;
-          font-weight: 700;
-          font-size: 20px;
-          color: var(--gold);
-          text-shadow: 0 0 8px rgba(255,179,0,0.45);
-          letter-spacing: 0.5px;
-          white-space: nowrap;
-        }
-        .tag-price .rupee-symbol {
-          font-size: 14px;
-          opacity: 0.8;
-          margin-right: 1px;
-        }
-        .tag-unit {
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 12px;
-          color: var(--ink-soft);
-          font-weight: 500;
-          white-space: nowrap;
-        }
-        .tag-unit .per-text {
-          font-size: 10px;
-          color: var(--muted);
-        }
-
-        .tag-stock {
-          font-size: 12px;
-          font-weight: 600;
-          color: var(--muted);
-          padding: 2px 0;
-        }
-        .tag-stock.high { color: var(--success); }
-        .tag-stock.mid { color: var(--brass-deep); }
-        .tag-stock.low { color: var(--danger); }
-        .tag-stock.out { 
-          color: var(--danger); 
-          font-weight: 700;
-          background: rgba(239,83,80,0.1);
-          padding: 2px 8px;
-          border-radius: 4px;
-          display: inline-block;
-          width: fit-content;
-        }
-
-        .tag-add-btn {
-          margin-top: auto;
-          width: 100%;
-          padding: 9px 0;
-          background: var(--text);
-          color: var(--gold);
-          border: none;
-          border-radius: 8px;
-          font-weight: 700;
-          font-size: 13px;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          cursor: pointer;
-          transition: background 0.15s, transform 0.1s, opacity 0.15s;
-          font-family: 'Manrope', sans-serif;
-        }
-        .tag-add-btn:hover:not(:disabled) { 
-          background: linear-gradient(135deg, var(--gold), var(--brass-deep)); 
-          color: var(--text);
-        }
-        .tag-add-btn:active:not(:disabled) { transform: scale(0.96); }
-        .tag-add-btn:disabled {
-          background: var(--steel-panel-2);
-          color: var(--muted);
-          cursor: not-allowed;
-          opacity: 0.7;
-        }
-
-        .tag-sku {
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 9px;
-          color: var(--muted);
-          padding: 2px 0 0;
-          border-top: 1px solid var(--border);
-          margin-top: 2px;
-          opacity: 0.6;
-          letter-spacing: 0.3px;
-        }
-
-        .no-products {
-          grid-column: 1 / -1;
-          text-align: center;
-          padding: 60px 0;
-          color: var(--muted);
-          font-weight: 500;
-        }
-
-        .search-result-count {
-          font-size: 12px;
-          color: var(--ink-soft);
-          margin-bottom: 12px;
-          font-family: 'JetBrains Mono', monospace;
-        }
-
-        /* ============ RIGHT: COUNTER DISPLAY PANEL ============ */
-        .receipt-col {
-          flex: 1;
-          max-width: 408px;
-          position: sticky;
-          top: 26px;
-        }
-        .receipt {
-          background: var(--panel-dark);
-          border-radius: 16px;
-          padding: 22px 22px 24px;
-          color: var(--text-light);
-          box-shadow: 0 20px 50px rgba(20,22,26,0.35);
-          border: 1px solid var(--charcoal-line);
-        }
-
-        .receipt-store-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 4px;
-        }
-        .receipt-store {
-          font-family: 'Big Shoulders Display', sans-serif;
-          font-weight: 800;
-          font-size: 21px;
-          letter-spacing: 0.5px;
-          text-transform: uppercase;
-          color: #fff;
-        }
-        .receipt-inv {
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 10.5px;
-          color: var(--text-secondary);
-          letter-spacing: 0.5px;
-        }
-
-        .scale-display {
-          margin-top: 14px;
-          background: var(--panel-dark-2);
-          border-radius: 12px;
-          padding: 16px 18px;
-          border: 1px solid var(--charcoal-line);
-          box-shadow: inset 0 2px 8px rgba(0,0,0,0.5);
-        }
-        .scale-display .scale-label {
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 9.5px;
-          letter-spacing: 2.5px;
-          text-transform: uppercase;
-          color: var(--text-secondary);
-          margin-bottom: 4px;
-          display: flex;
-          justify-content: space-between;
-        }
-        .scale-display .scale-total {
-          font-family: 'Orbitron', sans-serif;
-          font-weight: 700;
-          font-size: 40px;
-          line-height: 1.1;
-          color: var(--gold);
-          text-shadow: 0 0 14px rgba(255,179,0,0.55), 0 0 2px rgba(255,179,0,0.8);
-          letter-spacing: 1px;
-        }
-        .scale-display .scale-total .rupee { font-size: 22px; margin-right: 3px; opacity: 0.85; }
-        .scale-display .scale-meta {
-          display: flex;
-          justify-content: space-between;
-          margin-top: 6px;
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 10.5px;
-          color: var(--text-secondary);
-        }
-
-        .save-banner {
-          background: var(--success);
-          color: #fff;
-          text-align: center;
-          font-size: 12.5px;
-          font-weight: 700;
-          padding: 8px 0;
-          border-radius: 7px;
-          margin-top: 12px;
-          animation: bannerIn 0.25s ease;
-        }
-        @keyframes bannerIn {
-          from { opacity: 0; transform: translateY(-6px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-
-        .invoice-download-btn {
-          width: 100%;
-          margin-top: 8px;
-          padding: 10px 0;
-          background: var(--panel-dark-2);
-          color: var(--gold);
-          border: 1px solid var(--charcoal-line);
-          border-radius: 8px;
-          font-weight: 700;
-          font-size: 12px;
-          cursor: pointer;
-          font-family: 'JetBrains Mono', monospace;
-          letter-spacing: 0.3px;
-          transition: background 0.15s, border-color 0.15s;
-        }
-        .invoice-download-btn:hover {
-          background: var(--charcoal-soft);
-          border-color: var(--gold);
-        }
-
-        .receipt-dash {
-          border: none;
-          border-top: 1px dashed var(--charcoal-line);
-          margin: 16px 0;
-        }
-
-        .customer-line label {
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 9.5px;
-          text-transform: uppercase;
-          letter-spacing: 2px;
-          color: var(--text-secondary);
-          display: block;
-          margin-bottom: 6px;
-        }
+        .checkout-body { padding:14px; }
+        .customer-box { background:#f8f9fc; border:1px solid var(--line); border-radius:13px; padding:10px; margin-bottom:11px; }
+        .field-label { display:block; color:#73798b; font-size:10px; font-weight:700; margin-bottom:6px; }
         .customer-input {
-          width: 100%;
-          border: none;
-          border-bottom: 1.5px solid var(--charcoal-line);
-          background: transparent;
-          color: var(--text-light);
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 14.5px;
-          padding: 5px 2px;
-          outline: none;
-          transition: border-color 0.15s;
+          width:100%; height:38px; border:1px solid var(--line); border-radius:9px;
+          background:white; padding:0 10px; outline:none; font-size:12px;
         }
-        .customer-input:focus { border-bottom-color: var(--gold); }
-        .customer-status {
-          font-size: 11.5px;
-          margin-top: 6px;
-          font-weight: 600;
-        }
-        .status-found { color: var(--success); }
-        .status-new { color: var(--text-secondary); }
-        .status-searching { color: var(--gold); }
-        .status-invalid { color: var(--danger); }
+        .customer-input:focus { border-color:var(--primary); }
+        .customer-status { font-size:10px; margin-top:6px; }
+        .status-found { color:var(--green); font-weight:700; }
+        .status-new { color:var(--primary); }
+        .status-invalid { color:var(--red); }
+        .status-searching { color:var(--muted); }
+        .walkin { margin-top:7px; font-size:10px; color:var(--muted); }
 
-        .walkin-badge {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 6px 10px;
-          background: var(--panel-dark-2);
-          border-radius: 6px;
-          margin-top: 6px;
-          font-size: 13px;
-          color: var(--text-secondary);
+        .bill-items { max-height:255px; overflow:auto; margin:0 -3px; padding:0 3px; }
+        .bill-items::-webkit-scrollbar { width:4px; }
+        .bill-items::-webkit-scrollbar-thumb { background:#d9dce5; border-radius:10px; }
+        .bill-empty {
+          border:1px dashed #d8dce5; border-radius:14px; padding:30px 15px;
+          text-align:center; color:var(--muted); font-size:11px;
         }
-        .walkin-badge .icon { font-size: 18px; }
+        .empty-icon { font-size:26px; opacity:.65; margin-bottom:7px; }
+        .bill-item {
+          display:grid; grid-template-columns:minmax(0,1fr) auto auto;
+          gap:8px; align-items:center; padding:10px 3px;
+          border-bottom:1px solid #f0f1f5;
+        }
+        .bill-name { font-size:11px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .bill-rate { color:var(--muted); font-size:9px; margin-top:2px; }
+        .qty-control { display:flex; align-items:center; gap:5px; background:#f4f5f8; border-radius:9px; padding:3px; }
+        .qty-control button { border:0; width:22px; height:22px; border-radius:6px; background:white; cursor:pointer; font-weight:800; }
+        .qty-control span { min-width:20px; text-align:center; font-size:10px; font-weight:800; }
+        .bill-amount { font-size:11px; font-weight:800; min-width:57px; text-align:right; }
+        .remove-item { border:0; background:transparent; color:#b5b9c4; cursor:pointer; font-size:12px; }
 
-        .items-zone {
-          min-height: 84px;
-          max-height: 190px;
-          overflow-y: auto;
-          margin: 14px 0;
+        .summary {
+          border-top:1px dashed #dfe2e9; margin-top:10px; padding-top:10px;
         }
-        .items-zone::-webkit-scrollbar { width: 5px; }
-        .items-zone::-webkit-scrollbar-thumb { background: var(--charcoal-line); border-radius: 6px; }
-        .item-line {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          font-size: 12px;
-          padding: 6px 0;
-          border-bottom: 1px solid rgba(255,255,255,0.05);
+        .summary-row { display:flex; justify-content:space-between; color:#707688; font-size:10px; margin:6px 0; }
+        .summary-row strong { color:var(--ink); }
+        .settings-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0; }
+        .small-field label { display:block; color:var(--muted); font-size:9px; font-weight:700; margin-bottom:5px; }
+        .small-field input {
+          width:100%; height:34px; border:1px solid var(--line); border-radius:8px;
+          padding:0 9px; outline:none; font-size:11px;
         }
-        .item-line:last-child { border-bottom: none; }
-        .item-line .name-block { flex: 1; min-width: 0; }
-        .item-line .name-block .nm {
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          display: block;
-          font-weight: 600;
-          color: var(--text-light);
-        }
-        .item-line .name-block .qty {
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 10px;
-          color: var(--text-secondary);
-        }
-        .item-line .qty-controls {
-          display: flex;
-          align-items: center;
-          gap: 4px;
-        }
-        .item-line .qty-btn {
-          background: var(--panel-dark-2);
-          border: 1px solid var(--charcoal-line);
-          color: var(--text-light);
-          border-radius: 4px;
-          width: 22px;
-          height: 22px;
-          font-size: 14px;
-          font-weight: 700;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: background 0.15s;
-        }
-        .item-line .qty-btn:hover { background: var(--charcoal-soft); }
-        .item-line .qty-val {
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 12px;
-          font-weight: 600;
-          min-width: 24px;
-          text-align: center;
-          color: var(--text-light);
-        }
-        .item-line .amt {
-          font-family: 'JetBrains Mono', monospace;
-          font-weight: 700;
-          color: var(--gold);
-          white-space: nowrap;
-          font-size: 12px;
-          min-width: 60px;
-          text-align: right;
-        }
-        .item-line .rm {
-          background: none;
-          border: none;
-          color: var(--danger);
-          font-weight: 700;
-          cursor: pointer;
-          padding: 0 0 0 6px;
-          opacity: 0.75;
-          font-size: 14px;
-        }
-        .item-line .rm:hover { opacity: 1; }
-        .empty-receipt {
-          text-align: center;
-          color: var(--text-secondary);
-          font-size: 12.5px;
-          padding: 22px 0;
-        }
+        .small-field input:focus { border-color:var(--primary); }
 
-        .totals-block { font-size: 12.5px; font-family: 'JetBrains Mono', monospace; }
-        .totals-row {
-          display: flex;
-          justify-content: space-between;
-          padding: 3px 0;
-          color: var(--text-secondary);
+        .payment-row { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin:10px 0; }
+        .payment-btn {
+          border:1px solid var(--line); background:white; border-radius:9px; height:34px;
+          cursor:pointer; font-size:10px; font-weight:700; color:#6e7484;
         }
-        .totals-row .v { color: var(--text-light); font-weight: 600; }
+        .payment-btn.active { background:var(--primary-soft); color:var(--primary); border-color:#c8c4ff; }
 
-        .field-pair { display: flex; gap: 12px; margin: 16px 0 14px; }
-        .field-pair .fld { flex: 1; }
-        .field-pair label {
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 9px;
-          text-transform: uppercase;
-          letter-spacing: 1.5px;
-          color: var(--text-secondary);
-          display: block;
-          margin-bottom: 4px;
-        }
-        .field-pair input {
-          width: 100%;
-          border: none;
-          border-bottom: 1.5px solid var(--charcoal-line);
-          background: transparent;
-          color: var(--text-light);
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 13px;
-          padding: 3px 0;
-          outline: none;
-        }
-        .field-pair input:focus { border-bottom-color: var(--gold); }
+        .cash-box { background:#f8f9fc; border:1px solid var(--line); border-radius:11px; padding:9px; margin-bottom:10px; }
+        .cash-line { display:flex; align-items:center; justify-content:space-between; font-size:10px; color:var(--muted); }
+        .cash-input { width:110px; height:30px; border:1px solid var(--line); border-radius:7px; text-align:right; padding:0 8px; outline:none; background:white; }
+        .change-value { color:var(--green); font-weight:800; }
 
-        .pay-row { display: flex; gap: 6px; margin-bottom: 12px; }
-        .pay-opt {
-          flex: 1;
-          padding: 8px 0;
-          text-align: center;
-          border: 1.5px solid var(--charcoal-line);
-          background: transparent;
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 11.5px;
-          font-weight: 600;
-          border-radius: 6px;
-          cursor: pointer;
-          color: var(--text-secondary);
-          transition: all 0.15s;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 4px;
+        .mode-row { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-bottom:9px; }
+        .mode-btn {
+          height:34px; border:1px solid var(--line); background:white; border-radius:9px;
+          cursor:pointer; color:#727889; font-size:10px; font-weight:700;
         }
-        .pay-opt.active {
-          border-color: var(--gold);
-          background: linear-gradient(135deg, var(--gold), var(--brass-deep));
-          color: var(--text);
-        }
+        .mode-btn.active { background:#171a27; color:white; border-color:#171a27; }
 
-        .cash-change {
-          background: var(--panel-dark-2);
-          border-radius: 8px;
-          padding: 10px 14px;
-          margin-bottom: 12px;
-          border: 1px solid var(--charcoal-line);
+        .action-row { display:grid; grid-template-columns:90px 1fr; gap:7px; }
+        .clear-btn,.settle-btn { height:46px; border-radius:11px; cursor:pointer; font-weight:800; }
+        .clear-btn { background:white; color:#73798b; border:1px solid var(--line); }
+        .clear-btn:disabled { opacity:.45; cursor:not-allowed; }
+        .settle-btn {
+          border:0; color:white; background:linear-gradient(135deg,var(--primary),var(--primary-dark));
+          box-shadow:0 9px 20px rgba(99,91,255,.23); font-size:13px;
         }
-        .cash-change-row {
-          display: flex;
-          justify-content: space-between;
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 12px;
-          padding: 2px 0;
-        }
-        .cash-change-row .lbl { color: var(--text-secondary); }
-        .cash-change-row .val { color: var(--text-light); font-weight: 600; }
-        .cash-change-row .val.change { color: var(--gold); }
-        .cash-input {
-          width: 100%;
-          border: none;
-          border-bottom: 1.5px solid var(--charcoal-line);
-          background: transparent;
-          color: var(--text-light);
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 14px;
-          padding: 4px 2px;
-          outline: none;
-        }
-        .cash-input:focus { border-bottom-color: var(--gold); }
+        .settle-btn:disabled { opacity:.45; box-shadow:none; cursor:not-allowed; }
 
-        .receipt-actions { display: flex; gap: 8px; }
-        .btn-clear {
-          flex: 1;
-          padding: 13px 0;
-          background: transparent;
-          border: 1.5px solid var(--danger);
-          color: var(--danger);
-          border-radius: 8px;
-          font-weight: 700;
-          font-size: 12.5px;
-          cursor: pointer;
+        .invoice-btn {
+          width:100%; height:34px; margin-bottom:9px; border:1px solid #c8c4ff;
+          background:var(--primary-soft); color:var(--primary); border-radius:9px;
+          cursor:pointer; font-size:10px; font-weight:800;
         }
-        .btn-clear:disabled { opacity: 0.3; cursor: not-allowed; }
-        .btn-settle {
-          flex: 2.2;
-          padding: 13px 0;
-          background: linear-gradient(135deg, var(--gold), var(--brass-deep));
-          color: var(--text);
-          border: none;
-          border-radius: 8px;
-          font-weight: 800;
-          font-size: 13.5px;
-          letter-spacing: 0.2px;
-          cursor: pointer;
-          font-family: 'Manrope', sans-serif;
-          box-shadow: 0 4px 14px rgba(255,179,0,0.35);
+        .success-banner {
+          padding:9px 10px; border-radius:9px; background:var(--green-soft); color:var(--green);
+          font-size:10px; font-weight:800; margin-bottom:9px;
         }
-        .btn-settle:hover:not(:disabled) { filter: brightness(1.06); }
-        .btn-settle:disabled { background: var(--charcoal-line); color: var(--text-secondary); box-shadow: none; cursor: not-allowed; }
+        .shortcuts { display:flex; justify-content:center; gap:9px; flex-wrap:wrap; color:#9aa0ae; font-size:8px; margin-top:10px; }
+        kbd { background:#f0f1f5; border:1px solid #dfe2e9; padding:2px 4px; border-radius:4px; color:#697080; }
 
-        .scan-mode-toggle {
-          display: flex;
-          gap: 6px;
-          margin-bottom: 12px;
-          background: var(--panel-dark-2);
-          padding: 4px;
-          border-radius: 8px;
-          border: 1px solid var(--charcoal-line);
-        }
-        .scan-mode-btn {
-          flex: 1;
-          padding: 5px 10px;
-          border: none;
-          border-radius: 6px;
-          background: transparent;
-          color: var(--text-secondary);
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 10px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.15s;
-        }
-        .scan-mode-btn.active {
-          background: var(--gold);
-          color: var(--text);
-        }
-        .scan-mode-btn:hover:not(.active) { background: var(--charcoal-soft); }
-
-        .shortcuts-hint {
-          display: flex;
-          gap: 12px;
-          flex-wrap: wrap;
-          margin-top: 10px;
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 9px;
-          color: #565C64;
-          justify-content: center;
-        }
-        .shortcuts-hint kbd {
-          background: var(--panel-dark-2);
-          padding: 2px 6px;
-          border-radius: 3px;
-          border: 1px solid var(--charcoal-line);
-          font-size: 9px;
-          color: var(--text-secondary);
-        }
-
-        /* ============ QTY MODAL ============ */
         .modal-overlay {
-          position: fixed;
-          inset: 0;
-          background: rgba(15,17,20,0.62);
-          backdrop-filter: blur(2px);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 1000;
-          padding: 16px;
+          position:fixed; inset:0; background:rgba(12,15,24,.58); backdrop-filter:blur(5px);
+          display:grid; place-items:center; padding:20px; z-index:100;
         }
-        .qty-tag {
-          background: var(--panel-dark);
-          border-radius: 16px;
-          padding: 24px;
-          width: 400px;
-          max-width: 100%;
-          box-shadow: 0 24px 64px rgba(0,0,0,0.5);
-          position: relative;
-          border: 1px solid var(--charcoal-line);
-          color: var(--text-light);
+        .qty-modal {
+          width:min(430px,100%); background:white; border-radius:22px; box-shadow:0 30px 90px rgba(0,0,0,.28);
+          overflow:hidden;
         }
-        .qty-tag-head {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          margin-bottom: 4px;
-        }
-        .qty-tag-head h3 {
-          font-family: 'Big Shoulders Display', sans-serif;
-          font-weight: 800;
-          font-size: 22px;
-          color: #fff;
-          margin: 0;
-          padding-right: 12px;
-        }
-        .qty-close {
-          background: none;
-          border: none;
-          font-size: 18px;
-          color: var(--text-secondary);
-          cursor: pointer;
-          flex-shrink: 0;
-        }
-        .qty-rate {
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 12px;
-          color: var(--text-secondary);
-          margin: 0 0 18px;
-        }
-        .qty-rate b { color: var(--gold); font-weight: 700; }
+        .qty-modal-head { padding:18px; background:linear-gradient(135deg,#171a27,#272c42); color:white; display:flex; justify-content:space-between; gap:10px; }
+        .qty-modal-head h3 { margin:0; font-family:'Plus Jakarta Sans',sans-serif; font-size:17px; }
+        .qty-close { border:0; background:rgba(255,255,255,.1); color:white; width:32px; height:32px; border-radius:9px; cursor:pointer; }
+        .qty-modal-body { padding:18px; }
+        .qty-rate { color:var(--muted); font-size:11px; margin-bottom:14px; }
+        .qty-rate b { color:var(--primary); font-size:16px; }
+        .qty-field { margin-bottom:12px; }
+        .qty-field label { display:block; color:var(--muted); font-size:10px; font-weight:800; margin-bottom:6px; }
+        .qty-input,.qty-select { width:100%; height:42px; border:1px solid var(--line); border-radius:10px; padding:0 11px; outline:none; background:white; }
+        .qty-input:focus,.qty-select:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(99,91,255,.09); }
+        .qty-preview { background:#f7f8fb; border-radius:13px; padding:12px; margin-top:12px; }
+        .qty-preview-row { display:flex; justify-content:space-between; color:var(--muted); font-size:10px; margin:5px 0; }
+        .qty-preview-row span:last-child { color:var(--ink); font-weight:700; }
+        .qty-total { border-top:1px dashed #d8dce5; margin-top:9px; padding-top:10px; display:flex; justify-content:space-between; align-items:center; }
+        .qty-total strong { font-family:'Plus Jakarta Sans',sans-serif; color:var(--primary); font-size:24px; }
+        .stock-note { color:var(--green); font-size:10px; font-weight:700; margin:10px 0; }
+        .modal-actions { display:grid; grid-template-columns:1fr 1.5fr; gap:8px; margin-top:13px; }
+        .modal-actions button { height:42px; border-radius:10px; cursor:pointer; font-weight:800; border:1px solid var(--line); }
+        .modal-cancel { background:white; color:var(--muted); }
+        .modal-confirm { background:var(--primary); color:white; border-color:var(--primary)!important; }
 
-        .qty-field { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-        .qty-field label { min-width: 68px; font-size: 12.5px; font-weight: 600; color: var(--text-secondary); }
-        .qty-input {
-          flex: 1;
-          padding: 9px 10px;
-          border: 1.5px solid var(--charcoal-line);
-          background: var(--panel-dark-2);
-          border-radius: 8px;
-          color: var(--text-light);
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 15px;
-          text-align: center;
-          outline: none;
+        @media(max-width:1150px) {
+          .main-grid { grid-template-columns:1fr; }
+          .checkout-panel { position:relative; top:auto; }
+          .product-grid { max-height:none; }
+          .dashboard-strip { grid-template-columns:repeat(2,1fr); }
         }
-        .qty-input:focus { border-color: var(--gold); }
-        .qty-select {
-          flex: 1;
-          padding: 9px 10px;
-          border: 1.5px solid var(--charcoal-line);
-          background: var(--panel-dark-2);
-          color: var(--text-light);
-          border-radius: 8px;
-          font-size: 13px;
-          outline: none;
-        }
-
-        .qty-preview {
-          margin-top: 16px;
-          background: var(--panel-dark-2);
-          border-radius: 12px;
-          padding: 4px;
-          border: 1px solid var(--charcoal-line);
-        }
-        .qty-preview-rows { padding: 10px 12px 4px; }
-        .qty-preview-row {
-          display: flex;
-          justify-content: space-between;
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 12px;
-          color: var(--text-secondary);
-          padding: 3px 0;
-        }
-        .qty-preview-total {
-          display: flex;
-          justify-content: space-between;
-          align-items: baseline;
-          padding: 12px 14px;
-          margin-top: 6px;
-          border-top: 1px dashed var(--charcoal-line);
-        }
-        .qty-preview-total .lbl {
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 9.5px;
-          letter-spacing: 2px;
-          text-transform: uppercase;
-          color: var(--text-secondary);
-        }
-        .qty-preview-total .val {
-          font-family: 'Orbitron', sans-serif;
-          font-size: 26px;
-          font-weight: 700;
-          color: var(--gold);
-          text-shadow: 0 0 10px rgba(255,179,0,0.5);
-        }
-
-        .qty-stock-note {
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 11px;
-          color: var(--text-secondary);
-          text-align: right;
-          margin-top: 8px;
-        }
-        .qty-footer { display: flex; gap: 10px; margin-top: 18px; }
-        .qty-cancel {
-          flex: 1;
-          padding: 12px;
-          background: transparent;
-          border: 1.5px solid var(--charcoal-line);
-          border-radius: 9px;
-          font-weight: 600;
-          font-size: 13.5px;
-          color: var(--text-secondary);
-          cursor: pointer;
-        }
-        .qty-confirm {
-          flex: 2;
-          padding: 12px;
-          background: linear-gradient(135deg, var(--gold), var(--brass-deep));
-          color: var(--text);
-          border: none;
-          border-radius: 9px;
-          font-weight: 800;
-          font-size: 13.5px;
-          cursor: pointer;
-        }
-        .qty-confirm:hover { filter: brightness(1.06); }
-        .qty-hint {
-          text-align: center;
-          margin-top: 10px;
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 10.5px;
-          color: #565C64;
-        }
-
-        /* ============ MANUAL QUANTITY BOX ============ */
-        .manual-quantity-box {
-          background: var(--panel-dark-2);
-          border-radius: 12px;
-          padding: 16px;
-          margin: 12px 0;
-          border: 1px solid var(--charcoal-line);
-          color: var(--text-light);
-        }
-        .manual-quantity-box h3 {
-          font-family: 'Big Shoulders Display', sans-serif;
-          font-weight: 700;
-          font-size: 18px;
-          color: #fff;
-          margin: 0 0 4px 0;
-        }
-        .manual-quantity-box p {
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 12px;
-          color: var(--text-secondary);
-          margin: 0 0 12px 0;
-        }
-        .manual-quantity-box p b {
-          color: var(--gold);
-        }
-        .manual-quantity-box h2 {
-          font-family: 'Orbitron', sans-serif;
-          font-size: 28px;
-          font-weight: 700;
-          color: var(--gold);
-          text-shadow: 0 0 12px rgba(255,179,0,0.4);
-          margin: 10px 0;
-        }
-        .manual-quantity-box .manual-input-group {
-          display: flex;
-          gap: 10px;
-          align-items: center;
-        }
-        .manual-quantity-box .manual-input-group input {
-          flex: 1;
-          padding: 10px 12px;
-          border: 1.5px solid var(--charcoal-line);
-          background: var(--panel-dark);
-          border-radius: 8px;
-          color: var(--text-light);
-          font-family: 'JetBrains Mono', monospace;
-          font-size: 15px;
-          outline: none;
-        }
-        .manual-quantity-box .manual-input-group input:focus {
-          border-color: var(--gold);
-        }
-        .manual-quantity-box .manual-input-group select {
-          padding: 10px 12px;
-          border: 1.5px solid var(--charcoal-line);
-          background: var(--panel-dark);
-          color: var(--text-light);
-          border-radius: 8px;
-          font-size: 13px;
-          outline: none;
-        }
-        .manual-quantity-box .manual-input-group select:focus {
-          border-color: var(--gold);
-        }
-        .manual-add-btn {
-          width: 100%;
-          padding: 12px;
-          margin-top: 12px;
-          background: linear-gradient(135deg, var(--gold), var(--brass-deep));
-          color: var(--text);
-          border: none;
-          border-radius: 8px;
-          font-weight: 800;
-          font-size: 14px;
-          cursor: pointer;
-          font-family: 'Manrope', sans-serif;
-        }
-        .manual-add-btn:hover {
-          filter: brightness(1.06);
-        }
-
-        /* Product clickable for manual mode */
-        .product-clickable {
-          cursor: pointer;
-        }
-        .product-clickable:hover .price-tag {
-          border-color: var(--gold);
-          box-shadow: 0 0 0 2px rgba(255,179,0,0.3);
-        }
-
-        @media (max-width: 1100px) {
-          .pos-layout { flex-direction: column; }
-          .receipt-col { max-width: 100%; position: static; width: 100%; }
-          .tag-grid { max-height: 480px; }
-        }
-        @media (max-width: 520px) {
-          .pos-wrap { padding: 12px; }
-          .tag-grid { 
-            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); 
-            gap: 10px; 
-          }
-          .shelf-heading { font-size: 26px; }
-          .scale-display .scale-total { font-size: 32px; }
-          .status-right { display: none; }
-          .tag-price { font-size: 17px; }
-          .tag-name { font-size: 13px; }
+        @media(max-width:700px) {
+          .retail-pos { padding:9px; }
+          .topbar { top:5px; border-radius:15px; }
+          .top-stat,.online-pill { display:none; }
+          .catalog-panel { padding:12px; border-radius:17px; }
+          .catalog-head { align-items:flex-start; }
+          .catalog-title { font-size:21px; }
+          .search-row { flex-wrap:wrap; }
+          .search-wrap { flex-basis:100%; }
+          .tool-btn { flex:1; justify-content:center; }
+          .dashboard-strip { grid-template-columns:1fr 1fr; gap:8px; }
+          .mini-card { padding:10px; }
+          .mini-value { font-size:15px; }
+          .product-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+          .product-card { min-height:180px; padding:10px; }
+          .checkout-panel { border-radius:17px; }
         }
       `}</style>
 
-      <div className="pos-wrap">
-        {/* Status Bar - Now using real business name and dashboard data */}
-        <div className="status-bar">
-          <div className="status-left">
-            <span className="status-brand">₹ {businessName.toUpperCase()} </span>
-            <span className="status-online">ONLINE</span>
-            <span style={{ color: '#6B7178' }}>Cashier: Admin</span>
-          </div>
-          <div className="status-right">
-            <span className="status-data">
-              <span className="label">Today:</span>
-              <span className="value gold">
-                ₹{Number(dashboard.todaySales).toLocaleString("en-IN", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2
-                })}
-              </span>
-            </span>
-            <span className="status-data">
-              <span className="label">Bills:</span>
-              <span className="value">{dashboard.todayBills || 0}</span>
-            </span>
-            <span>{currentTime.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
-            <span style={{ color: 'var(--gold)' }}>
-              {currentTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
-            </span>
-          </div>
-        </div>
-
-        <div className="pos-layout">
-          {/* LEFT: product shelf */}
-          <div className="shelf-col">
-            <div className="shelf-topbar">
-              <div className="brand-block">
-                <div className="brand-mark">₹</div>
-                <div className="shelf-heading">
-                  {businessName}
-                  <span className="sub"></span>
-                </div>
-              </div>
-              <div className="shelf-count">
-                {products.length} PRODUCTS
-                {search && ` · Showing ${filteredProducts.length} results`}
+      <div className="retail-pos">
+        <div className="pos-shell">
+          <header className="topbar">
+            <div className="brand-area">
+              <div className="brand-logo">₹</div>
+              <div className="brand-copy">
+                <div className="brand-name">{businessName}</div>
+                <div className="brand-sub">Retail billing workspace · {invoiceNo}</div>
               </div>
             </div>
-
-            <div className="shelf-search-row">
-              <input
-                id="search-input"
-                className="shelf-search"
-                placeholder="🔍 Search product / barcode / SKU..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-              <button
-                className={`voice-button ${isListening ? "voice-listening" : ""}`}
-                onClick={startVoiceBilling}
-              >
-                {isListening ? "🔴 LISTENING" : "🎤 VOICE"}
-              </button>
-              <button className="shelf-scan" onClick={() => setShowScanner(true)}>
-                📷 SCAN
-              </button>
+            <div className="top-actions">
+              <div className="online-pill"><span className="online-dot" /> Online</div>
+              <div className="top-stat"><span className="label">Today</span><strong>₹{Number(dashboard.todaySales || 0).toLocaleString("en-IN")}</strong></div>
+              <div className="top-stat"><span className="label">Bills</span><strong>{dashboard.todayBills || 0}</strong></div>
             </div>
+          </header>
 
-            {/* Voice Status Display */}
-            {(isListening || voiceText || voiceMessage) && (
-              <div className="voice-status">
-                <div className="voice-icon">
-                  {isListening ? "🎤" : "🗣️"}
-                </div>
+          <section className="dashboard-strip">
+            <div className="mini-card">
+              <div><div className="mini-label">Today Sales</div><div className="mini-value">₹{Number(dashboard.todaySales || 0).toLocaleString("en-IN",{maximumFractionDigits:0})}</div></div>
+              <div className="mini-icon purple">↗</div>
+            </div>
+            <div className="mini-card">
+              <div><div className="mini-label">Monthly Sales</div><div className="mini-value">₹{Number(dashboard.monthSales || 0).toLocaleString("en-IN",{maximumFractionDigits:0})}</div></div>
+              <div className="mini-icon green">₹</div>
+            </div>
+            <div className="mini-card">
+              <div><div className="mini-label">Customers</div><div className="mini-value">{dashboard.totalCustomers || 0}</div></div>
+              <div className="mini-icon blue">◉</div>
+            </div>
+            <div className="mini-card">
+              <div><div className="mini-label">Low Stock</div><div className="mini-value">{dashboard.lowStock || 0}</div></div>
+              <div className="mini-icon orange">!</div>
+            </div>
+          </section>
+
+          <div className="main-grid">
+            <section className="catalog-panel">
+              <div className="catalog-head">
                 <div>
-                  <div className="voice-title">
-                    {isListening ? "Listening..." : "Voice Billing"}
-                  </div>
-                  <div className="voice-result">
-                    {voiceText || voiceMessage}
-                  </div>
+                  <div className="eyebrow">Smart counter</div>
+                  <h1 className="catalog-title">Build a new bill</h1>
+                  <div className="catalog-desc">Search, scan or speak. Tap any product to add it.</div>
                 </div>
+                <div className="result-count">{products.length} products</div>
               </div>
-            )}
 
-            {/* Category Filters */}
-            <div className="category-filters">
-              {categories.map((cat) => (
-                <button
-                  key={cat}
-                  className={`cat-btn ${selectedCategory === cat ? 'active' : ''}`}
-                  onClick={() => setSelectedCategory(cat)}
-                >
-                  {cat}
+              <div className="search-row">
+                <div className="search-wrap">
+                  <span className="search-icon">⌕</span>
+                  <input
+                    id="search-input"
+                    className="main-search"
+                    placeholder="Search product, barcode or SKU..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </div>
+                <button className="tool-btn" onClick={startVoiceBilling}>
+                  {isListening ? "🔴 Listening" : "🎤 Voice"}
                 </button>
-              ))}
-            </div>
+                <button className="tool-btn primary" onClick={() => setShowScanner(true)}>▣ Scan</button>
+              </div>
 
-            <div className="tag-grid">
-              {filteredProducts.map((product) => {
-                const stockStatus = getStockStatus(product);
-                const unit = product.price_unit || "pcs";
-                const isOutOfStock = Number(product.stock) <= 0;
-                const formattedPrice = formatPrice(product.selling_price);
-                const pricePer = product.price_per || 1;
-                
-                return (
-                  <div 
-                    key={product.id} 
-                    className="price-tag"
-                  >
-                    <div className="tag-brass-strip" />
-                    <div className="tag-body">
-                      <div className="tag-name">{product.product_name}</div>
-
-                      <div className="tag-price-block">
-                        <span className="tag-price">
-                          <span className="rupee-symbol">₹</span>{formattedPrice}
-                        </span>
-                        <span className="tag-unit">
-                          <span className="per-text">per</span> {pricePer} {formatUnitDisplay(unit)}
-                        </span>
-                      </div>
-
-                      <div className={`tag-stock ${stockStatus.tone}`}>
-                        {isOutOfStock ? '⚠ OUT OF STOCK' : stockStatus.text}
-                      </div>
-
-                      {/* ========== ALWAYS SHOW POPUP ========== */}
-                      <button
-                        className="tag-add-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (isOutOfStock) return;
-                          openQuantityModal(product);
-                        }}
-                        disabled={isOutOfStock}
-                      >
-                        {isOutOfStock ? 'SOLD OUT' : '+ ADD'}
-                      </button>
-
-                      {product.sku && (
-                        <div className="tag-sku">SKU: {product.sku}</div>
-                      )}
-                    </div>
+              {(isListening || voiceText || voiceMessage) && (
+                <div className="voice-banner">
+                  <div className="voice-orb">{isListening ? "🎙️" : "🗣️"}</div>
+                  <div>
+                    <strong>{isListening ? "Voice billing is active" : "Voice result"}</strong>
+                    <span>{voiceText || voiceMessage}</span>
                   </div>
-                );
-              })}
-              {filteredProducts.length === 0 && <div className="no-products">No products found</div>}
-            </div>
-          </div>
-
-          {/* RIGHT: digital counter display */}
-          <div className="receipt-col">
-            <div className="receipt">
-              <div className="receipt-store-row">
-                <span className="receipt-store">{businessName} </span>
-                <span className="receipt-inv">{invoiceNo}</span>
-              </div>
-
-              <div className="scale-display">
-                <div className="scale-label">
-                  <span>BILL TOTAL</span>
-                  <span>
-                    {currentTime.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                    <span style={{ marginLeft: '8px', color: 'var(--gold)' }}>
-                      {currentTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
-                    </span>
-                  </span>
-                </div>
-                <div className="scale-total">
-                  <span className="rupee">₹</span>{grandTotal.toFixed(2)}
-                </div>
-                <div className="scale-meta">
-                  <span>{cart.reduce((sum, item) => sum + item.quantity, 0)} items</span>
-                  <span>{paymentMethod}</span>
-                </div>
-              </div>
-
-              {saleComplete && <div className="save-banner">✓ Bill settled</div>}
-
-              {/* Download / print the invoice for the last completed sale */}
-              {lastInvoice && (
-                <button
-                  className="invoice-download-btn"
-                  onClick={() => printInvoice(lastInvoice)}
-                >
-                  🧾 Download / Print Invoice ({lastInvoice.invoiceNo})
-                </button>
-              )}
-
-              <hr className="receipt-dash" />
-
-              <div className="customer-line">
-                <label>Customer Phone <span style={{ fontWeight: 'normal', color: 'var(--text-secondary)' }}>(optional)</span></label>
-                <input
-                  className="customer-input"
-                  placeholder="10-digit number or leave blank"
-                  value={customerPhone}
-                  onChange={(e) => {
-                    const phone = e.target.value.replace(/\D/g, "");
-                    setCustomerPhone(phone);
-                    if (phone.length === 10) {
-                      searchCustomer(phone);
-                    } else {
-                      setIsCustomerFound(false);
-                      setCustomerId(null);
-                      setCustomerName("");
-                    }
-                  }}
-                  type="tel"
-                  maxLength="10"
-                />
-                {customerPhone.length > 0 ? (
-                  <div className="customer-status">
-                    {isSearching ? (
-                      <span className="status-searching">checking...</span>
-                    ) : isCustomerFound ? (
-                      <span className="status-found">✓ {customerName}</span>
-                    ) : customerPhone.length === 10 ? (
-                      <span className="status-new">new customer</span>
-                    ) : (
-                      <span className="status-invalid">enter 10 digits</span>
-                    )}
-                  </div>
-                ) : (
-                  <div className="walkin-badge">
-                    <span className="icon">👤</span>
-                    Walk-in Customer
-                  </div>
-                )}
-              </div>
-
-              <div className="items-zone">
-                {cart.length === 0 ? (
-                  <div className="empty-receipt">No items added yet</div>
-                ) : (
-                  cart.map((item, index) => (
-                    <div key={`${item.id}-${index}`} className="item-line">
-                      <div className="name-block">
-                        <span className="nm">{item.product_name}</span>
-                        <span className="qty">
-                          {formatUnitDisplay(item.unit)} · ₹{item.price_per_unit?.toFixed(2) || item.price?.toFixed(2) || "0.00"}/{formatUnitDisplay(item.base_unit || item.price_unit)}
-                        </span>
-                      </div>
-                      <div className="qty-controls">
-                        <button className="qty-btn" onClick={() => changeQty(item.id, -1, item.unit)}>−</button>
-                        <span className="qty-val">{item.quantity}</span>
-                        <button className="qty-btn" onClick={() => changeQty(item.id, 1, item.unit)}>+</button>
-                      </div>
-                      <span className="amt">₹{(item.totalPrice || item.total || 0).toFixed(2)}</span>
-                      <button className="rm" onClick={() => changeQty(item.id, 0, item.unit)}>✕</button>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              <hr className="receipt-dash" />
-
-              <div className="totals-block">
-                <div className="totals-row"><span>Subtotal</span><span className="v">₹{subtotal.toFixed(2)}</span></div>
-                <div className="totals-row"><span>Discount ({discount}%)</span><span className="v">−₹{discountAmount.toFixed(2)}</span></div>
-                <div className="totals-row"><span>Taxable</span><span className="v">₹{taxableAmount.toFixed(2)}</span></div>
-                <div className="totals-row"><span>CGST ({(gst / 2).toFixed(0)}%)</span><span className="v">₹{cgst.toFixed(2)}</span></div>
-                <div className="totals-row"><span>SGST ({(gst / 2).toFixed(0)}%)</span><span className="v">₹{sgst.toFixed(2)}</span></div>
-              </div>
-
-              <div className="field-pair">
-                <div className="fld">
-                  <label>Discount %</label>
-                  <input type="number" value={discount} onChange={(e) => setDiscount(Number(e.target.value))} min="0" max="100" />
-                </div>
-                <div className="fld">
-                  <label>GST %</label>
-                  <input type="number" value={gst} onChange={(e) => setGst(Number(e.target.value))} min="0" max="100" />
-                </div>
-              </div>
-
-              <div className="pay-row">
-                <button
-                  className={`pay-opt ${paymentMethod === "Cash" ? "active" : ""}`}
-                  onClick={() => setPaymentMethod("Cash")}
-                >
-                  💵 Cash
-                </button>
-                <button
-                  className={`pay-opt ${paymentMethod === "UPI" ? "active" : ""}`}
-                  onClick={() => setPaymentMethod("UPI")}
-                >
-                  📱 UPI
-                </button>
-                <button
-                  className={`pay-opt ${paymentMethod === "Card" ? "active" : ""}`}
-                  onClick={() => setPaymentMethod("Card")}
-                >
-                  💳 Card
-                </button>
-              </div>
-
-              {paymentMethod === "Cash" && (
-                <div className="cash-change">
-                  <div className="cash-change-row">
-                    <span className="lbl">Bill Total</span>
-                    <span className="val">₹{grandTotal.toFixed(2)}</span>
-                  </div>
-                  <div className="cash-change-row" style={{ marginTop: '4px' }}>
-                    <span className="lbl">Cash Received</span>
-                    <input
-                      id="cash-received"
-                      className="cash-input"
-                      type="number"
-                      placeholder="0.00"
-                      value={cashReceived}
-                      onChange={(e) => setCashReceived(e.target.value)}
-                      style={{ width: '120px', textAlign: 'right', display: 'inline-block' }}
-                    />
-                  </div>
-                  {showChange && (
-                    <div className="cash-change-row" style={{ marginTop: '4px', borderTop: '1px dashed var(--charcoal-line)', paddingTop: '4px' }}>
-                      <span className="lbl">Change</span>
-                      <span className="val change">₹{change.toFixed(2)}</span>
-                    </div>
-                  )}
+                  {isListening && <button className="voice-stop" onClick={stopVoiceBilling}>Stop</button>}
                 </div>
               )}
 
-              <div className="scan-mode-toggle">
-                <button
-                  className={`scan-mode-btn ${scanMode === "quick" ? "active" : ""}`}
-                  onClick={() => setScanMode("quick")}
-                >
-                  ⚡ Quick Add
-                </button>
-                <button
-                  className={`scan-mode-btn ${scanMode === "ask" ? "active" : ""}`}
-                  onClick={() => {
-                    setScanMode("ask");
-                    setManualSelectedProduct(null);
-                  }}
-                >
-                  📋 Ask Quantity
-                </button>
+              <div className="category-row">
+                {categories.map((cat) => (
+                  <button key={cat} className={`category-pill ${selectedCategory === cat ? "active" : ""}`} onClick={() => setSelectedCategory(cat)}>
+                    {cat}
+                  </button>
+                ))}
               </div>
 
-              <div className="receipt-actions">
-                <button className="btn-clear" onClick={clearCart} disabled={cart.length === 0}>Clear</button>
-                <button
-                  className="btn-settle"
-                  onClick={saveSale}
-                  disabled={savingSale || cart.length === 0 || !isPhoneValid}
-                >
-                  {savingSale ? "Saving..." : `Settle ₹${grandTotal.toFixed(2)}`}
-                </button>
+              <div className="catalog-meta">
+                <span className="result-count">{search ? `${filteredProducts.length} matching products` : "Popular products"}</span>
+                <span className="result-count">{selectedCategory}</span>
               </div>
 
-              <div className="shortcuts-hint">
-                <span><kbd>F2</kbd> Search</span>
-                <span><kbd>F4</kbd> Scan</span>
-                <span><kbd>F8</kbd> Cash</span>
-                <span><kbd>Ctrl+Enter</kbd> Complete</span>
+              <div className="product-grid">
+                {filteredProducts.map((product) => {
+                  const stockStatus = getStockStatus(product);
+                  const unit = product.price_unit || "pcs";
+                  const out = Number(product.stock) <= 0;
+                  const initial = String(product.product_name || "?").trim().charAt(0).toUpperCase();
+                  return (
+                    <div key={product.id} className={`product-card ${out ? "out" : ""}`} onClick={() => {
+                        if (out) return;
+                        scanMode === "quick" ? quickAddToCart(product) : openQuantityModal(product);
+                      }}>
+                      <div className="product-top">
+                        <div className="product-avatar">{initial}</div>
+                        <span className={`stock-pill ${stockStatus.tone}`}>{out ? "OUT" : stockStatus.text}</span>
+                      </div>
+                      <div className="product-name">{product.product_name}</div>
+                      {product.sku && <div className="product-sku">SKU · {product.sku}</div>}
+                      <div className="product-bottom">
+                        <div>
+                          <div className="product-price">₹{formatPrice(product.selling_price)}</div>
+                          <div className="product-rate">per {product.price_per || 1} {formatUnitDisplay(unit)}</div>
+                        </div>
+                        <button className="add-circle" disabled={out} onClick={(e) => {
+                            e.stopPropagation();
+                            if (!out) {
+                              scanMode === "quick" ? quickAddToCart(product) : openQuantityModal(product);
+                            }
+                          }}>
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+                {filteredProducts.length === 0 && <div className="bill-empty" style={{gridColumn:"1 / -1"}}>No products found. Try another name, barcode or SKU.</div>}
               </div>
-            </div>
+            </section>
+
+            <aside className="checkout-panel">
+              <div className="checkout-head">
+                <div className="checkout-title-row">
+                  <div className="checkout-title">Current Bill</div>
+                  <div className="invoice-tag">{invoiceNo}</div>
+                </div>
+                <div className="total-label">Amount to collect</div>
+                <div className="grand-total">₹{grandTotal.toFixed(2)}</div>
+                <div className="checkout-meta">
+                  <span className="meta-chip">{cart.reduce((sum,item)=>sum+item.quantity,0)} items</span>
+                  <span className="meta-chip">{paymentMethod}</span>
+                  <span className="meta-chip">{currentTime.toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit"})}</span>
+                </div>
+              </div>
+
+              <div className="checkout-body">
+                {saleComplete && <div className="success-banner">✓ Bill saved successfully</div>}
+
+                {lastInvoice && (
+                  <button className="invoice-btn" onClick={() => printInvoice(lastInvoice)}>🧾 Print / Save last invoice · {lastInvoice.invoiceNo}</button>
+                )}
+
+                <div className="customer-box">
+                  <label className="field-label">Customer phone <span style={{fontWeight:400}}>(optional)</span></label>
+                  <input
+                    className="customer-input"
+                    placeholder="Enter 10-digit number"
+                    value={customerPhone}
+                    onChange={(e) => {
+                      const phone = e.target.value.replace(/\D/g,"");
+                      setCustomerPhone(phone);
+                      if (phone.length === 10) searchCustomer(phone);
+                      else { setIsCustomerFound(false); setCustomerId(null); setCustomerName(""); }
+                    }}
+                    type="tel"
+                    maxLength="10"
+                  />
+                  {customerPhone ? (
+                    <div className="customer-status">
+                      {isSearching ? <span className="status-searching">Checking customer...</span> :
+                       isCustomerFound ? <span className="status-found">✓ {customerName}</span> :
+                       customerPhone.length === 10 ? <span className="status-new">New customer</span> :
+                       <span className="status-invalid">Enter 10 digits</span>}
+                    </div>
+                  ) : <div className="walkin">👤 Walk-in Customer</div>}
+                </div>
+
+                <div className="bill-items">
+                  {cart.length === 0 ? (
+                    <div className="bill-empty">
+                      <div className="empty-icon">🛒</div>
+                      <strong>Your bill is empty</strong>
+                      <div style={{marginTop:4}}>Select products from the catalog</div>
+                    </div>
+                  ) : cart.map((item,index) => (
+                    <div key={`${item.id}-${index}`} className="bill-item">
+                      <div>
+                        <div className="bill-name">{item.product_name}</div>
+                        <div className="bill-rate">₹{(item.price_per_unit || 0).toFixed(2)} / {formatUnitDisplay(item.base_unit || item.unit)}</div>
+                      </div>
+                      <div className="qty-control">
+                        <button onClick={() => changeQty(item.id,-1,item.unit)}>−</button>
+                        <span>{item.quantity}</span>
+                        <button onClick={() => changeQty(item.id,1,item.unit)}>+</button>
+                      </div>
+                      <div style={{display:"flex",alignItems:"center",gap:3}}>
+                        <span className="bill-amount">₹{(item.totalPrice || 0).toFixed(2)}</span>
+                        <button className="remove-item" onClick={() => changeQty(item.id,0,item.unit)}>×</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="summary">
+                  <div className="summary-row"><span>Subtotal</span><strong>₹{subtotal.toFixed(2)}</strong></div>
+                  <div className="summary-row"><span>Discount ({discount}%)</span><strong>−₹{discountAmount.toFixed(2)}</strong></div>
+                  <div className="summary-row"><span>Taxable</span><strong>₹{taxableAmount.toFixed(2)}</strong></div>
+                  <div className="summary-row"><span>CGST + SGST ({gst}%)</span><strong>₹{taxAmount.toFixed(2)}</strong></div>
+                </div>
+
+                <div className="settings-row">
+                  <div className="small-field"><label>Discount %</label><input type="number" value={discount} min="0" max="100" onChange={(e)=>setDiscount(Number(e.target.value))}/></div>
+                  <div className="small-field"><label>GST %</label><input type="number" value={gst} min="0" max="100" onChange={(e)=>setGst(Number(e.target.value))}/></div>
+                </div>
+
+                <div className="payment-row">
+                  {["Cash","UPI","Card"].map((method)=>(
+                    <button key={method} className={`payment-btn ${paymentMethod===method ? "active" : ""}`} onClick={()=>setPaymentMethod(method)}>
+                      {method==="Cash" ? "💵" : method==="UPI" ? "📱" : "💳"} {method}
+                    </button>
+                  ))}
+                </div>
+
+                {paymentMethod === "Cash" && (
+                  <div className="cash-box">
+                    <div className="cash-line"><span>Cash received</span><input id="cash-received" className="cash-input" type="number" placeholder="0.00" value={cashReceived} onChange={(e)=>setCashReceived(e.target.value)}/></div>
+                    {showChange && <div className="cash-line" style={{marginTop:7}}><span>Change</span><span className="change-value">₹{change.toFixed(2)}</span></div>}
+                  </div>
+                )}
+
+                <div className="mode-row">
+                  <button className={`mode-btn ${scanMode==="quick" ? "active" : ""}`} onClick={()=>setScanMode("quick")}>⚡ Quick add</button>
+                  <button className={`mode-btn ${scanMode==="ask" ? "active" : ""}`} onClick={()=>{setScanMode("ask");setManualSelectedProduct(null);}}>📋 Ask quantity</button>
+                </div>
+
+                <div className="action-row">
+                  <button className="clear-btn" onClick={clearCart} disabled={!cart.length}>Clear</button>
+                  <button className="settle-btn" onClick={saveSale} disabled={savingSale || !cart.length || !isPhoneValid}>
+                    {savingSale ? "Saving..." : `Complete bill · ₹${grandTotal.toFixed(2)}`}
+                  </button>
+                </div>
+
+                <div className="shortcuts">
+                  <span><kbd>F2</kbd> Search</span><span><kbd>F4</kbd> Scan</span><span><kbd>F8</kbd> Cash</span><span><kbd>Ctrl+Enter</kbd> Pay</span>
+                </div>
+              </div>
+            </aside>
           </div>
         </div>
       </div>
 
-      {/* Quantity modal */}
       {showQtyModal && selectedProduct && (
-        <div
-          className="modal-overlay"
-          onClick={() => {
-            setShowQtyModal(false);
-            setSelectedProduct(null);
-            setQuantity(1);
-            setSelectedUnit("pcs");
-          }}
-        >
-          <div className="qty-tag" onClick={(e) => e.stopPropagation()}>
-            <div className="qty-tag-head">
-              <h3>{selectedProduct.product_name}</h3>
-              <button
-                className="qty-close"
-                onClick={() => {
-                  setShowQtyModal(false);
-                  setSelectedProduct(null);
-                  setQuantity(1);
-                  setSelectedUnit("pcs");
-                }}
-              >
-                ✕
-              </button>
+        <div className="modal-overlay" onClick={() => {setShowQtyModal(false);setSelectedProduct(null);setQuantity(1);setSelectedUnit("pcs");}}>
+          <div className="qty-modal" onClick={(e)=>e.stopPropagation()}>
+            <div className="qty-modal-head">
+              <div><h3>{selectedProduct.product_name}</h3><div style={{fontSize:10,color:"#b8bdd0",marginTop:4}}>Add product to current bill</div></div>
+              <button className="qty-close" onClick={()=>{setShowQtyModal(false);setSelectedProduct(null);setQuantity(1);setSelectedUnit("pcs");}}>✕</button>
             </div>
-            <div className="qty-rate">
-              <b>₹{formatPrice(selectedProduct.selling_price)}</b> per {selectedProduct.price_per || 1} {formatUnitDisplay(selectedProduct.price_unit || "pcs")}
-            </div>
-
-            <div className="qty-field">
-              <label>Quantity</label>
-              <input
-                ref={quantityInputRef}
-                className="qty-input"
-                type="number"
-                value={quantity}
-                onChange={(e) => setQuantity(Number(e.target.value))}
-                onKeyDown={handleKeyPress}
-                min="0.01"
-                max={selectedProduct.stock}
-                step="0.01"
-              />
-            </div>
-
-            <div className="qty-field">
-              <label>Unit</label>
-              <select
-                className="qty-select"
-                value={selectedUnit}
-                onChange={(e) => setSelectedUnit(e.target.value)}
-              >
-                {getCompatibleUnits(selectedProduct.price_unit || "pcs").map((unit) => (
-                  <option key={unit} value={unit}>{formatUnitDisplay(unit)}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="qty-preview">
-              <div className="qty-preview-rows">
-                <div className="qty-preview-row">
-                  <span>Quantity</span>
-                  <span>{quantity} {formatUnitDisplay(selectedUnit)}</span>
-                </div>
-                {selectedUnit !== (selectedProduct.price_unit || "pcs") && (
-                  <div className="qty-preview-row">
-                    <span>Converted</span>
-                    <span>
-                      {calculateLivePrice().displayQuantity.toFixed(2)}{" "}
-                      {formatUnitDisplay(calculateLivePrice().displayUnit)}
-                    </span>
-                  </div>
-                )}
-                <div className="qty-preview-row">
-                  <span>Rate</span>
-                  <span>
-                    ₹{formatPrice(selectedProduct.selling_price)} / {selectedProduct.price_per || 1}{" "}
-                    {formatUnitDisplay(selectedProduct.price_unit || "pcs")}
-                  </span>
-                </div>
+            <div className="qty-modal-body">
+              <div className="qty-rate"><b>₹{formatPrice(selectedProduct.selling_price)}</b> per {selectedProduct.price_per || 1} {formatUnitDisplay(selectedProduct.price_unit || "pcs")}</div>
+              <div className="qty-field"><label>Quantity</label><input ref={quantityInputRef} className="qty-input" type="number" value={quantity} onChange={(e)=>setQuantity(Number(e.target.value))} onKeyDown={handleKeyPress} min="0.01" max={selectedProduct.stock} step="0.01"/></div>
+              <div className="qty-field"><label>Unit</label><select className="qty-select" value={selectedUnit} onChange={(e)=>setSelectedUnit(e.target.value)}>{getCompatibleUnits(selectedProduct.price_unit || "pcs").map((unit)=><option key={unit} value={unit}>{formatUnitDisplay(unit)}</option>)}</select></div>
+              <div className="qty-preview">
+                <div className="qty-preview-row"><span>Entered</span><span>{quantity} {formatUnitDisplay(selectedUnit)}</span></div>
+                {selectedUnit !== (selectedProduct.price_unit || "pcs") && <div className="qty-preview-row"><span>Converted</span><span>{calculateLivePrice().displayQuantity.toFixed(2)} {formatUnitDisplay(calculateLivePrice().displayUnit)}</span></div>}
+                <div className="qty-preview-row"><span>Rate</span><span>₹{formatPrice(selectedProduct.selling_price)} / {selectedProduct.price_per || 1} {formatUnitDisplay(selectedProduct.price_unit || "pcs")}</span></div>
+                <div className="qty-total"><span style={{fontSize:10,color:"var(--muted)",fontWeight:700}}>ITEM TOTAL</span><strong>₹{liveTotalDigits}</strong></div>
               </div>
-              <div className="qty-preview-total">
-                <span className="lbl">Total</span>
-                <span className="val">₹{liveTotalDigits}</span>
+              <div className="stock-note">✓ {selectedProduct.stock} {formatUnitDisplay(selectedProduct.price_unit || "pcs")} available</div>
+              <div className="modal-actions">
+                <button className="modal-cancel" onClick={()=>{setShowQtyModal(false);setSelectedProduct(null);setQuantity(1);setSelectedUnit("pcs");}}>Cancel</button>
+                <button className="modal-confirm" onClick={addToCartWithQuantity}>Add to bill</button>
               </div>
+              <div style={{textAlign:"center",fontSize:9,color:"var(--muted)",marginTop:9}}><kbd>Enter</kbd> add · <kbd>Esc</kbd> cancel</div>
             </div>
-
-            <div className="qty-stock-note">
-              {selectedProduct.stock} {formatUnitDisplay(selectedProduct.price_unit || "pcs")} available
-            </div>
-
-            <div className="qty-footer">
-              <button
-                className="qty-cancel"
-                onClick={() => {
-                  setShowQtyModal(false);
-                  setSelectedProduct(null);
-                  setQuantity(1);
-                  setSelectedUnit("pcs");
-                }}
-              >
-                Cancel
-              </button>
-              <button className="qty-confirm" onClick={addToCartWithQuantity}>
-                Add to Bill
-              </button>
-            </div>
-            <div className="qty-hint"><kbd>Enter</kbd> to add · <kbd>Esc</kbd> to cancel</div>
           </div>
         </div>
       )}
 
-      {/* Barcode Scanner Modal - FIXED: removed businessId prop */}
       {showScanner && (
         <BarcodeScanner
           onClose={() => setShowScanner(false)}
