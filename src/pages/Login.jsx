@@ -298,47 +298,6 @@ export default function Login() {
     return () => clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    const updateProgress = () => {
-      const doc = document.documentElement;
-      const max = doc.scrollHeight - window.innerHeight;
-      const progress = max > 0 ? (window.scrollY / max) * 100 : 0;
-      document.documentElement.style.setProperty("--fp-scroll-progress", `${progress}%`);
-    };
-
-    updateProgress();
-    window.addEventListener("scroll", updateProgress, { passive: true });
-    window.addEventListener("resize", updateProgress);
-    return () => {
-      window.removeEventListener("scroll", updateProgress);
-      window.removeEventListener("resize", updateProgress);
-    };
-  }, []);
-
-  useEffect(() => {
-    const nodes = Array.from(document.querySelectorAll("[data-scroll-reveal]"));
-    if (!nodes.length) return;
-
-    const reveal = (entry) => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add("is-visible");
-      }
-    };
-
-    if (typeof IntersectionObserver === "undefined") {
-      nodes.forEach((node) => node.classList.add("is-visible"));
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => entries.forEach(reveal),
-      { threshold: 0.16, rootMargin: "0px 0px -7% 0px" }
-    );
-
-    nodes.forEach((node) => observer.observe(node));
-    return () => observer.disconnect();
-  }, []);
-
   const finishLogin = (data) => {
     const { user, business, token } = data;
     login(user, token);
@@ -501,12 +460,8 @@ export default function Login() {
         )}
       </header>
 
-      <div className="fp-scroll-progress" aria-hidden="true">
-        <span />
-      </div>
-
       <main>
-        <section className="fp-hero fp-section-hero" id="product" data-scroll-reveal="zoom">
+        <section className="fp-hero" id="product">
           <div className="fp-container fp-hero-grid">
             <div className="fp-hero-copy">
               <div className="fp-eyebrow">
@@ -585,68 +540,41 @@ export default function Login() {
           </div>
         </section>
 
-        <section className="fp-section fp-light fp-section-features" id="features">
-          <div className="fp-container fp-showcase-container">
-            <div className="fp-section-heading fp-showcase-heading" data-scroll-reveal="up">
-              <span className="fp-kicker">THE WORKSPACE, SECTION BY SECTION</span>
-              <h2>Every part of your business.<br /><em>Designed to stay in view.</em></h2>
+        <section className="fp-section fp-light" id="features">
+          <div className="fp-container">
+            <div className="fp-section-heading">
+              <span className="fp-kicker">ONE WORKSPACE</span>
+              <h2>Everything your business does.<br /><em>Connected in one place.</em></h2>
               <p>
-                Scroll through the workspace. Each module gets its own visual moment,
-                with the business explanation and live-style dashboard moving from
-                left to right and right to left.
+                FinancePro brings the everyday operating pieces together so the owner
+                can move from action to information without rebuilding the picture manually.
               </p>
             </div>
 
-            <div className="fp-showcase-list">
-              {FEATURES.map((item, index) => (
-                <article
-                  className={`fp-showcase-row ${index % 2 ? "is-reverse" : ""}`}
-                  key={item.id}
-                  data-scroll-reveal={index % 2 ? "right" : "left"}
-                >
-                  <div className="fp-showcase-copy">
-                    <div className="fp-showcase-index">0{index + 1}</div>
-                    <span className="fp-showcase-icon">{item.icon}</span>
-                    <span className="fp-kicker">{item.eyebrow}</span>
-                    <h3>{item.headline}</h3>
-                    <p>{item.description}</p>
+            <div className="fp-feature-detail">
+              <div className="fp-detail-copy">
+                <span className="fp-detail-icon">{feature.icon}</span>
+                <span className="fp-kicker">{feature.eyebrow}</span>
+                <h3>{feature.headline}</h3>
+                <p>{feature.description}</p>
 
-                    <div className="fp-showcase-points">
-                      {item.points.map((point) => (
-                        <span key={point}>
-                          <i>✓</i>{point}
-                        </span>
-                      ))}
-                    </div>
+                <div className="fp-points">
+                  {feature.points.map((point) => (
+                    <span key={point}>✓ {point}</span>
+                  ))}
+                </div>
 
-                    <button
-                      type="button"
-                      className={`fp-showcase-link ${active === index ? "selected" : ""}`}
-                      onClick={() => {
-                        setActive(index);
-                        document.getElementById("demo")?.scrollIntoView({ behavior: "smooth" });
-                      }}
-                    >
-                      Explore {item.label} <span>↗</span>
-                    </button>
-                  </div>
+                <a href="#demo" className="fp-arrow-link">Explore this workflow <span>↗</span></a>
+              </div>
 
-                  <div className="fp-showcase-visual">
-                    <div className="fp-showcase-glow" />
-                    <div className="fp-showcase-number">{String(index + 1).padStart(2, "0")}</div>
-                    <DashboardPreview feature={item} />
-                    <div className="fp-showcase-caption">
-                      <span><i /> OWNER WORKSPACE</span>
-                      <b>{item.screenTitle}</b>
-                    </div>
-                  </div>
-                </article>
-              ))}
+              <div className="fp-detail-preview">
+                <DashboardPreview feature={feature} />
+              </div>
             </div>
           </div>
         </section>
 
-        <section className="fp-section fp-workflow fp-section-workflow" id="workflow" data-scroll-reveal="left">
+        <section className="fp-section fp-workflow" id="workflow">
           <div className="fp-container">
             <div className="fp-split-heading">
               <div>
@@ -677,7 +605,7 @@ export default function Login() {
           </div>
         </section>
 
-        <section className="fp-section fp-demo-section fp-section-demo" id="demo" data-scroll-reveal="scale">
+        <section className="fp-section fp-demo-section" id="demo">
           <div className="fp-container">
             <div className="fp-demo-header">
               <div>
@@ -765,7 +693,7 @@ export default function Login() {
           </div>
         </section>
 
-        <section className="fp-section fp-ai-section fp-section-ai" id="ai" data-scroll-reveal="right">
+        <section className="fp-section fp-ai-section" id="ai">
           <div className="fp-container fp-ai-grid">
             <div>
               <span className="fp-kicker">AI BUSINESS</span>
@@ -806,7 +734,7 @@ export default function Login() {
           </div>
         </section>
 
-        <section className="fp-section fp-final fp-section-final" data-scroll-reveal="up">
+        <section className="fp-section fp-final">
           <div className="fp-container">
             <div className="fp-final-card">
               <div>
@@ -825,7 +753,7 @@ export default function Login() {
           </div>
         </section>
 
-        <section className="fp-login-section fp-section-login" id="login" data-scroll-reveal="rise">
+        <section className="fp-login-section" id="login">
           <div className="fp-container fp-login-grid">
             <div className="fp-login-copy">
               <span className="fp-kicker">OWNER LOGIN</span>
@@ -1224,281 +1152,6 @@ button,a{ -webkit-tap-highlight-color:transparent }
   html{scroll-behavior:auto}.fp-preview-shell{animation:none}.fp-bars i,.fp-big-bars i{animation:none}
 }
 
-
-/* TRENDING SCROLL EXPERIENCE */
-:root{
-  --fp-scroll-progress:0%;
-  --fp-ink:#101C2C;
-  --fp-green:#1F6F54;
-  --fp-gold:#C9A227;
-  --fp-blue:#2E5BFF;
-}
-
-html{scroll-padding-top:82px}
-
-.fp-scroll-progress{
-  position:fixed;
-  left:0;
-  right:0;
-  top:0;
-  height:3px;
-  z-index:999;
-  pointer-events:none;
-  background:rgba(16,28,44,.06);
-}
-.fp-scroll-progress span{
-  display:block;
-  width:var(--fp-scroll-progress);
-  height:100%;
-  transform-origin:left center;
-  background:linear-gradient(90deg,#1F6F54,#C9A227,#2E5BFF);
-  box-shadow:0 0 14px rgba(46,91,255,.22);
-  transition:width .08s linear;
-}
-
-/* Each major section gets its own entrance motion. */
-[data-scroll-reveal]{
-  opacity:0;
-  transition:
-    opacity .85s cubic-bezier(.22,1,.36,1),
-    transform .95s cubic-bezier(.22,1,.36,1),
-    filter .95s cubic-bezier(.22,1,.36,1);
-  will-change:opacity,transform;
-}
-[data-scroll-reveal="up"]{transform:translate3d(0,56px,0)}
-[data-scroll-reveal="left"]{transform:translate3d(-70px,0,0)}
-[data-scroll-reveal="right"]{transform:translate3d(70px,0,0)}
-[data-scroll-reveal="rise"]{transform:translate3d(0,70px,0) scale(.985)}
-[data-scroll-reveal="scale"]{transform:translate3d(0,28px,0) scale(.965)}
-[data-scroll-reveal="zoom"]{transform:translate3d(0,18px,0) scale(.985);filter:saturate(.82)}
-[data-scroll-reveal].is-visible{
-  opacity:1;
-  transform:none;
-  filter:none;
-}
-
-/* Hero: editorial / premium SaaS opening. */
-.fp-section-hero{
-  position:relative;
-  isolation:isolate;
-  overflow:hidden;
-}
-.fp-section-hero::before,
-.fp-section-hero::after{
-  content:"";
-  position:absolute;
-  pointer-events:none;
-  border-radius:50%;
-  filter:blur(1px);
-  z-index:-1;
-}
-.fp-section-hero::before{
-  width:520px;height:520px;
-  right:-180px;top:70px;
-  border:1px solid rgba(46,91,255,.10);
-  box-shadow:0 0 0 70px rgba(46,91,255,.025),0 0 0 140px rgba(46,91,255,.018);
-}
-.fp-section-hero::after{
-  width:280px;height:280px;
-  left:-150px;bottom:20px;
-  background:radial-gradient(circle,rgba(201,162,39,.12),transparent 68%);
-}
-
-/* Feature section: clean card / bento treatment. */
-.fp-section-features{
-  position:relative;
-  overflow:hidden;
-}
-.fp-section-features::after{
-  content:"";
-  position:absolute;
-  width:240px;height:240px;
-  right:-110px;top:130px;
-  border-radius:50%;
-  background:radial-gradient(circle,rgba(31,111,84,.09),transparent 68%);
-  pointer-events:none;
-}
-.fp-section-features .fp-feature-detail{
-  position:relative;
-}
-.fp-section-features .fp-detail-copy,
-.fp-section-features .fp-detail-preview{
-  transition:transform .45s ease, box-shadow .45s ease;
-}
-.fp-section-features .fp-detail-preview{
-  border-radius:24px;
-}
-.fp-section-features .fp-detail-preview:hover{
-  transform:translateY(-5px);
-}
-
-/* Workflow: horizontal timeline becomes a strong editorial band. */
-.fp-section-workflow{
-  position:relative;
-}
-.fp-section-workflow::before{
-  content:"";
-  position:absolute;
-  inset:0;
-  background:
-    radial-gradient(circle at 12% 75%,rgba(201,162,39,.10),transparent 22%),
-    radial-gradient(circle at 88% 15%,rgba(46,91,255,.10),transparent 24%);
-  pointer-events:none;
-}
-.fp-section-workflow .fp-container{position:relative;z-index:1}
-.fp-section-workflow .fp-journey-step{
-  transition:transform .35s ease;
-}
-.fp-section-workflow .fp-journey-step:hover{
-  transform:translateY(-5px);
-}
-.fp-section-workflow .fp-step-number{
-  display:inline-flex;
-  min-width:31px;
-  padding:5px 7px;
-  border:1px solid rgba(201,162,39,.35);
-  border-radius:999px;
-  background:rgba(201,162,39,.07);
-}
-
-/* Demo: product-showcase / glass-board treatment. */
-.fp-section-demo{
-  position:relative;
-  overflow:hidden;
-}
-.fp-section-demo::before{
-  content:"";
-  position:absolute;
-  left:50%;
-  top:160px;
-  width:720px;height:720px;
-  transform:translateX(-50%);
-  border-radius:50%;
-  background:radial-gradient(circle,rgba(46,91,255,.065),transparent 66%);
-  pointer-events:none;
-}
-.fp-section-demo .fp-container{position:relative;z-index:1}
-.fp-section-demo .fp-demo-board{
-  transform:perspective(1400px) rotateX(0deg);
-  transition:transform .65s cubic-bezier(.22,1,.36,1),box-shadow .65s ease;
-}
-.fp-section-demo .fp-demo-board:hover{
-  transform:perspective(1400px) rotateX(1deg) translateY(-6px);
-  box-shadow:0 34px 80px rgba(16,28,44,.22);
-}
-
-/* AI: darker, futuristic visual language. */
-.fp-section-ai{
-  position:relative;
-  overflow:hidden;
-  background:
-    radial-gradient(circle at 82% 45%,rgba(46,91,255,.055),transparent 28%),
-    radial-gradient(circle at 8% 75%,rgba(201,162,39,.045),transparent 25%),
-    #fff;
-}
-.fp-section-ai::after{
-  content:"";
-  position:absolute;
-  right:-160px;
-  bottom:-220px;
-  width:460px;height:460px;
-  border-radius:50%;
-  border:1px solid rgba(46,91,255,.08);
-  box-shadow:0 0 0 45px rgba(46,91,255,.025),0 0 0 90px rgba(46,91,255,.015);
-  pointer-events:none;
-}
-.fp-section-ai .fp-ai-window{
-  position:relative;
-  z-index:1;
-}
-.fp-section-ai .fp-question-list button{
-  transition:transform .25s ease,box-shadow .25s ease,border-color .25s ease;
-}
-.fp-section-ai .fp-question-list button:hover{
-  transform:translateX(5px);
-  box-shadow:0 10px 25px rgba(16,28,44,.07);
-}
-
-/* Final CTA: full-width conversion moment. */
-.fp-section-final{
-  position:relative;
-  overflow:hidden;
-}
-.fp-section-final .fp-final-card{
-  position:relative;
-  overflow:hidden;
-}
-.fp-section-final .fp-final-card::after{
-  content:"";
-  position:absolute;
-  width:360px;height:360px;
-  right:-130px;top:-180px;
-  border-radius:50%;
-  border:1px solid rgba(255,255,255,.08);
-  box-shadow:0 0 0 55px rgba(255,255,255,.025);
-  pointer-events:none;
-}
-.fp-section-final .fp-final-card > *{
-  position:relative;
-  z-index:1;
-}
-
-/* Login: focused, quiet finish. */
-.fp-section-login{
-  position:relative;
-}
-.fp-section-login .fp-login-card{
-  transition:transform .4s ease,box-shadow .4s ease;
-}
-.fp-section-login .fp-login-card:hover{
-  transform:translateY(-4px);
-  box-shadow:0 28px 60px rgba(16,28,44,.12);
-}
-
-/* Small stagger so elements feel like they arrive one-by-one. */
-[data-scroll-reveal].is-visible .fp-section-heading,
-[data-scroll-reveal].is-visible .fp-split-heading,
-[data-scroll-reveal].is-visible .fp-demo-header,
-[data-scroll-reveal].is-visible .fp-ai-grid,
-[data-scroll-reveal].is-visible .fp-login-grid{
-  animation:fpContentIn .75s .08s both cubic-bezier(.22,1,.36,1);
-}
-@keyframes fpContentIn{
-  from{opacity:0;transform:translateY(18px)}
-  to{opacity:1;transform:none}
-}
-
-@media(max-width:760px){
-  .fp-scroll-progress{height:2px}
-  [data-scroll-reveal="left"],
-  [data-scroll-reveal="right"]{transform:translate3d(0,45px,0)}
-  .fp-section-hero::before{width:350px;height:350px;right:-190px}
-  .fp-section-features::after{display:none}
-  .fp-section-workflow .fp-journey-step:hover,
-  .fp-section-features .fp-detail-preview:hover,
-  .fp-section-ai .fp-question-list button:hover{
-    transform:none;
-  }
-}
-
-@media(prefers-reduced-motion:reduce){
-  [data-scroll-reveal],
-  [data-scroll-reveal="up"],
-  [data-scroll-reveal="left"],
-  [data-scroll-reveal="right"],
-  [data-scroll-reveal="rise"],
-  [data-scroll-reveal="scale"],
-  [data-scroll-reveal="zoom"]{
-    opacity:1;
-    transform:none;
-    filter:none;
-    transition:none;
-  }
-  .fp-scroll-progress span{transition:none}
-  .fp-section-demo .fp-demo-board,
-  .fp-section-login .fp-login-card{transition:none}
-}
-
 /* FINAL LAYOUT SAFETY OVERRIDES */
 .fp-page,
 .fp-page main,
@@ -1696,382 +1349,6 @@ html{scroll-padding-top:82px}
   .fp-demo-cta .fp-text-btn {
     width: 100%;
     text-align: center;
-  }
-}
-
-/* =========================================================
-   HIGH-END ALTERNATING WORKSPACE SHOWCASE
-   ========================================================= */
-.fp-showcase-container{
-  position:relative;
-}
-
-.fp-showcase-heading{
-  max-width:820px;
-  padding-bottom:12px;
-}
-
-.fp-showcase-heading h2{
-  max-width:780px;
-}
-
-.fp-showcase-list{
-  position:relative;
-  margin-top:24px;
-}
-
-.fp-showcase-list::before{
-  content:"";
-  position:absolute;
-  left:50%;
-  top:0;
-  bottom:0;
-  width:1px;
-  background:linear-gradient(
-    180deg,
-    transparent,
-    #DDE4DC 8%,
-    #DDE4DC 92%,
-    transparent
-  );
-  transform:translateX(-50%);
-  pointer-events:none;
-}
-
-.fp-showcase-row{
-  position:relative;
-  display:grid;
-  grid-template-columns:minmax(0,.82fr) minmax(0,1.18fr);
-  align-items:center;
-  gap:76px;
-  min-height:650px;
-  padding:86px 0;
-}
-
-.fp-showcase-row + .fp-showcase-row{
-  border-top:1px solid #E7EBE5;
-}
-
-.fp-showcase-row.is-reverse{
-  grid-template-columns:minmax(0,1.18fr) minmax(0,.82fr);
-}
-
-.fp-showcase-row.is-reverse .fp-showcase-copy{
-  grid-column:2;
-  grid-row:1;
-}
-
-.fp-showcase-row.is-reverse .fp-showcase-visual{
-  grid-column:1;
-  grid-row:1;
-}
-
-.fp-showcase-copy{
-  position:relative;
-  z-index:2;
-  max-width:500px;
-}
-
-.fp-showcase-index{
-  position:absolute;
-  top:-42px;
-  left:0;
-  color:#D8DED8;
-  font:600 11px 'IBM Plex Mono';
-  letter-spacing:2px;
-}
-
-.fp-showcase-icon{
-  display:grid;
-  place-items:center;
-  width:58px;
-  height:58px;
-  margin-bottom:22px;
-  border:1px solid #DDE5DE;
-  border-radius:17px;
-  background:#F4F8F4;
-  color:#1F6F54;
-  font-size:23px;
-  font-weight:800;
-  box-shadow:0 12px 30px rgba(16,28,44,.06);
-}
-
-.fp-showcase-copy h3{
-  max-width:480px;
-  margin:11px 0 17px;
-  color:#101C2C;
-  font:600 clamp(35px,4vw,56px)/1.03 'Fraunces',Georgia,serif;
-  letter-spacing:-1.7px;
-}
-
-.fp-showcase-copy p{
-  max-width:470px;
-  margin:0;
-  color:#687484;
-  font-size:14px;
-  line-height:1.8;
-}
-
-.fp-showcase-points{
-  display:flex;
-  flex-wrap:wrap;
-  gap:8px;
-  margin:24px 0 22px;
-}
-
-.fp-showcase-points span{
-  display:inline-flex;
-  align-items:center;
-  gap:7px;
-  padding:8px 10px;
-  border:1px solid #E0E6DF;
-  border-radius:9px;
-  background:#FAFCF9;
-  color:#53635B;
-  font-size:10px;
-  font-weight:700;
-}
-
-.fp-showcase-points i{
-  display:grid;
-  place-items:center;
-  width:16px;
-  height:16px;
-  border-radius:50%;
-  background:#E7F4EB;
-  color:#1F6F54;
-  font-style:normal;
-  font-size:9px;
-}
-
-.fp-showcase-link{
-  display:inline-flex;
-  align-items:center;
-  gap:10px;
-  border:0;
-  padding:0;
-  background:transparent;
-  color:#1F6F54;
-  font-size:12px;
-  font-weight:800;
-  cursor:pointer;
-}
-
-.fp-showcase-link span{
-  transition:transform .25s ease;
-}
-
-.fp-showcase-link:hover span{
-  transform:translate(4px,-3px);
-}
-
-.fp-showcase-link.selected{
-  color:#2E5BFF;
-}
-
-.fp-showcase-visual{
-  position:relative;
-  min-width:0;
-  padding:30px 0;
-}
-
-.fp-showcase-glow{
-  position:absolute;
-  width:78%;
-  height:78%;
-  right:5%;
-  top:11%;
-  border-radius:50%;
-  background:radial-gradient(
-    circle,
-    rgba(46,91,255,.12) 0%,
-    rgba(31,111,84,.07) 38%,
-    transparent 70%
-  );
-  filter:blur(10px);
-  pointer-events:none;
-}
-
-.fp-showcase-row.is-reverse .fp-showcase-glow{
-  left:5%;
-  right:auto;
-  background:radial-gradient(
-    circle,
-    rgba(201,162,39,.13) 0%,
-    rgba(31,111,84,.07) 40%,
-    transparent 70%
-  );
-}
-
-.fp-showcase-number{
-  position:absolute;
-  z-index:1;
-  right:-14px;
-  top:2px;
-  color:#E5E9E3;
-  font:600 78px/1 'Fraunces',Georgia,serif;
-  letter-spacing:-5px;
-}
-
-.fp-showcase-row.is-reverse .fp-showcase-number{
-  left:-14px;
-  right:auto;
-}
-
-.fp-showcase-visual .fp-preview-shell{
-  z-index:3;
-  width:100%;
-  border-radius:26px;
-  padding:18px;
-  box-shadow:
-    0 35px 80px rgba(16,28,44,.20),
-    0 8px 25px rgba(16,28,44,.08);
-  animation:none;
-  transition:transform .5s cubic-bezier(.2,.75,.2,1), box-shadow .5s ease;
-}
-
-.fp-showcase-visual:hover .fp-preview-shell{
-  transform:translateY(-8px) rotateX(1deg) rotateY(-1deg);
-  box-shadow:
-    0 45px 95px rgba(16,28,44,.23),
-    0 12px 30px rgba(16,28,44,.10);
-}
-
-.fp-showcase-caption{
-  position:absolute;
-  z-index:5;
-  left:26px;
-  bottom:8px;
-  display:flex;
-  align-items:center;
-  gap:10px;
-  padding:10px 13px;
-  border:1px solid rgba(224,229,223,.95);
-  border-radius:11px;
-  background:rgba(255,255,255,.93);
-  backdrop-filter:blur(12px);
-  box-shadow:0 12px 30px rgba(16,28,44,.11);
-}
-
-.fp-showcase-caption span{
-  color:#87918B;
-  font:600 7px 'IBM Plex Mono';
-  letter-spacing:1px;
-}
-
-.fp-showcase-caption span i{
-  display:inline-block;
-  width:5px;
-  height:5px;
-  margin-right:5px;
-  border-radius:50%;
-  background:#28A56A;
-  box-shadow:0 0 0 4px rgba(40,165,106,.10);
-}
-
-.fp-showcase-caption b{
-  color:#263344;
-  font-size:9px;
-}
-
-@media(max-width:1000px){
-  .fp-showcase-row,
-  .fp-showcase-row.is-reverse{
-    grid-template-columns:1fr;
-    gap:40px;
-    min-height:auto;
-    padding:72px 0;
-  }
-
-  .fp-showcase-row.is-reverse .fp-showcase-copy,
-  .fp-showcase-row.is-reverse .fp-showcase-visual{
-    grid-column:auto;
-    grid-row:auto;
-  }
-
-  .fp-showcase-copy{
-    max-width:760px;
-  }
-
-  .fp-showcase-visual{
-    width:100%;
-    max-width:760px;
-  }
-
-  .fp-showcase-list::before{
-    display:none;
-  }
-}
-
-@media(max-width:760px){
-  .fp-showcase-row,
-  .fp-showcase-row.is-reverse{
-    gap:30px;
-    padding:60px 0;
-  }
-
-  .fp-showcase-copy h3{
-    font-size:38px;
-  }
-
-  .fp-showcase-number,
-  .fp-showcase-row.is-reverse .fp-showcase-number{
-    right:8px;
-    left:auto;
-    top:8px;
-    font-size:55px;
-  }
-
-  .fp-showcase-visual .fp-preview-shell{
-    padding:12px;
-    border-radius:20px;
-  }
-
-  .fp-showcase-caption{
-    left:15px;
-    bottom:-2px;
-    max-width:calc(100% - 30px);
-  }
-}
-
-@media(max-width:520px){
-  .fp-showcase-heading{
-    padding-bottom:0;
-  }
-
-  .fp-showcase-copy h3{
-    font-size:34px;
-    letter-spacing:-1px;
-  }
-
-  .fp-showcase-copy p{
-    font-size:13px;
-  }
-
-  .fp-showcase-points{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-  }
-
-  .fp-showcase-points span{
-    min-width:0;
-  }
-
-  .fp-showcase-visual{
-    padding:20px 0 25px;
-  }
-
-  .fp-showcase-caption{
-    position:relative;
-    left:auto;
-    bottom:auto;
-    width:max-content;
-    max-width:100%;
-    margin:14px auto 0;
-  }
-
-  .fp-showcase-number{
-    display:none;
   }
 }
 
