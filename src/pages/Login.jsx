@@ -514,7 +514,7 @@ export default function Login() {
               </div>
               <div className="fp-floating-card floating-two">
                 <span>✦</span>
-                <div><b>AI Business</b><small>Ask your authorized data</small></div>
+                <div><b>AI Business</b><small>Ask about your business</small></div>
               </div>
             </div>
           </div>
@@ -977,6 +977,14 @@ button,a{ -webkit-tap-highlight-color:transparent }
   border:1px solid rgba(255,255,255,.08);animation:fpFloat 6s ease-in-out infinite
 }
 @keyframes fpFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+@media (max-width:900px){
+  .floating-one{left:10px;bottom:25px}
+  .floating-two{right:10px;top:25px}
+}
+@media (max-width:760px){
+  .fp-floating-card{display:none}
+}
+
 .fp-preview-top{display:flex;align-items:center;justify-content:space-between;color:#fff;padding:3px 4px 15px}
 .fp-preview-top h3{font-size:16px;margin:5px 0 0}
 .fp-mono{font:500 8px 'IBM Plex Mono';letter-spacing:1px;color:#8E9BAA}
@@ -1011,7 +1019,8 @@ button,a{ -webkit-tap-highlight-color:transparent }
 }
 .fp-floating-card>span{width:27px;height:27px;border-radius:8px;display:grid;place-items:center;background:#EAF0FF;color:#2E5BFF;font-size:11px;font-weight:800}
 .fp-floating-card b{display:block;font-size:9px}.fp-floating-card small{display:block;color:#7C8791;font-size:7px;margin-top:2px}
-.floating-one{left:-24px;bottom:45px}.floating-two{right:-20px;top:42px}
+.floating-one{left:18px;bottom:45px}
+.floating-two{right:18px;top:42px}
 
 .fp-feature-switcher{margin-top:28px;padding:8px;background:rgba(255,255,255,.72);border:1px solid #E0E5DF;border-radius:16px;display:flex;align-items:center;gap:15px}
 .fp-switcher-label{min-width:165px;padding:8px 12px}.fp-switcher-label span{display:block;font:600 8px 'IBM Plex Mono';letter-spacing:1px}.fp-switcher-label small{display:block;color:#88928C;font-size:9px;margin-top:3px}
