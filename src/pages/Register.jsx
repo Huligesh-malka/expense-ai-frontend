@@ -39,7 +39,7 @@ export default function Register() {
         !formData.email.trim() ||
         !formData.phone.trim()
       ) {
-        setError("Please complete all your details.");
+        setError("Please complete all required details.");
         return;
       }
 
@@ -56,7 +56,7 @@ export default function Register() {
       }
 
       if (formData.password.length < 6) {
-        setError("Password must contain at least 6 characters.");
+        setError("Password must be at least 6 characters long.");
         return;
       }
 
@@ -95,7 +95,7 @@ export default function Register() {
         navigate("/");
       } else {
         setError(
-          res.data.message || "Registration failed. Please try again."
+          res.data.message || "We couldn’t create your account. Please try again."
         );
       }
     } catch (err) {
@@ -103,7 +103,7 @@ export default function Register() {
 
       setError(
         err.response?.data?.message ||
-          "Unable to connect to the server. Please try again."
+          "We couldn’t connect to the server. Please try again."
       );
     } finally {
       setIsLoading(false);
@@ -142,23 +142,23 @@ export default function Register() {
         }
       } else {
         setError(
-          res.data.message || "Google sign-up failed. Please try again."
+          res.data.message || "Google sign-up could not be completed. Please try again."
         );
       }
     } catch (err) {
       console.error("Google sign-up error:", err);
 
       if (err.code === "auth/popup-closed-by-user") {
-        setError("Sign-up cancelled. Please try again.");
+        setError("Sign-up was cancelled. Please try again.");
       } else if (err.code === "auth/popup-blocked") {
-        setError("Popup blocked. Please allow popups for this site.");
+        setError("The sign-in popup was blocked. Please allow popups for this site.");
       } else if (err.code === "auth/email-already-in-use") {
-        setError("This email is already registered. Please sign in instead.");
+        setError("This email is already registered. Please sign in.");
       } else {
         setError(
           err.response?.data?.message ||
             err.message ||
-            "Google sign-up failed. Please try again."
+            "Google sign-up could not be completed. Please try again."
         );
       }
     } finally {
@@ -170,32 +170,32 @@ export default function Register() {
     {
       number: 1,
       title: "Profile",
-      description: "Your basic details",
+      description: "Enter your basic details",
     },
     {
       number: 2,
       title: "Security",
-      description: "Secure your account",
+      description: "Create a secure password",
     },
     {
       number: 3,
       title: "Finish",
-      description: "Review & create",
+      description: "Review and create",
     },
   ];
 
   const getStepTitle = () => {
-    if (currentStep === 1) return "Tell us about yourself";
+    if (currentStep === 1) return "Tell us a little about yourself";
     if (currentStep === 2) return "Create your password";
-    return "You're almost ready";
+    return "You’re almost ready";
   };
 
   const getStepDescription = () => {
     if (currentStep === 1)
       return "Let's start with a few details to create your account.";
     if (currentStep === 2)
-      return "Choose a strong password to keep your account protected.";
-    return "Take a quick look at your details before creating your account.";
+      return "Choose a strong password to keep your account secure.";
+    return "Review your details before creating your account.";
   };
 
   return (
@@ -1073,13 +1073,13 @@ export default function Register() {
 
             <div className="eyebrow">
               <span className="eyebrow-dot" />
-              Intelligent finance workspace
+              Intelligent financial workspace
             </div>
 
             <h1 className="brand-title">
-              Your money.
+              Your finances.
               <br />
-              <span className="gradient-text">Under control.</span>
+              <span className="gradient-text">Made simple.</span>
             </h1>
 
             <p className="brand-description">
@@ -1092,9 +1092,9 @@ export default function Register() {
 
               <div className="feature-card">
                 <div className="feature-icon">◈</div>
-                <div className="feature-title">Smart tracking</div>
+                <div className="feature-title">Smart expense tracking</div>
                 <div className="feature-text">
-                  Organize expenses automatically.
+                  Keep your expenses organized.
                 </div>
               </div>
 
@@ -1102,15 +1102,15 @@ export default function Register() {
                 <div className="feature-icon">⌁</div>
                 <div className="feature-title">AI insights</div>
                 <div className="feature-text">
-                  Turn numbers into insights.
+                  Get useful insights from your spending.
                 </div>
               </div>
 
               <div className="feature-card">
                 <div className="feature-icon">↗</div>
-                <div className="feature-title">Clear reports</div>
+                <div className="feature-title">Clear financial reports</div>
                 <div className="feature-text">
-                  Understand where money goes.
+                  See where your money goes.
                 </div>
               </div>
 
@@ -1123,7 +1123,7 @@ export default function Register() {
 
             <div className="secure-badge">
               <span>⌾</span>
-              Secure account creation
+              Secure account setup
             </div>
           </div>
 
@@ -1153,7 +1153,7 @@ export default function Register() {
               </h2>
 
               <p className="form-subtitle">
-                Start managing your finances with a smarter workspace.
+                Track and understand your finances with a smarter workspace.
               </p>
 
             </div>
@@ -1374,7 +1374,7 @@ export default function Register() {
                           }`}
                           type="password"
                           name="confirmPassword"
-                          placeholder="Repeat your password"
+                          placeholder="Re-enter your password"
                           value={formData.confirmPassword}
                           onChange={handleChange}
                           autoComplete="new-password"
@@ -1417,7 +1417,7 @@ export default function Register() {
 
                         <div>
                           <strong>Account details</strong>
-                          <span>Your information is ready</span>
+                          <span>Your details are ready</span>
                         </div>
 
                       </div>
@@ -1507,7 +1507,7 @@ export default function Register() {
                         <span className="spinner" />
                       ) : (
                         <>
-                          Create account
+                          Create my account
                           <span style={{ marginLeft: 8 }}>→</span>
                         </>
                       )}
