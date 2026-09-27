@@ -298,6 +298,47 @@ export default function Login() {
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    const updateProgress = () => {
+      const doc = document.documentElement;
+      const max = doc.scrollHeight - window.innerHeight;
+      const progress = max > 0 ? (window.scrollY / max) * 100 : 0;
+      document.documentElement.style.setProperty("--fp-scroll-progress", `${progress}%`);
+    };
+
+    updateProgress();
+    window.addEventListener("scroll", updateProgress, { passive: true });
+    window.addEventListener("resize", updateProgress);
+    return () => {
+      window.removeEventListener("scroll", updateProgress);
+      window.removeEventListener("resize", updateProgress);
+    };
+  }, []);
+
+  useEffect(() => {
+    const nodes = Array.from(document.querySelectorAll("[data-scroll-reveal]"));
+    if (!nodes.length) return;
+
+    const reveal = (entry) => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add("is-visible");
+      }
+    };
+
+    if (typeof IntersectionObserver === "undefined") {
+      nodes.forEach((node) => node.classList.add("is-visible"));
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => entries.forEach(reveal),
+      { threshold: 0.16, rootMargin: "0px 0px -7% 0px" }
+    );
+
+    nodes.forEach((node) => observer.observe(node));
+    return () => observer.disconnect();
+  }, []);
+
   const finishLogin = (data) => {
     const { user, business, token } = data;
     login(user, token);
@@ -460,8 +501,12 @@ export default function Login() {
         )}
       </header>
 
+      <div className="fp-scroll-progress" aria-hidden="true">
+        <span />
+      </div>
+
       <main>
-        <section className="fp-hero" id="product">
+        <section className="fp-hero fp-section-hero" id="product" data-scroll-reveal="zoom">
           <div className="fp-container fp-hero-grid">
             <div className="fp-hero-copy">
               <div className="fp-eyebrow">
@@ -540,7 +585,7 @@ export default function Login() {
           </div>
         </section>
 
-        <section className="fp-section fp-light" id="features">
+        <section className="fp-section fp-light fp-section-features" id="features" data-scroll-reveal="up">
           <div className="fp-container">
             <div className="fp-section-heading">
               <span className="fp-kicker">ONE WORKSPACE</span>
@@ -574,7 +619,7 @@ export default function Login() {
           </div>
         </section>
 
-        <section className="fp-section fp-workflow" id="workflow">
+        <section className="fp-section fp-workflow fp-section-workflow" id="workflow" data-scroll-reveal="left">
           <div className="fp-container">
             <div className="fp-split-heading">
               <div>
@@ -605,7 +650,7 @@ export default function Login() {
           </div>
         </section>
 
-        <section className="fp-section fp-demo-section" id="demo">
+        <section className="fp-section fp-demo-section fp-section-demo" id="demo" data-scroll-reveal="scale">
           <div className="fp-container">
             <div className="fp-demo-header">
               <div>
@@ -693,7 +738,7 @@ export default function Login() {
           </div>
         </section>
 
-        <section className="fp-section fp-ai-section" id="ai">
+        <section className="fp-section fp-ai-section fp-section-ai" id="ai" data-scroll-reveal="right">
           <div className="fp-container fp-ai-grid">
             <div>
               <span className="fp-kicker">AI BUSINESS</span>
@@ -734,7 +779,7 @@ export default function Login() {
           </div>
         </section>
 
-        <section className="fp-section fp-final">
+        <section className="fp-section fp-final fp-section-final" data-scroll-reveal="up">
           <div className="fp-container">
             <div className="fp-final-card">
               <div>
@@ -753,7 +798,7 @@ export default function Login() {
           </div>
         </section>
 
-        <section className="fp-login-section" id="login">
+        <section className="fp-login-section fp-section-login" id="login" data-scroll-reveal="rise">
           <div className="fp-container fp-login-grid">
             <div className="fp-login-copy">
               <span className="fp-kicker">OWNER LOGIN</span>
@@ -1150,6 +1195,281 @@ button,a{ -webkit-tap-highlight-color:transparent }
 }
 @media(prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}.fp-preview-shell{animation:none}.fp-bars i,.fp-big-bars i{animation:none}
+}
+
+
+/* TRENDING SCROLL EXPERIENCE */
+:root{
+  --fp-scroll-progress:0%;
+  --fp-ink:#101C2C;
+  --fp-green:#1F6F54;
+  --fp-gold:#C9A227;
+  --fp-blue:#2E5BFF;
+}
+
+html{scroll-padding-top:82px}
+
+.fp-scroll-progress{
+  position:fixed;
+  left:0;
+  right:0;
+  top:0;
+  height:3px;
+  z-index:999;
+  pointer-events:none;
+  background:rgba(16,28,44,.06);
+}
+.fp-scroll-progress span{
+  display:block;
+  width:var(--fp-scroll-progress);
+  height:100%;
+  transform-origin:left center;
+  background:linear-gradient(90deg,#1F6F54,#C9A227,#2E5BFF);
+  box-shadow:0 0 14px rgba(46,91,255,.22);
+  transition:width .08s linear;
+}
+
+/* Each major section gets its own entrance motion. */
+[data-scroll-reveal]{
+  opacity:0;
+  transition:
+    opacity .85s cubic-bezier(.22,1,.36,1),
+    transform .95s cubic-bezier(.22,1,.36,1),
+    filter .95s cubic-bezier(.22,1,.36,1);
+  will-change:opacity,transform;
+}
+[data-scroll-reveal="up"]{transform:translate3d(0,56px,0)}
+[data-scroll-reveal="left"]{transform:translate3d(-70px,0,0)}
+[data-scroll-reveal="right"]{transform:translate3d(70px,0,0)}
+[data-scroll-reveal="rise"]{transform:translate3d(0,70px,0) scale(.985)}
+[data-scroll-reveal="scale"]{transform:translate3d(0,28px,0) scale(.965)}
+[data-scroll-reveal="zoom"]{transform:translate3d(0,18px,0) scale(.985);filter:saturate(.82)}
+[data-scroll-reveal].is-visible{
+  opacity:1;
+  transform:none;
+  filter:none;
+}
+
+/* Hero: editorial / premium SaaS opening. */
+.fp-section-hero{
+  position:relative;
+  isolation:isolate;
+  overflow:hidden;
+}
+.fp-section-hero::before,
+.fp-section-hero::after{
+  content:"";
+  position:absolute;
+  pointer-events:none;
+  border-radius:50%;
+  filter:blur(1px);
+  z-index:-1;
+}
+.fp-section-hero::before{
+  width:520px;height:520px;
+  right:-180px;top:70px;
+  border:1px solid rgba(46,91,255,.10);
+  box-shadow:0 0 0 70px rgba(46,91,255,.025),0 0 0 140px rgba(46,91,255,.018);
+}
+.fp-section-hero::after{
+  width:280px;height:280px;
+  left:-150px;bottom:20px;
+  background:radial-gradient(circle,rgba(201,162,39,.12),transparent 68%);
+}
+
+/* Feature section: clean card / bento treatment. */
+.fp-section-features{
+  position:relative;
+  overflow:hidden;
+}
+.fp-section-features::after{
+  content:"";
+  position:absolute;
+  width:240px;height:240px;
+  right:-110px;top:130px;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(31,111,84,.09),transparent 68%);
+  pointer-events:none;
+}
+.fp-section-features .fp-feature-detail{
+  position:relative;
+}
+.fp-section-features .fp-detail-copy,
+.fp-section-features .fp-detail-preview{
+  transition:transform .45s ease, box-shadow .45s ease;
+}
+.fp-section-features .fp-detail-preview{
+  border-radius:24px;
+}
+.fp-section-features .fp-detail-preview:hover{
+  transform:translateY(-5px);
+}
+
+/* Workflow: horizontal timeline becomes a strong editorial band. */
+.fp-section-workflow{
+  position:relative;
+}
+.fp-section-workflow::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    radial-gradient(circle at 12% 75%,rgba(201,162,39,.10),transparent 22%),
+    radial-gradient(circle at 88% 15%,rgba(46,91,255,.10),transparent 24%);
+  pointer-events:none;
+}
+.fp-section-workflow .fp-container{position:relative;z-index:1}
+.fp-section-workflow .fp-journey-step{
+  transition:transform .35s ease;
+}
+.fp-section-workflow .fp-journey-step:hover{
+  transform:translateY(-5px);
+}
+.fp-section-workflow .fp-step-number{
+  display:inline-flex;
+  min-width:31px;
+  padding:5px 7px;
+  border:1px solid rgba(201,162,39,.35);
+  border-radius:999px;
+  background:rgba(201,162,39,.07);
+}
+
+/* Demo: product-showcase / glass-board treatment. */
+.fp-section-demo{
+  position:relative;
+  overflow:hidden;
+}
+.fp-section-demo::before{
+  content:"";
+  position:absolute;
+  left:50%;
+  top:160px;
+  width:720px;height:720px;
+  transform:translateX(-50%);
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(46,91,255,.065),transparent 66%);
+  pointer-events:none;
+}
+.fp-section-demo .fp-container{position:relative;z-index:1}
+.fp-section-demo .fp-demo-board{
+  transform:perspective(1400px) rotateX(0deg);
+  transition:transform .65s cubic-bezier(.22,1,.36,1),box-shadow .65s ease;
+}
+.fp-section-demo .fp-demo-board:hover{
+  transform:perspective(1400px) rotateX(1deg) translateY(-6px);
+  box-shadow:0 34px 80px rgba(16,28,44,.22);
+}
+
+/* AI: darker, futuristic visual language. */
+.fp-section-ai{
+  position:relative;
+  overflow:hidden;
+  background:
+    radial-gradient(circle at 82% 45%,rgba(46,91,255,.055),transparent 28%),
+    radial-gradient(circle at 8% 75%,rgba(201,162,39,.045),transparent 25%),
+    #fff;
+}
+.fp-section-ai::after{
+  content:"";
+  position:absolute;
+  right:-160px;
+  bottom:-220px;
+  width:460px;height:460px;
+  border-radius:50%;
+  border:1px solid rgba(46,91,255,.08);
+  box-shadow:0 0 0 45px rgba(46,91,255,.025),0 0 0 90px rgba(46,91,255,.015);
+  pointer-events:none;
+}
+.fp-section-ai .fp-ai-window{
+  position:relative;
+  z-index:1;
+}
+.fp-section-ai .fp-question-list button{
+  transition:transform .25s ease,box-shadow .25s ease,border-color .25s ease;
+}
+.fp-section-ai .fp-question-list button:hover{
+  transform:translateX(5px);
+  box-shadow:0 10px 25px rgba(16,28,44,.07);
+}
+
+/* Final CTA: full-width conversion moment. */
+.fp-section-final{
+  position:relative;
+  overflow:hidden;
+}
+.fp-section-final .fp-final-card{
+  position:relative;
+  overflow:hidden;
+}
+.fp-section-final .fp-final-card::after{
+  content:"";
+  position:absolute;
+  width:360px;height:360px;
+  right:-130px;top:-180px;
+  border-radius:50%;
+  border:1px solid rgba(255,255,255,.08);
+  box-shadow:0 0 0 55px rgba(255,255,255,.025);
+  pointer-events:none;
+}
+.fp-section-final .fp-final-card > *{
+  position:relative;
+  z-index:1;
+}
+
+/* Login: focused, quiet finish. */
+.fp-section-login{
+  position:relative;
+}
+.fp-section-login .fp-login-card{
+  transition:transform .4s ease,box-shadow .4s ease;
+}
+.fp-section-login .fp-login-card:hover{
+  transform:translateY(-4px);
+  box-shadow:0 28px 60px rgba(16,28,44,.12);
+}
+
+/* Small stagger so elements feel like they arrive one-by-one. */
+[data-scroll-reveal].is-visible .fp-section-heading,
+[data-scroll-reveal].is-visible .fp-split-heading,
+[data-scroll-reveal].is-visible .fp-demo-header,
+[data-scroll-reveal].is-visible .fp-ai-grid,
+[data-scroll-reveal].is-visible .fp-login-grid{
+  animation:fpContentIn .75s .08s both cubic-bezier(.22,1,.36,1);
+}
+@keyframes fpContentIn{
+  from{opacity:0;transform:translateY(18px)}
+  to{opacity:1;transform:none}
+}
+
+@media(max-width:760px){
+  .fp-scroll-progress{height:2px}
+  [data-scroll-reveal="left"],
+  [data-scroll-reveal="right"]{transform:translate3d(0,45px,0)}
+  .fp-section-hero::before{width:350px;height:350px;right:-190px}
+  .fp-section-features::after{display:none}
+  .fp-section-workflow .fp-journey-step:hover,
+  .fp-section-features .fp-detail-preview:hover,
+  .fp-section-ai .fp-question-list button:hover{
+    transform:none;
+  }
+}
+
+@media(prefers-reduced-motion:reduce){
+  [data-scroll-reveal],
+  [data-scroll-reveal="up"],
+  [data-scroll-reveal="left"],
+  [data-scroll-reveal="right"],
+  [data-scroll-reveal="rise"],
+  [data-scroll-reveal="scale"],
+  [data-scroll-reveal="zoom"]{
+    opacity:1;
+    transform:none;
+    filter:none;
+    transition:none;
+  }
+  .fp-scroll-progress span{transition:none}
+  .fp-section-demo .fp-demo-board,
+  .fp-section-login .fp-login-card{transition:none}
 }
 
 /* FINAL LAYOUT SAFETY OVERRIDES */
