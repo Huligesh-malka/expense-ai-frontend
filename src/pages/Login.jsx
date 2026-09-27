@@ -514,7 +514,7 @@ export default function Login() {
               </div>
               <div className="fp-floating-card floating-two">
                 <span>✦</span>
-                <div><b>AI Business</b><small>Ask about your business</small></div>
+                <div><b>AI Business</b><small>Ask your authorized data</small></div>
               </div>
             </div>
           </div>
@@ -977,14 +977,6 @@ button,a{ -webkit-tap-highlight-color:transparent }
   border:1px solid rgba(255,255,255,.08);animation:fpFloat 6s ease-in-out infinite
 }
 @keyframes fpFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
-@media (max-width:900px){
-  .floating-one{left:10px;bottom:25px}
-  .floating-two{right:10px;top:25px}
-}
-@media (max-width:760px){
-  .fp-floating-card{display:none}
-}
-
 .fp-preview-top{display:flex;align-items:center;justify-content:space-between;color:#fff;padding:3px 4px 15px}
 .fp-preview-top h3{font-size:16px;margin:5px 0 0}
 .fp-mono{font:500 8px 'IBM Plex Mono';letter-spacing:1px;color:#8E9BAA}
@@ -1019,8 +1011,7 @@ button,a{ -webkit-tap-highlight-color:transparent }
 }
 .fp-floating-card>span{width:27px;height:27px;border-radius:8px;display:grid;place-items:center;background:#EAF0FF;color:#2E5BFF;font-size:11px;font-weight:800}
 .fp-floating-card b{display:block;font-size:9px}.fp-floating-card small{display:block;color:#7C8791;font-size:7px;margin-top:2px}
-.floating-one{left:18px;bottom:45px}
-.floating-two{right:18px;top:42px}
+.floating-one{left:-24px;bottom:45px}.floating-two{right:-20px;top:42px}
 
 .fp-feature-switcher{margin-top:28px;padding:8px;background:rgba(255,255,255,.72);border:1px solid #E0E5DF;border-radius:16px;display:flex;align-items:center;gap:15px}
 .fp-switcher-label{min-width:165px;padding:8px 12px}.fp-switcher-label span{display:block;font:600 8px 'IBM Plex Mono';letter-spacing:1px}.fp-switcher-label small{display:block;color:#88928C;font-size:9px;margin-top:3px}
@@ -1160,5 +1151,206 @@ button,a{ -webkit-tap-highlight-color:transparent }
 @media(prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}.fp-preview-shell{animation:none}.fp-bars i,.fp-big-bars i{animation:none}
 }
+
+/* FINAL LAYOUT SAFETY OVERRIDES */
+.fp-page,
+.fp-page main,
+.fp-section,
+.fp-container,
+.fp-hero,
+.fp-hero-grid,
+.fp-hero-product,
+.fp-feature-detail,
+.fp-detail-preview,
+.fp-workflow,
+.fp-demo-section {
+  max-width: 100%;
+}
+
+.fp-hero-product {
+  padding-right: 28px;
+}
+
+.floating-one {
+  left: 0;
+  bottom: 45px;
+}
+
+.floating-two {
+  right: 28px;
+  top: 42px;
+  max-width: 185px;
+  box-sizing: border-box;
+}
+
+.fp-floating-card > div {
+  min-width: 0;
+  max-width: 125px;
+}
+
+.fp-floating-card b,
+.fp-floating-card small {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.fp-split-heading {
+  width: 100%;
+  overflow: visible;
+}
+
+.fp-split-heading > div {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.fp-split-heading > p {
+  flex: 0 1 390px;
+  min-width: 250px;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.fp-journey {
+  width: 100%;
+  min-width: 0;
+}
+
+.fp-journey-step {
+  overflow: visible;
+  min-width: 0;
+}
+
+.fp-step-content {
+  padding-right: 14px;
+}
+
+.fp-step-content h3,
+.fp-step-content p {
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.fp-journey-step:last-child .fp-step-content {
+  padding-right: 0;
+}
+
+.fp-demo-board,
+.fp-demo-board-grid,
+.fp-demo-content,
+.fp-demo-cta {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.fp-demo-cta {
+  flex-wrap: wrap;
+}
+
+.fp-demo-cta > div {
+  min-width: 0;
+}
+
+.fp-demo-cta > div:last-child {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+
+.fp-demo-cta .fp-text-btn {
+  margin-top: 0;
+  white-space: nowrap;
+}
+
+@media (max-width: 1250px) and (min-width: 1001px) {
+  .fp-container {
+    width: min(92vw, 1120px);
+  }
+
+  .fp-hero-grid {
+    gap: 38px;
+  }
+
+  .fp-hero-product {
+    padding-right: 22px;
+  }
+
+  .floating-two {
+    right: 12px;
+    max-width: 170px;
+  }
+
+  .fp-feature-detail {
+    gap: 32px;
+  }
+
+  .fp-journey {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .fp-step-content {
+    padding-right: 10px;
+  }
+
+  .fp-step-content h3 {
+    font-size: 13px;
+  }
+
+  .fp-step-content p {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .fp-hero-product {
+    padding-right: 0;
+  }
+
+  .floating-two {
+    right: 10px;
+  }
+
+  .fp-split-heading {
+    align-items: flex-start;
+  }
+
+  .fp-split-heading > p {
+    flex-basis: 330px;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .floating-one,
+  .floating-two {
+    display: none;
+  }
+
+  .fp-split-heading > p {
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+
+  .fp-demo-cta > div:last-child {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 520px) {
+  .fp-demo-cta > div:last-child {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .fp-demo-cta .fp-primary-btn,
+  .fp-demo-cta .fp-text-btn {
+    width: 100%;
+    text-align: center;
+  }
+}
+
 `;
 
