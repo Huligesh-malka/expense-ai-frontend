@@ -1,3 +1,4 @@
+
 import { useState, useContext, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { signInWithPopup } from "firebase/auth";
@@ -7,8 +8,8 @@ import { AuthContext } from "../context/AuthContext";
 
 const CONFIG = {
   brand: "FinancePro",
-  tagline: "One ledger for the whole business",
-  signupNote: "Free to set up. About two minutes.",
+  tagline: "AI BUSINESS MANAGEMENT",
+  signupNote: "Set up in about 2 minutes",
   trust: ["Secure sign-in", "Your data stays yours", "Built for Indian businesses"],
   demo: { enabled: true, email: "demo@financepro.com", password: "password123" },
 };
@@ -20,70 +21,70 @@ const FEATURES = [
     id: "billing",
     icon: "₹",
     label: "Billing",
-    eyebrow: "Sales",
-    headline: "A bill takes seconds, not a workflow.",
+    eyebrow: "SALES WORKFLOW",
+    headline: "Create bills without breaking your flow.",
     description:
-      "Create a bill, take the payment, and it's already sitting in your sales history — connected to stock and the ledger, no re-entry.",
-    points: ["Fast billing", "Payments recorded", "Sales history"],
-    screenTitle: "Billing",
-    screenText: "Add products, take payment, done.",
+      "Create professional bills, record payments and keep sales history connected to the rest of your business.",
+    points: ["Create bills", "Record payments", "Sales history"],
+    screenTitle: "Billing workspace",
+    screenText: "Create a sale, add products and keep the transaction connected.",
   },
   {
     id: "inventory",
     icon: "▦",
     label: "Inventory",
-    eyebrow: "Stock",
-    headline: "Know what's running low before it runs out.",
+    eyebrow: "STOCK CONTROL",
+    headline: "Know what needs attention.",
     description:
-      "Every product and quantity lives in one place, with the items that need attention surfaced automatically.",
-    points: ["Products", "Stock levels", "Low-stock alerts"],
-    screenTitle: "Inventory",
-    screenText: "Products, units and stock status together.",
+      "Keep products, quantities and low-stock information together so the owner can act before stock becomes a problem.",
+    points: ["Products", "Stock levels", "Low-stock attention"],
+    screenTitle: "Inventory workspace",
+    screenText: "See products, units and stock status from one place.",
   },
   {
     id: "qr",
     icon: "⌗",
-    label: "QR ordering",
-    eyebrow: "Customers",
-    headline: "Let customers order without calling the counter.",
+    label: "QR Ordering",
+    eyebrow: "CUSTOMER ORDERING",
+    headline: "Let customers order from their phone.",
     description:
-      "A customer scans a code, builds their order on their own phone, and it lands straight in your queue.",
-    points: ["Scan to browse", "Self-serve ordering", "Straight to the counter"],
+      "Customers can scan a QR, browse the available products, build an order and send it to the owner workflow.",
+    points: ["Scan QR", "Choose products", "Send order"],
     screenTitle: "QR ordering",
-    screenText: "Customer's phone, your counter, one order.",
+    screenText: "Customer order flow connected to the owner's workspace.",
   },
   {
     id: "expenses",
     icon: "↘",
     label: "Expenses",
-    eyebrow: "Spending",
-    headline: "See where the money actually goes.",
+    eyebrow: "MONEY CONTROL",
+    headline: "See where business money goes.",
     description:
-      "Log purchases and everyday spending as they happen, and let them turn into a picture you can act on.",
-    points: ["Purchases", "Expenses", "Clear reports"],
-    screenTitle: "Expenses",
-    screenText: "Spending, organized as it happens.",
+      "Record purchases and expenses in one place and turn everyday spending into useful business information.",
+    points: ["Purchases", "Expenses", "Reports"],
+    screenTitle: "Expense workspace",
+    screenText: "Keep business spending organized and ready for review.",
   },
   {
     id: "ai",
     icon: "✦",
     label: "AI Business",
-    eyebrow: "Insight",
-    headline: "Ask your business a question. Get an answer.",
+    eyebrow: "BUSINESS INTELLIGENCE",
+    headline: "Ask your business. Get clear answers.",
     description:
-      "Point it at your sales, stock and expenses and ask what needs attention — in plain language, not a report you have to build yourself.",
-    points: ["Sales insight", "Expense review", "Plain-language answers"],
+      "Use AI to analyze authorized business information and turn sales, expenses, inventory and activity into understandable answers.",
+    points: ["Sales insights", "Expense analysis", "Business questions"],
     screenTitle: "AI Business",
-    screenText: "Ask a question, get a straight answer.",
+    screenText: "Ask questions about the business data your account is authorized to access.",
   },
 ];
 
 const JOURNEY = [
-  ["1", "Set up your business", "A few details and the workspace is yours."],
-  ["2", "Add your products", "Prices, units, stock, categories — once."],
-  ["3", "Start billing", "Every sale keeps stock and the ledger in step."],
-  ["4", "Stay ahead of it", "Stock, purchases, expenses, one dashboard."],
-  ["5", "Ask instead of digging", "AI Business answers from what's already there."],
+  ["01", "Create your business", "Set up the owner workspace and business details."],
+  ["02", "Add products", "Add products, prices, units, stock and categories."],
+  ["03", "Start selling", "Use billing to create sales and keep the history connected."],
+  ["04", "Stay in control", "Review stock, purchases, expenses, customers and reports."],
+  ["05", "Use AI", "Ask questions and understand the information already in your workspace."],
 ];
 
 const safeGet = (key) => {
@@ -150,10 +151,10 @@ function DashboardPreview({ feature }) {
     <div className="fp-preview-shell">
       <div className="fp-preview-top">
         <div>
-          <span className="fp-eyebrow-dark">{feature.eyebrow}</span>
+          <span className="fp-mono">OWNER WORKSPACE</span>
           <h3>{feature.screenTitle}</h3>
         </div>
-        <span className="fp-live"><i /> live</span>
+        <span className="fp-live"><i /> LIVE DEMO</span>
       </div>
 
       <div className="fp-preview-body">
@@ -171,7 +172,11 @@ function DashboardPreview({ feature }) {
 
         <div className="fp-preview-main">
           <div className="fp-mini-head">
-            <strong>{feature.headline}</strong>
+            <div>
+              <span className="fp-mono">BUSINESS OVERVIEW</span>
+              <strong>{feature.headline}</strong>
+            </div>
+            <span className="fp-demo-tag">INTERACTIVE</span>
           </div>
 
           {isAI ? (
@@ -179,7 +184,7 @@ function DashboardPreview({ feature }) {
               <div className="fp-ai-msg user">Which part of my business needs attention?</div>
               <div className="fp-ai-msg bot">
                 <b>AI Business</b>
-                <span>Sales dipped on Tuesdays and three items are close to out of stock.</span>
+                <span>I can help you review authorized sales, inventory, expenses and activity.</span>
               </div>
               <div className="fp-ai-suggestions">
                 <button type="button">Sales overview</button>
@@ -191,7 +196,7 @@ function DashboardPreview({ feature }) {
             <div className="fp-qr-demo">
               <div className="fp-phone">
                 <div className="fp-phone-notch" />
-                <span className="fp-eyebrow-dark">Customer menu</span>
+                <span className="fp-mono">CUSTOMER MENU</span>
                 <b>Browse & order</b>
                 {["Product", "Product", "Product"].map((x, i) => (
                   <div className="fp-product-row" key={i}>
@@ -199,45 +204,48 @@ function DashboardPreview({ feature }) {
                     <button type="button">Add</button>
                   </div>
                 ))}
-                <div className="fp-cart-button">View cart</div>
+                <div className="fp-cart-button">Cart · Continue</div>
               </div>
               <div className="fp-order-flow">
-                <b>Customer to counter</b>
+                <span>QR ORDER</span>
+                <b>Customer → Owner</b>
                 <div className="fp-flow-line">
-                  <i>Scan</i><em>—</em><i>Choose</i><em>—</em><i>Order</i>
+                  <i>Scan</i><em>→</em><i>Select</i><em>→</em><i>Order</i>
                 </div>
-                <small>The order lands in the owner's queue right away.</small>
+                <small>Orders enter the owner workflow for review.</small>
               </div>
             </div>
           ) : isInventory ? (
             <div className="fp-inventory-demo">
-              {["Products", "Stock", "Needs attention"].map((x, i) => (
+              {["Products", "Stock", "Low-stock attention"].map((x, i) => (
                 <div className="fp-inventory-card" key={x}>
                   <span>{x}</span>
-                  <strong>{i === 0 ? "128 items" : i === 1 ? "In view" : "3 low"}</strong>
+                  <strong>{i === 0 ? "Manage" : i === 1 ? "Visible" : "Review"}</strong>
+                  <small>{i === 2 ? "Before you run out" : "From one workspace"}</small>
                 </div>
               ))}
               <div className="fp-stock-list">
                 <div><span>Product</span><span>Status</span></div>
-                <div><b>Basmati rice, 5kg</b><i>In stock</i></div>
-                <div><b>Sunflower oil, 1L</b><i>Low stock</i></div>
-                <div><b>Toor dal, 1kg</b><i>In stock</i></div>
+                <div><b>Product A</b><i>Available</i></div>
+                <div><b>Product B</b><i>Review</i></div>
+                <div><b>Product C</b><i>Available</i></div>
               </div>
             </div>
           ) : (
             <div className="fp-generic-demo">
               <div className="fp-stat-row">
-                <div><span>{feature.id === "billing" ? "Today's sales" : "This month"}</span><b>₹18,420</b></div>
-                <div><span>{feature.id === "billing" ? "Payments" : "Purchases"}</span><b>{feature.id === "billing" ? "All settled" : "₹6,150"}</b></div>
-                <div><span>Trend</span><b>Up 12%</b></div>
+                <div><span>{feature.id === "billing" ? "SALES" : "EXPENSES"}</span><b>Business activity</b><small>Connected workflow</small></div>
+                <div><span>{feature.id === "billing" ? "PAYMENTS" : "PURCHASES"}</span><b>Organized</b><small>Ready for review</small></div>
+                <div><span>REPORTS</span><b>Clear view</b><small>Understand activity</small></div>
               </div>
               <div className="fp-chart">
-                <div className="fp-chart-label"><span>Last 10 days</span></div>
+                <div className="fp-chart-label"><span>Business activity</span><small>Owner view</small></div>
                 <div className="fp-bars">
                   {[38, 52, 45, 68, 55, 80, 62, 88, 70, 92].map((h, i) => (
                     <i key={i} style={{ height: `${h}%` }} />
                   ))}
                 </div>
+                <div className="fp-chart-bottom"><span>Recent activity</span><span>Review →</span></div>
               </div>
             </div>
           )}
@@ -428,8 +436,8 @@ export default function Login() {
         )}
 
         <div className="fp-nav-actions">
-          <a href="#login" className="fp-login-link">Log in</a>
-          <Link to="/register" className="fp-nav-cta">Get started</Link>
+          <a href="#login" className="fp-login-link">Login</a>
+          <Link to="/register" className="fp-nav-cta">Get started <span>→</span></Link>
           {mobile && (
             <button
               type="button"
@@ -437,7 +445,7 @@ export default function Login() {
               onClick={() => setMobileMenu((v) => !v)}
               aria-label="Open menu"
             >
-              <span />
+              ☰
             </button>
           )}
         </div>
@@ -456,42 +464,66 @@ export default function Login() {
         <section className="fp-hero" id="product">
           <div className="fp-container fp-hero-grid">
             <div className="fp-hero-copy">
+              <div className="fp-eyebrow">
+                <span className="fp-pulse" />
+                Built for everyday business
+              </div>
+
               <h1>
-                Run the business.
+                Run your business.
                 <br />
-                <span>Understand every rupee.</span>
+                <em>Understand every number.</em>
               </h1>
 
               <p className="fp-hero-text">
-                Billing, inventory, expenses, customers and QR ordering, all feeding
-                one ledger — with an AI that can answer for it when you ask.
+                Billing, inventory, expenses, customers, purchases, QR ordering
+                and AI business insights — connected in one workspace for the owner.
               </p>
 
               <div className="fp-actions">
                 <Link to="/register" className="fp-primary-btn">
-                  Create your business
+                  Create your business <span>→</span>
                 </Link>
                 <a href="#demo" className="fp-secondary-btn">
-                  See how it works
+                  Explore the product
                 </a>
               </div>
 
               <div className="fp-trust">
-                {CONFIG.trust.map((item) => <span key={item}>{item}</span>)}
+                {CONFIG.trust.map((item) => <span key={item}>✓ {item}</span>)}
+              </div>
+
+              <div className="fp-mini-proof">
+                <div className="fp-avatar-stack">
+                  <span>F</span><span>+</span><span>AI</span>
+                </div>
+                <div>
+                  <b>One connected workspace</b>
+                  <small>Built around the owner's daily workflow</small>
+                </div>
               </div>
             </div>
 
             <div className="fp-hero-product">
+              <div className="fp-product-orbit orbit-one" />
+              <div className="fp-product-orbit orbit-two" />
               <DashboardPreview feature={feature} />
               <div className="fp-floating-card floating-one">
                 <span>✓</span>
-                <div><b>One connected workflow</b><small>Sale → stock → decision</small></div>
+                <div><b>Connected workflow</b><small>Sales → stock → decisions</small></div>
+              </div>
+              <div className="fp-floating-card floating-two">
+                <span>✦</span>
+                <div><b>AI Business</b><small>Ask your authorized data</small></div>
               </div>
             </div>
           </div>
 
           <div className="fp-container fp-feature-switcher">
-            <span className="fp-switcher-label">The workspace</span>
+            <div className="fp-switcher-label">
+              <span>EXPLORE THE WORKSPACE</span>
+              <small>Click a module</small>
+            </div>
             <div className="fp-feature-tabs">
               {FEATURES.map((item, index) => (
                 <button
@@ -511,27 +543,28 @@ export default function Login() {
         <section className="fp-section fp-light" id="features">
           <div className="fp-container">
             <div className="fp-section-heading">
-              <h2>Everything the business does,<br /><span>kept in one place.</span></h2>
+              <span className="fp-kicker">ONE WORKSPACE</span>
+              <h2>Everything your business does.<br /><em>Connected in one place.</em></h2>
               <p>
-                FinancePro brings the everyday pieces of running a shop together,
-                so you move from action to answer without rebuilding the picture by hand.
+                FinancePro brings the everyday operating pieces together so the owner
+                can move from action to information without rebuilding the picture manually.
               </p>
             </div>
 
             <div className="fp-feature-detail">
               <div className="fp-detail-copy">
                 <span className="fp-detail-icon">{feature.icon}</span>
-                <span className="fp-eyebrow">{feature.eyebrow}</span>
+                <span className="fp-kicker">{feature.eyebrow}</span>
                 <h3>{feature.headline}</h3>
                 <p>{feature.description}</p>
 
                 <div className="fp-points">
                   {feature.points.map((point) => (
-                    <span key={point}>{point}</span>
+                    <span key={point}>✓ {point}</span>
                   ))}
                 </div>
 
-                <a href="#demo" className="fp-arrow-link">Explore this workflow</a>
+                <a href="#demo" className="fp-arrow-link">Explore this workflow <span>↗</span></a>
               </div>
 
               <div className="fp-detail-preview">
@@ -545,12 +578,12 @@ export default function Login() {
           <div className="fp-container">
             <div className="fp-split-heading">
               <div>
-                <span className="fp-eyebrow light-kicker">How it works</span>
-                <h2>From first setup to<br /><span>daily control.</span></h2>
+                <span className="fp-kicker light-kicker">HOW IT WORKS</span>
+                <h2>From first setup to <em>daily control.</em></h2>
               </div>
               <p>
-                Built around the way a shop actually runs: set up, sell,
-                manage, review, and ask when you need an answer.
+                The product is organized around the owner's actual workflow:
+                set up, sell, manage, review and decide.
               </p>
             </div>
 
@@ -576,19 +609,19 @@ export default function Login() {
           <div className="fp-container">
             <div className="fp-demo-header">
               <div>
-                <span className="fp-eyebrow">Try it</span>
-                <h2>Don't just read about it.<br /><span>Move through the workspace.</span></h2>
+                <span className="fp-kicker">TRY THE IDEA</span>
+                <h2>Don't just read about it.<br /><em>Explore the workspace.</em></h2>
               </div>
               <p>
-                Switch modules above to see how billing, stock and reports
-                stay connected as you work.
+                Move through the modules above to see how the product can connect
+                everyday business work.
               </p>
             </div>
 
             <div className="fp-demo-board">
               <div className="fp-demo-board-top">
                 <div className="fp-demo-brand"><span>F</span> FinancePro</div>
-                <div className="fp-demo-status"><i /> demo workspace</div>
+                <div className="fp-demo-status"><i /> DEMO WORKSPACE</div>
               </div>
 
               <div className="fp-demo-board-grid">
@@ -607,23 +640,23 @@ export default function Login() {
                 <div className="fp-demo-content">
                   <div className="fp-demo-welcome">
                     <div>
-                      <span className="fp-eyebrow-dark">Owner dashboard</span>
-                      <h3>Your business, at a glance.</h3>
+                      <span className="fp-mono">OWNER DASHBOARD</span>
+                      <h3>Your business at a glance.</h3>
                     </div>
                     <button type="button" onClick={() => setActive((active + 1) % FEATURES.length)}>
-                      Next module
+                      Change module →
                     </button>
                   </div>
 
                   <div className="fp-demo-cards">
-                    <div><span>Billing</span><b>₹18,420 today</b></div>
-                    <div><span>Inventory</span><b>3 items low</b></div>
-                    <div><span>AI Business</span><b>2 new answers</b></div>
+                    <div><span>Billing</span><b>Connected</b><small>Create and track sales</small></div>
+                    <div><span>Inventory</span><b>Visible</b><small>Know what needs attention</small></div>
+                    <div><span>AI Business</span><b>Ready</b><small>Ask useful questions</small></div>
                   </div>
 
                   <div className="fp-demo-lower">
                     <div className="fp-demo-chart">
-                      <div className="fp-demo-chart-head"><b>Business activity</b><span>Last 11 days</span></div>
+                      <div className="fp-demo-chart-head"><b>Connected business activity</b><span>OWNER VIEW</span></div>
                       <div className="fp-big-bars">
                         {[32, 48, 42, 66, 53, 76, 61, 86, 70, 92, 78].map((h, i) => (
                           <i key={i} style={{ height: `${h}%` }} />
@@ -635,7 +668,7 @@ export default function Login() {
                       <span className="fp-ai-badge">AI</span>
                       <b>Ask your business</b>
                       <p>What needs my attention?</p>
-                      <span className="fp-answer">Three items are close to out of stock, and Tuesday sales are trailing the weekly average.</span>
+                      <span className="fp-answer">Use authorized data to investigate sales, stock, expenses and activity.</span>
                     </div>
                   </div>
                 </div>
@@ -644,11 +677,12 @@ export default function Login() {
 
             <div className="fp-demo-cta">
               <div>
+                <span className="fp-kicker">READY TO GO FURTHER?</span>
                 <h3>Open your own workspace.</h3>
                 <p>{CONFIG.signupNote}</p>
               </div>
               <div>
-                <Link to="/register" className="fp-primary-btn">Create your business</Link>
+                <Link to="/register" className="fp-primary-btn">Create your business →</Link>
                 {CONFIG.demo.enabled && (
                   <button type="button" className="fp-text-btn" onClick={handleDemo} disabled={isLoading}>
                     {pending === "demo" ? "Opening demo…" : "Try the demo business"}
@@ -662,24 +696,25 @@ export default function Login() {
         <section className="fp-section fp-ai-section" id="ai">
           <div className="fp-container fp-ai-grid">
             <div>
-              <span className="fp-eyebrow">AI Business</span>
-              <h2>Your business has questions.<br /><span>Ask them plainly.</span></h2>
+              <span className="fp-kicker">AI BUSINESS</span>
+              <h2>Your business has questions.<br /><em>Ask them naturally.</em></h2>
               <p>
-                FinancePro turns your own sales, stock and expense data into
-                answers in plain language — so you investigate instead of
-                rebuilding a report by hand.
+                FinancePro can turn authorized business information into summaries,
+                explanations and natural-language answers — so the owner can investigate
+                instead of manually rebuilding reports.
               </p>
 
               <div className="fp-question-list">
-                <button type="button" onClick={() => setActive(4)}>What needs my attention?</button>
-                <button type="button" onClick={() => setActive(4)}>Show me the business picture.</button>
-                <button type="button" onClick={() => setActive(4)}>Help me understand my expenses.</button>
+                <button type="button" onClick={() => setActive(4)}>“What needs my attention?” <span>→</span></button>
+                <button type="button" onClick={() => setActive(4)}>“Show me the business picture.” <span>→</span></button>
+                <button type="button" onClick={() => setActive(4)}>“Help me understand my expenses.” <span>→</span></button>
               </div>
             </div>
 
             <div className="fp-ai-window">
               <div className="fp-ai-window-head">
                 <span><i /> AI Business</span>
+                <small>AUTHORIZED DATA</small>
               </div>
               <div className="fp-chat">
                 <div className="fp-chat-user">What can you help me understand?</div>
@@ -688,12 +723,12 @@ export default function Login() {
                   <div>
                     <b>FinancePro AI</b>
                     <p>
-                      I can look at your sales, inventory, expenses and activity —
-                      ask me what needs a closer look.
+                      I can help you explore business information available to your
+                      account, including sales, inventory, expenses and activity.
                     </p>
                   </div>
                 </div>
-                <div className="fp-chat-input">Ask about your business…</div>
+                <div className="fp-chat-input">Ask about your business… <span>↑</span></div>
               </div>
             </div>
           </div>
@@ -703,15 +738,16 @@ export default function Login() {
           <div className="fp-container">
             <div className="fp-final-card">
               <div>
-                <h2>Start with your business.<br /><span>Build from there.</span></h2>
+                <span className="fp-kicker light-kicker">READY WHEN YOU ARE</span>
+                <h2>Start with your business.<br /><em>Build from there.</em></h2>
                 <p>
-                  Create your workspace and bring billing, stock, spending
-                  and reporting into one connected place.
+                  Create your workspace and bring your daily business workflow
+                  into one connected place.
                 </p>
               </div>
               <div className="fp-final-actions">
-                <Link to="/register" className="fp-final-primary">Create your business</Link>
-                <a href="#login" className="fp-final-secondary">Already have an account? Log in</a>
+                <Link to="/register" className="fp-final-primary">Create your business →</Link>
+                <a href="#login" className="fp-final-secondary">Already have an account? Login</a>
               </div>
             </div>
           </div>
@@ -720,25 +756,25 @@ export default function Login() {
         <section className="fp-login-section" id="login">
           <div className="fp-container fp-login-grid">
             <div className="fp-login-copy">
-              <span className="fp-eyebrow">Owner login</span>
+              <span className="fp-kicker">OWNER LOGIN</span>
               <h2>{returning.name ? title : "Your workspace is waiting."}</h2>
               <p>
                 Sign in to continue billing, inventory, expenses, purchases,
-                reports and AI Business.
+                reports and AI business management.
               </p>
 
               <div className="fp-login-checks">
-                <span>Billing & sales</span>
-                <span>Inventory & purchases</span>
-                <span>Customers & suppliers</span>
-                <span>AI Business insights</span>
+                <span>✓ Billing & sales</span>
+                <span>✓ Inventory & purchases</span>
+                <span>✓ Customers & suppliers</span>
+                <span>✓ AI business insights</span>
               </div>
             </div>
 
             <div className="fp-login-card">
               <div className="fp-login-card-top">
-                <span>Sign in</span>
-                <span>Secure access</span>
+                <span>SIGN IN</span>
+                <span>SECURE ACCESS</span>
               </div>
 
               <h3>{title}</h3>
@@ -817,7 +853,7 @@ export default function Login() {
 
               <div className="fp-login-footer">
                 <span>New here?</span>
-                <Link to="/register">Create your business</Link>
+                <Link to="/register">Create your business →</Link>
               </div>
             </div>
           </div>
@@ -828,6 +864,7 @@ export default function Login() {
         <div className="fp-container fp-footer-inner">
           <div>
             <Brand />
+            <p>AI BUSINESS MANAGEMENT</p>
           </div>
           <div>
             <a href="#product">Product</a>
@@ -843,256 +880,239 @@ export default function Login() {
 }
 
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,380;9..144,560&family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
-body{margin:0;background:#FAF7F1}
+body{margin:0;background:#F7F8F5}
 button,input{font:inherit}
-button,a{-webkit-tap-highlight-color:transparent}
-
-:root{
-  --ink:#12192A;
-  --ink-soft:#212B3D;
-  --paper:#FAF7F1;
-  --paper-deep:#F1EBDB;
-  --line:#E4DCC7;
-  --brass:#A97A34;
-  --brass-deep:#8C6427;
-  --forest:#2C5C4C;
-  --forest-deep:#1E4437;
-  --slate:#5C6675;
-  --slate-soft:#8A9098;
-}
+button,a{ -webkit-tap-highlight-color:transparent }
 
 .fp-page{
   min-height:100vh;
-  background:var(--paper);
-  color:var(--ink);
-  font-family:'Instrument Sans',system-ui,sans-serif;
+  background:#F7F8F5;
+  color:#101C2C;
+  font-family:'DM Sans',system-ui,sans-serif;
   overflow:hidden;
-  -webkit-font-smoothing:antialiased;
 }
-.fp-container{width:min(1140px,92vw);margin:0 auto}
+.fp-container{width:min(1160px,92vw);margin:0 auto}
 
 .fp-nav{
   position:sticky;top:0;z-index:100;
-  min-height:76px;padding:14px 4vw;
+  min-height:72px;padding:12px 4vw;
   display:flex;align-items:center;justify-content:space-between;gap:20px;
-  background:rgba(250,247,241,.9);
-  backdrop-filter:blur(16px);
-  border-bottom:1px solid var(--line);
+  background:rgba(247,248,245,.88);
+  backdrop-filter:blur(18px);
+  border-bottom:1px solid #E2E6DF;
 }
-.fp-brand{display:flex;align-items:center;gap:11px;text-decoration:none;color:var(--ink);min-width:190px}
+.fp-brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:#101C2C;min-width:190px}
 .fp-brand-mark{
-  width:38px;height:38px;border-radius:10px;display:grid;place-items:center;
-  background:var(--forest);color:#F1E7C8;font:italic 560 22px 'Fraunces',Georgia,serif
+  width:38px;height:38px;border-radius:11px;display:grid;place-items:center;
+  background:#1F6F54;color:#F5EACB;font:italic 700 23px Georgia,serif
 }
-.fp-brand strong{display:block;font:560 21px 'Fraunces',Georgia,serif;line-height:1}
-.fp-brand small{display:block;margin-top:4px;color:var(--slate-soft);font-size:11px;font-style:italic}
+.fp-brand strong{display:block;font:italic 700 23px Georgia,serif;line-height:1}
+.fp-brand small{display:block;margin-top:4px;color:#89928D;font:500 8px 'IBM Plex Mono';letter-spacing:1.3px}
 .fp-nav-links{display:flex;align-items:center;gap:5px}
 .fp-nav-links a,.fp-login-link{
-  color:var(--slate);text-decoration:none;font-size:14px;font-weight:500;
-  padding:9px 13px;border-radius:8px;transition:.2s
+  color:#4A5665;text-decoration:none;font-size:13px;font-weight:600;
+  padding:9px 12px;border-radius:9px;transition:.2s
 }
-.fp-nav-links a:hover,.fp-login-link:hover{background:var(--paper-deep);color:var(--forest)}
+.fp-nav-links a:hover,.fp-login-link:hover{background:#EDF4EF;color:#1F6F54}
 .fp-nav-actions{display:flex;align-items:center;gap:10px;min-width:190px;justify-content:flex-end}
 .fp-nav-cta{
-  display:inline-flex;align-items:center;text-decoration:none;
-  background:var(--ink);color:#F1E7C8;border-radius:9px;padding:11px 18px;
-  font-size:14px;font-weight:600;transition:.2s
+  display:inline-flex;align-items:center;gap:9px;text-decoration:none;
+  background:#2E5BFF;color:#fff;border-radius:10px;padding:11px 16px;
+  font-size:13px;font-weight:700;box-shadow:0 8px 22px rgba(46,91,255,.14)
 }
-.fp-nav-cta:hover{background:var(--forest-deep)}
-.fp-menu-btn{border:1px solid var(--line);background:#fff;border-radius:9px;width:42px;height:42px;position:relative}
-.fp-menu-btn span,.fp-menu-btn span::before,.fp-menu-btn span::after{content:"";position:absolute;left:12px;right:12px;height:2px;background:var(--ink);border-radius:2px}
-.fp-menu-btn span{top:20px}.fp-menu-btn span::before{top:-6px}.fp-menu-btn span::after{top:6px}
-.fp-mobile-menu{position:absolute;top:100%;left:0;right:0;background:var(--paper);border-bottom:1px solid var(--line);display:flex;flex-direction:column;padding:8px 4vw 16px}
-.fp-mobile-menu a{color:var(--ink);text-decoration:none;padding:12px 4px;font-size:15px;border-bottom:1px solid var(--line)}
+.fp-nav-cta:hover{transform:translateY(-1px)}
+.fp-menu-btn{border:1px solid #D9DED7;background:#fff;border-radius:9px;width:42px;height:42px}
 
 .fp-hero{
-  padding:76px 0 30px;
-  background:linear-gradient(180deg,#FCFAF5,#F2ECDC 130%);
-  border-bottom:1px solid var(--line);
+  padding:72px 0 34px;
+  background:
+    radial-gradient(circle at 76% 22%,rgba(46,91,255,.08),transparent 26%),
+    radial-gradient(circle at 12% 5%,rgba(201,162,39,.10),transparent 22%),
+    linear-gradient(180deg,#FCFDFB,#F3F6F1);
+  border-bottom:1px solid #E4E8E1;
 }
-.fp-hero-grid{display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr);gap:64px;align-items:center}
+.fp-hero-grid{display:grid;grid-template-columns:minmax(0,.94fr) minmax(0,1.06fr);gap:60px;align-items:center}
 .fp-hero-grid > *{min-width:0;max-width:100%}
+.fp-eyebrow{
+  display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;
+  background:#EAF6EE;color:#1F6F54;font-size:10px;font-weight:800;letter-spacing:.7px;text-transform:uppercase
+}
+.fp-pulse{width:7px;height:7px;border-radius:50%;background:#27A56A;box-shadow:0 0 0 5px rgba(39,165,106,.10)}
 .fp-hero h1{
-  font:380 clamp(42px,5vw,66px)/1.08 'Fraunces',Georgia,serif;
-  letter-spacing:-1.5px;margin:0 0 22px;color:var(--ink)
+  font:600 clamp(45px,5.4vw,73px)/1.02 'Fraunces',Georgia,serif;
+  letter-spacing:-2.8px;margin:21px 0 20px
 }
-.fp-hero h1 span{color:var(--forest);font-style:italic;font-weight:560}
-.fp-section h2 span,.fp-final h2 span{color:var(--brass);font-style:italic}
-.fp-hero-text{max-width:520px;color:var(--slate);font-size:17px;line-height:1.7;margin:0}
-.fp-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:30px}
+.fp-hero h1 em,.fp-section h2 em,.fp-detail-copy h3 em,.fp-final h2 em{color:#C49A1F;font-style:italic}
+.fp-hero-text{max-width:650px;color:#657182;font-size:17px;line-height:1.75;margin:0}
+.fp-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}
 .fp-primary-btn,.fp-secondary-btn{
-  display:inline-flex;align-items:center;justify-content:center;
-  min-height:48px;padding:13px 22px;border-radius:9px;text-decoration:none;font-size:14.5px;font-weight:600;
-  transition:.2s
+  display:inline-flex;align-items:center;justify-content:center;gap:12px;
+  min-height:46px;padding:12px 18px;border-radius:10px;text-decoration:none;font-size:13px;font-weight:700
 }
-.fp-primary-btn{background:var(--forest);color:#F5EFDC}
-.fp-primary-btn:hover{background:var(--forest-deep)}
-.fp-secondary-btn{background:transparent;color:var(--ink);border:1px solid var(--line)}
-.fp-secondary-btn:hover{border-color:var(--forest);color:var(--forest)}
-.fp-trust{display:flex;gap:22px;flex-wrap:wrap;margin-top:26px;color:var(--slate-soft);font-size:12.5px}
-.fp-trust span{padding-left:14px;border-left:2px solid var(--brass)}
+.fp-primary-btn{background:#2E5BFF;color:#fff;box-shadow:0 12px 28px rgba(46,91,255,.18)}
+.fp-primary-btn:hover{transform:translateY(-2px)}
+.fp-secondary-btn{background:#fff;color:#101C2C;border:1px solid #D9DED7}
+.fp-secondary-btn:hover{border-color:#1F6F54;color:#1F6F54}
+.fp-trust{display:flex;gap:18px;flex-wrap:wrap;margin-top:22px;color:#7A857F;font-size:11px}
+.fp-mini-proof{display:flex;align-items:center;gap:11px;margin-top:28px}
+.fp-avatar-stack{display:flex}
+.fp-avatar-stack span{
+  width:27px;height:27px;margin-left:-5px;border-radius:50%;display:grid;place-items:center;
+  background:#101C2C;color:#fff;border:2px solid #F5F7F3;font:600 8px 'IBM Plex Mono'
+}
+.fp-avatar-stack span:first-child{margin-left:0;background:#1F6F54}
+.fp-mini-proof b{display:block;font-size:11px}.fp-mini-proof small{display:block;color:#87918B;margin-top:2px;font-size:10px}
 
-.fp-hero-product{position:relative;min-width:0;padding:12px 0}
+.fp-hero-product{position:relative;min-width:0;padding:18px 0}
+.fp-product-orbit{position:absolute;border-radius:50%;pointer-events:none}
+.orbit-one{width:350px;height:350px;right:5%;top:8%;background:rgba(46,91,255,.06);filter:blur(5px)}
+.orbit-two{width:210px;height:210px;left:8%;bottom:0;background:rgba(201,162,39,.08);filter:blur(6px)}
 .fp-preview-shell{
-  position:relative;z-index:2;width:100%;background:linear-gradient(150deg,#12192A,#1D293D);
-  border-radius:20px;padding:18px;box-shadow:0 28px 60px -14px rgba(18,25,42,.32);
-  border:1px solid rgba(255,255,255,.06);animation:fpFloat 7s ease-in-out infinite
+  position:relative;z-index:2;width:100%;background:linear-gradient(145deg,#0D1929,#172A40);
+  border-radius:24px;padding:17px;box-shadow:0 30px 70px rgba(16,28,44,.22);
+  border:1px solid rgba(255,255,255,.08);animation:fpFloat 6s ease-in-out infinite
 }
-@keyframes fpFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
-.fp-preview-top{display:flex;align-items:center;justify-content:space-between;color:#fff;padding:4px 5px 16px}
-.fp-preview-top h3{font:560 18px 'Fraunces',Georgia,serif;margin:6px 0 0}
-.fp-eyebrow-dark{font-size:11px;letter-spacing:.3px;color:#9BAABD}
-.fp-live{font-size:10.5px;color:#8FCBA9;background:rgba(44,92,76,.28);padding:6px 10px;border-radius:999px}
-.fp-live i{display:inline-block;width:5px;height:5px;border-radius:50%;background:#6FCF97;margin-right:5px}
-.fp-preview-body{display:grid;grid-template-columns:112px 1fr;background:var(--paper);border-radius:14px;overflow:hidden;min-height:365px}
-.fp-preview-sidebar{background:var(--ink);padding:16px 10px;display:flex;flex-direction:column;gap:3px}
-.fp-side-logo{width:29px;height:29px;border-radius:8px;display:grid;place-items:center;background:var(--forest);color:#F1E7C8;font:italic 560 16px 'Fraunces';margin-bottom:12px}
-.fp-preview-sidebar span{padding:9px 8px;border-radius:7px;color:#7C8797;font-size:11.5px}
-.fp-preview-sidebar span.active{background:#26334A;color:#fff}
-.fp-preview-main{padding:20px;min-width:0;max-width:100%;overflow:hidden}
-.fp-mini-head{margin-bottom:16px}
-.fp-mini-head strong{display:block;font:560 15px 'Fraunces',Georgia,serif;color:var(--ink);line-height:1.35}
+@keyframes fpFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+.fp-preview-top{display:flex;align-items:center;justify-content:space-between;color:#fff;padding:3px 4px 15px}
+.fp-preview-top h3{font-size:16px;margin:5px 0 0}
+.fp-mono{font:500 8px 'IBM Plex Mono';letter-spacing:1px;color:#8E9BAA}
+.fp-live{font:500 8px 'IBM Plex Mono';color:#79D7A8;background:rgba(31,154,99,.12);padding:6px 8px;border-radius:999px}
+.fp-live i{display:inline-block;width:5px;height:5px;border-radius:50%;background:#5BD493;margin-right:4px}
+.fp-preview-body{display:grid;grid-template-columns:115px 1fr;background:#F6F8F5;border-radius:16px;overflow:hidden;min-height:365px}
+.fp-preview-sidebar{background:#101C2C;padding:15px 10px;display:flex;flex-direction:column;gap:4px}
+.fp-side-logo{width:29px;height:29px;border-radius:8px;display:grid;place-items:center;background:#1F6F54;color:#F5EACB;font:italic 700 17px Georgia;margin-bottom:10px}
+.fp-preview-sidebar span{padding:8px;border-radius:7px;color:#8996A5;font-size:9px}
+.fp-preview-sidebar span.active{background:#213A52;color:#fff}
+.fp-preview-main{padding:18px;min-width:0;max-width:100%;overflow:hidden}
+.fp-mini-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:14px}
+.fp-mini-head strong{display:block;font-size:13px;margin-top:5px}
+.fp-demo-tag{font:500 7px 'IBM Plex Mono';color:#1F6F54;background:#E8F4ED;padding:5px 7px;border-radius:6px}
 .fp-stat-row,.fp-demo-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.fp-stat-row>div,.fp-demo-cards>div{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px;min-width:0}
-.fp-stat-row span,.fp-demo-cards span{display:block;color:var(--slate-soft);font-size:10.5px}
-.fp-stat-row b,.fp-demo-cards b{display:block;font-family:'IBM Plex Mono';font-size:13px;margin-top:7px;color:var(--ink)}
-.fp-chart{background:#17283B;border-radius:11px;padding:14px;margin-top:10px}
-.fp-chart-label{color:#B8C2D0;font-size:11px;margin-bottom:8px}
-.fp-bars,.fp-big-bars{height:118px;display:flex;align-items:flex-end;gap:5px;border-bottom:1px solid rgba(255,255,255,.08);padding:8px 2px 0}
-.fp-bars i,.fp-big-bars i{flex:1;display:block;background:var(--brass);border-radius:3px 3px 0 0;animation:fpRise .7s ease both}
-@keyframes fpRise{from{transform:scaleY(.2);opacity:0}to{transform:scaleY(1);opacity:1}}
-.fp-floating-card{
-  position:absolute;z-index:3;background:#fff;border:1px solid var(--line);border-radius:12px;
-  padding:11px 14px;display:flex;align-items:center;gap:10px;box-shadow:0 18px 34px -10px rgba(18,25,42,.2);
-  max-width:210px;
+.fp-stat-row>div,.fp-demo-cards>div{
+  background:#fff;border:1px solid #E1E6DF;border-radius:10px;padding:11px;min-width:0
 }
-.fp-floating-card>span{width:27px;height:27px;border-radius:8px;display:grid;place-items:center;background:var(--paper-deep);color:var(--forest);font-size:12px;font-weight:700;flex-shrink:0}
-.fp-floating-card b{display:block;font-size:11.5px}.fp-floating-card small{display:block;color:var(--slate-soft);font-size:10px;margin-top:2px}
-.floating-one{left:0;bottom:34px}
+.fp-stat-row span,.fp-demo-cards span{display:block;font:500 7px 'IBM Plex Mono';color:#87918E;letter-spacing:.5px}
+.fp-stat-row b,.fp-demo-cards b{display:block;font-size:12px;margin-top:6px}
+.fp-stat-row small,.fp-demo-cards small{display:block;color:#8B949E;font-size:8px;margin-top:4px}
+.fp-chart{background:#17283B;border-radius:11px;padding:13px;margin-top:9px}
+.fp-chart-label,.fp-demo-chart-head{display:flex;justify-content:space-between;color:#DDE4EA;font-size:9px}
+.fp-chart-label small,.fp-demo-chart-head span{font:500 7px 'IBM Plex Mono';color:#8998A8}
+.fp-bars,.fp-big-bars{height:120px;display:flex;align-items:flex-end;gap:5px;border-bottom:1px solid rgba(255,255,255,.08);padding:8px 2px 0}
+.fp-bars i,.fp-big-bars i{flex:1;display:block;background:#C9A227;border-radius:4px 4px 0 0;animation:fpRise .7s ease both}
+@keyframes fpRise{from{transform:scaleY(.2);opacity:0}to{transform:scaleY(1);opacity:1}}
+.fp-chart-bottom{display:flex;justify-content:space-between;color:#8391A0;font-size:7px;margin-top:8px}
+.fp-floating-card{
+  position:absolute;z-index:3;background:#fff;border:1px solid #E0E5DF;border-radius:12px;
+  padding:10px 12px;display:flex;align-items:center;gap:8px;box-shadow:0 16px 35px rgba(16,28,44,.14)
+}
+.fp-floating-card>span{width:27px;height:27px;border-radius:8px;display:grid;place-items:center;background:#EAF0FF;color:#2E5BFF;font-size:11px;font-weight:800}
+.fp-floating-card b{display:block;font-size:9px}.fp-floating-card small{display:block;color:#7C8791;font-size:7px;margin-top:2px}
+.floating-one{left:-24px;bottom:45px}.floating-two{right:-20px;top:42px}
 
-.fp-feature-switcher{margin-top:32px;padding:10px;background:rgba(255,255,255,.6);border:1px solid var(--line);border-radius:15px;display:flex;align-items:center;gap:16px}
-.fp-switcher-label{min-width:100px;padding:8px 10px;color:var(--slate-soft);font-size:12.5px;font-style:italic}
-.fp-feature-tabs{display:flex;gap:6px;flex:1;min-width:0}
+.fp-feature-switcher{margin-top:28px;padding:8px;background:rgba(255,255,255,.72);border:1px solid #E0E5DF;border-radius:16px;display:flex;align-items:center;gap:15px}
+.fp-switcher-label{min-width:165px;padding:8px 12px}.fp-switcher-label span{display:block;font:600 8px 'IBM Plex Mono';letter-spacing:1px}.fp-switcher-label small{display:block;color:#88928C;font-size:9px;margin-top:3px}
+.fp-feature-tabs{display:flex;gap:7px;flex:1;min-width:0}
 .fp-feature-tabs button{
   flex:1;min-width:0;border:1px solid transparent;background:transparent;border-radius:10px;
-  padding:11px 8px;color:var(--slate);font-size:12.5px;font-weight:600;cursor:pointer;transition:.2s
+  padding:11px 8px;color:#687483;font-size:10px;font-weight:700;cursor:pointer;transition:.2s
 }
-.fp-feature-tabs button span{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:6px;background:var(--paper-deep);color:var(--forest);margin-right:6px}
-.fp-feature-tabs button.active{background:var(--ink);color:#F5EFDC}
-.fp-feature-tabs button.active span{background:var(--brass);color:var(--ink)}
+.fp-feature-tabs button span{display:inline-grid;place-items:center;width:23px;height:23px;border-radius:7px;background:#EEF1ED;color:#1F6F54;margin-right:6px}
+.fp-feature-tabs button.active{background:#101C2C;color:#fff;box-shadow:0 8px 20px rgba(16,28,44,.12)}
+.fp-feature-tabs button.active span{background:#1F6F54;color:#fff}
 
-.fp-section{padding:96px 0}
+.fp-section{padding:92px 0}
 .fp-light{background:#fff}
-.fp-section-heading{max-width:700px}
-.fp-eyebrow{display:inline-block;color:var(--forest);font-size:13px;font-weight:600;font-style:italic;margin-bottom:6px}
+.fp-section-heading{max-width:760px}
+.fp-kicker{display:block;color:#C49A1F;font:600 9px 'IBM Plex Mono';letter-spacing:1.5px}
 .fp-section h2,.fp-ai-section h2,.fp-final h2{
-  font:380 clamp(32px,4vw,48px)/1.15 'Fraunces',Georgia,serif;
-  letter-spacing:-1px;margin:0 0 16px;color:var(--ink)
+  font:600 clamp(34px,4.5vw,54px)/1.08 'Fraunces',Georgia,serif;
+  letter-spacing:-1.5px;margin:9px 0 14px
 }
-.fp-section-heading p,.fp-ai-section>div>p{max-width:640px;color:var(--slate);line-height:1.75;font-size:15.5px;margin:0}
+.fp-section-heading p,.fp-ai-section>div>p{max-width:720px;color:#687484;line-height:1.75;font-size:15px;margin:0}
 
 .fp-feature-detail{
-  display:grid;grid-template-columns:minmax(0,.72fr) minmax(0,1.28fr);gap:52px;align-items:center;margin-top:48px;
+  display:grid;grid-template-columns:minmax(0,.75fr) minmax(0,1.25fr);gap:50px;align-items:center;margin-top:45px;
   width:100%;
 }
-.fp-feature-detail > *{min-width:0;max-width:100%}
+.fp-feature-detail > *{min-width:0;max-width:100%;}
 .fp-detail-copy{padding-right:15px;min-width:0}
-.fp-detail-icon{display:grid;place-items:center;width:46px;height:46px;border-radius:12px;background:var(--ink);color:var(--brass);font-size:19px;margin-bottom:16px}
-.fp-detail-copy h3{font:400 clamp(26px,3vw,36px)/1.2 'Fraunces',Georgia,serif;margin:6px 0 14px;color:var(--ink)}
-.fp-detail-copy>p{color:var(--slate);line-height:1.75;font-size:15px}
+.fp-detail-icon{display:grid;place-items:center;width:48px;height:48px;border-radius:13px;background:#101C2C;color:#C9A227;font-size:20px;margin-bottom:18px}
+.fp-detail-copy h3{font:600 clamp(30px,3.5vw,45px)/1.08 'Fraunces',Georgia,serif;margin:8px 0 14px}
+.fp-detail-copy>p{color:#687484;line-height:1.7;font-size:14px}
 .fp-points{display:flex;flex-wrap:wrap;gap:8px;margin:20px 0}
-.fp-points span{background:var(--paper-deep);border:1px solid var(--line);padding:8px 12px;border-radius:8px;color:var(--forest-deep);font-size:12.5px}
-.fp-arrow-link{color:var(--forest);text-decoration:none;font-size:14px;font-weight:600;border-bottom:1px solid var(--forest)}
-.fp-detail-preview .fp-preview-shell{animation:none;box-shadow:0 20px 44px -14px rgba(18,25,42,.22)}
+.fp-points span{background:#F1F5F1;border:1px solid #DFE6DF;padding:7px 9px;border-radius:8px;color:#416052;font-size:10px}
+.fp-arrow-link{color:#1F6F54;text-decoration:none;font-size:12px;font-weight:800}
+.fp-detail-preview .fp-preview-shell{animation:none;box-shadow:0 20px 50px rgba(16,28,44,.14)}
 .fp-detail-preview .fp-preview-sidebar{display:none}
-.fp-detail-preview .fp-preview-body{display:block;min-height:320px}
-.fp-detail-preview .fp-preview-main{padding:22px;min-width:0;max-width:100%;overflow:hidden}
+.fp-detail-preview .fp-preview-body{display:block;min-height:330px}
+.fp-detail-preview .fp-preview-main{padding:20px;min-width:0;max-width:100%;overflow:hidden}
 
-.fp-workflow{background:var(--ink);color:#fff;overflow:hidden}
+.fp-workflow{background:#101C2C;color:#fff;overflow:hidden}
 .fp-workflow h2,.fp-workflow h3{color:#fff}
 .fp-split-heading{display:flex;align-items:end;justify-content:space-between;gap:40px;min-width:0}
 .fp-split-heading > *{min-width:0;max-width:100%}
-.fp-split-heading h2{margin-bottom:0}.fp-split-heading p{max-width:370px;color:#AEB9C6;line-height:1.7;font-size:14px}
-.light-kicker{color:var(--brass)}
-.fp-journey{margin-top:56px;display:grid;grid-template-columns:repeat(5,1fr);gap:0}
+.fp-split-heading h2{margin-bottom:0}.fp-split-heading p{max-width:390px;color:#AEB9C6;line-height:1.7;font-size:13px}
+.light-kicker{color:#C9A227}
+.fp-journey{margin-top:52px;display:grid;grid-template-columns:repeat(5,1fr);gap:0}
 .fp-journey-step{position:relative;min-width:0;width:100%;overflow:hidden}
-.fp-step-number{font-family:'IBM Plex Mono';font-weight:600;color:var(--brass);font-size:14px}
+.fp-step-number{color:#C9A227;font:600 11px 'IBM Plex Mono';letter-spacing:1px}
 .fp-step-line{height:42px;display:flex;align-items:center;position:relative}
-.fp-step-line span{width:12px;height:12px;border-radius:50%;background:var(--brass);border:3px solid #232E42;z-index:2}
-.fp-step-line i{height:1px;background:#33405A;position:absolute;left:12px;right:0;top:20px}
-.fp-step-content{padding-right:20px;min-width:0;max-width:100%;overflow-wrap:anywhere}
-.fp-step-content h3{font:500 15px 'Instrument Sans';margin:7px 0;color:#fff}.fp-step-content p{color:#9DAAB9;font-size:12.5px;line-height:1.6;margin:0;max-width:100%;overflow-wrap:anywhere}
+.fp-step-line span{width:13px;height:13px;border-radius:50%;background:#C9A227;border:3px solid #2A3543;z-index:2}
+.fp-step-line i{height:1px;background:#344253;position:absolute;left:12px;right:0;top:21px}
+.fp-step-content{padding-right:20px;min-width:0;max-width:100%;overflow-wrap:anywhere;word-break:normal}
+.fp-step-content h3{font-size:14px;margin:7px 0;color:#fff}.fp-step-content p{color:#9DAAB9;font-size:11px;line-height:1.6;margin:0;max-width:100%;overflow-wrap:anywhere}
 
-.fp-demo-section{background:var(--paper-deep)}
+.fp-demo-section{background:#F3F5F1}
 .fp-demo-header{display:flex;justify-content:space-between;align-items:end;gap:40px}
-.fp-demo-header>div{max-width:660px}.fp-demo-header>p{max-width:330px;color:var(--slate);font-size:14px;line-height:1.7}
-.fp-demo-board{margin-top:40px;background:var(--ink);border-radius:20px;padding:14px;box-shadow:0 24px 55px -18px rgba(18,25,42,.28)}
-.fp-demo-board-top{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 8px;color:#fff}
-.fp-demo-brand{font:560 15px 'Fraunces'}.fp-demo-brand span{display:inline-grid;place-items:center;width:26px;height:26px;background:var(--forest);border-radius:7px;margin-right:8px;font:italic 700 15px Georgia}
-.fp-demo-status{font-size:11.5px;color:#8FCBA9}.fp-demo-status i{display:inline-block;width:5px;height:5px;background:#6FCF97;border-radius:50%;margin-right:6px}
-.fp-demo-board-grid{display:grid;grid-template-columns:150px 1fr;background:var(--paper);border-radius:14px;overflow:hidden}
-.fp-demo-menu{padding:18px 10px;background:#1C283B;display:flex;flex-direction:column;gap:4px}
-.fp-demo-menu span{padding:9px 10px;border-radius:7px;color:#8996A7;font-size:12px}.fp-demo-menu .selected{background:#28374E;color:#fff}
-.fp-demo-content{padding:24px;min-width:0}.fp-demo-welcome{display:flex;justify-content:space-between;align-items:center;gap:20px}.fp-demo-welcome h3{margin:6px 0;font:400 19px 'Fraunces',Georgia,serif}.fp-demo-welcome button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:9px 12px;font-size:12px;font-weight:600;cursor:pointer}
-.fp-demo-cards{margin-top:18px}.fp-demo-lower{display:grid;grid-template-columns:1.5fr .8fr;gap:10px;margin-top:10px}
-.fp-demo-chart{background:#17283B;border-radius:11px;padding:16px}.fp-big-bars{height:150px}.fp-demo-chart-head{display:flex;justify-content:space-between;color:#DDE4EA;font-size:11px;margin-bottom:8px}.fp-demo-chart-head span{color:#8998A8}
-.fp-demo-ai{background:#fff;border:1px solid var(--line);border-radius:11px;padding:16px}.fp-ai-badge{display:grid;place-items:center;width:30px;height:30px;background:var(--paper-deep);color:var(--forest);border-radius:9px;font-family:'IBM Plex Mono';font-size:11px;font-weight:600}.fp-demo-ai b{display:block;margin-top:14px;font:500 14px 'Instrument Sans'}.fp-demo-ai p{font-size:12px;margin:8px 0;color:var(--ink-soft)}.fp-answer{display:block;background:var(--paper-deep);color:var(--slate);padding:10px;border-radius:8px;font-size:11.5px;line-height:1.55}
-.fp-demo-cta{margin-top:26px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:24px;display:flex;align-items:center;justify-content:space-between;gap:20px}.fp-demo-cta h3{font:400 21px 'Fraunces',Georgia,serif;margin:0 0 4px}.fp-demo-cta p{color:var(--slate-soft);font-size:12.5px;margin:0}.fp-text-btn{border:0;background:none;color:var(--forest);font-size:13px;font-weight:600;cursor:pointer;text-decoration:underline}
+.fp-demo-header>div{max-width:700px}.fp-demo-header>p{max-width:350px;color:#687484;font-size:13px;line-height:1.7}
+.fp-demo-board{margin-top:38px;background:#101C2C;border-radius:22px;padding:14px;box-shadow:0 25px 60px rgba(16,28,44,.16)}
+.fp-demo-board-top{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 7px;color:#fff}
+.fp-demo-brand{font-weight:700;font-size:13px}.fp-demo-brand span{display:inline-grid;place-items:center;width:26px;height:26px;background:#1F6F54;border-radius:7px;margin-right:7px;font:italic 700 16px Georgia}
+.fp-demo-status{font:500 8px 'IBM Plex Mono';color:#78D8A5}.fp-demo-status i{display:inline-block;width:5px;height:5px;background:#59D58E;border-radius:50%;margin-right:5px}
+.fp-demo-board-grid{display:grid;grid-template-columns:145px 1fr;background:#F6F8F5;border-radius:15px;overflow:hidden}
+.fp-demo-menu{padding:18px 10px;background:#17283B;display:flex;flex-direction:column;gap:4px}
+.fp-demo-menu span{padding:8px 9px;border-radius:7px;color:#8E9BAA;font-size:9px}.fp-demo-menu .selected{background:#233D55;color:#fff}
+.fp-demo-content{padding:22px;min-width:0}.fp-demo-welcome{display:flex;justify-content:space-between;align-items:center;gap:20px}.fp-demo-welcome h3{margin:6px 0;font-size:17px}.fp-demo-welcome button{border:1px solid #D8DED7;background:#fff;border-radius:8px;padding:8px 10px;font-size:9px;font-weight:700;cursor:pointer}
+.fp-demo-cards{margin-top:17px}.fp-demo-lower{display:grid;grid-template-columns:1.5fr .8fr;gap:10px;margin-top:10px}
+.fp-demo-chart{background:#17283B;border-radius:11px;padding:15px}.fp-big-bars{height:155px}.fp-demo-ai{background:#fff;border:1px solid #E1E6DF;border-radius:11px;padding:15px}.fp-ai-badge{display:grid;place-items:center;width:31px;height:31px;background:#EAF0FF;color:#2E5BFF;border-radius:9px;font:600 9px 'IBM Plex Mono'}.fp-demo-ai b{display:block;margin-top:14px;font-size:13px}.fp-demo-ai p{font-size:11px;margin:8px 0;color:#34404F}.fp-answer{display:block;background:#F2F6F3;color:#5F6D68;padding:9px;border-radius:8px;font-size:9px;line-height:1.5}
+.fp-demo-cta{margin-top:25px;background:#fff;border:1px solid #E0E5DE;border-radius:17px;padding:23px;display:flex;align-items:center;justify-content:space-between;gap:20px}.fp-demo-cta h3{font-size:20px;margin:7px 0 3px}.fp-demo-cta p{color:#7B857F;font-size:10px;margin:0}.fp-text-btn{border:0;background:none;color:#1F6F54;font-size:11px;font-weight:800;margin-top:10px;cursor:pointer}
 
 .fp-ai-section{background:#fff}
 .fp-ai-grid{display:grid;grid-template-columns:1fr 1fr;gap:70px;align-items:center}
-.fp-question-list{margin-top:26px;display:flex;flex-direction:column;gap:8px}
-.fp-question-list button{border:1px solid var(--line);background:var(--paper);text-align:left;padding:13px 15px;border-radius:10px;color:var(--ink);font-size:13.5px;cursor:pointer;transition:.2s}.fp-question-list button:hover{border-color:var(--forest);color:var(--forest)}
-.fp-ai-window{background:var(--ink);border-radius:18px;padding:14px;box-shadow:0 22px 50px -16px rgba(18,25,42,.3)}
-.fp-ai-window-head{height:42px;display:flex;align-items:center;color:#fff;padding:0 6px;font-size:13px}.fp-ai-window-head span i{display:inline-block;width:6px;height:6px;border-radius:50%;background:#6FCF97;margin-right:8px}
-.fp-chat{background:var(--paper);border-radius:14px;padding:18px;min-height:300px;display:flex;flex-direction:column;justify-content:flex-end;gap:14px}
-.fp-chat-user{align-self:flex-end;max-width:75%;background:var(--forest);color:#F5EFDC;border-radius:12px 12px 3px 12px;padding:11px 13px;font-size:12.5px}
-.fp-chat-ai{display:flex;gap:10px;align-items:flex-start;max-width:85%}.fp-ai-circle{width:30px;height:30px;border-radius:9px;background:var(--ink);color:var(--brass);display:grid;place-items:center;flex-shrink:0}.fp-chat-ai b{font-size:12px}.fp-chat-ai p{font-size:12px;color:var(--slate);line-height:1.6;margin:5px 0}
-.fp-chat-input{border:1px solid var(--line);background:#fff;color:var(--slate-soft);border-radius:9px;padding:12px 14px;font-size:12.5px}
+.fp-question-list{margin-top:25px;display:flex;flex-direction:column;gap:8px}
+.fp-question-list button{border:1px solid #E0E5DE;background:#F8FAF7;text-align:left;padding:12px 14px;border-radius:10px;display:flex;justify-content:space-between;color:#263344;font-size:11px;cursor:pointer}.fp-question-list button:hover{border-color:#1F6F54;color:#1F6F54}
+.fp-ai-window{background:#101C2C;border-radius:20px;padding:14px;box-shadow:0 22px 55px rgba(16,28,44,.18)}
+.fp-ai-window-head{height:42px;display:flex;justify-content:space-between;align-items:center;color:#fff;padding:0 5px;font-size:11px}.fp-ai-window-head span i{display:inline-block;width:6px;height:6px;border-radius:50%;background:#59D58E;margin-right:7px}.fp-ai-window-head small{font:500 7px 'IBM Plex Mono';color:#8796A7}
+.fp-chat{background:#F7F9F6;border-radius:14px;padding:18px;min-height:300px;display:flex;flex-direction:column;justify-content:flex-end;gap:14px}
+.fp-chat-user{align-self:flex-end;max-width:75%;background:#2E5BFF;color:#fff;border-radius:12px 12px 3px 12px;padding:11px;font-size:11px}
+.fp-chat-ai{display:flex;gap:10px;align-items:flex-start;max-width:85%}.fp-ai-circle{width:30px;height:30px;border-radius:9px;background:#101C2C;color:#C9A227;display:grid;place-items:center}.fp-chat-ai b{font-size:10px}.fp-chat-ai p{font-size:10px;color:#687484;line-height:1.6;margin:5px 0}
+.fp-chat-input{border:1px solid #DCE2DB;background:#fff;color:#929B98;border-radius:9px;padding:11px;font-size:10px;display:flex;justify-content:space-between}.fp-chat-input span{color:#2E5BFF;font-weight:800}
 
-.fp-final{background:#fff;padding-top:20px}
-.fp-final-card{background:var(--ink);color:#fff;border-radius:22px;padding:46px;display:flex;align-items:center;justify-content:space-between;gap:35px}
-.fp-final h2{margin:0 0 12px}.fp-final p{color:#B8C2CF;max-width:560px;font-size:14px;line-height:1.7;margin:0}
-.fp-final-actions{min-width:230px;display:flex;flex-direction:column;gap:12px}.fp-final-primary{background:var(--brass);color:var(--ink);text-decoration:none;padding:14px 16px;border-radius:9px;text-align:center;font-size:13.5px;font-weight:700}.fp-final-secondary{color:#D7DEE5;text-decoration:none;text-align:center;font-size:12px}
+.fp-final{background:#fff;padding-top:25px}
+.fp-final-card{background:#101C2C;color:#fff;border-radius:23px;padding:44px;display:flex;align-items:center;justify-content:space-between;gap:35px}
+.fp-final h2{margin:8px 0 12px}.fp-final p{color:#B8C2CF;max-width:590px;font-size:13px;line-height:1.7;margin:0}
+.fp-final-actions{min-width:230px;display:flex;flex-direction:column;gap:10px}.fp-final-primary{background:#C9A227;color:#101C2C;text-decoration:none;padding:13px 16px;border-radius:9px;text-align:center;font-size:12px;font-weight:800}.fp-final-secondary{color:#D7DEE5;text-decoration:none;text-align:center;font-size:10px}
 
-.fp-login-section{background:var(--paper-deep);padding:96px 0}
+.fp-login-section{background:#F1F4F0;padding:92px 0}
 .fp-login-grid{display:grid;grid-template-columns:1fr 440px;gap:80px;align-items:center}
-.fp-login-copy h2{font:380 clamp(34px,4vw,50px)/1.15 'Fraunces',Georgia,serif;margin:6px 0 15px;color:var(--ink)}.fp-login-copy p{color:var(--slate);line-height:1.75;max-width:580px;font-size:15px}
-.fp-login-checks{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-top:26px}.fp-login-checks span{font-size:13px;color:var(--forest-deep);padding-left:12px;border-left:2px solid var(--brass)}
-.fp-login-card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:28px;box-shadow:0 20px 48px -18px rgba(18,25,42,.14)}
-.fp-login-card-top{display:flex;justify-content:space-between;color:var(--slate-soft);font-size:11.5px}
-.fp-login-card h3{font:400 29px 'Fraunces',Georgia,serif;margin:20px 0 5px;color:var(--ink)}.fp-login-card>p{font-size:12.5px;color:var(--slate);margin:0 0 12px}
-.fp-not-you{border:0;background:none;color:var(--forest);font-size:11.5px;padding:0;margin-bottom:16px;cursor:pointer;text-decoration:underline}
-.fp-login-card form{display:flex;flex-direction:column;gap:16px}.fp-login-card label{display:flex;flex-direction:column;gap:7px;color:var(--ink-soft);font-size:12.5px;font-weight:600}
-.fp-login-card input{width:100%;height:46px;border:1px solid var(--line);border-radius:9px;padding:0 13px;font-size:14px;outline:none;background:var(--paper)}
-.fp-login-card input:focus{border-color:var(--forest);box-shadow:0 0 0 3px rgba(44,92,76,.13)}
-.fp-password-label{display:flex;justify-content:space-between}.fp-password-label a{color:var(--forest);text-decoration:none;font-size:11.5px}
-.fp-password-wrap{position:relative}.fp-password-wrap input{padding-right:60px}
-.fp-password-wrap button{position:absolute;right:7px;top:7px;height:32px;border:0;background:var(--paper-deep);border-radius:7px;color:var(--forest-deep);font-size:11px;font-weight:600;cursor:pointer;padding:0 10px}
-.fp-field-error{color:#A6402E;font-size:11.5px;margin-top:-10px}
-.fp-error{background:#FCEFEA;border:1px solid #EFCCBE;color:#8F3A26;border-radius:8px;padding:10px 12px;font-size:12.5px}
-.fp-login-primary{height:47px;border:0;border-radius:9px;background:var(--forest);color:#F5EFDC;font-weight:700;font-size:14px;cursor:pointer;transition:.2s}
-.fp-login-primary:hover{background:var(--forest-deep)}
-.fp-login-primary:disabled,.fp-google:disabled{opacity:.6;cursor:not-allowed}
-.fp-or{display:flex;align-items:center;gap:9px;color:var(--slate-soft);font-size:11.5px}.fp-or span{height:1px;background:var(--line);flex:1}
-.fp-google{height:45px;border:1px solid var(--line);background:#fff;border-radius:9px;color:var(--ink-soft);font-size:13.5px;font-weight:600;cursor:pointer;transition:.2s}
-.fp-google:hover{border-color:var(--ink);background:var(--paper)}
-.fp-login-footer{display:flex;justify-content:center;gap:6px;margin-top:20px;font-size:12.5px;color:var(--slate-soft)}.fp-login-footer a{color:var(--forest);text-decoration:none;font-weight:600}
+.fp-login-copy h2{font:600 clamp(38px,4.5vw,57px)/1.05 'Fraunces',Georgia,serif;margin:9px 0 15px}.fp-login-copy p{color:#687484;line-height:1.75;max-width:600px;font-size:14px}
+.fp-login-checks{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:24px}.fp-login-checks span{font-size:11px;color:#58665F}
+.fp-login-card{background:#fff;border:1px solid #DDE3DB;border-radius:18px;padding:27px;box-shadow:0 20px 45px rgba(16,28,44,.09)}
+.fp-login-card-top{display:flex;justify-content:space-between;color:#89938E;font:500 8px 'IBM Plex Mono';letter-spacing:1px}.fp-login-card h3{font:600 30px 'Fraunces',Georgia,serif;margin:19px 0 5px}.fp-login-card>p{font-size:11px;color:#75817C;margin:0 0 12px}.fp-not-you{border:0;background:none;color:#1F6F54;font-size:10px;padding:0;margin-bottom:16px;cursor:pointer}
+.fp-login-card form{display:flex;flex-direction:column;gap:15px}.fp-login-card label{display:flex;flex-direction:column;gap:7px;color:#3C4754;font-size:10px;font-weight:700}.fp-login-card input{width:100%;height:44px;border:1px solid #D7DED6;border-radius:9px;padding:0 12px;font-size:12px;outline:none;background:#FBFCFA}.fp-login-card input:focus{border-color:#1F6F54;box-shadow:0 0 0 3px rgba(31,111,84,.12)}.fp-password-label{display:flex;justify-content:space-between}.fp-password-label a{color:#1F6F54;text-decoration:none;font-size:9px}.fp-password-wrap{position:relative}.fp-password-wrap input{padding-right:58px}.fp-password-wrap button{position:absolute;right:7px;top:7px;height:30px;border:0;background:#EEF3EF;border-radius:7px;color:#1F6F54;font-size:9px;font-weight:800;cursor:pointer}.fp-field-error{color:#B04A42;font-size:9px;margin-top:-10px}.fp-error{background:#FFF1EF;border:1px solid #F2D1CC;color:#A33D35;border-radius:8px;padding:9px;font-size:10px}.fp-login-primary{height:45px;border:0;border-radius:9px;background:#2E5BFF;color:#fff;font-weight:800;font-size:12px;cursor:pointer}.fp-login-primary:disabled,.fp-google:disabled{opacity:.65;cursor:not-allowed}.fp-or{display:flex;align-items:center;gap:8px;color:#8A938E;font-size:9px}.fp-or span{height:1px;background:#E2E6E0;flex:1}.fp-google{height:43px;border:1px solid #D9DFD8;background:#fff;border-radius:9px;color:#27323E;font-size:11px;font-weight:700;cursor:pointer}.fp-google:hover{border-color:#101C2C;background:#FAFBF9}.fp-login-footer{display:flex;justify-content:center;gap:6px;margin-top:19px;font-size:10px;color:#7B857F}.fp-login-footer a{color:#1F6F54;text-decoration:none;font-weight:800}
 
-.fp-footer{background:var(--ink);padding:38px 0 46px}.fp-footer-inner{display:flex;align-items:center;justify-content:space-between;gap:25px}
-.fp-footer .fp-brand{color:#fff}.fp-footer .fp-brand-mark{background:var(--forest)}.fp-footer .fp-brand small{color:#7C8797}
-.fp-footer-inner>div:last-child{display:flex;flex-wrap:wrap;gap:20px}.fp-footer-inner a{color:#AAB6C3;text-decoration:none;font-size:13px}.fp-footer-inner a:hover{color:#fff}
+.fp-footer{background:#101C2C;padding:35px 0 45px}.fp-footer-inner{display:flex;align-items:center;justify-content:space-between;gap:25px}.fp-footer .fp-brand{color:#fff}.fp-footer .fp-brand-mark{background:#1F6F54}.fp-footer p{color:#778698;font:500 7px 'IBM Plex Mono';letter-spacing:1.3px;margin:6px 0 0 48px}.fp-footer-inner>div:last-child{display:flex;flex-wrap:wrap;gap:18px}.fp-footer-inner a{color:#AAB6C3;text-decoration:none;font-size:10px}.fp-footer-inner a:hover{color:#fff}
 
-.fp-ai-demo{display:flex;flex-direction:column;gap:10px}.fp-ai-msg{max-width:82%;padding:11px 13px;border-radius:10px;font-size:12px;line-height:1.55}.fp-ai-msg.user{align-self:flex-end;background:var(--forest);color:#F5EFDC}.fp-ai-msg.bot{background:#fff;border:1px solid var(--line);color:var(--slate)}.fp-ai-msg.bot b{display:block;color:var(--ink);margin-bottom:3px}.fp-ai-suggestions{display:flex;flex-wrap:wrap;gap:6px}.fp-ai-suggestions button{border:1px solid var(--line);background:#fff;border-radius:7px;padding:8px 10px;font-size:11px;cursor:pointer}
-.fp-qr-demo{display:grid;grid-template-columns:150px 1fr;gap:16px}.fp-phone{background:var(--ink);color:#fff;border-radius:18px;padding:16px;min-height:275px;position:relative}.fp-phone-notch{width:38px;height:4px;background:#3A4A5C;border-radius:4px;margin:0 auto 16px}.fp-phone>b{display:block;margin:6px 0 15px;font:500 13px 'Instrument Sans'}.fp-product-row{display:flex;justify-content:space-between;align-items:center;border-top:1px solid #26384B;padding:10px 0;font-size:11.5px}.fp-product-row span i{display:inline-block;width:19px;height:19px;background:#23384D;border-radius:5px;vertical-align:middle;margin-right:7px}.fp-product-row button{border:0;background:var(--forest);color:#F5EFDC;border-radius:5px;padding:5px 8px;font-size:10px}.fp-cart-button{background:var(--brass);color:var(--ink);border-radius:7px;text-align:center;padding:9px;font-size:11.5px;font-weight:700;margin-top:12px}.fp-order-flow{display:flex;flex-direction:column;justify-content:center}.fp-order-flow>b{font:400 18px 'Fraunces',Georgia,serif;margin:0 0 20px}.fp-flow-line{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.fp-flow-line i{font-style:normal;background:var(--paper-deep);color:var(--forest-deep);padding:8px 10px;border-radius:7px;font-size:11px}.fp-flow-line em{font-style:normal;color:var(--slate-soft)}.fp-order-flow small{color:var(--slate);line-height:1.6;margin-top:18px;font-size:12px}
-.fp-inventory-demo{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.fp-inventory-card{background:#fff;border:1px solid var(--line);border-radius:9px;padding:11px}.fp-inventory-card span{color:var(--slate-soft);font-size:10.5px}.fp-inventory-card strong{display:block;font-family:'IBM Plex Mono';font-size:12.5px;margin-top:6px;color:var(--ink)}.fp-stock-list{grid-column:1/-1;background:#fff;border:1px solid var(--line);border-radius:9px;padding:10px;font-size:11.5px}.fp-stock-list>div{display:grid;grid-template-columns:1fr 1fr;padding:8px;border-bottom:1px solid var(--paper-deep)}.fp-stock-list>div:last-child{border:0}.fp-stock-list span{color:var(--slate-soft)}.fp-stock-list i{font-style:normal;color:var(--forest)}
+.fp-ai-demo{display:flex;flex-direction:column;gap:10px}.fp-ai-msg{max-width:82%;padding:10px;border-radius:9px;font-size:9px;line-height:1.5}.fp-ai-msg.user{align-self:flex-end;background:#2E5BFF;color:#fff}.fp-ai-msg.bot{background:#fff;border:1px solid #E0E5DE;color:#52606B}.fp-ai-msg.bot b{display:block;color:#101C2C;margin-bottom:3px}.fp-ai-suggestions{display:flex;flex-wrap:wrap;gap:5px}.fp-ai-suggestions button{border:1px solid #DCE2DB;background:#fff;border-radius:7px;padding:7px;font-size:8px;cursor:pointer}
+.fp-qr-demo{display:grid;grid-template-columns:150px 1fr;gap:15px}.fp-phone{background:#101C2C;color:#fff;border-radius:18px;padding:15px;min-height:275px;position:relative}.fp-phone-notch{width:38px;height:4px;background:#3A4A5C;border-radius:4px;margin:0 auto 15px}.fp-phone .fp-mono{display:block}.fp-phone>b{display:block;margin:5px 0 14px;font-size:12px}.fp-product-row{display:flex;justify-content:space-between;align-items:center;border-top:1px solid #26384B;padding:10px 0;font-size:8px}.fp-product-row span i{display:inline-block;width:19px;height:19px;background:#23384D;border-radius:5px;vertical-align:middle;margin-right:6px}.fp-product-row button{border:0;background:#1F6F54;color:#fff;border-radius:5px;padding:5px 6px;font-size:7px}.fp-cart-button{background:#C9A227;color:#101C2C;border-radius:7px;text-align:center;padding:8px;font-size:8px;font-weight:800;margin-top:10px}.fp-order-flow{display:flex;flex-direction:column;justify-content:center}.fp-order-flow>span{font:500 8px 'IBM Plex Mono';color:#8997A5}.fp-order-flow>b{font-size:17px;margin:8px 0 20px}.fp-flow-line{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.fp-flow-line i{font-style:normal;background:#EAF3ED;color:#1F6F54;padding:8px;border-radius:7px;font-size:8px}.fp-flow-line em{font-style:normal;color:#A0AAA5}.fp-order-flow small{color:#73808B;line-height:1.6;margin-top:18px;font-size:9px}
+.fp-inventory-demo{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.fp-inventory-card{background:#fff;border:1px solid #E0E5DE;border-radius:9px;padding:10px}.fp-inventory-card span{font:500 7px 'IBM Plex Mono';color:#89928D}.fp-inventory-card strong{display:block;font-size:11px;margin-top:5px}.fp-inventory-card small{display:block;color:#89928D;font-size:7px;margin-top:3px}.fp-stock-list{grid-column:1/-1;background:#fff;border:1px solid #E0E5DE;border-radius:9px;padding:9px;font-size:8px}.fp-stock-list>div{display:grid;grid-template-columns:1fr 1fr;padding:7px;border-bottom:1px solid #EEF1ED}.fp-stock-list>div:last-child{border:0}.fp-stock-list span{color:#8B958F;font:500 7px 'IBM Plex Mono'}.fp-stock-list i{font-style:normal;color:#1F6F54}
 
 @media(max-width:1100px){
-  .fp-container{width:min(94vw,1140px)}
+  .fp-container{width:min(94vw,1160px)}
   .fp-feature-detail{gap:32px}
   .fp-journey{grid-template-columns:repeat(5,minmax(0,1fr))}
 }
@@ -1109,27 +1129,228 @@ button,a{-webkit-tap-highlight-color:transparent}
   .fp-login-grid{grid-template-columns:1fr;gap:40px}
 }
 @media(max-width:760px){
-  .fp-nav{padding:11px 4vw}.fp-nav-links{display:none}.fp-nav-actions{min-width:auto}.fp-login-link{display:none}.fp-brand{min-width:auto}.fp-brand strong{font-size:19px}
-  .fp-hero{padding-top:48px}.fp-hero h1{font-size:clamp(40px,11vw,56px)}
-  .fp-feature-switcher{display:block;padding:10px}.fp-switcher-label{padding:7px;display:block}.fp-feature-tabs{overflow-x:auto;padding-bottom:2px}.fp-feature-tabs button{min-width:112px;white-space:nowrap}
+  .fp-nav{padding:11px 4vw}.fp-nav-links{display:none}.fp-nav-actions{min-width:auto}.fp-login-link{display:none}.fp-brand{min-width:auto}.fp-brand strong{font-size:20px}
+  .fp-hero{padding-top:48px}.fp-hero h1{font-size:clamp(43px,12vw,61px);letter-spacing:-2px}
+  .fp-feature-switcher{display:block;padding:10px}.fp-switcher-label{padding:7px}.fp-feature-tabs{overflow-x:auto;padding-bottom:2px}.fp-feature-tabs button{min-width:112px;white-space:nowrap}
   .fp-floating-card{display:none}
-  .fp-preview-body{grid-template-columns:74px 1fr}.fp-preview-sidebar span{font-size:10px;padding:8px 5px}.fp-preview-main{padding:14px}.fp-stat-row,.fp-inventory-demo{grid-template-columns:1fr}.fp-stat-row>div:nth-child(3),.fp-inventory-card:nth-child(3){display:none}
+  .fp-preview-body{grid-template-columns:75px 1fr}.fp-preview-sidebar span{font-size:8px;padding:7px 5px}.fp-preview-main{padding:12px}.fp-stat-row,.fp-inventory-demo{grid-template-columns:1fr}.fp-stat-row>div:nth-child(3),.fp-inventory-card:nth-child(3){display:none}
   .fp-demo-board-grid{grid-template-columns:1fr}.fp-demo-menu{display:none}.fp-demo-lower{grid-template-columns:1fr}.fp-demo-ai{display:none}
   .fp-demo-header,.fp-split-heading,.fp-final-card,.fp-footer-inner{display:block}.fp-demo-header>p{margin-top:15px}.fp-final-actions{margin-top:25px}.fp-footer-inner>div:last-child{margin-top:25px}
   .fp-login-checks{grid-template-columns:1fr}
 }
 @media(max-width:520px){
-  .fp-hero-text{font-size:15px}.fp-trust{display:grid;gap:9px}
-  .fp-preview-shell{padding:12px;border-radius:16px}.fp-preview-body{min-height:315px}.fp-preview-sidebar{display:none}.fp-preview-main{padding:14px}
+  .fp-hero-text{font-size:15px}.fp-trust{display:grid;gap:7px}
+  .fp-preview-shell{padding:11px;border-radius:18px}.fp-preview-body{min-height:315px}.fp-preview-sidebar{display:none}.fp-preview-main{padding:13px}
   .fp-detail-preview .fp-preview-sidebar{display:none}.fp-detail-preview .fp-preview-body{min-height:290px}
   .fp-qr-demo{grid-template-columns:1fr}.fp-order-flow{display:none}
   .fp-phone{max-width:220px;margin:auto}
   .fp-section{padding:68px 0}
   .fp-demo-cards{grid-template-columns:1fr}.fp-demo-cards>div:nth-child(3){display:none}
-  .fp-login-card{padding:22px}.fp-final-card{padding:30px}
-  .fp-demo-cta{flex-wrap:wrap}.fp-demo-cta>div:last-child{display:flex;flex-direction:column;align-items:stretch;gap:10px;width:100%}
+  .fp-login-card{padding:21px}.fp-final-card{padding:29px}
 }
 @media(prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}.fp-preview-shell{animation:none}.fp-bars i,.fp-big-bars i{animation:none}
 }
+
+/* FINAL LAYOUT SAFETY OVERRIDES */
+.fp-page,
+.fp-page main,
+.fp-section,
+.fp-container,
+.fp-hero,
+.fp-hero-grid,
+.fp-hero-product,
+.fp-feature-detail,
+.fp-detail-preview,
+.fp-workflow,
+.fp-demo-section {
+  max-width: 100%;
+}
+
+.fp-hero-product {
+  padding-right: 28px;
+}
+
+.floating-one {
+  left: 0;
+  bottom: 45px;
+}
+
+.floating-two {
+  right: 28px;
+  top: 42px;
+  max-width: 185px;
+  box-sizing: border-box;
+}
+
+.fp-floating-card > div {
+  min-width: 0;
+  max-width: 125px;
+}
+
+.fp-floating-card b,
+.fp-floating-card small {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.fp-split-heading {
+  width: 100%;
+  overflow: visible;
+}
+
+.fp-split-heading > div {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.fp-split-heading > p {
+  flex: 0 1 390px;
+  min-width: 250px;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.fp-journey {
+  width: 100%;
+  min-width: 0;
+}
+
+.fp-journey-step {
+  overflow: visible;
+  min-width: 0;
+}
+
+.fp-step-content {
+  padding-right: 14px;
+}
+
+.fp-step-content h3,
+.fp-step-content p {
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.fp-journey-step:last-child .fp-step-content {
+  padding-right: 0;
+}
+
+.fp-demo-board,
+.fp-demo-board-grid,
+.fp-demo-content,
+.fp-demo-cta {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.fp-demo-cta {
+  flex-wrap: wrap;
+}
+
+.fp-demo-cta > div {
+  min-width: 0;
+}
+
+.fp-demo-cta > div:last-child {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+
+.fp-demo-cta .fp-text-btn {
+  margin-top: 0;
+  white-space: nowrap;
+}
+
+@media (max-width: 1250px) and (min-width: 1001px) {
+  .fp-container {
+    width: min(92vw, 1120px);
+  }
+
+  .fp-hero-grid {
+    gap: 38px;
+  }
+
+  .fp-hero-product {
+    padding-right: 22px;
+  }
+
+  .floating-two {
+    right: 12px;
+    max-width: 170px;
+  }
+
+  .fp-feature-detail {
+    gap: 32px;
+  }
+
+  .fp-journey {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .fp-step-content {
+    padding-right: 10px;
+  }
+
+  .fp-step-content h3 {
+    font-size: 13px;
+  }
+
+  .fp-step-content p {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .fp-hero-product {
+    padding-right: 0;
+  }
+
+  .floating-two {
+    right: 10px;
+  }
+
+  .fp-split-heading {
+    align-items: flex-start;
+  }
+
+  .fp-split-heading > p {
+    flex-basis: 330px;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .floating-one,
+  .floating-two {
+    display: none;
+  }
+
+  .fp-split-heading > p {
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+
+  .fp-demo-cta > div:last-child {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 520px) {
+  .fp-demo-cta > div:last-child {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .fp-demo-cta .fp-primary-btn,
+  .fp-demo-cta .fp-text-btn {
+    width: 100%;
+    text-align: center;
+  }
+}
+
 `;
+
