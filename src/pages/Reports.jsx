@@ -380,6 +380,103 @@ export default function Reports() {
             ? Math.max(...salesByPayment.map((item) => item.value), 1)
             : 1;
 
+    // =========================================================
+    // CHART DATA
+    // =========================================================
+
+    const financialTrend = useMemo(() => {
+        const rows = [
+            ...sales.map((item) => ({
+                type: "sales",
+                date: item?.created_at,
+                value: Number(item?.total_amount || 0),
+            })),
+            ...purchases.map((item) => ({
+                type: "purchases",
+                date: item?.created_at,
+                value: Number(item?.total_amount || 0),
+            })),
+        ].filter((item) => item.date && !Number.isNaN(new Date(item.date).getTime()));
+
+        if (rows.length === 0) return [];
+
+        const parsedDates = rows.map((item) => new Date(item.date));
+        const minDate = from
+            ? new Date(`${from}T00:00:00`)
+            : new Date(Math.min(...parsedDates.map((date) => date.getTime())));
+        const maxDate = to
+            ? new Date(`${to}T23:59:59`)
+            : new Date(Math.max(...parsedDates.map((date) => date.getTime())));
+
+        const daySpan = Math.max(
+            1,
+            Math.ceil((maxDate.getTime() - minDate.getTime()) / 86400000) + 1
+        );
+
+        // Daily is easier to read for normal shop reporting periods.
+        // For long periods, switch to monthly buckets so the chart remains useful.
+        const monthly = daySpan > 90;
+        const bucket = {};
+
+        const addValue = (date, type, value) => {
+            const key = monthly
+                ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`
+                : `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
+            if (!bucket[key]) {
+                bucket[key] = {
+                    key,
+                    sales: 0,
+                    purchases: 0,
+                    date,
+                };
+            }
+
+            bucket[key][type] += value;
+        };
+
+        rows.forEach((item) => {
+            addValue(new Date(item.date), item.type, item.value);
+        });
+
+        if (!monthly) {
+            const cursor = new Date(minDate);
+            cursor.setHours(0, 0, 0, 0);
+
+            while (cursor <= maxDate) {
+                const key = `${cursor.getFullYear()}-${String(
+                    cursor.getMonth() + 1
+                ).padStart(2, "0")}-${String(cursor.getDate()).padStart(2, "0")}`;
+
+                if (!bucket[key]) {
+                    bucket[key] = {
+                        key,
+                        sales: 0,
+                        purchases: 0,
+                        date: new Date(cursor),
+                    };
+                }
+
+                cursor.setDate(cursor.getDate() + 1);
+            }
+        }
+
+        return Object.values(bucket)
+            .sort((a, b) => a.date - b.date)
+            .map((item) => ({
+                ...item,
+                label: monthly
+                    ? item.date.toLocaleDateString("en-IN", {
+                          month: "short",
+                          year: "2-digit",
+                      })
+                    : item.date.toLocaleDateString("en-IN", {
+                          day: "2-digit",
+                          month: "short",
+                      }),
+            }));
+    }, [sales, purchases, from, to]);
+
     const stockHealth =
         Number(stockSummary?.total_products || stock.length || 0) > 0
             ? Math.max(
@@ -773,6 +870,43 @@ export default function Reports() {
 
                 {activeReport === "overview" && (
                     <div className="overview-grid">
+                        <section className="panel trend-panel">
+                            <div className="panel-header">
+                                <div>
+                                    <span className="panel-eyebrow">
+                                        FINANCIAL TREND
+                                    </span>
+                                    <h2>Revenue vs purchases</h2>
+                                    <p className="panel-description">
+                                        A real transaction trend for the selected report period.
+                                    </p>
+                                </div>
+
+                                <div className="chart-legend">
+                                    <span>
+                                        <i className="legend-dot sales-dot"></i>
+                                        Sales
+                                    </span>
+                                    <span>
+                                        <i className="legend-dot purchase-dot"></i>
+                                        Purchases
+                                    </span>
+                                </div>
+                            </div>
+
+                            {financialTrend.length < 2 ? (
+                                <EmptyState
+                                    icon="⌁"
+                                    title="Not enough transaction data"
+                                    text="Add sales or purchases to see the financial trend."
+                                />
+                            ) : (
+                                <FinancialTrendChart
+                                    data={financialTrend}
+                                    money={money}
+                                />
+                            )}
+                        </section>
                         <section className="panel sales-overview-panel">
                             <div className="panel-header">
                                 <div>
@@ -1697,6 +1831,143 @@ function ReportTable({
         </section>
     );
 }
+
+// =============================================================
+// CHART COMPONENTS
+// =============================================================
+
+function FinancialTrendChart({ data, money }) {
+    const width = 1100;
+    const height = 300;
+    const padding = { top: 18, right: 22, bottom: 48, left: 58 };
+    const chartWidth = width - padding.left - padding.right;
+    const chartHeight = height - padding.top - padding.bottom;
+
+    const maxValue = Math.max(
+        ...data.flatMap((item) => [Number(item.sales || 0), Number(item.purchases || 0)]),
+        1
+    );
+
+    const x = (index) =>
+        padding.left +
+        (data.length === 1
+            ? chartWidth / 2
+            : (index / (data.length - 1)) * chartWidth);
+
+    const y = (value) =>
+        padding.top + chartHeight - (Number(value || 0) / maxValue) * chartHeight;
+
+    const makePoints = (key) =>
+        data.map((item, index) => `${x(index)},${y(item[key])}`).join(" ");
+
+    const labelStep = Math.max(1, Math.ceil(data.length / 7));
+
+    return (
+        <div className="financial-chart">
+            <svg
+                className="financial-chart-svg"
+                viewBox={`0 0 ${width} ${height}`}
+                role="img"
+                aria-label="Sales and purchases trend chart"
+            >
+                {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
+                    const value = maxValue * ratio;
+                    const yPosition = y(value);
+
+                    return (
+                        <g key={ratio}>
+                            <line
+                                x1={padding.left}
+                                x2={width - padding.right}
+                                y1={yPosition}
+                                y2={yPosition}
+                                className="chart-grid-line"
+                            />
+                            <text
+                                x={padding.left - 10}
+                                y={yPosition + 4}
+                                textAnchor="end"
+                                className="chart-axis-label"
+                            >
+                                {money(value)}
+                            </text>
+                        </g>
+                    );
+                })}
+
+                <polyline
+                    points={makePoints("purchases")}
+                    className="chart-line purchases-line"
+                    fill="none"
+                />
+
+                <polyline
+                    points={makePoints("sales")}
+                    className="chart-line sales-line"
+                    fill="none"
+                />
+
+                {data.map((item, index) => (
+                    <g key={item.key}>
+                        <circle
+                            cx={x(index)}
+                            cy={y(item.purchases)}
+                            r="3.5"
+                            className="chart-point purchases-point"
+                        />
+                        <circle
+                            cx={x(index)}
+                            cy={y(item.sales)}
+                            r="4"
+                            className="chart-point sales-point"
+                        />
+
+                        {(index % labelStep === 0 || index === data.length - 1) && (
+                            <text
+                                x={x(index)}
+                                y={height - 18}
+                                textAnchor="middle"
+                                className="chart-x-label"
+                            >
+                                {item.label}
+                            </text>
+                        )}
+                    </g>
+                ))}
+            </svg>
+
+            <div className="chart-summary">
+                <div>
+                    <span>Sales in period</span>
+                    <strong>
+                        {money(
+                            data.reduce(
+                                (sum, item) => sum + Number(item.sales || 0),
+                                0
+                            )
+                        )}
+                    </strong>
+                </div>
+                <div>
+                    <span>Purchases in period</span>
+                    <strong>
+                        {money(
+                            data.reduce(
+                                (sum, item) => sum + Number(item.purchases || 0),
+                                0
+                            )
+                        )}
+                    </strong>
+                </div>
+                <div>
+                    <span>Data points</span>
+                    <strong>{data.length}</strong>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 
 // =============================================================
 // STYLES
@@ -3631,6 +3902,150 @@ const styles = {
             .floating-stat-bottom {
                 bottom: 5px;
             }
+
+            .trend-panel {
+                grid-column: auto;
+            }
+
+            .chart-legend {
+                width: 100%;
+                justify-content: flex-start;
+                margin-top: 6px;
+            }
+
+            .financial-chart-svg {
+                height: 250px;
+            }
+
+            .chart-summary {
+                grid-template-columns: 1fr;
+            }
         }
+
+
+        /* =====================================================
+           FINANCIAL TREND CHART
+        ===================================================== */
+
+        .trend-panel {
+            grid-column: 1 / -1;
+        }
+
+        .panel-description {
+            margin: 5px 0 0;
+            color: #8a93a3;
+            font-size: 11px;
+            line-height: 1.5;
+        }
+
+        .chart-legend {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            color: #687386;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .chart-legend span {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .legend-dot {
+            width: 8px;
+            height: 8px;
+            display: inline-block;
+            border-radius: 50%;
+        }
+
+        .sales-dot {
+            background: #6c63ff;
+        }
+
+        .purchase-dot {
+            background: #18b890;
+        }
+
+        .financial-chart {
+            width: 100%;
+            margin-top: 6px;
+        }
+
+        .financial-chart-svg {
+            display: block;
+            width: 100%;
+            height: 310px;
+            overflow: visible;
+        }
+
+        .chart-grid-line {
+            stroke: #e9ecf2;
+            stroke-width: 1;
+            stroke-dasharray: 4 5;
+        }
+
+        .chart-axis-label,
+        .chart-x-label {
+            fill: #8b94a4;
+            font-size: 10px;
+            font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+        }
+
+        .chart-line {
+            stroke-width: 3;
+            stroke-linejoin: round;
+            stroke-linecap: round;
+        }
+
+        .sales-line {
+            stroke: #6c63ff;
+        }
+
+        .purchases-line {
+            stroke: #18b890;
+        }
+
+        .chart-point {
+            stroke: #ffffff;
+            stroke-width: 2;
+        }
+
+        .sales-point {
+            fill: #6c63ff;
+        }
+
+        .purchases-point {
+            fill: #18b890;
+        }
+
+        .chart-summary {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-top: 4px;
+            padding-top: 15px;
+            border-top: 1px solid #edf0f4;
+        }
+
+        .chart-summary div {
+            min-width: 0;
+        }
+
+        .chart-summary span {
+            display: block;
+            margin-bottom: 5px;
+            color: #8a93a3;
+            font-size: 10px;
+            font-weight: 700;
+        }
+
+        .chart-summary strong {
+            color: #1b2433;
+            font-size: 14px;
+            letter-spacing: -0.2px;
+        }
+
     `,
 };
