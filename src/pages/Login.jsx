@@ -585,36 +585,63 @@ export default function Login() {
           </div>
         </section>
 
-        <section className="fp-section fp-light fp-section-features" id="features" data-scroll-reveal="up">
-          <div className="fp-container">
-            <div className="fp-section-heading">
-              <span className="fp-kicker">ONE WORKSPACE</span>
-              <h2>Everything your business does.<br /><em>Connected in one place.</em></h2>
+        <section className="fp-section fp-light fp-section-features" id="features">
+          <div className="fp-container fp-showcase-container">
+            <div className="fp-section-heading fp-showcase-heading" data-scroll-reveal="up">
+              <span className="fp-kicker">THE WORKSPACE, SECTION BY SECTION</span>
+              <h2>Every part of your business.<br /><em>Designed to stay in view.</em></h2>
               <p>
-                FinancePro brings the everyday operating pieces together so the owner
-                can move from action to information without rebuilding the picture manually.
+                Scroll through the workspace. Each module gets its own visual moment,
+                with the business explanation and live-style dashboard moving from
+                left to right and right to left.
               </p>
             </div>
 
-            <div className="fp-feature-detail">
-              <div className="fp-detail-copy">
-                <span className="fp-detail-icon">{feature.icon}</span>
-                <span className="fp-kicker">{feature.eyebrow}</span>
-                <h3>{feature.headline}</h3>
-                <p>{feature.description}</p>
+            <div className="fp-showcase-list">
+              {FEATURES.map((item, index) => (
+                <article
+                  className={`fp-showcase-row ${index % 2 ? "is-reverse" : ""}`}
+                  key={item.id}
+                  data-scroll-reveal={index % 2 ? "right" : "left"}
+                >
+                  <div className="fp-showcase-copy">
+                    <div className="fp-showcase-index">0{index + 1}</div>
+                    <span className="fp-showcase-icon">{item.icon}</span>
+                    <span className="fp-kicker">{item.eyebrow}</span>
+                    <h3>{item.headline}</h3>
+                    <p>{item.description}</p>
 
-                <div className="fp-points">
-                  {feature.points.map((point) => (
-                    <span key={point}>✓ {point}</span>
-                  ))}
-                </div>
+                    <div className="fp-showcase-points">
+                      {item.points.map((point) => (
+                        <span key={point}>
+                          <i>✓</i>{point}
+                        </span>
+                      ))}
+                    </div>
 
-                <a href="#demo" className="fp-arrow-link">Explore this workflow <span>↗</span></a>
-              </div>
+                    <button
+                      type="button"
+                      className={`fp-showcase-link ${active === index ? "selected" : ""}`}
+                      onClick={() => {
+                        setActive(index);
+                        document.getElementById("demo")?.scrollIntoView({ behavior: "smooth" });
+                      }}
+                    >
+                      Explore {item.label} <span>↗</span>
+                    </button>
+                  </div>
 
-              <div className="fp-detail-preview">
-                <DashboardPreview feature={feature} />
-              </div>
+                  <div className="fp-showcase-visual">
+                    <div className="fp-showcase-glow" />
+                    <div className="fp-showcase-number">{String(index + 1).padStart(2, "0")}</div>
+                    <DashboardPreview feature={item} />
+                    <div className="fp-showcase-caption">
+                      <span><i /> OWNER WORKSPACE</span>
+                      <b>{item.screenTitle}</b>
+                    </div>
+                  </div>
+                </article>
+              ))}
             </div>
           </div>
         </section>
@@ -1669,6 +1696,382 @@ html{scroll-padding-top:82px}
   .fp-demo-cta .fp-text-btn {
     width: 100%;
     text-align: center;
+  }
+}
+
+/* =========================================================
+   HIGH-END ALTERNATING WORKSPACE SHOWCASE
+   ========================================================= */
+.fp-showcase-container{
+  position:relative;
+}
+
+.fp-showcase-heading{
+  max-width:820px;
+  padding-bottom:12px;
+}
+
+.fp-showcase-heading h2{
+  max-width:780px;
+}
+
+.fp-showcase-list{
+  position:relative;
+  margin-top:24px;
+}
+
+.fp-showcase-list::before{
+  content:"";
+  position:absolute;
+  left:50%;
+  top:0;
+  bottom:0;
+  width:1px;
+  background:linear-gradient(
+    180deg,
+    transparent,
+    #DDE4DC 8%,
+    #DDE4DC 92%,
+    transparent
+  );
+  transform:translateX(-50%);
+  pointer-events:none;
+}
+
+.fp-showcase-row{
+  position:relative;
+  display:grid;
+  grid-template-columns:minmax(0,.82fr) minmax(0,1.18fr);
+  align-items:center;
+  gap:76px;
+  min-height:650px;
+  padding:86px 0;
+}
+
+.fp-showcase-row + .fp-showcase-row{
+  border-top:1px solid #E7EBE5;
+}
+
+.fp-showcase-row.is-reverse{
+  grid-template-columns:minmax(0,1.18fr) minmax(0,.82fr);
+}
+
+.fp-showcase-row.is-reverse .fp-showcase-copy{
+  grid-column:2;
+  grid-row:1;
+}
+
+.fp-showcase-row.is-reverse .fp-showcase-visual{
+  grid-column:1;
+  grid-row:1;
+}
+
+.fp-showcase-copy{
+  position:relative;
+  z-index:2;
+  max-width:500px;
+}
+
+.fp-showcase-index{
+  position:absolute;
+  top:-42px;
+  left:0;
+  color:#D8DED8;
+  font:600 11px 'IBM Plex Mono';
+  letter-spacing:2px;
+}
+
+.fp-showcase-icon{
+  display:grid;
+  place-items:center;
+  width:58px;
+  height:58px;
+  margin-bottom:22px;
+  border:1px solid #DDE5DE;
+  border-radius:17px;
+  background:#F4F8F4;
+  color:#1F6F54;
+  font-size:23px;
+  font-weight:800;
+  box-shadow:0 12px 30px rgba(16,28,44,.06);
+}
+
+.fp-showcase-copy h3{
+  max-width:480px;
+  margin:11px 0 17px;
+  color:#101C2C;
+  font:600 clamp(35px,4vw,56px)/1.03 'Fraunces',Georgia,serif;
+  letter-spacing:-1.7px;
+}
+
+.fp-showcase-copy p{
+  max-width:470px;
+  margin:0;
+  color:#687484;
+  font-size:14px;
+  line-height:1.8;
+}
+
+.fp-showcase-points{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin:24px 0 22px;
+}
+
+.fp-showcase-points span{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  padding:8px 10px;
+  border:1px solid #E0E6DF;
+  border-radius:9px;
+  background:#FAFCF9;
+  color:#53635B;
+  font-size:10px;
+  font-weight:700;
+}
+
+.fp-showcase-points i{
+  display:grid;
+  place-items:center;
+  width:16px;
+  height:16px;
+  border-radius:50%;
+  background:#E7F4EB;
+  color:#1F6F54;
+  font-style:normal;
+  font-size:9px;
+}
+
+.fp-showcase-link{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  border:0;
+  padding:0;
+  background:transparent;
+  color:#1F6F54;
+  font-size:12px;
+  font-weight:800;
+  cursor:pointer;
+}
+
+.fp-showcase-link span{
+  transition:transform .25s ease;
+}
+
+.fp-showcase-link:hover span{
+  transform:translate(4px,-3px);
+}
+
+.fp-showcase-link.selected{
+  color:#2E5BFF;
+}
+
+.fp-showcase-visual{
+  position:relative;
+  min-width:0;
+  padding:30px 0;
+}
+
+.fp-showcase-glow{
+  position:absolute;
+  width:78%;
+  height:78%;
+  right:5%;
+  top:11%;
+  border-radius:50%;
+  background:radial-gradient(
+    circle,
+    rgba(46,91,255,.12) 0%,
+    rgba(31,111,84,.07) 38%,
+    transparent 70%
+  );
+  filter:blur(10px);
+  pointer-events:none;
+}
+
+.fp-showcase-row.is-reverse .fp-showcase-glow{
+  left:5%;
+  right:auto;
+  background:radial-gradient(
+    circle,
+    rgba(201,162,39,.13) 0%,
+    rgba(31,111,84,.07) 40%,
+    transparent 70%
+  );
+}
+
+.fp-showcase-number{
+  position:absolute;
+  z-index:1;
+  right:-14px;
+  top:2px;
+  color:#E5E9E3;
+  font:600 78px/1 'Fraunces',Georgia,serif;
+  letter-spacing:-5px;
+}
+
+.fp-showcase-row.is-reverse .fp-showcase-number{
+  left:-14px;
+  right:auto;
+}
+
+.fp-showcase-visual .fp-preview-shell{
+  z-index:3;
+  width:100%;
+  border-radius:26px;
+  padding:18px;
+  box-shadow:
+    0 35px 80px rgba(16,28,44,.20),
+    0 8px 25px rgba(16,28,44,.08);
+  animation:none;
+  transition:transform .5s cubic-bezier(.2,.75,.2,1), box-shadow .5s ease;
+}
+
+.fp-showcase-visual:hover .fp-preview-shell{
+  transform:translateY(-8px) rotateX(1deg) rotateY(-1deg);
+  box-shadow:
+    0 45px 95px rgba(16,28,44,.23),
+    0 12px 30px rgba(16,28,44,.10);
+}
+
+.fp-showcase-caption{
+  position:absolute;
+  z-index:5;
+  left:26px;
+  bottom:8px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:10px 13px;
+  border:1px solid rgba(224,229,223,.95);
+  border-radius:11px;
+  background:rgba(255,255,255,.93);
+  backdrop-filter:blur(12px);
+  box-shadow:0 12px 30px rgba(16,28,44,.11);
+}
+
+.fp-showcase-caption span{
+  color:#87918B;
+  font:600 7px 'IBM Plex Mono';
+  letter-spacing:1px;
+}
+
+.fp-showcase-caption span i{
+  display:inline-block;
+  width:5px;
+  height:5px;
+  margin-right:5px;
+  border-radius:50%;
+  background:#28A56A;
+  box-shadow:0 0 0 4px rgba(40,165,106,.10);
+}
+
+.fp-showcase-caption b{
+  color:#263344;
+  font-size:9px;
+}
+
+@media(max-width:1000px){
+  .fp-showcase-row,
+  .fp-showcase-row.is-reverse{
+    grid-template-columns:1fr;
+    gap:40px;
+    min-height:auto;
+    padding:72px 0;
+  }
+
+  .fp-showcase-row.is-reverse .fp-showcase-copy,
+  .fp-showcase-row.is-reverse .fp-showcase-visual{
+    grid-column:auto;
+    grid-row:auto;
+  }
+
+  .fp-showcase-copy{
+    max-width:760px;
+  }
+
+  .fp-showcase-visual{
+    width:100%;
+    max-width:760px;
+  }
+
+  .fp-showcase-list::before{
+    display:none;
+  }
+}
+
+@media(max-width:760px){
+  .fp-showcase-row,
+  .fp-showcase-row.is-reverse{
+    gap:30px;
+    padding:60px 0;
+  }
+
+  .fp-showcase-copy h3{
+    font-size:38px;
+  }
+
+  .fp-showcase-number,
+  .fp-showcase-row.is-reverse .fp-showcase-number{
+    right:8px;
+    left:auto;
+    top:8px;
+    font-size:55px;
+  }
+
+  .fp-showcase-visual .fp-preview-shell{
+    padding:12px;
+    border-radius:20px;
+  }
+
+  .fp-showcase-caption{
+    left:15px;
+    bottom:-2px;
+    max-width:calc(100% - 30px);
+  }
+}
+
+@media(max-width:520px){
+  .fp-showcase-heading{
+    padding-bottom:0;
+  }
+
+  .fp-showcase-copy h3{
+    font-size:34px;
+    letter-spacing:-1px;
+  }
+
+  .fp-showcase-copy p{
+    font-size:13px;
+  }
+
+  .fp-showcase-points{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+  }
+
+  .fp-showcase-points span{
+    min-width:0;
+  }
+
+  .fp-showcase-visual{
+    padding:20px 0 25px;
+  }
+
+  .fp-showcase-caption{
+    position:relative;
+    left:auto;
+    bottom:auto;
+    width:max-content;
+    max-width:100%;
+    margin:14px auto 0;
+  }
+
+  .fp-showcase-number{
+    display:none;
   }
 }
 
