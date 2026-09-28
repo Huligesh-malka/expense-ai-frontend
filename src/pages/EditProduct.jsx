@@ -24,7 +24,6 @@ export default function EditProduct() {
         stock: "",
         stock_unit: "pcs",
         min_stock: 5,
-        tax: 0,
         image: "",
         description: "",
         expiry_date: "",
@@ -38,12 +37,13 @@ export default function EditProduct() {
 
     const loadCategories = async () => {
         setLoadingCategories(true);
+
         try {
             const res = await API.get("/categories");
             setCategories(res.data.data || []);
         } catch (err) {
             console.error("Error loading categories:", err);
-            // Fallback to hardcoded categories if API fails
+
             setCategories([
                 { id: "electronics", name: "Electronics" },
                 { id: "clothing", name: "Clothing" },
@@ -61,18 +61,18 @@ export default function EditProduct() {
 
     const loadProduct = async () => {
         setLoading(true);
+
         try {
             const res = await API.get(`/products/${id}`);
             const product = res.data.data;
-            
-            // Format expiry date for input if it exists
+
             let expiryDate = "";
+
             if (product.expiry_date) {
                 const date = new Date(product.expiry_date);
-                expiryDate = date.toISOString().split('T')[0];
+                expiryDate = date.toISOString().split("T")[0];
             }
-            
-            // Explicitly map fields to avoid sending unwanted backend fields
+
             setForm({
                 category: product.category || "",
                 product_name: product.product_name || "",
@@ -85,18 +85,22 @@ export default function EditProduct() {
                 stock: product.stock ?? "",
                 stock_unit: product.unit || "pcs",
                 min_stock: product.min_stock ?? 5,
-                tax: product.tax ?? 0,
                 image: product.image || "",
                 description: product.description || "",
                 expiry_date: expiryDate,
                 status: product.status || "active"
             });
-            
+
             setMessage("");
         } catch (err) {
             console.error("Error loading product:", err);
-            setMessage("❌ Product not found or failed to load");
+
+            setMessage(
+                "❌ Product not found or failed to load"
+            );
+
             setMessageType("error");
+
             setTimeout(() => {
                 navigate("/products");
             }, 2000);
@@ -107,8 +111,8 @@ export default function EditProduct() {
 
     const handleChange = (e) => {
         const { name, value } = e.target;
-        
-        setForm(prev => ({
+
+        setForm((prev) => ({
             ...prev,
             [name]: value
         }));
@@ -116,67 +120,99 @@ export default function EditProduct() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
         setLoading(true);
         setMessage("");
         setMessageType("");
 
-        // Validate required fields
-        if (!form.product_name || !form.category || !form.purchase_price || 
-            !form.selling_price || !form.stock) {
-            setMessage("❌ Please fill in all required fields");
+        if (
+            !form.product_name ||
+            !form.category ||
+            !form.purchase_price ||
+            !form.selling_price ||
+            !form.stock
+        ) {
+            setMessage(
+                "❌ Please fill in all required fields"
+            );
+
             setMessageType("error");
             setLoading(false);
             return;
         }
 
-        // Validate price_per
         if (form.price_per <= 0) {
-            setMessage("❌ Price Per must be greater than 0");
+            setMessage(
+                "❌ Price Per must be greater than 0"
+            );
+
             setMessageType("error");
             setLoading(false);
             return;
         }
 
-        // Validate price_unit
         if (!form.price_unit) {
-            setMessage("❌ Please select a price unit");
+            setMessage(
+                "❌ Please select a price unit"
+            );
+
             setMessageType("error");
             setLoading(false);
             return;
         }
 
         try {
-            // Prepare data for backend - map stock_unit to unit
             const submitData = {
                 category: form.category,
                 product_name: form.product_name,
                 product_code: form.product_code,
                 barcode: form.barcode,
-                purchase_price: parseFloat(form.purchase_price),
-                selling_price: parseFloat(form.selling_price),
-                price_per: parseInt(form.price_per),
+                purchase_price: parseFloat(
+                    form.purchase_price
+                ),
+                selling_price: parseFloat(
+                    form.selling_price
+                ),
+                price_per: parseInt(
+                    form.price_per
+                ),
                 price_unit: form.price_unit,
                 stock: parseFloat(form.stock),
                 unit: form.stock_unit,
-                min_stock: parseInt(form.min_stock),
-                tax: parseFloat(form.tax),
+                min_stock: parseInt(
+                    form.min_stock
+                ),
                 image: form.image,
                 description: form.description,
-                expiry_date: form.expiry_date || null,
+                expiry_date:
+                    form.expiry_date || null,
                 status: form.status
             };
-            
-            const res = await API.put(`/products/${id}`, submitData);
-            setMessage("✅ Product updated successfully!");
+
+            const res = await API.put(
+                `/products/${id}`,
+                submitData
+            );
+
+            setMessage(
+                "✅ Product updated successfully!"
+            );
+
             setMessageType("success");
-            
-            // Navigate after 2 seconds
+
             setTimeout(() => {
                 navigate("/products");
             }, 2000);
         } catch (err) {
-            console.error("Error updating product:", err);
-            const errorMessage = err.response?.data?.message || "Failed to update product. Please try again.";
+            console.error(
+                "Error updating product:",
+                err
+            );
+
+            const errorMessage =
+                err.response?.data?.message ||
+                "Failed to update product. Please try again.";
+
             setMessage(`❌ ${errorMessage}`);
             setMessageType("error");
         } finally {
@@ -184,13 +220,14 @@ export default function EditProduct() {
         }
     };
 
-    // Show loading state while fetching product
     if (loading && !form.product_name) {
         return (
             <div style={styles.container}>
                 <div style={styles.loadingState}>
                     <div style={styles.spinner}></div>
-                    <p>Loading product details...</p>
+                    <p>
+                        Loading product details...
+                    </p>
                 </div>
             </div>
         );
@@ -198,28 +235,43 @@ export default function EditProduct() {
 
     return (
         <div style={styles.container}>
-            <h2 style={styles.title}>Edit Product</h2>
-            
+            <h2 style={styles.title}>
+                Edit Product
+            </h2>
+
             {message && (
-                <div style={{
-                    ...styles.message,
-                    ...(messageType === "success" ? styles.successMessage : styles.errorMessage)
-                }}>
+                <div
+                    style={{
+                        ...styles.message,
+                        ...(messageType === "success"
+                            ? styles.successMessage
+                            : styles.errorMessage)
+                    }}
+                >
                     {message}
                 </div>
             )}
-            
-            <form onSubmit={handleSubmit} style={styles.form}>
+
+            <form
+                onSubmit={handleSubmit}
+                style={styles.form}
+            >
                 {/* Product Name */}
                 <div style={styles.formGroup}>
                     <label style={styles.label}>
-                        Product Name <span style={styles.required}>*</span>
+                        Product Name{" "}
+                        <span style={styles.required}>
+                            *
+                        </span>
                     </label>
+
                     <input
                         type="text"
                         name="product_name"
                         placeholder="Enter product name"
-                        value={form.product_name || ""}
+                        value={
+                            form.product_name || ""
+                        }
                         onChange={handleChange}
                         required
                         style={styles.input}
@@ -229,48 +281,91 @@ export default function EditProduct() {
                 {/* Category */}
                 <div style={styles.formGroup}>
                     <label style={styles.label}>
-                        Category <span style={styles.required}>*</span>
+                        Category{" "}
+                        <span style={styles.required}>
+                            *
+                        </span>
                     </label>
+
                     <select
                         name="category"
                         value={form.category || ""}
                         onChange={handleChange}
                         required
                         style={styles.input}
-                        disabled={loadingCategories}
+                        disabled={
+                            loadingCategories
+                        }
                     >
-                        <option value="">Select Category</option>
+                        <option value="">
+                            Select Category
+                        </option>
+
                         {categories.map((cat) => (
-                            <option key={cat.id || cat} value={cat.id || cat}>
+                            <option
+                                key={
+                                    cat.id || cat
+                                }
+                                value={
+                                    cat.id || cat
+                                }
+                            >
                                 {cat.name || cat}
                             </option>
                         ))}
                     </select>
+
                     {loadingCategories && (
-                        <small style={styles.helperText}>Loading categories...</small>
+                        <small
+                            style={
+                                styles.helperText
+                            }
+                        >
+                            Loading categories...
+                        </small>
                     )}
                 </div>
 
                 {/* Product Code & Barcode */}
                 <div style={styles.row}>
-                    <div style={styles.formGroupHalf}>
-                        <label style={styles.label}>Product Code</label>
+                    <div
+                        style={
+                            styles.formGroupHalf
+                        }
+                    >
+                        <label style={styles.label}>
+                            Product Code
+                        </label>
+
                         <input
                             type="text"
                             name="product_code"
                             placeholder="e.g., PRD-001"
-                            value={form.product_code || ""}
+                            value={
+                                form.product_code ||
+                                ""
+                            }
                             onChange={handleChange}
                             style={styles.input}
                         />
                     </div>
-                    <div style={styles.formGroupHalf}>
-                        <label style={styles.label}>Barcode</label>
+
+                    <div
+                        style={
+                            styles.formGroupHalf
+                        }
+                    >
+                        <label style={styles.label}>
+                            Barcode
+                        </label>
+
                         <input
                             type="text"
                             name="barcode"
                             placeholder="Enter barcode"
-                            value={form.barcode || ""}
+                            value={
+                                form.barcode || ""
+                            }
                             onChange={handleChange}
                             style={styles.input}
                         />
@@ -279,15 +374,30 @@ export default function EditProduct() {
 
                 {/* Purchase & Selling Price */}
                 <div style={styles.row}>
-                    <div style={styles.formGroupHalf}>
+                    <div
+                        style={
+                            styles.formGroupHalf
+                        }
+                    >
                         <label style={styles.label}>
-                            Purchase Price <span style={styles.required}>*</span>
+                            Purchase Price{" "}
+                            <span
+                                style={
+                                    styles.required
+                                }
+                            >
+                                *
+                            </span>
                         </label>
+
                         <input
                             type="number"
                             name="purchase_price"
                             placeholder="0.00"
-                            value={form.purchase_price || ""}
+                            value={
+                                form.purchase_price ||
+                                ""
+                            }
                             onChange={handleChange}
                             required
                             min="0"
@@ -295,15 +405,31 @@ export default function EditProduct() {
                             style={styles.input}
                         />
                     </div>
-                    <div style={styles.formGroupHalf}>
+
+                    <div
+                        style={
+                            styles.formGroupHalf
+                        }
+                    >
                         <label style={styles.label}>
-                            Selling Price <span style={styles.required}>*</span>
+                            Selling Price{" "}
+                            <span
+                                style={
+                                    styles.required
+                                }
+                            >
+                                *
+                            </span>
                         </label>
+
                         <input
                             type="number"
                             name="selling_price"
                             placeholder="0.00"
-                            value={form.selling_price || ""}
+                            value={
+                                form.selling_price ||
+                                ""
+                            }
                             onChange={handleChange}
                             required
                             min="0"
@@ -315,60 +441,143 @@ export default function EditProduct() {
 
                 {/* Price Per & Price Unit */}
                 <div style={styles.row}>
-                    <div style={styles.formGroupHalf}>
+                    <div
+                        style={
+                            styles.formGroupHalf
+                        }
+                    >
                         <label style={styles.label}>
-                            Price Per <span style={styles.required}>*</span>
+                            Price Per{" "}
+                            <span
+                                style={
+                                    styles.required
+                                }
+                            >
+                                *
+                            </span>
                         </label>
+
                         <input
                             type="number"
                             name="price_per"
                             placeholder="1"
-                            value={form.price_per || ""}
+                            value={
+                                form.price_per || ""
+                            }
                             onChange={handleChange}
                             required
                             min="1"
                             step="1"
                             style={styles.input}
                         />
-                        <small style={styles.helperText}>Quantity per unit price</small>
+
+                        <small
+                            style={
+                                styles.helperText
+                            }
+                        >
+                            Quantity per unit price
+                        </small>
                     </div>
-                    <div style={styles.formGroupHalf}>
+
+                    <div
+                        style={
+                            styles.formGroupHalf
+                        }
+                    >
                         <label style={styles.label}>
-                            Price Unit <span style={styles.required}>*</span>
+                            Price Unit{" "}
+                            <span
+                                style={
+                                    styles.required
+                                }
+                            >
+                                *
+                            </span>
                         </label>
+
                         <select
                             name="price_unit"
-                            value={form.price_unit || "pcs"}
+                            value={
+                                form.price_unit ||
+                                "pcs"
+                            }
                             onChange={handleChange}
                             required
                             style={styles.input}
                         >
-                            <option value="pcs">Pieces</option>
-                            <option value="kg">Kilogram</option>
-                            <option value="g">Gram</option>
-                            <option value="ml">Milliliter</option>
-                            <option value="l">Liter</option>
-                            <option value="pack">Pack</option>
-                            <option value="box">Box</option>
-                            <option value="bottle">Bottle</option>
-                            <option value="dozen">Dozen</option>
-                            <option value="meter">Meter</option>
-                            <option value="feet">Feet</option>
+                            <option value="pcs">
+                                Pieces
+                            </option>
+
+                            <option value="kg">
+                                Kilogram
+                            </option>
+
+                            <option value="g">
+                                Gram
+                            </option>
+
+                            <option value="ml">
+                                Milliliter
+                            </option>
+
+                            <option value="l">
+                                Liter
+                            </option>
+
+                            <option value="pack">
+                                Pack
+                            </option>
+
+                            <option value="box">
+                                Box
+                            </option>
+
+                            <option value="bottle">
+                                Bottle
+                            </option>
+
+                            <option value="dozen">
+                                Dozen
+                            </option>
+
+                            <option value="meter">
+                                Meter
+                            </option>
+
+                            <option value="feet">
+                                Feet
+                            </option>
                         </select>
                     </div>
                 </div>
 
                 {/* Stock Quantity & Stock Unit */}
                 <div style={styles.row}>
-                    <div style={styles.formGroupHalf}>
+                    <div
+                        style={
+                            styles.formGroupHalf
+                        }
+                    >
                         <label style={styles.label}>
-                            Stock Quantity <span style={styles.required}>*</span>
+                            Stock Quantity{" "}
+                            <span
+                                style={
+                                    styles.required
+                                }
+                            >
+                                *
+                            </span>
                         </label>
+
                         <input
                             type="number"
                             name="stock"
                             placeholder="0"
-                            value={form.stock || ""}
+                            value={
+                                form.stock || ""
+                            }
                             onChange={handleChange}
                             required
                             min="0"
@@ -376,86 +585,143 @@ export default function EditProduct() {
                             style={styles.input}
                         />
                     </div>
-                    <div style={styles.formGroupHalf}>
+
+                    <div
+                        style={
+                            styles.formGroupHalf
+                        }
+                    >
                         <label style={styles.label}>
-                            Stock Unit <span style={styles.required}>*</span>
+                            Stock Unit{" "}
+                            <span
+                                style={
+                                    styles.required
+                                }
+                            >
+                                *
+                            </span>
                         </label>
+
                         <select
                             name="stock_unit"
-                            value={form.stock_unit || "pcs"}
+                            value={
+                                form.stock_unit ||
+                                "pcs"
+                            }
                             onChange={handleChange}
                             required
                             style={styles.input}
                         >
-                            <option value="pcs">Pieces</option>
-                            <option value="kg">Kilogram</option>
-                            <option value="g">Gram</option>
-                            <option value="ml">Milliliter</option>
-                            <option value="l">Liter</option>
-                            <option value="pack">Pack</option>
-                            <option value="box">Box</option>
-                            <option value="bottle">Bottle</option>
-                            <option value="dozen">Dozen</option>
-                            <option value="meter">Meter</option>
-                            <option value="feet">Feet</option>
+                            <option value="pcs">
+                                Pieces
+                            </option>
+
+                            <option value="kg">
+                                Kilogram
+                            </option>
+
+                            <option value="g">
+                                Gram
+                            </option>
+
+                            <option value="ml">
+                                Milliliter
+                            </option>
+
+                            <option value="l">
+                                Liter
+                            </option>
+
+                            <option value="pack">
+                                Pack
+                            </option>
+
+                            <option value="box">
+                                Box
+                            </option>
+
+                            <option value="bottle">
+                                Bottle
+                            </option>
+
+                            <option value="dozen">
+                                Dozen
+                            </option>
+
+                            <option value="meter">
+                                Meter
+                            </option>
+
+                            <option value="feet">
+                                Feet
+                            </option>
                         </select>
                     </div>
                 </div>
 
-                {/* Minimum Stock & Tax */}
-                <div style={styles.row}>
-                    <div style={styles.formGroupHalf}>
-                        <label style={styles.label}>Minimum Stock</label>
-                        <input
-                            type="number"
-                            name="min_stock"
-                            placeholder="5"
-                            value={form.min_stock || ""}
-                            onChange={handleChange}
-                            min="0"
-                            style={styles.input}
-                        />
-                    </div>
-                    <div style={styles.formGroupHalf}>
-                        <label style={styles.label}>Tax (%)</label>
-                        <input
-                            type="number"
-                            name="tax"
-                            placeholder="0"
-                            value={form.tax || ""}
-                            onChange={handleChange}
-                            min="0"
-                            max="100"
-                            step="0.01"
-                            style={styles.input}
-                        />
-                    </div>
+                {/* Minimum Stock */}
+                <div style={styles.formGroup}>
+                    <label style={styles.label}>
+                        Minimum Stock
+                    </label>
+
+                    <input
+                        type="number"
+                        name="min_stock"
+                        placeholder="5"
+                        value={
+                            form.min_stock || ""
+                        }
+                        onChange={handleChange}
+                        min="0"
+                        style={styles.input}
+                    />
                 </div>
 
                 {/* Expiry Date */}
                 <div style={styles.formGroup}>
-                    <label style={styles.label}>Expiry Date</label>
+                    <label style={styles.label}>
+                        Expiry Date
+                    </label>
+
                     <input
                         type="date"
                         name="expiry_date"
-                        value={form.expiry_date || ""}
+                        value={
+                            form.expiry_date || ""
+                        }
                         onChange={handleChange}
-                        min={new Date().toISOString().split('T')[0]}
+                        min={
+                            new Date()
+                                .toISOString()
+                                .split("T")[0]
+                        }
                         style={styles.input}
                     />
-                    <small style={styles.helperText}>
-                        Leave empty if product doesn't have an expiry date
+
+                    <small
+                        style={
+                            styles.helperText
+                        }
+                    >
+                        Leave empty if product
+                        doesn't have an expiry date
                     </small>
                 </div>
 
                 {/* Description */}
                 <div style={styles.formGroup}>
-                    <label style={styles.label}>Description</label>
+                    <label style={styles.label}>
+                        Description
+                    </label>
+
                     <textarea
                         name="description"
                         placeholder="Enter product description"
                         rows="3"
-                        value={form.description || ""}
+                        value={
+                            form.description || ""
+                        }
                         onChange={handleChange}
                         style={styles.textarea}
                     />
@@ -463,12 +729,17 @@ export default function EditProduct() {
 
                 {/* Image URL */}
                 <div style={styles.formGroup}>
-                    <label style={styles.label}>Image URL</label>
+                    <label style={styles.label}>
+                        Image URL
+                    </label>
+
                     <input
                         type="text"
                         name="image"
                         placeholder="https://example.com/image.jpg"
-                        value={form.image || ""}
+                        value={
+                            form.image || ""
+                        }
                         onChange={handleChange}
                         style={styles.input}
                     />
@@ -477,17 +748,33 @@ export default function EditProduct() {
                 {/* Status */}
                 <div style={styles.formGroup}>
                     <label style={styles.label}>
-                        Status <span style={styles.required}>*</span>
+                        Status{" "}
+                        <span
+                            style={
+                                styles.required
+                            }
+                        >
+                            *
+                        </span>
                     </label>
+
                     <select
                         name="status"
-                        value={form.status || "active"}
+                        value={
+                            form.status ||
+                            "active"
+                        }
                         onChange={handleChange}
                         required
                         style={styles.input}
                     >
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
+                        <option value="active">
+                            Active
+                        </option>
+
+                        <option value="inactive">
+                            Inactive
+                        </option>
                     </select>
                 </div>
 
@@ -495,22 +782,33 @@ export default function EditProduct() {
                 <div style={styles.buttonGroup}>
                     <button
                         type="button"
-                        onClick={() => navigate("/products")}
-                        style={styles.cancelButton}
+                        onClick={() =>
+                            navigate("/products")
+                        }
+                        style={
+                            styles.cancelButton
+                        }
                     >
                         Cancel
                     </button>
+
                     <button
                         type="submit"
                         disabled={loading}
                         style={{
                             ...styles.submitButton,
-                            ...(loading ? styles.buttonDisabled : {})
+                            ...(loading
+                                ? styles.buttonDisabled
+                                : {})
                         }}
                     >
                         {loading ? (
                             <>
-                                <span style={styles.spinner}></span>
+                                <span
+                                    style={
+                                        styles.spinner
+                                    }
+                                ></span>
                                 Updating...
                             </>
                         ) : (
@@ -530,27 +828,33 @@ const styles = {
         padding: "35px",
         background: "#ffffff",
         borderRadius: "12px",
-        boxShadow: "0 4px 20px rgba(0, 0, 0, 0.08)",
+        boxShadow:
+            "0 4px 20px rgba(0, 0, 0, 0.08)",
         border: "1px solid #e5e7eb"
     },
+
     title: {
         fontSize: "24px",
         fontWeight: "600",
         color: "#111827",
         margin: "0 0 25px 0",
         paddingBottom: "15px",
-        borderBottom: "2px solid #f3f4f6"
+        borderBottom:
+            "2px solid #f3f4f6"
     },
+
     form: {
         display: "flex",
         flexDirection: "column",
         gap: "18px"
     },
+
     formGroup: {
         display: "flex",
         flexDirection: "column",
         gap: "6px"
     },
+
     formGroupHalf: {
         display: "flex",
         flexDirection: "column",
@@ -558,14 +862,17 @@ const styles = {
         flex: "1 1 300px",
         minWidth: 0
     },
+
     label: {
         fontSize: "14px",
         fontWeight: "500",
         color: "#374151"
     },
+
     required: {
         color: "#ef4444"
     },
+
     input: {
         padding: "10px 14px",
         border: "1px solid #d1d5db",
@@ -573,9 +880,11 @@ const styles = {
         fontSize: "14px",
         width: "100%",
         boxSizing: "border-box",
-        transition: "border-color 0.2s",
+        transition:
+            "border-color 0.2s",
         backgroundColor: "#f9fafb"
     },
+
     textarea: {
         padding: "10px 14px",
         border: "1px solid #d1d5db",
@@ -587,23 +896,28 @@ const styles = {
         minHeight: "80px",
         fontFamily: "inherit",
         backgroundColor: "#f9fafb",
-        transition: "border-color 0.2s"
+        transition:
+            "border-color 0.2s"
     },
+
     helperText: {
         fontSize: "12px",
         color: "#6b7280",
         marginTop: "2px"
     },
+
     row: {
         display: "flex",
         gap: "16px",
         flexWrap: "wrap"
     },
+
     buttonGroup: {
         display: "flex",
         gap: "12px",
         marginTop: "10px"
     },
+
     submitButton: {
         padding: "14px",
         background: "#2563eb",
@@ -613,13 +927,15 @@ const styles = {
         fontSize: "16px",
         fontWeight: "600",
         cursor: "pointer",
-        transition: "background 0.2s",
+        transition:
+            "background 0.2s",
         flex: 1,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         gap: "10px"
     },
+
     cancelButton: {
         padding: "14px",
         background: "#f3f4f6",
@@ -629,14 +945,17 @@ const styles = {
         fontSize: "16px",
         fontWeight: "600",
         cursor: "pointer",
-        transition: "background 0.2s",
+        transition:
+            "background 0.2s",
         flex: 0.4
     },
+
     buttonDisabled: {
         background: "#93c5fd",
         cursor: "not-allowed",
         opacity: 0.7
     },
+
     message: {
         padding: "12px 16px",
         marginBottom: "20px",
@@ -644,25 +963,33 @@ const styles = {
         fontSize: "14px",
         fontWeight: "500"
     },
+
     successMessage: {
         background: "#f0fdf4",
         color: "#166534",
-        border: "1px solid #bbf7d0"
+        border:
+            "1px solid #bbf7d0"
     },
+
     errorMessage: {
         background: "#fef2f2",
         color: "#991b1b",
-        border: "1px solid #fecaca"
+        border:
+            "1px solid #fecaca"
     },
+
     spinner: {
         display: "inline-block",
         width: "16px",
         height: "16px",
         border: "2px solid #ffffff",
-        borderTop: "2px solid transparent",
+        borderTop:
+            "2px solid transparent",
         borderRadius: "50%",
-        animation: "spin 0.8s linear infinite"
+        animation:
+            "spin 0.8s linear infinite"
     },
+
     loadingState: {
         display: "flex",
         flexDirection: "column",
@@ -674,11 +1001,19 @@ const styles = {
 };
 
 // Add keyframe animation for spinner
-const styleSheet = document.createElement("style");
+const styleSheet =
+    document.createElement("style");
+
 styleSheet.textContent = `
     @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
+        0% {
+            transform: rotate(0deg);
+        }
+
+        100% {
+            transform: rotate(360deg);
+        }
     }
 `;
+
 document.head.appendChild(styleSheet);
