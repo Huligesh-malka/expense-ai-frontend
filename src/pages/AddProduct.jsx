@@ -988,48 +988,6 @@ export default function AddProduct() {
                             </div>
                         </div>
 
-                        <div
-                            style={
-                                styles.formGroup
-                            }
-                        >
-                            <label
-                                style={
-                                    styles.priceLabel
-                                }
-                            >
-                                Price quantity
-                            </label>
-
-                            <input
-                                id="add-product-price-per"
-                                name="price_per"
-                                type="number"
-                                min="0.01"
-                                step="0.01"
-                                inputMode="decimal"
-                                value={form.price_per}
-                                onChange={(e) =>
-                                    setForm((p) => ({
-                                        ...p,
-                                        price_per:
-                                            e.target.value,
-                                    }))
-                                }
-                                autoComplete="off"
-                                style={styles.input}
-                                aria-label="Price quantity"
-                            />
-
-                            <span
-                                style={
-                                    styles.fieldHint
-                                }
-                            >
-                                Example: 1 kg, 500 g, 1 pcs
-                            </span>
-                        </div>
-
                         {purchaseNum > 0 &&
                             sellingNum > 0 && (
                                 <div
