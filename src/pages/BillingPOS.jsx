@@ -696,8 +696,8 @@ export default function BillingPOS() {
   const sgst = taxAmount / 2;
   const grandTotal = taxableAmount + taxAmount;
 
-  // Validate phone number (optional now)
-  const isPhoneValid = customerPhone.length === 0 || (customerPhone.length === 10 && /^\d{10}$/.test(customerPhone));
+  // Customer mobile is required: exactly 10 digits.
+  const isPhoneValid = /^\d{10}$/.test(customerPhone.trim());
 
   // Calculate change
   const change = cashReceived ? Number(cashReceived) - grandTotal : 0;
@@ -787,7 +787,13 @@ export default function BillingPOS() {
 
   // Save sale - FIXED: removed business_id from payload, added duplicate protection
   const saveSale = async () => {
-    // Prevent duplicate submissions
+    // Require a valid customer mobile number before creating a bill.
+    if (!/^\d{10}$/.test(customerPhone.trim())) {
+      alert("Customer mobile number is required. Enter a valid 10-digit number.");
+      return;
+    }
+
+    // Prevent duplicate submissions and empty-cart billing.
     if (savingSale || cart.length === 0) return;
 
     setSavingSale(true);
@@ -1795,6 +1801,8 @@ export default function BillingPOS() {
                     className="customer-input"
                     placeholder="Enter 10-digit number"
                     value={customerPhone}
+                    inputMode="numeric"
+                    maxLength={10}
                     onChange={(e) => {
                       const phone = e.target.value.replace(/\D/g,"");
                       setCustomerPhone(phone);
