@@ -39,6 +39,19 @@ export default function BillingPOS() {
   const recognitionRef = useRef(null);
   const voiceActiveRef = useRef(false);
 
+  // Raspberry Pi camera assistant: detects motion locally in the browser.
+  // It does not identify faces or save/record video.
+  const [cameraEnabled, setCameraEnabled] = useState(false);
+  const [cameraStatus, setCameraStatus] = useState("Camera is off");
+  const [cameraError, setCameraError] = useState("");
+  const videoRef = useRef(null);
+  const cameraCanvasRef = useRef(null);
+  const cameraStreamRef = useRef(null);
+  const previousFrameRef = useRef(null);
+  const lastGreetingRef = useRef(0);
+  const motionFrameRef = useRef(null);
+  const lastMotionCheckRef = useRef(0);
+
   // Customer fields – phone is now optional
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerName, setCustomerName] = useState("");
@@ -787,9 +800,9 @@ export default function BillingPOS() {
 
   // Save sale - FIXED: removed business_id from payload, added duplicate protection
   const saveSale = async () => {
-    // Require a valid customer mobile number before creating a bill.
-    if (!/^\d{10}$/.test(customerPhone.trim())) {
-      alert("Customer mobile number is required. Enter a valid 10-digit number.");
+    // Customer phone is optional; if provided, require exactly 10 digits.
+    if (customerPhone.trim() && !/^\\d{10}$/.test(customerPhone.trim())) {
+      alert("Enter a valid 10-digit customer mobile number, or leave it blank.");
       return;
     }
 
@@ -890,6 +903,162 @@ export default function BillingPOS() {
     const matchesCategory = selectedCategory === "All" || p.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
+
+  // ===============================
+  // RASPBERRY PI CAMERA ASSISTANT
+  // ===============================
+
+  const speakAssistant = (message) => {
+    if (!("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(message);
+    utterance.lang = "en-IN";
+    utterance.rate = 1;
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const stopCameraAssistant = () => {
+    setCameraEnabled(false);
+    setCameraStatus("Camera is off");
+    previousFrameRef.current = null;
+
+    if (motionFrameRef.current) {
+      cancelAnimationFrame(motionFrameRef.current);
+      motionFrameRef.current = null;
+    }
+
+    if (cameraStreamRef.current) {
+      cameraStreamRef.current.getTracks().forEach((track) => track.stop());
+      cameraStreamRef.current = null;
+    }
+
+    if (videoRef.current) videoRef.current.srcObject = null;
+  };
+
+  const startCameraAssistant = async () => {
+    setCameraError("");
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraError("Camera access requires HTTPS or localhost and a supported browser.");
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" },
+        audio: false,
+      });
+
+      cameraStreamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+
+      previousFrameRef.current = null;
+      lastGreetingRef.current = 0;
+      lastMotionCheckRef.current = 0;
+      setCameraEnabled(true);
+      setCameraStatus("Camera active — motion detection only");
+    } catch (error) {
+      console.error("Camera start error:", error);
+      setCameraError(
+        error?.name === "NotAllowedError"
+          ? "Camera permission was denied. Allow camera access in your browser."
+          : "Could not start camera. Check the camera connection and browser permissions."
+      );
+      setCameraEnabled(false);
+    }
+  };
+
+  // Basic local motion detection. This is a presence cue, not person/face recognition.
+  useEffect(() => {
+    if (!cameraEnabled) return undefined;
+
+    let cancelled = false;
+    const detectMotion = (timestamp) => {
+      if (cancelled) return;
+
+      const video = videoRef.current;
+      const canvas = cameraCanvasRef.current;
+
+      if (
+        video &&
+        canvas &&
+        video.readyState >= 2 &&
+        timestamp - lastMotionCheckRef.current > 700
+      ) {
+        lastMotionCheckRef.current = timestamp;
+        const context = canvas.getContext("2d", { willReadFrequently: true });
+
+        if (context) {
+          const width = 64;
+          const height = 48;
+          canvas.width = width;
+          canvas.height = height;
+          context.drawImage(video, 0, 0, width, height);
+
+          const pixels = context.getImageData(0, 0, width, height).data;
+          const current = new Uint8Array(width * height);
+
+          // Downsample luminance to reduce CPU usage on Raspberry Pi.
+          for (let i = 0, p = 0; i < pixels.length; i += 4, p++) {
+            current[p] = Math.round(
+              pixels[i] * 0.299 + pixels[i + 1] * 0.587 + pixels[i + 2] * 0.114
+            );
+          }
+
+          const previous = previousFrameRef.current;
+          if (previous && previous.length === current.length) {
+            let changed = 0;
+            let totalDifference = 0;
+
+            for (let i = 0; i < current.length; i++) {
+              const difference = Math.abs(current[i] - previous[i]);
+              if (difference > 28) changed++;
+              totalDifference += difference;
+            }
+
+            const changedRatio = changed / current.length;
+            const averageDifference = totalDifference / current.length;
+
+            // Thresholds reduce greetings caused by tiny lighting changes.
+            if (changedRatio > 0.075 && averageDifference > 8) {
+              const now = Date.now();
+              if (now - lastGreetingRef.current > 15000) {
+                lastGreetingRef.current = now;
+                setCameraStatus("Movement detected — ready to assist");
+                speakAssistant("Welcome! Tap the voice button and tell me what product you need.");
+              }
+            }
+          }
+
+          previousFrameRef.current = current;
+        }
+      }
+
+      motionFrameRef.current = requestAnimationFrame(detectMotion);
+    };
+
+    motionFrameRef.current = requestAnimationFrame(detectMotion);
+
+    return () => {
+      cancelled = true;
+      if (motionFrameRef.current) {
+        cancelAnimationFrame(motionFrameRef.current);
+        motionFrameRef.current = null;
+      }
+    };
+  }, [cameraEnabled]);
+
+  useEffect(() => {
+    return () => {
+      if (cameraStreamRef.current) {
+        cameraStreamRef.current.getTracks().forEach((track) => track.stop());
+      }
+      if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    };
+  }, []);
 
   // ===============================
   // VOICE BILLING FUNCTIONS
@@ -1417,6 +1586,26 @@ export default function BillingPOS() {
         .tool-btn:hover { transform:translateY(-1px); border-color:#cdd1dc; box-shadow:0 7px 16px rgba(24,31,56,.07); }
         .tool-btn.primary { background:var(--ink); color:white; border-color:var(--ink); }
 
+        .camera-assistant {
+          display:grid; grid-template-columns:180px minmax(0,1fr); gap:12px;
+          padding:12px; margin-bottom:12px; border:1px solid var(--line);
+          border-radius:15px; background:#fff;
+        }
+        .camera-preview {
+          width:100%; aspect-ratio:4/3; object-fit:cover; border-radius:10px;
+          background:#171a27; display:block;
+        }
+        .camera-copy { min-width:0; display:flex; flex-direction:column; justify-content:center; gap:7px; }
+        .camera-title { font-size:12px; font-weight:800; }
+        .camera-status { color:var(--muted); font-size:11px; line-height:1.5; }
+        .camera-error { color:var(--red); font-size:11px; }
+        .camera-actions { display:flex; flex-wrap:wrap; gap:7px; }
+        .camera-actions button {
+          border:1px solid var(--line); border-radius:9px; padding:8px 10px;
+          background:white; cursor:pointer; font-size:11px; font-weight:800;
+        }
+        .camera-actions .camera-start { background:var(--primary); color:white; border-color:var(--primary); }
+        .camera-note { font-size:9px; color:var(--muted); }
         .voice-banner {
           background:linear-gradient(135deg,#181b2a,#292d43);
           color:white; border-radius:15px; padding:11px 14px; margin-bottom:12px;
@@ -1644,6 +1833,8 @@ export default function BillingPOS() {
           .product-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
           .product-card { min-height:180px; padding:10px; }
           .checkout-panel { border-radius:17px; }
+          .camera-assistant { grid-template-columns:1fr; }
+          .camera-preview { max-height:220px; }
         }
       `}</style>
 
@@ -1710,6 +1901,37 @@ export default function BillingPOS() {
                 </button>
                 <button className="tool-btn primary" onClick={() => setShowScanner(true)}>▣ Scan</button>
               </div>
+
+              <section className="camera-assistant" aria-label="Camera customer assistant">
+                <div>
+                  <video
+                    ref={videoRef}
+                    className="camera-preview"
+                    muted
+                    playsInline
+                    aria-label="Live camera preview"
+                  />
+                  <canvas ref={cameraCanvasRef} style={{ display: "none" }} />
+                </div>
+                <div className="camera-copy">
+                  <div className="camera-title">📷 Camera + Voice Assistant</div>
+                  <div className="camera-status">{cameraStatus}</div>
+                  <div className="camera-note">
+                    Local motion detection only. Video is not recorded or uploaded. Camera starts only when you press Start camera.
+                  </div>
+                  {cameraError && <div className="camera-error">{cameraError}</div>}
+                  <div className="camera-actions">
+                    {!cameraEnabled ? (
+                      <button className="camera-start" onClick={startCameraAssistant}>Start camera</button>
+                    ) : (
+                      <button onClick={stopCameraAssistant}>Stop camera</button>
+                    )}
+                    <button onClick={startVoiceBilling}>
+                      {isListening ? "Voice listening" : "🎤 Start voice"}
+                    </button>
+                  </div>
+                </div>
+              </section>
 
               {(isListening || voiceText || voiceMessage) && (
                 <div className="voice-banner">
@@ -1810,7 +2032,6 @@ export default function BillingPOS() {
                       else { setIsCustomerFound(false); setCustomerId(null); setCustomerName(""); }
                     }}
                     type="tel"
-                    maxLength="10"
                   />
                   {customerPhone ? (
                     <div className="customer-status">
@@ -1882,7 +2103,7 @@ export default function BillingPOS() {
 
                 <div className="action-row">
                   <button className="clear-btn" onClick={clearCart} disabled={!cart.length}>Clear</button>
-                  <button className="settle-btn" onClick={saveSale} disabled={savingSale || !cart.length || !isPhoneValid}>
+                  <button className="settle-btn" onClick={saveSale} disabled={savingSale || !cart.length || (customerPhone.trim() !== "" && !isPhoneValid)}>
                     {savingSale ? "Saving..." : `Complete bill · ₹${grandTotal.toFixed(2)}`}
                   </button>
                 </div>
