@@ -11,20 +11,32 @@ export default function SalesHistory() {
     const [filterStatus, setFilterStatus] = useState("all");
     const [selectedPeriod, setSelectedPeriod] = useState("all");
     const [lastUpdated, setLastUpdated] = useState(null);
+    const [page, setPage] = useState(1);
+    const [limit, setLimit] = useState(20);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalSalesCount, setTotalSalesCount] = useState(0);
 
     useEffect(() => {
         loadSales();
     }, []);
 
-    const loadSales = async () => {
+    const loadSales = async (requestedPage = page, requestedLimit = limit) => {
         setLoading(true);
         try {
-            const res = await API.get("/sales");
-            setSales(res.data.data || []);
+            const res = await API.get("/sales", {
+                params: { page: requestedPage, limit: requestedLimit }
+            });
+
+            const rows = Array.isArray(res.data?.data) ? res.data.data : [];
+            setSales(rows);
+            setPage(Number(res.data?.page) || requestedPage);
+            setLimit(Number(res.data?.limit) || requestedLimit);
+            setTotalPages(Math.max(1, Number(res.data?.totalPages) || 1));
+            setTotalSalesCount(Number(res.data?.total) || rows.length);
             setLastUpdated(new Date());
         } catch (err) {
             console.error("Error loading sales:", err);
-            alert("Failed to load sales data");
+            alert(err.response?.data?.message || "Failed to load sales data");
         } finally {
             setLoading(false);
         }
@@ -406,6 +418,48 @@ export default function SalesHistory() {
                     </table>
                 </div>
             )}
+
+            {/* Pagination for the paginated /sales API */}
+            <div style={styles.paginationBar}>
+                <div style={styles.paginationInfo}>
+                    Showing {sales.length ? ((page - 1) * limit + 1) : 0}
+                    {"–"}
+                    {Math.min(page * limit, totalSalesCount)} of {totalSalesCount} sales
+                </div>
+                <div style={styles.paginationControls}>
+                    <label style={styles.pageSizeLabel}>
+                        Rows
+                        <select
+                            value={limit}
+                            onChange={(e) => loadSales(1, Number(e.target.value))}
+                            style={styles.pageSizeSelect}
+                            disabled={loading}
+                        >
+                            <option value={10}>10</option>
+                            <option value={20}>20</option>
+                            <option value={50}>50</option>
+                            <option value={100}>100</option>
+                        </select>
+                    </label>
+                    <button
+                        type="button"
+                        style={{ ...styles.pageButton, opacity: page <= 1 || loading ? 0.5 : 1 }}
+                        disabled={page <= 1 || loading}
+                        onClick={() => loadSales(page - 1, limit)}
+                    >
+                        Previous
+                    </button>
+                    <span style={styles.pageNumber}>Page {page} of {totalPages}</span>
+                    <button
+                        type="button"
+                        style={{ ...styles.pageButton, opacity: page >= totalPages || loading ? 0.5 : 1 }}
+                        disabled={page >= totalPages || loading}
+                        onClick={() => loadSales(page + 1, limit)}
+                    >
+                        Next
+                    </button>
+                </div>
+            </div>
         </div>
     );
 }
@@ -944,4 +998,56 @@ const styles = {
         fontSize: "12px",
         fontWeight: "850"
     }
+
+    paginationBar: {
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: "12px",
+        flexWrap: "wrap",
+        marginTop: "14px",
+        padding: "14px 16px",
+        border: "1px solid #e5eaf1",
+        borderRadius: "14px",
+        background: "#fff"
+    },
+    paginationInfo: {
+        color: "#64748b",
+        fontSize: "12px",
+        fontWeight: "700"
+    },
+    paginationControls: {
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+        flexWrap: "wrap"
+    },
+    pageSizeLabel: {
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "6px",
+        color: "#64748b",
+        fontSize: "12px"
+    },
+    pageSizeSelect: {
+        padding: "8px",
+        border: "1px solid #cbd5e1",
+        borderRadius: "8px",
+        background: "#fff",
+        color: "#0f172a"
+    },
+    pageButton: {
+        padding: "8px 12px",
+        border: "1px solid #cbd5e1",
+        borderRadius: "8px",
+        background: "#f8fafc",
+        color: "#0f172a",
+        fontWeight: "700",
+        cursor: "pointer"
+    },
+    pageNumber: {
+        color: "#475569",
+        fontSize: "12px",
+        fontWeight: "700"
+    },
 };

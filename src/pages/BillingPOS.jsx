@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import API from "../services/api";
 import BarcodeScanner from "../pages/BarcodeScanner";
 
@@ -7,6 +7,12 @@ export default function BillingPOS() {
   const [businessName, setBusinessName] = useState("Your Store");
 
   const [products, setProducts] = useState([]);
+
+  // DSA: build once per product-list change; average O(1) product lookup by ID.
+  const productById = useMemo(
+    () => new Map(products.map((product) => [Number(product.id), product])),
+    [products]
+  );
   const [cart, setCart] = useState([]);
   const [search, setSearch] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("Cash");
@@ -287,10 +293,25 @@ export default function BillingPOS() {
       totalPrice: Number(totalPrice.toFixed(2)),
     };
 
-    setCart((prevCart) => [
-      ...prevCart,
-      cartItem,
-    ]);
+    // DSA: merge matching product/unit instead of creating duplicate cart rows.
+    setCart((prevCart) => {
+      const existing = prevCart.find(
+        (item) => Number(item.id) === Number(cartItem.id) && item.unit === cartItem.unit
+      );
+
+      if (!existing) return [...prevCart, cartItem];
+
+      return prevCart.map((item) =>
+        Number(item.id) === Number(cartItem.id) && item.unit === cartItem.unit
+          ? {
+              ...item,
+              quantity: item.quantity + cartItem.quantity,
+              convertedQuantity: item.convertedQuantity + cartItem.convertedQuantity,
+              totalPrice: Number((item.totalPrice + cartItem.totalPrice).toFixed(2)),
+            }
+          : item
+      );
+    });
 
     setManualQuantity(1);
     setManualUnit(baseUnit);
@@ -427,7 +448,12 @@ export default function BillingPOS() {
     try {
       // REMOVED: ?business_id=${businessId} - backend uses JWT
       const res = await API.get("/products");
-      setProducts(res.data.data);
+      const productRows = Array.isArray(res.data?.data)
+        ? res.data.data
+        : Array.isArray(res.data?.products)
+          ? res.data.products
+          : [];
+      setProducts(productRows);
     } catch (err) {
       console.log(err);
     }
@@ -461,7 +487,7 @@ export default function BillingPOS() {
       unit
     );
 
-    if (product.stock < priceData.convertedQuantity) {
+    if (Number(product.stock) < priceData.convertedQuantity) {
       alert(
         `Only ${product.stock} ${product.price_unit} available in stock`
       );
@@ -567,7 +593,7 @@ export default function BillingPOS() {
 
     const priceData = calculateLivePrice();
 
-    if (selectedProduct.stock < priceData.convertedQuantity) {
+    if (Number(selectedProduct.stock) < priceData.convertedQuantity) {
       alert(`Only ${selectedProduct.stock} ${selectedProduct.price_unit} available in stock`);
       return;
     }
