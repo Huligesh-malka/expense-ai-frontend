@@ -997,7 +997,7 @@ const styles = {
         textDecoration: "none",
         fontSize: "12px",
         fontWeight: "850"
-    }
+    },
 
     paginationBar: {
         display: "flex",
