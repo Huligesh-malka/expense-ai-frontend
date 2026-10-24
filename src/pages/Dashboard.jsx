@@ -296,6 +296,10 @@ export default function BusinessDashboard() {
             <FiCreditCard />
             <span>QR Orders</span>
           </Link>
+          <Link className="nav-item" to="/qr-ordering">
+            <FiGrid />
+            <span>QR Ordering Setup</span>
+          </Link>
         </nav>
 
         <div className="side-bottom">
@@ -494,6 +498,8 @@ export default function BusinessDashboard() {
               <QuickAction to="/add-purchase" icon={<FiShoppingCart />} label="New Purchase" tone="cyan" />
               <QuickAction to="/reports" icon={<FiBarChart2 />} label="Business Reports" tone="indigo" />
               <QuickAction to="/ai-business" icon={<FiZap />} label="AI Insights" tone="gold" />
+              <QuickAction to="/qr-orders" icon={<FiCreditCard />} label="QR Orders" tone="violet" />
+              <QuickAction to="/qr-ordering" icon={<FiGrid />} label="QR Ordering Setup" tone="cyan" />
             </div>
           </div>
 
@@ -780,6 +786,9 @@ function DashboardStyles() {
         position: sticky;
         top: 0;
         height: 100vh;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-width: thin;
         display: flex;
         flex-direction: column;
         z-index: 50;
