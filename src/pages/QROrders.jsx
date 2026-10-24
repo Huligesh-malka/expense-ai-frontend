@@ -1,487 +1,2065 @@
+import React, {
+    useEffect,
+    useState
+} from "react";
 
-import React, { useCallback, useEffect, useState } from "react";
 import {
-  getQROrders,
-  updateQROrderStatus,
-  updateQRPayment,
+    useNavigate
+} from "react-router-dom";
+
+import {
+    getQROrders,
+    updateQROrderStatus,
+    updateQRPayment
 } from "../services/qrOrderApi";
 
-const styles = `
-.qro-page{min-height:100vh;background:#f5f6fb;padding:26px;color:#17182b;font-family:Inter,system-ui,sans-serif}
-.qro-page *{box-sizing:border-box}
-.qro-wrap{max-width:1250px;margin:auto}
-.qro-header{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:24px;flex-wrap:wrap}
-.qro-header h1{font-size:28px;margin:0;font-weight:800;letter-spacing:-.8px}
-.qro-sub{color:#8589a2;margin:7px 0 0;font-size:14px}
-.qro-button{border:0;border-radius:11px;padding:11px 16px;font-weight:700;cursor:pointer;transition:.2s}
-.qro-button:disabled{opacity:.55;cursor:not-allowed}
-.qro-refresh{background:white;border:1px solid #e8e9f2;color:#555875}
-.qro-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:15px;margin-bottom:22px}
-.qro-stat{background:white;border:1px solid #ebecf4;border-radius:17px;padding:20px;box-shadow:0 5px 18px #27275008}
-.qro-stat span{font-size:12px;color:#8387a1;font-weight:700}
-.qro-stat strong{display:block;font-size:27px;margin-top:10px;letter-spacing:-.7px}
-.qro-stat small{display:block;color:#999db0;margin-top:5px}
-.qro-card{background:#fff;border:1px solid #e9eaf3;border-radius:18px;margin-bottom:16px;padding:21px;box-shadow:0 6px 20px #27275008}
-.qro-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
-.qro-toolbar h2{font-size:18px;margin:0}
-.qro-filters{display:flex;gap:8px;flex-wrap:wrap}
-.qro-filter{border:1px solid #e8e9f2;background:#fff;color:#71758e;border-radius:10px;padding:9px 12px;font-size:12px;font-weight:700;cursor:pointer;text-transform:capitalize}
-.qro-filter.active{background:#6d5dfc;color:white;border-color:#6d5dfc}
-.qro-orders{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
-.qro-order{border:1px solid #e9eaf3;border-radius:16px;overflow:hidden;background:white;min-width:0}
-.qro-order-top{padding:17px 18px;display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid #f0f0f6}
-.qro-number{font-weight:800;font-size:15px}
-.qro-muted{font-size:12px;color:#9296ab;margin-top:5px}
-.qro-badge{display:inline-flex;align-items:center;height:27px;padding:0 10px;border-radius:30px;font-size:11px;font-weight:800;text-transform:capitalize;white-space:nowrap}
-.qro-b-new{background:#fff4dc;color:#a86b00}
-.qro-b-accepted{background:#eeeaff;color:#6552d9}
-.qro-b-processing{background:#e9f3ff;color:#2672ca}
-.qro-b-ready{background:#e6f8ef;color:#168858}
-.qro-b-completed{background:#e4f8ed;color:#138653}
-.qro-b-rejected,.qro-b-cancelled{background:#ffebed;color:#cf4353}
-.qro-b-default{background:#f0f1f6;color:#777b91}
-.qro-order-body{padding:18px}
-.qro-items-title{font-size:11px;font-weight:800;color:#8b8fa5;text-transform:uppercase;letter-spacing:.7px;margin-bottom:10px}
-.qro-item{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px dashed #ededf4;font-size:13px}
-.qro-item:last-child{border-bottom:0}
-.qro-item-name{font-weight:600;overflow-wrap:anywhere}
-.qro-item-sub{font-size:11px;color:#9296aa;margin-top:3px}
-.qro-total{display:flex;justify-content:space-between;align-items:center;padding:14px;margin-top:12px;border-radius:12px;background:#f7f6ff}
-.qro-total span{font-size:12px;color:#777b93;font-weight:700}
-.qro-total strong{font-size:22px;color:#5141df}
-.qro-info{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
-.qro-info-box{background:#fafaff;border:1px solid #eeeef6;border-radius:11px;padding:11px;min-width:0}
-.qro-info-box span{display:block;color:#9296aa;font-size:11px;margin-bottom:5px}
-.qro-info-box strong{font-size:12px;overflow-wrap:anywhere}
-.qro-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:17px}
-.qro-accept{background:#6d5dfc;color:white}
-.qro-reject{background:#fff0f1;color:#d54453;border:1px solid #ffdcdf}
-.qro-pay{background:#15a66a;color:white}
-.qro-done{background:#e7f8ef;color:#168858;cursor:default}
-.qro-hint{background:#f8f7ff;border:1px solid #eeebff;color:#777092;border-radius:11px;padding:11px 12px;font-size:12px;margin-top:13px;line-height:1.5}
-.qro-empty,.qro-loading{padding:48px 15px;text-align:center;color:#898da3}
-.qro-empty strong{display:block;color:#34364d;font-size:17px;margin-bottom:6px}
-.qro-error{background:#fff0f1;color:#c63f50;padding:13px;border-radius:10px;margin-bottom:15px;font-size:13px}
-@media(max-width:900px){.qro-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.qro-orders{grid-template-columns:1fr}}
-@media(max-width:520px){.qro-page{padding:15px}.qro-header h1{font-size:23px}.qro-grid{gap:9px}.qro-stat{padding:14px}.qro-stat strong{font-size:23px}.qro-card{padding:14px}.qro-order-top,.qro-order-body{padding:14px}.qro-actions .qro-button{flex:1 1 100%}}
-`;
 
-const unwrapOrders = (res) => {
-  if (Array.isArray(res)) return res;
-  const candidates = [
-    res?.data,
-    res?.data?.data,
-    res?.data?.data?.data,
-    res?.data?.orders,
-    res?.data?.data?.orders,
-    res?.orders,
-  ];
-  return candidates.find(Array.isArray) || [];
+// =========================================================
+// ORDER STATUSES
+// =========================================================
+
+const statusFilters = [
+    "new",
+    "accepted",
+    "processing",
+    "ready",
+    "completed",
+    "rejected",
+    "cancelled",
+    "all"
+];
+
+const statusLabels = {
+    new: "New",
+    accepted: "Accepted",
+    processing: "Processing",
+    ready: "Ready",
+    completed: "Completed",
+    rejected: "Rejected",
+    cancelled: "Cancelled"
 };
 
-const normalStatus = (order) =>
-  String(order?.status || order?.order_status || "new")
-    .toLowerCase()
-    .replaceAll(" ", "_");
 
-const normalPayment = (order) =>
-  String(order?.payment_status || "pending").toLowerCase();
+// =========================================================
+// EXTRACT ORDERS SAFELY
+// =========================================================
 
-const money = (amount) =>
-  Number(amount || 0).toLocaleString("en-IN", {
-    style: "currency",
-    currency: "INR",
-    minimumFractionDigits: 2,
-  });
+function extractOrders(response) {
 
-const getOrderItems = (order) => {
-  const raw = order?.items || order?.order_items || order?.products || [];
-  if (Array.isArray(raw)) return raw;
+    console.log(
+        "QR ORDERS RAW RESPONSE:",
+        response
+    );
 
-  if (typeof raw === "string") {
-    try {
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
+
+    // Direct array
+
+    if (
+        Array.isArray(response)
+    ) {
+
+        return response;
+
     }
-  }
-  return [];
-};
+
+
+    // Axios response.data
+
+    if (
+        Array.isArray(
+            response?.data
+        )
+    ) {
+
+        return response.data;
+
+    }
+
+
+    // Axios response.data.data
+
+    if (
+        Array.isArray(
+            response?.data?.data
+        )
+    ) {
+
+        return response.data.data;
+
+    }
+
+
+    // response.data.data.data
+
+    if (
+        Array.isArray(
+            response?.data?.data?.data
+        )
+    ) {
+
+        return response.data.data.data;
+
+    }
+
+
+    // response.data.orders
+
+    if (
+        Array.isArray(
+            response?.data?.orders
+        )
+    ) {
+
+        return response.data.orders;
+
+    }
+
+
+    // response.data.data.orders
+
+    if (
+        Array.isArray(
+            response?.data?.data?.orders
+        )
+    ) {
+
+        return response.data.data.orders;
+
+    }
+
+
+    // response.orders
+
+    if (
+        Array.isArray(
+            response?.orders
+        )
+    ) {
+
+        return response.orders;
+
+    }
+
+
+    console.warn(
+        "QR ORDERS: No array found",
+        response
+    );
+
+    return [];
+
+}
+
+
+// =========================================================
+// COMPONENT
+// =========================================================
 
 export default function QROrders() {
-  const [orders, setOrders] = useState([]);
-  const [filter, setFilter] = useState("new");
-  const [loading, setLoading] = useState(true);
-  const [actionId, setActionId] = useState(null);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
 
-  const loadOrders = useCallback(async (showLoader = true) => {
-    try {
-      if (showLoader) setLoading(true);
-      setError("");
+    const navigate = useNavigate();
 
-      const query =
-        filter === "all"
-          ? ""
-          : `?status=${encodeURIComponent(filter)}`;
 
-      const response = await getQROrders(query);
-      setOrders(unwrapOrders(response));
-    } catch (err) {
-      console.error("Failed to load QR orders:", err);
-      setError(
-        err?.response?.data?.message ||
-          err?.message ||
-          "Could not load QR orders."
-      );
-    } finally {
-      if (showLoader) setLoading(false);
-    }
-  }, [filter]);
+    const [orders, setOrders] =
+        useState([]);
 
-  useEffect(() => {
-    loadOrders(true);
-    const timer = setInterval(() => loadOrders(false), 15000);
-    return () => clearInterval(timer);
-  }, [loadOrders]);
 
-  const performStatusChange = async (order, nextStatus) => {
-    if (!order?.id || actionId !== null) return;
+    const [filter, setFilter] =
+        useState("new");
 
-    const label = order.order_no || order.id;
-    const message =
-      nextStatus === "accepted"
-        ? `Accept order #${label}? Stock handling will follow your backend rules.`
-        : `Reject order #${label}?`;
 
-    if (!window.confirm(message)) return;
+    const [loading, setLoading] =
+        useState(true);
 
-    try {
-      setActionId(order.id);
-      setNotice("");
-      await updateQROrderStatus(order.id, nextStatus);
-      setNotice(`Order #${label} updated successfully.`);
-      await loadOrders(false);
-    } catch (err) {
-      setError(
-        err?.response?.data?.message ||
-          err?.message ||
-          "Could not update the order."
-      );
-    } finally {
-      setActionId(null);
-    }
-  };
 
-  const confirmPayment = async (order) => {
-    if (!order?.id || actionId !== null || normalPayment(order) === "paid") {
-      return;
-    }
+    const [actionId, setActionId] =
+        useState(null);
 
-    if (normalStatus(order) !== "accepted") {
-      setError("Accept the order before confirming payment.");
-      return;
-    }
 
-    const amount = money(order.total_amount ?? order.total ?? 0);
-    if (
-      !window.confirm(
-        `Confirm that ${amount} has actually been received for order #${order.order_no || order.id}? This is the final action.`
-      )
-    ) {
-      return;
-    }
+    const [errorMessage, setErrorMessage] =
+        useState("");
 
-    try {
-      setActionId(order.id);
-      setError("");
-      setNotice("");
 
-      await updateQRPayment(order.id, "UPI", "paid");
+    // =========================================================
+    // LOAD ORDERS
+    // =========================================================
 
-      setNotice(
-        `Payment confirmed for order #${order.order_no || order.id}. Final step complete.`
-      );
-      await loadOrders(false);
-    } catch (err) {
-      setError(
-        err?.response?.data?.message ||
-          err?.message ||
-          "Payment confirmation failed."
-      );
-    } finally {
-      setActionId(null);
-    }
-  };
+    const loadOrders = async () => {
 
-  const counts = {
-    total: orders.length,
-    new: orders.filter((o) => normalStatus(o) === "new").length,
-    accepted: orders.filter((o) => normalStatus(o) === "accepted").length,
-    paid: orders.filter((o) => normalPayment(o) === "paid").length,
-  };
+        try {
 
-  const statusClass = (status) => {
-    const allowed = [
-      "new",
-      "accepted",
-      "processing",
-      "ready",
-      "completed",
-      "rejected",
-      "cancelled",
-    ];
-    return allowed.includes(status) ? `qro-b-${status}` : "qro-b-default";
-  };
+            setLoading(true);
 
-  return (
-    <div className="qro-page">
-      <style>{styles}</style>
+            setErrorMessage("");
 
-      <div className="qro-wrap">
-        <header className="qro-header">
-          <div>
-            <h1>QR Orders</h1>
-            <p className="qro-sub">
-              Review customer orders, accept them, then confirm payment as the final step.
-            </p>
-          </div>
-          <button
-            className="qro-button qro-refresh"
-            type="button"
-            onClick={() => loadOrders(true)}
-            disabled={loading || actionId !== null}
-          >
-            ↻ Refresh
-          </button>
-        </header>
 
-        <section className="qro-grid">
-          <div className="qro-stat">
-            <span>ORDERS SHOWN</span>
-            <strong>{counts.total}</strong>
-            <small>Current filter</small>
-          </div>
-          <div className="qro-stat">
-            <span>NEW ORDERS</span>
-            <strong>{counts.new}</strong>
-            <small>Waiting for your decision</small>
-          </div>
-          <div className="qro-stat">
-            <span>ACCEPTED</span>
-            <strong>{counts.accepted}</strong>
-            <small>Awaiting payment confirmation</small>
-          </div>
-          <div className="qro-stat">
-            <span>PAYMENT CONFIRMED</span>
-            <strong>{counts.paid}</strong>
-            <small>Payment marked as received</small>
-          </div>
-        </section>
+            const query =
+                filter === "all"
+                    ? ""
+                    : `?status=${encodeURIComponent(
+                        filter
+                    )}`;
 
-        {error && (
-          <div className="qro-error" role="alert">
-            {error}
-          </div>
-        )}
-        {notice && (
-          <div className="qro-hint" role="status">
-            ✓ {notice}
-          </div>
-        )}
 
-        <section className="qro-card">
-          <div className="qro-toolbar">
-            <div>
-              <h2>Order management</h2>
-              <p className="qro-sub">Select an order status to review.</p>
-            </div>
-            <div className="qro-filters">
-              {["new", "accepted", "completed", "rejected", "cancelled", "all"].map(
-                (status) => (
-                  <button
-                    key={status}
-                    type="button"
-                    className={`qro-filter ${filter === status ? "active" : ""}`}
-                    onClick={() => setFilter(status)}
-                  >
-                    {status}
-                  </button>
-                )
-              )}
-            </div>
-          </div>
-
-          {loading ? (
-            <div className="qro-loading">Loading QR orders…</div>
-          ) : orders.length === 0 ? (
-            <div className="qro-empty">
-              <strong>No orders found</strong>
-              There are no orders in this filter yet.
-            </div>
-          ) : (
-            <div className="qro-orders">
-              {orders.map((order) => {
-                const status = normalStatus(order);
-                const payment = normalPayment(order);
-                const items = getOrderItems(order);
-                const busy = actionId === order.id;
-                const paid = payment === "paid";
-                const total = order.total_amount ?? order.total ?? 0;
-                const orderLabel = order.order_no || `#${order.id}`;
-
-                return (
-                  <article className="qro-order" key={order.id}>
-                    <div className="qro-order-top">
-                      <div>
-                        <div className="qro-number">Order {orderLabel}</div>
-                        <div className="qro-muted">
-                          {order.created_at
-                            ? new Date(order.created_at).toLocaleString("en-IN")
-                            : "Date not available"}
-                        </div>
-                      </div>
-                      <span className={`qro-badge ${statusClass(status)}`}>
-                        {status.replaceAll("_", " ")}
-                      </span>
-                    </div>
-
-                    <div className="qro-order-body">
-                      <div className="qro-items-title">Items ordered</div>
-
-                      {items.length ? (
-                        items.map((item, index) => {
-                          const name =
-                            item.product_name ||
-                            item.name ||
-                            item.title ||
-                            `Item ${index + 1}`;
-                          const qty = Number(
-                            item.quantity ?? item.qty ?? 1
-                          );
-                          const price = Number(
-                            item.price ?? item.unit_price ?? item.selling_price ?? 0
-                          );
-
-                          return (
-                            <div className="qro-item" key={item.id || index}>
-                              <div>
-                                <div className="qro-item-name">{name}</div>
-                                <div className="qro-item-sub">
-                                  Qty: {qty}
-                                </div>
-                              </div>
-                              <strong>{money(price * qty)}</strong>
-                            </div>
-                          );
-                        })
-                      ) : (
-                        <div className="qro-muted">
-                          Item details are not available in the response.
-                        </div>
-                      )}
-
-                      <div className="qro-total">
-                        <span>ORDER TOTAL</span>
-                        <strong>{money(total)}</strong>
-                      </div>
-
-                      <div className="qro-info">
-                        <div className="qro-info-box">
-                          <span>Customer</span>
-                          <strong>
-                            {order.customer_name || order.name || "Walk-in customer"}
-                          </strong>
-                        </div>
-                        <div className="qro-info-box">
-                          <span>Phone</span>
-                          <strong>{order.customer_phone || order.phone || "—"}</strong>
-                        </div>
-                        <div className="qro-info-box">
-                          <span>Payment method</span>
-                          <strong>{order.payment_method || "UPI / manual"}</strong>
-                        </div>
-                        <div className="qro-info-box">
-                          <span>Payment status</span>
-                          <strong>{paid ? "Paid" : "Pending"}</strong>
-                        </div>
-                      </div>
-
-                      {status === "new" && (
-                        <div className="qro-actions">
-                          <button
-                            type="button"
-                            className="qro-button qro-accept"
-                            disabled={busy || actionId !== null}
-                            onClick={() => performStatusChange(order, "accepted")}
-                          >
-                            {busy ? "Updating…" : "✓ Accept Order"}
-                          </button>
-                          <button
-                            type="button"
-                            className="qro-button qro-reject"
-                            disabled={busy || actionId !== null}
-                            onClick={() => performStatusChange(order, "rejected")}
-                          >
-                            ✕ Reject
-                          </button>
-                        </div>
-                      )}
-
-                      {status === "accepted" && !paid && (
-                        <>
-                          <div className="qro-hint">
-                            Order accepted. Confirm payment only after you have
-                            actually received the money. This is the final action;
-                            there is no Start Processing step.
-                          </div>
-                          <div className="qro-actions">
-                            <button
-                              type="button"
-                              className="qro-button qro-pay"
-                              disabled={busy || actionId !== null}
-                              onClick={() => confirmPayment(order)}
-                            >
-                              {busy ? "Confirming…" : "₹ Confirm Payment — Final Step"}
-                            </button>
-                          </div>
-                        </>
-                      )}
-
-                      {paid && (
-                        <div className="qro-actions">
-                          <button
-                            type="button"
-                            className="qro-button qro-done"
-                            disabled
-                          >
-                            ✓ Payment Confirmed · Final Step Complete
-                          </button>
-                        </div>
-                      )}
-
-                      {["processing", "ready", "completed"].includes(status) && !paid && (
-                        <div className="qro-hint">
-                          This order has status “{status}”. No processing action
-                          is offered in this screen.
-                        </div>
-                      )}
-
-                      {["rejected", "cancelled"].includes(status) && (
-                        <div className="qro-hint">
-                          This order is {status}. No further actions are available.
-                        </div>
-                      )}
-                    </div>
-                  </article>
+            const response =
+                await getQROrders(
+                    query
                 );
-              })}
+
+
+            console.log(
+                "QR ORDERS:",
+                response
+            );
+
+
+            const receivedOrders =
+                extractOrders(
+                    response
+                );
+
+
+            console.log(
+                "QR ORDERS ARRAY:",
+                receivedOrders
+            );
+
+
+            if (
+                Array.isArray(
+                    receivedOrders
+                )
+            ) {
+
+                setOrders(
+                    receivedOrders
+                );
+
+            } else {
+
+                setOrders([]);
+
+            }
+
+        } catch (error) {
+
+            console.error(
+                "Load QR Orders Error:",
+                error
+            );
+
+
+            setOrders([]);
+
+
+            setErrorMessage(
+                error?.response?.data?.message ||
+                error?.message ||
+                "Failed to load QR orders"
+            );
+
+        } finally {
+
+            setLoading(false);
+
+        }
+
+    };
+
+
+    // =========================================================
+    // AUTO REFRESH
+    // =========================================================
+
+    useEffect(() => {
+
+        loadOrders();
+
+
+        const timer =
+            setInterval(
+                loadOrders,
+                5000
+            );
+
+
+        return () => {
+
+            clearInterval(
+                timer
+            );
+
+        };
+
+    }, [filter]);
+
+
+    // =========================================================
+    // CHANGE STATUS
+    // =========================================================
+
+    const changeStatus = async (
+        order,
+        status
+    ) => {
+
+        try {
+
+            if (
+                !order?.id
+            ) {
+
+                alert(
+                    "Order ID is missing."
+                );
+
+                return;
+
+            }
+
+
+            setActionId(
+                order.id
+            );
+
+
+            // =========================================
+            // IMPORTANT
+            //
+            // Correct function from qrOrderApi.js:
+            //
+            // updateQROrderStatus
+            // =========================================
+
+            await updateQROrderStatus(
+                order.id,
+                status
+            );
+
+
+            await loadOrders();
+
+        } catch (error) {
+
+            console.error(
+                "Change Order Status Error:",
+                error
+            );
+
+
+            alert(
+                error?.response?.data?.message ||
+                error?.message ||
+                "Failed to update order"
+            );
+
+        } finally {
+
+            setActionId(
+                null
+            );
+
+        }
+
+    };
+
+
+    // =========================================================
+    // MARK PAYMENT PAID
+    // =========================================================
+
+    const markPaid = async (
+        order
+    ) => {
+
+        const amount =
+            Number(
+                order?.total_amount || 0
+            ).toFixed(2);
+
+
+        const confirmed =
+            window.confirm(
+                `Confirm that payment of ₹${amount} has been received from the customer?`
+            );
+
+
+        if (
+            !confirmed
+        ) {
+
+            return;
+
+        }
+
+
+        try {
+
+            setActionId(
+                order.id
+            );
+
+
+            await updateQRPayment(
+                order.id,
+                "UPI",
+                "paid"
+            );
+
+
+            alert(
+                "Payment confirmed successfully."
+            );
+
+
+            await loadOrders();
+
+        } catch (error) {
+
+            console.error(
+                "Confirm Payment Error:",
+                error
+            );
+
+
+            alert(
+                error?.response?.data?.message ||
+                error?.message ||
+                "Failed to confirm payment"
+            );
+
+        } finally {
+
+            setActionId(
+                null
+            );
+
+        }
+
+    };
+
+
+    // =========================================================
+    // REJECT ORDER
+    // =========================================================
+
+    const rejectOrder = async (
+        order
+    ) => {
+
+        const orderNumber =
+            order?.order_no ||
+            order?.id ||
+            "";
+
+
+        const confirmed =
+            window.confirm(
+                `Reject order #${orderNumber}?`
+            );
+
+
+        if (
+            !confirmed
+        ) {
+
+            return;
+
+        }
+
+
+        await changeStatus(
+            order,
+            "rejected"
+        );
+
+    };
+
+
+    // =========================================================
+    // STATUS LABEL
+    // =========================================================
+
+    const getStatusLabel = (
+        status
+    ) => {
+
+        return (
+            statusLabels?.[status] ||
+            status ||
+            "Unknown"
+        );
+
+    };
+
+
+    // =========================================================
+    // FORMAT DATE
+    // =========================================================
+
+    const formatDate = (
+        date
+    ) => {
+
+        if (
+            !date
+        ) {
+
+            return "-";
+
+        }
+
+
+        try {
+
+            return new Date(
+                date
+            ).toLocaleString(
+                "en-IN",
+                {
+                    dateStyle:
+                        "medium",
+
+                    timeStyle:
+                        "short"
+                }
+            );
+
+        } catch {
+
+            return String(
+                date
+            );
+
+        }
+
+    };
+
+
+    // =========================================================
+    // MONEY
+    // =========================================================
+
+    const money = (
+        value
+    ) => {
+
+        const number =
+            Number(
+                value || 0
+            );
+
+
+        return `₹${number.toFixed(2)}`;
+
+    };
+
+
+    // =========================================================
+    // PAYMENT LABEL
+    // =========================================================
+
+    const getPaymentLabel = (
+        status
+    ) => {
+
+        if (
+            status === "paid"
+        ) {
+
+            return "✓ Paid";
+
+        }
+
+
+        if (
+            status === "failed"
+        ) {
+
+            return "✕ Failed";
+
+        }
+
+
+        return "Payment Pending";
+
+    };
+
+
+    // =========================================================
+    // ALWAYS USE ARRAY
+    // =========================================================
+
+    const safeOrders =
+        Array.isArray(
+            orders
+        )
+            ? orders
+            : [];
+
+
+    // =========================================================
+    // LOADING
+    // =========================================================
+
+    if (
+        loading &&
+        safeOrders.length === 0
+    ) {
+
+        return (
+
+            <div className="qr-loading-page">
+
+                <div className="loading-spinner">
+                    ⟳
+                </div>
+
+                <h2>
+                    Loading QR orders...
+                </h2>
+
+                <p>
+                    Checking for new customer orders.
+                </p>
+
             </div>
-          )}
-        </section>
-      </div>
-    </div>
-  );
+
+        );
+
+    }
+
+
+    // =========================================================
+    // PAGE
+    // =========================================================
+
+    return (
+
+        <div className="qr-orders-page">
+
+
+            {/* HEADER */}
+
+            <div className="orders-header">
+
+                <div>
+
+                    <div className="page-eyebrow">
+                        CUSTOMER ORDERS
+                    </div>
+
+                    <h1>
+                        QR Orders
+                    </h1>
+
+                    <p>
+                        Orders placed by customers
+                        through your business QR code.
+                    </p>
+
+                </div>
+
+
+                <div className="header-actions">
+
+                    <button
+                        type="button"
+                        className="header-btn blue"
+                        onClick={() =>
+                            navigate(
+                                "/qr-ordering"
+                            )
+                        }
+                    >
+                        QR Ordering
+                    </button>
+
+
+                    <button
+                        type="button"
+                        className="header-btn dark"
+                        onClick={() =>
+                            navigate(
+                                "/dashboard"
+                            )
+                        }
+                    >
+                        Dashboard
+                    </button>
+
+
+                    <button
+                        type="button"
+                        className="header-btn"
+                        onClick={
+                            loadOrders
+                        }
+                        disabled={
+                            loading
+                        }
+                    >
+
+                        {
+                            loading
+                                ? "Refreshing..."
+                                : "↻ Refresh"
+                        }
+
+                    </button>
+
+                </div>
+
+            </div>
+
+
+            {/* ERROR */}
+
+            {
+                errorMessage && (
+
+                    <div className="error-box">
+
+                        <strong>
+                            Unable to load orders
+                        </strong>
+
+                        <span>
+                            {errorMessage}
+                        </span>
+
+                        <button
+                            type="button"
+                            onClick={
+                                loadOrders
+                            }
+                        >
+                            Try Again
+                        </button>
+
+                    </div>
+
+                )
+            }
+
+
+            {/* FILTERS */}
+
+            <div className="order-filters">
+
+                {
+                    statusFilters.map(
+                        (status) => (
+
+                            <button
+                                type="button"
+                                key={
+                                    status
+                                }
+                                className={
+                                    filter === status
+                                        ? "filter active"
+                                        : "filter"
+                                }
+                                onClick={() =>
+                                    setFilter(
+                                        status
+                                    )
+                                }
+                            >
+
+                                {
+                                    status === "all"
+                                        ? "All"
+                                        : getStatusLabel(
+                                            status
+                                        )
+                                }
+
+                            </button>
+
+                        )
+                    )
+                }
+
+            </div>
+
+
+            {/* SUMMARY */}
+
+            <div className="order-summary">
+
+                <strong>
+                    {
+                        safeOrders.length
+                    }
+                </strong>
+
+                <span>
+
+                    {
+                        filter === "all"
+                            ? "total orders"
+                            : `${getStatusLabel(
+                                filter
+                            ).toLowerCase()} orders`
+                    }
+
+                </span>
+
+                <span className="live-dot">
+                    ● Live
+                </span>
+
+            </div>
+
+
+            {/* ORDERS */}
+
+            {
+                safeOrders.length === 0 ? (
+
+                    <div className="empty-orders">
+
+                        <div className="empty-icon">
+                            🛒
+                        </div>
+
+                        <h2>
+                            No QR orders
+                        </h2>
+
+                        <p>
+                            New customer orders will
+                            appear here automatically.
+                        </p>
+
+                        <button
+                            type="button"
+                            className="empty-btn"
+                            onClick={
+                                loadOrders
+                            }
+                        >
+                            Refresh Orders
+                        </button>
+
+                    </div>
+
+                ) : (
+
+                    <div className="orders-list">
+
+                        {
+                            safeOrders.map(
+                                (
+                                    order,
+                                    index
+                                ) => {
+
+                                    const items =
+                                        Array.isArray(
+                                            order?.items
+                                        )
+                                            ? order.items
+                                            : [];
+
+
+                                    return (
+
+                                        <div
+                                            className="order-card"
+                                            key={
+                                                order?.id ||
+                                                order?.order_no ||
+                                                index
+                                            }
+                                        >
+
+                                            {/* ORDER HEADER */}
+
+                                            <div className="order-card-header">
+
+                                                <div>
+
+                                                    <strong>
+
+                                                        #
+
+                                                        {
+                                                            order?.order_no ||
+                                                            order?.id ||
+                                                            "N/A"
+                                                        }
+
+                                                    </strong>
+
+                                                    <span>
+                                                        Customer Order
+                                                    </span>
+
+                                                    <small>
+                                                        {
+                                                            formatDate(
+                                                                order?.created_at
+                                                            )
+                                                        }
+                                                    </small>
+
+                                                </div>
+
+
+                                                <span
+                                                    className={
+                                                        `order-status ${
+                                                            order?.order_status ||
+                                                            "new"
+                                                        }`
+                                                    }
+                                                >
+
+                                                    {
+                                                        getStatusLabel(
+                                                            order?.order_status ||
+                                                            "new"
+                                                        )
+                                                    }
+
+                                                </span>
+
+                                            </div>
+
+
+                                            {/* CUSTOMER */}
+
+                                            <div className="customer-info">
+
+                                                <div className="customer-icon">
+                                                    👤
+                                                </div>
+
+                                                <div>
+
+                                                    <strong>
+                                                        {
+                                                            order?.customer_name ||
+                                                            "Customer"
+                                                        }
+                                                    </strong>
+
+
+                                                    {
+                                                        order?.customer_phone && (
+
+                                                            <span>
+                                                                📞{" "}
+
+                                                                {
+                                                                    order.customer_phone
+                                                                }
+                                                            </span>
+
+                                                        )
+                                                    }
+
+                                                </div>
+
+                                            </div>
+
+
+                                            {/* PAYMENT */}
+
+                                            <div className="payment-status-row">
+
+                                                <span>
+                                                    Payment
+                                                </span>
+
+                                                <strong
+                                                    className={
+                                                        order?.payment_status ===
+                                                        "paid"
+                                                            ? "payment-paid"
+                                                            : order?.payment_status ===
+                                                              "failed"
+                                                            ? "payment-failed"
+                                                            : "payment-pending"
+                                                    }
+                                                >
+
+                                                    {
+                                                        getPaymentLabel(
+                                                            order?.payment_status
+                                                        )
+                                                    }
+
+                                                </strong>
+
+                                            </div>
+
+
+                                            {/* ITEMS */}
+
+                                            <div className="order-items">
+
+                                                <h3>
+                                                    Order Items
+                                                </h3>
+
+
+                                                {
+                                                    items.length > 0
+                                                        ? (
+
+                                                            items.map(
+                                                                (
+                                                                    item,
+                                                                    itemIndex
+                                                                ) => {
+
+                                                                    const quantity =
+                                                                        Number(
+                                                                            item?.quantity ||
+                                                                            0
+                                                                        );
+
+
+                                                                    const unitPrice =
+                                                                        Number(
+                                                                            item?.unit_price ||
+                                                                            0
+                                                                        );
+
+
+                                                                    const calculatedTotal =
+                                                                        quantity *
+                                                                        unitPrice;
+
+
+                                                                    const itemTotal =
+                                                                        item?.total ??
+                                                                        calculatedTotal;
+
+
+                                                                    return (
+
+                                                                        <div
+                                                                            className="order-item"
+                                                                            key={
+                                                                                item?.id ||
+                                                                                `${order?.id}-${itemIndex}`
+                                                                            }
+                                                                        >
+
+                                                                            <div>
+
+                                                                                <strong>
+                                                                                    {
+                                                                                        item?.product_name ||
+                                                                                        item?.name ||
+                                                                                        "Product"
+                                                                                    }
+                                                                                </strong>
+
+                                                                                <span>
+
+                                                                                    {
+                                                                                        quantity
+                                                                                    }
+
+                                                                                    {" "}
+
+                                                                                    {
+                                                                                        item?.unit ||
+                                                                                        "pcs"
+                                                                                    }
+
+                                                                                    {" × "}
+
+                                                                                    {
+                                                                                        money(
+                                                                                            unitPrice
+                                                                                        )
+                                                                                    }
+
+                                                                                </span>
+
+                                                                            </div>
+
+
+                                                                            <strong>
+                                                                                {
+                                                                                    money(
+                                                                                        itemTotal
+                                                                                    )
+                                                                                }
+                                                                            </strong>
+
+                                                                        </div>
+
+                                                                    );
+
+                                                                }
+                                                            )
+
+                                                        )
+                                                        : (
+
+                                                            <div className="no-items">
+                                                                No items found
+                                                            </div>
+
+                                                        )
+                                                }
+
+                                            </div>
+
+
+                                            {/* TOTAL */}
+
+                                            <div className="order-total">
+
+                                                <div>
+
+                                                    <span>
+                                                        Subtotal
+                                                    </span>
+
+                                                    <strong>
+                                                        {
+                                                            money(
+                                                                order?.subtotal
+                                                            )
+                                                        }
+                                                    </strong>
+
+                                                </div>
+
+
+                                                <div>
+
+                                                    <span>
+                                                        Tax
+                                                    </span>
+
+                                                    <strong>
+                                                        {
+                                                            money(
+                                                                order?.tax
+                                                            )
+                                                        }
+                                                    </strong>
+
+                                                </div>
+
+
+                                                <div className="grand-total">
+
+                                                    <span>
+                                                        Total
+                                                    </span>
+
+                                                    <strong>
+                                                        {
+                                                            money(
+                                                                order?.total_amount
+                                                            )
+                                                        }
+                                                    </strong>
+
+                                                </div>
+
+                                            </div>
+
+
+                                            {/* NOTES */}
+
+                                            {
+                                                order?.notes && (
+
+                                                    <div className="order-notes">
+
+                                                        <strong>
+                                                            Note:
+                                                        </strong>
+
+                                                        <span>
+                                                            {
+                                                                order.notes
+                                                            }
+                                                        </span>
+
+                                                    </div>
+
+                                                )
+                                            }
+
+
+                                            {/* ACTIONS */}
+
+                                            <div className="order-actions">
+
+
+                                                {/* NEW */}
+
+                                                {
+                                                    order?.order_status ===
+                                                    "new" && (
+
+                                                        <>
+
+                                                            <button
+                                                                type="button"
+                                                                className="reject-btn"
+                                                                disabled={
+                                                                    actionId ===
+                                                                    order.id
+                                                                }
+                                                                onClick={() =>
+                                                                    rejectOrder(
+                                                                        order
+                                                                    )
+                                                                }
+                                                            >
+                                                                Reject
+                                                            </button>
+
+
+                                                            <button
+                                                                type="button"
+                                                                className="accept-btn"
+                                                                disabled={
+                                                                    actionId ===
+                                                                    order.id
+                                                                }
+                                                                onClick={() =>
+                                                                    changeStatus(
+                                                                        order,
+                                                                        "accepted"
+                                                                    )
+                                                                }
+                                                            >
+
+                                                                {
+                                                                    actionId ===
+                                                                    order.id
+                                                                        ? "Accepting..."
+                                                                        : "✓ Accept Order"
+                                                                }
+
+                                                            </button>
+
+                                                        </>
+
+                                                    )
+                                                }
+
+
+                                                {/* ACCEPTED */}
+
+                                                {
+                                                    order?.order_status ===
+                                                    "accepted" && (
+
+                                                        <>
+
+                                                            {
+                                                                order?.payment_status !==
+                                                                "paid" && (
+
+                                                                    <button
+                                                                        type="button"
+                                                                        className="payment-btn"
+                                                                        disabled={
+                                                                            actionId ===
+                                                                            order.id
+                                                                        }
+                                                                        onClick={() =>
+                                                                            markPaid(
+                                                                                order
+                                                                            )
+                                                                        }
+                                                                    >
+
+                                                                        {
+                                                                            actionId ===
+                                                                            order.id
+                                                                                ? "Confirming..."
+                                                                                : "₹ Confirm Payment"
+                                                                        }
+
+                                                                    </button>
+
+                                                                )
+                                                            }
+
+
+                                                            {
+                                                                order?.payment_status ===
+                                                                "paid" && (
+
+                                                                    <button
+                                                                        type="button"
+                                                                        className="primary-btn"
+                                                                        disabled={
+                                                                            actionId ===
+                                                                            order.id
+                                                                        }
+                                                                        onClick={() =>
+                                                                            changeStatus(
+                                                                                order,
+                                                                                "processing"
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        🔄 Start Processing
+                                                                    </button>
+
+                                                                )
+                                                            }
+
+                                                        </>
+
+                                                    )
+                                                }
+
+
+                                                {/* PROCESSING */}
+
+                                                {
+                                                    order?.order_status ===
+                                                    "processing" && (
+
+                                                        <button
+                                                            type="button"
+                                                            className="primary-btn"
+                                                            disabled={
+                                                                actionId ===
+                                                                order.id
+                                                            }
+                                                            onClick={() =>
+                                                                changeStatus(
+                                                                    order,
+                                                                    "ready"
+                                                                )
+                                                            }
+                                                        >
+                                                            📦 Mark Ready
+                                                        </button>
+
+                                                    )
+                                                }
+
+
+                                                {/* READY */}
+
+                                                {
+                                                    order?.order_status ===
+                                                    "ready" && (
+
+                                                        <button
+                                                            type="button"
+                                                            className="primary-btn"
+                                                            disabled={
+                                                                actionId ===
+                                                                order.id
+                                                            }
+                                                            onClick={() =>
+                                                                changeStatus(
+                                                                    order,
+                                                                    "completed"
+                                                                )
+                                                            }
+                                                        >
+                                                            ✓ Complete Order
+                                                        </button>
+
+                                                    )
+                                                }
+
+
+                                                {/* PAYMENT */}
+
+                                                {
+                                                    order?.payment_status ===
+                                                    "paid" && (
+
+                                                        <span className="paid-badge">
+                                                            ✓ Payment Confirmed
+                                                        </span>
+
+                                                    )
+                                                }
+
+
+                                                {/* COMPLETED */}
+
+                                                {
+                                                    order?.order_status ===
+                                                    "completed" && (
+
+                                                        <span className="completed-badge">
+                                                            ✓ Order Completed
+                                                        </span>
+
+                                                    )
+                                                }
+
+
+                                                {/* REJECTED */}
+
+                                                {
+                                                    order?.order_status ===
+                                                    "rejected" && (
+
+                                                        <span className="rejected-badge">
+                                                            ✕ Order Rejected
+                                                        </span>
+
+                                                    )
+                                                }
+
+
+                                                {/* CANCELLED */}
+
+                                                {
+                                                    order?.order_status ===
+                                                    "cancelled" && (
+
+                                                        <span className="cancelled-badge">
+                                                            Order Cancelled
+                                                        </span>
+
+                                                    )
+                                                }
+
+                                            </div>
+
+                                        </div>
+
+                                    );
+
+                                }
+                            )
+                        }
+
+                    </div>
+
+                )
+            }
+
+
+            {/* =================================================
+                CSS
+            ================================================= */}
+
+            <style>{`
+
+                * {
+                    box-sizing: border-box;
+                }
+
+                .qr-orders-page {
+                    min-height: 100vh;
+                    padding: 25px;
+                    background: #f5f7fb;
+                    color: #172033;
+                    font-family:
+                        Arial,
+                        Helvetica,
+                        sans-serif;
+                }
+
+                .orders-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-start;
+                    gap: 20px;
+                    margin-bottom: 25px;
+                }
+
+                .page-eyebrow {
+                    color: #2563eb;
+                    font-size: 12px;
+                    font-weight: 700;
+                    letter-spacing: 1px;
+                    margin-bottom: 6px;
+                }
+
+                .orders-header h1 {
+                    margin: 0 0 7px;
+                    font-size: 32px;
+                    font-weight: 700;
+                }
+
+                .orders-header p {
+                    margin: 0;
+                    color: #6b7280;
+                    font-size: 14px;
+                }
+
+                .header-actions {
+                    display: flex;
+                    gap: 10px;
+                    align-items: center;
+                    flex-wrap: wrap;
+                }
+
+                .header-btn {
+                    border: 1px solid #d1d5db;
+                    background: white;
+                    color: #374151;
+                    padding: 10px 16px;
+                    border-radius: 9px;
+                    cursor: pointer;
+                    font-weight: 600;
+                    transition: 0.2s;
+                }
+
+                .header-btn:hover {
+                    transform: translateY(-1px);
+                    box-shadow:
+                        0 3px 10px
+                        rgba(0, 0, 0, 0.08);
+                }
+
+                .header-btn:disabled {
+                    opacity: 0.55;
+                    cursor: not-allowed;
+                    transform: none;
+                }
+
+                .header-btn.blue {
+                    background: #2563eb;
+                    color: white;
+                    border-color: #2563eb;
+                }
+
+                .header-btn.dark {
+                    background: #111827;
+                    color: white;
+                    border-color: #111827;
+                }
+
+                .error-box {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    flex-wrap: wrap;
+                    margin-bottom: 18px;
+                    padding: 14px 16px;
+                    background: #fef2f2;
+                    border: 1px solid #fecaca;
+                    border-radius: 10px;
+                    color: #991b1b;
+                }
+
+                .error-box strong {
+                    font-size: 13px;
+                }
+
+                .error-box span {
+                    flex: 1;
+                    font-size: 13px;
+                }
+
+                .error-box button {
+                    border: none;
+                    background: #991b1b;
+                    color: white;
+                    padding: 8px 12px;
+                    border-radius: 7px;
+                    cursor: pointer;
+                    font-weight: 600;
+                }
+
+                .order-filters {
+                    display: flex;
+                    gap: 8px;
+                    flex-wrap: wrap;
+                    margin-bottom: 15px;
+                }
+
+                .filter {
+                    border: 1px solid #d1d5db;
+                    background: white;
+                    color: #4b5563;
+                    padding: 9px 15px;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    font-weight: 600;
+                }
+
+                .filter:hover {
+                    border-color: #2563eb;
+                }
+
+                .filter.active {
+                    background: #111827;
+                    color: white;
+                    border-color: #111827;
+                }
+
+                .order-summary {
+                    display: flex;
+                    align-items: center;
+                    gap: 7px;
+                    margin-bottom: 20px;
+                    color: #6b7280;
+                    font-size: 13px;
+                }
+
+                .order-summary strong {
+                    color: #111827;
+                    font-size: 18px;
+                }
+
+                .live-dot {
+                    margin-left: 8px;
+                    color: #16a34a;
+                    font-weight: 700;
+                }
+
+                .orders-list {
+                    display: grid;
+                    grid-template-columns:
+                        repeat(
+                            2,
+                            minmax(0, 1fr)
+                        );
+                    gap: 18px;
+                }
+
+                .order-card {
+                    background: white;
+                    border: 1px solid #e5e7eb;
+                    border-radius: 15px;
+                    overflow: hidden;
+                    box-shadow:
+                        0 3px 12px
+                        rgba(0, 0, 0, 0.05);
+                }
+
+                .order-card-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-start;
+                    gap: 15px;
+                    padding: 18px;
+                    border-bottom: 1px solid #eef0f4;
+                }
+
+                .order-card-header strong {
+                    display: block;
+                    font-size: 18px;
+                    margin-bottom: 4px;
+                }
+
+                .order-card-header span {
+                    display: block;
+                    color: #6b7280;
+                    font-size: 12px;
+                }
+
+                .order-card-header small {
+                    display: block;
+                    color: #9ca3af;
+                    font-size: 11px;
+                    margin-top: 5px;
+                }
+
+                .order-status {
+                    padding: 7px 11px !important;
+                    border-radius: 20px;
+                    font-size: 11px !important;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    white-space: nowrap;
+                }
+
+                .order-status.new {
+                    background: #fff7ed;
+                    color: #c2410c;
+                }
+
+                .order-status.accepted {
+                    background: #eff6ff;
+                    color: #1d4ed8;
+                }
+
+                .order-status.processing {
+                    background: #f5f3ff;
+                    color: #6d28d9;
+                }
+
+                .order-status.ready {
+                    background: #ecfdf5;
+                    color: #047857;
+                }
+
+                .order-status.completed {
+                    background: #dcfce7;
+                    color: #15803d;
+                }
+
+                .order-status.rejected {
+                    background: #fee2e2;
+                    color: #b91c1c;
+                }
+
+                .order-status.cancelled {
+                    background: #f3f4f6;
+                    color: #6b7280;
+                }
+
+                .customer-info {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 15px 18px;
+                    background: #fafbfc;
+                    border-bottom: 1px solid #eef0f4;
+                }
+
+                .customer-icon {
+                    width: 40px;
+                    height: 40px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 50%;
+                    background: #e0edff;
+                    font-size: 18px;
+                }
+
+                .customer-info strong {
+                    display: block;
+                    font-size: 14px;
+                }
+
+                .customer-info span {
+                    display: block;
+                    margin-top: 4px;
+                    color: #6b7280;
+                    font-size: 12px;
+                }
+
+                .payment-status-row {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 12px 18px;
+                    border-bottom: 1px solid #eef0f4;
+                    font-size: 13px;
+                }
+
+                .payment-paid {
+                    background: #dcfce7;
+                    color: #166534;
+                    padding: 5px 10px;
+                    border-radius: 15px;
+                    font-size: 11px;
+                }
+
+                .payment-pending {
+                    background: #fef3c7;
+                    color: #92400e;
+                    padding: 5px 10px;
+                    border-radius: 15px;
+                    font-size: 11px;
+                }
+
+                .payment-failed {
+                    background: #fee2e2;
+                    color: #991b1b;
+                    padding: 5px 10px;
+                    border-radius: 15px;
+                    font-size: 11px;
+                }
+
+                .order-items {
+                    padding: 17px 18px;
+                }
+
+                .order-items h3 {
+                    margin: 0 0 12px;
+                    font-size: 14px;
+                }
+
+                .order-item {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    gap: 15px;
+                    padding: 10px 0;
+                    border-bottom: 1px dashed #e5e7eb;
+                }
+
+                .order-item:last-child {
+                    border-bottom: none;
+                }
+
+                .order-item strong {
+                    font-size: 13px;
+                }
+
+                .order-item span {
+                    display: block;
+                    color: #6b7280;
+                    font-size: 11px;
+                    margin-top: 4px;
+                }
+
+                .no-items {
+                    color: #9ca3af;
+                    font-size: 13px;
+                }
+
+                .order-total {
+                    padding: 15px 18px;
+                    background: #fafbfc;
+                    border-top: 1px solid #eef0f4;
+                }
+
+                .order-total > div {
+                    display: flex;
+                    justify-content: space-between;
+                    padding: 5px 0;
+                    font-size: 13px;
+                }
+
+                .grand-total {
+                    border-top: 1px solid #dfe3e8;
+                    margin-top: 8px;
+                    padding-top: 12px !important;
+                    font-size: 17px !important;
+                }
+
+                .order-notes {
+                    margin: 0 18px;
+                    padding: 10px 12px;
+                    background: #fffbeb;
+                    border: 1px solid #fde68a;
+                    border-radius: 8px;
+                    display: flex;
+                    gap: 8px;
+                    font-size: 12px;
+                }
+
+                .order-notes span {
+                    color: #6b7280;
+                }
+
+                .order-actions {
+                    display: flex;
+                    gap: 8px;
+                    flex-wrap: wrap;
+                    align-items: center;
+                    padding: 15px 18px 18px;
+                }
+
+                .order-actions button {
+                    border: none;
+                    border-radius: 8px;
+                    padding: 10px 14px;
+                    cursor: pointer;
+                    font-size: 12px;
+                    font-weight: 700;
+                }
+
+                .order-actions button:disabled {
+                    opacity: 0.55;
+                    cursor: not-allowed;
+                }
+
+                .reject-btn {
+                    background: #fee2e2;
+                    color: #b91c1c;
+                }
+
+                .accept-btn {
+                    background: #16a34a;
+                    color: white;
+                }
+
+                .payment-btn {
+                    background: #2563eb;
+                    color: white;
+                }
+
+                .primary-btn {
+                    background: #7c3aed;
+                    color: white;
+                }
+
+                .paid-badge,
+                .completed-badge,
+                .rejected-badge,
+                .cancelled-badge {
+                    padding: 7px 10px;
+                    border-radius: 7px;
+                    font-size: 11px;
+                    font-weight: 700;
+                }
+
+                .paid-badge {
+                    background: #dcfce7;
+                    color: #166534;
+                }
+
+                .completed-badge {
+                    background: #dcfce7;
+                    color: #15803d;
+                }
+
+                .rejected-badge {
+                    background: #fee2e2;
+                    color: #b91c1c;
+                }
+
+                .cancelled-badge {
+                    background: #f3f4f6;
+                    color: #6b7280;
+                }
+
+                .qr-loading-page,
+                .empty-orders {
+                    min-height: 400px;
+                    background: white;
+                    border: 1px solid #e5e7eb;
+                    border-radius: 15px;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    align-items: center;
+                    text-align: center;
+                    padding: 40px;
+                    margin: 20px 0;
+                }
+
+                .qr-loading-page h2,
+                .empty-orders h2 {
+                    margin: 10px 0 7px;
+                }
+
+                .qr-loading-page p,
+                .empty-orders p {
+                    color: #6b7280;
+                    margin: 0 0 20px;
+                }
+
+                .loading-spinner {
+                    font-size: 40px;
+                    animation:
+                        spin 1s linear infinite;
+                }
+
+                @keyframes spin {
+
+                    from {
+                        transform: rotate(0deg);
+                    }
+
+                    to {
+                        transform: rotate(360deg);
+                    }
+
+                }
+
+                .empty-icon {
+                    font-size: 50px;
+                }
+
+                .empty-btn {
+                    border: none;
+                    background: #111827;
+                    color: white;
+                    padding: 10px 18px;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    font-weight: 600;
+                }
+
+                @media (
+                    max-width: 1000px
+                ) {
+
+                    .orders-list {
+                        grid-template-columns: 1fr;
+                    }
+
+                }
+
+                @media (
+                    max-width: 700px
+                ) {
+
+                    .qr-orders-page {
+                        padding: 14px;
+                    }
+
+                    .orders-header {
+                        flex-direction: column;
+                    }
+
+                    .header-actions {
+                        width: 100%;
+                    }
+
+                    .header-btn {
+                        flex: 1;
+                    }
+
+                    .order-card-header {
+                        flex-direction: column;
+                    }
+
+                }
+
+                @media (
+                    max-width: 450px
+                ) {
+
+                    .header-actions {
+                        flex-direction: column;
+                    }
+
+                    .header-btn {
+                        width: 100%;
+                    }
+
+                    .order-filters {
+                        display: grid;
+                        grid-template-columns:
+                            repeat(
+                                2,
+                                1fr
+                            );
+                    }
+
+                    .filter {
+                        width: 100%;
+                    }
+
+                    .order-actions {
+                        flex-direction: column;
+                        align-items: stretch;
+                    }
+
+                    .order-actions button {
+                        width: 100%;
+                    }
+
+                    .order-notes {
+                        flex-direction: column;
+                    }
+
+                }
+
+            `}</style>
+
+        </div>
+
+    );
+
 }
