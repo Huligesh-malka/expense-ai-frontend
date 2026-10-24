@@ -183,7 +183,12 @@ export default function Products() {
       // Do not send business_id from localStorage.
       // The backend should scope the request using authenticated req.businessId.
       const res = await API.get("/products");
-      setProducts(res.data?.data || []);
+      const rows = Array.isArray(res.data?.data)
+        ? res.data.data
+        : Array.isArray(res.data?.products)
+          ? res.data.products
+          : [];
+      setProducts(rows);
     } catch (err) {
       console.error("Error loading products:", err);
       showMessage(

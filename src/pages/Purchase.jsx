@@ -52,7 +52,10 @@ export default function Purchase() {
         const totalPurchases = data.length;
         const totalBought = data.reduce((sum, p) => sum + Number(p.total_amount), 0);
         const totalPaid = data.reduce((sum, p) => sum + Number(p.paid_amount), 0);
-        const totalDue = totalBought - totalPaid;
+        const totalDue = data.reduce(
+            (sum, p) => sum + Number(p.due_amount ?? (Number(p.total_amount || 0) - Number(p.paid_amount || 0))),
+            0
+        );
 
         setSummary({
             totalPurchases,
@@ -63,11 +66,12 @@ export default function Purchase() {
     };
 
     const getStatus = (purchase) => {
-        const total = Number(purchase.total_amount);
-        const paid = Number(purchase.paid_amount);
+        const total = Number(purchase.total_amount || 0);
+        const paid = Number(purchase.paid_amount || 0);
+        const backendStatus = String(purchase.payment_status || "").toLowerCase();
 
-        if (paid === total) return "Fully Paid";
-        if (paid > 0 && paid < total) return "Partially Paid";
+        if (backendStatus === "paid" || (total > 0 && paid >= total)) return "Fully Paid";
+        if (backendStatus === "partial" || (paid > 0 && paid < total)) return "Partially Paid";
         return "Not Paid";
     };
 
@@ -91,8 +95,8 @@ export default function Purchase() {
         // Search filter
         if (search) {
             filtered = filtered.filter((item) =>
-                item.invoice_no.toLowerCase().includes(search.toLowerCase()) ||
-                item.supplier_name.toLowerCase().includes(search.toLowerCase())
+                String(item.invoice_no || "").toLowerCase().includes(search.toLowerCase()) ||
+                String(item.supplier_name || "").toLowerCase().includes(search.toLowerCase())
             );
         }
 

@@ -800,9 +800,10 @@ export default function BillingPOS() {
 
   // Save sale - FIXED: removed business_id from payload, added duplicate protection
   const saveSale = async () => {
-    // Customer phone is optional; if provided, require exactly 10 digits.
-    if (customerPhone.trim() && !/^\\d{10}$/.test(customerPhone.trim())) {
-      alert("Enter a valid 10-digit customer mobile number, or leave it blank.");
+    // The upgraded backend requires a valid 10-digit customer phone number.
+    const normalizedPhone = customerPhone.trim();
+    if (!/^\\d{10}$/.test(normalizedPhone)) {
+      alert("Enter a valid 10-digit customer mobile number before completing the bill.");
       return;
     }
 
@@ -813,47 +814,58 @@ export default function BillingPOS() {
 
     try {
       const payload = {
-        // REMOVED: business_id: businessId - backend uses JWT
+        // Business scope is derived from the authenticated JWT on the backend.
         customer_id: customerId,
-        customer_name: customerName || "Walk-in Customer",
-        customer_phone: customerPhone || null,
+        customer_name: customerName.trim() || "Walk-in Customer",
+        customer_phone: normalizedPhone,
         payment_method: paymentMethod,
         payment_status: "Paid",
         discount: Number(discount),
         gst: Number(gst),
         items: cart.map((item) => ({
-          product_id: item.id,
-          quantity: item.quantity,
+          product_id: Number(item.id),
+          quantity: Number(item.quantity),
           entered_unit: item.unit,
         })),
       };
 
       const res = await API.post("/sales/create", payload);
+      const savedSale = res.data || {};
 
-      // Snapshot the invoice BEFORE we clear the cart/fields, so we can
-      // print or download it after the sale is settled.
+      // Prefer server-calculated totals because the backend applies each
+      // product's tax rate and is the source of truth for the completed sale.
+      const serverSubtotal = Number(savedSale.subtotal ?? subtotal);
+      const serverDiscountAmount = Number(savedSale.discount ?? discountAmount);
+      const serverTax = Number(savedSale.tax ?? taxAmount);
+      const serverCgst = Number(savedSale.cgst ?? cgst);
+      const serverSgst = Number(savedSale.sgst ?? sgst);
+      const serverGrandTotal = Number(savedSale.total_amount ?? grandTotal);
+
+      // Keep an immutable snapshot for printing after the cart is cleared.
       const invoiceSnapshot = {
-        invoiceNo,
+        invoiceNo: savedSale.invoice_no || invoiceNo,
+        saleId: savedSale.saleId || null,
         businessName,
         date: new Date(),
-        customerName: customerName || "Walk-in Customer",
-        customerPhone,
+        customerName: customerName.trim() || "Walk-in Customer",
+        customerPhone: normalizedPhone,
         items: cart,
-        subtotal,
+        subtotal: serverSubtotal,
         discount: Number(discount),
-        discountAmount,
+        discountAmount: serverDiscountAmount,
         gst: Number(gst),
-        cgst,
-        sgst,
-        grandTotal,
+        tax: serverTax,
+        cgst: serverCgst,
+        sgst: serverSgst,
+        grandTotal: serverGrandTotal,
         paymentMethod,
       };
       setLastInvoice(invoiceSnapshot);
+      setInvoiceNo(invoiceSnapshot.invoiceNo);
 
       setSaleComplete(true);
       setCart([]);
-      loadProducts();
-      loadDashboard();
+      await Promise.allSettled([loadProducts(), loadDashboard()]);
       generateInvoiceNo();
 
       setCustomerName("");
@@ -864,8 +876,8 @@ export default function BillingPOS() {
       setGst(18);
       setCashReceived("");
     } catch (err) {
-      console.log(err);
-      alert(err.response?.data?.message || "Error creating sale");
+      console.error("Error creating sale:", err);
+      alert(err.response?.data?.message || "Error creating sale. Please check stock and try again.");
     } finally {
       setSavingSale(false);
     }
