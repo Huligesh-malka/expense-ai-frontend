@@ -21,8 +21,6 @@ import {
 const statusFilters = [
     "new",
     "accepted",
-    "processing",
-    "ready",
     "completed",
     "rejected",
     "cancelled",
@@ -406,11 +404,15 @@ export default function QROrders() {
                 "paid"
             );
 
-
-            alert(
-                "Payment confirmed successfully."
+            // Final step: confirming payment marks the order as completed.
+            await updateQROrderStatus(
+                order.id,
+                "completed"
             );
 
+            alert(
+                "Payment confirmed. Order is done!"
+            );
 
             await loadOrders();
 
@@ -1255,130 +1257,33 @@ export default function QROrders() {
                                                 }
 
 
-                                                {/* ACCEPTED */}
+                                                
 
                                                 {
-                                                    order?.order_status ===
-                                                    "accepted" && (
-
-                                                        <>
-
-                                                            {
-                                                                order?.payment_status !==
-                                                                "paid" && (
-
-                                                                    <button
-                                                                        type="button"
-                                                                        className="payment-btn"
-                                                                        disabled={
-                                                                            actionId ===
-                                                                            order.id
-                                                                        }
-                                                                        onClick={() =>
-                                                                            markPaid(
-                                                                                order
-                                                                            )
-                                                                        }
-                                                                    >
-
-                                                                        {
-                                                                            actionId ===
-                                                                            order.id
-                                                                                ? "Confirming..."
-                                                                                : "₹ Confirm Payment"
-                                                                        }
-
-                                                                    </button>
-
-                                                                )
-                                                            }
-
-
-                                                            {
-                                                                order?.payment_status ===
-                                                                "paid" && (
-
-                                                                    <button
-                                                                        type="button"
-                                                                        className="primary-btn"
-                                                                        disabled={
-                                                                            actionId ===
-                                                                            order.id
-                                                                        }
-                                                                        onClick={() =>
-                                                                            changeStatus(
-                                                                                order,
-                                                                                "processing"
-                                                                            )
-                                                                        }
-                                                                    >
-                                                                        🔄 Start Processing
-                                                                    </button>
-
-                                                                )
-                                                            }
-
-                                                        </>
-
+                                                    order?.order_status === "accepted" && (
+                                                        order?.payment_status !== "paid" ? (
+                                                            <button
+                                                                type="button"
+                                                                className="payment-btn"
+                                                                disabled={actionId === order.id}
+                                                                onClick={() => markPaid(order)}
+                                                            >
+                                                                {
+                                                                    actionId === order.id
+                                                                        ? "Confirming..."
+                                                                        : "₹ Confirm Payment"
+                                                                }
+                                                            </button>
+                                                        ) : (
+                                                            <span className="completed-badge">
+                                                                ✓ Done
+                                                            </span>
+                                                        )
                                                     )
                                                 }
 
 
-                                                {/* PROCESSING */}
-
-                                                {
-                                                    order?.order_status ===
-                                                    "processing" && (
-
-                                                        <button
-                                                            type="button"
-                                                            className="primary-btn"
-                                                            disabled={
-                                                                actionId ===
-                                                                order.id
-                                                            }
-                                                            onClick={() =>
-                                                                changeStatus(
-                                                                    order,
-                                                                    "ready"
-                                                                )
-                                                            }
-                                                        >
-                                                            📦 Mark Ready
-                                                        </button>
-
-                                                    )
-                                                }
-
-
-                                                {/* READY */}
-
-                                                {
-                                                    order?.order_status ===
-                                                    "ready" && (
-
-                                                        <button
-                                                            type="button"
-                                                            className="primary-btn"
-                                                            disabled={
-                                                                actionId ===
-                                                                order.id
-                                                            }
-                                                            onClick={() =>
-                                                                changeStatus(
-                                                                    order,
-                                                                    "completed"
-                                                                )
-                                                            }
-                                                        >
-                                                            ✓ Complete Order
-                                                        </button>
-
-                                                    )
-                                                }
-
-
-                                                {/* PAYMENT */}
+                                                
 
                                                 {
                                                     order?.payment_status ===
