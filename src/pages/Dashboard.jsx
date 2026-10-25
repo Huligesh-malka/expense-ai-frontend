@@ -283,15 +283,6 @@ export default function BusinessDashboard() {
             <FiBarChart2 />
             <span>Reports</span>
           </Link>
-          <Link className="nav-item" to="/ai-business">
-            <span className="ai-nav-icon"><FiZap /></span>
-            <span>AI Business Engine</span>
-            <em>AI</em>
-          </Link>
-          <Link className="nav-item" to="/create-layout">
-            <FiGrid />
-            <span>3D Shop Designer</span>
-          </Link>
           <Link className="nav-item" to="/qr-orders">
             <FiCreditCard />
             <span>QR Orders</span>
@@ -449,9 +440,6 @@ export default function BusinessDashboard() {
               <Link to="/billing-pos" className="hero-primary">
                 Start Billing <FiArrowRight />
               </Link>
-              <Link to="/ai-business" className="hero-secondary">
-                Ask AI Business Engine <FiZap />
-              </Link>
             </div>
           </div>
 
@@ -497,7 +485,6 @@ export default function BusinessDashboard() {
               <QuickAction to="/suppliers" icon={<FiTruck />} label="Suppliers" tone="orange" />
               <QuickAction to="/add-purchase" icon={<FiShoppingCart />} label="New Purchase" tone="cyan" />
               <QuickAction to="/reports" icon={<FiBarChart2 />} label="Business Reports" tone="indigo" />
-              <QuickAction to="/ai-business" icon={<FiZap />} label="AI Insights" tone="gold" />
               <QuickAction to="/qr-orders" icon={<FiCreditCard />} label="QR Orders" tone="violet" />
               <QuickAction to="/qr-ordering" icon={<FiGrid />} label="QR Ordering Setup" tone="cyan" />
             </div>
@@ -675,18 +662,6 @@ export default function BusinessDashboard() {
         </section>
 
         <section className="bottom-grid">
-          <Link to="/ai-business" className="ai-card">
-            <div className="ai-orbit orbit-one" />
-            <div className="ai-orbit orbit-two" />
-            <div className="ai-card-icon"><FiZap /></div>
-            <div className="ai-card-content">
-              <span className="ai-label">AI BUSINESS ENGINE</span>
-              <h3>Turn your store data into actions.</h3>
-              <p>Analyze sales, stock and customer activity from one place.</p>
-            </div>
-            <div className="ai-go"><FiArrowUpRight /></div>
-          </Link>
-
           <div className="mini-info-card">
             <div className="mini-info-icon"><FiUsers /></div>
             <div>
@@ -1703,7 +1678,7 @@ function DashboardStyles() {
 
       .bottom-grid {
         display: grid;
-        grid-template-columns: 1.65fr repeat(3, 1fr);
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 12px;
       }
 
