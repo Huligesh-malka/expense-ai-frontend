@@ -20,7 +20,6 @@ import {
   FiCheckCircle,
   FiXCircle,
   FiUser,
-  FiSettings,
   FiEdit,
   FiLogOut,
   FiChevronDown,
@@ -188,9 +187,6 @@ export default function BusinessDashboard() {
               <FiRefreshCw />
               Try Again
             </button>
-            <Link className="ghost-btn" to="/settings">
-              Settings
-            </Link>
           </div>
         </div>
         <DashboardStyles />
@@ -301,10 +297,6 @@ export default function BusinessDashboard() {
               <small>All services connected</small>
             </div>
           </div>
-          <Link className="nav-item" to="/settings">
-            <FiSettings />
-            <span>Settings</span>
-          </Link>
         </div>
       </aside>
 
@@ -387,9 +379,6 @@ export default function BusinessDashboard() {
                     </Link>
                     <Link to="/edit-business" onClick={() => setShowProfileMenu(false)}>
                       <FiEdit /> Edit Business Profile
-                    </Link>
-                    <Link to="/settings" onClick={() => setShowProfileMenu(false)}>
-                      <FiSettings /> Settings
                     </Link>
                     <button onClick={handleLogout}>
                       <FiLogOut /> Logout
