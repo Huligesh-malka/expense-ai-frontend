@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef, useMemo } from "react";
 import API from "../services/api";
-import BarcodeScanner from "../pages/BarcodeScanner";
 
 export default function BillingPOS() {
   // Business profile state
@@ -28,8 +27,10 @@ export default function BillingPOS() {
     lowStock: 0,
   });
 
-  // Scanner state
-  const [showScanner, setShowScanner] = useState(false);
+  // USB barcode scanner (acts like a keyboard and usually sends Enter)
+  const barcodeInputRef = useRef(null);
+  const [barcodeValue, setBarcodeValue] = useState("");
+  const [barcodeMessage, setBarcodeMessage] = useState("Ready for USB barcode scan");
   const [scanMode, setScanMode] = useState("quick"); // "quick" or "ask"
 
   // Voice billing states
@@ -117,10 +118,11 @@ export default function BillingPOS() {
         e.preventDefault();
         document.getElementById("search-input")?.focus();
       }
-      // F4 - Open scanner
+      // F4 - Focus the USB barcode input
       if (e.key === "F4") {
         e.preventDefault();
-        setShowScanner(true);
+        barcodeInputRef.current?.focus();
+        barcodeInputRef.current?.select();
       }
       // F8 - Focus payment
       if (e.key === "F8") {
@@ -474,6 +476,48 @@ export default function BillingPOS() {
         quantityInputRef.current.select();
       }
     }, 100);
+  };
+
+  // Handle USB barcode scanners: they type the code into the input and send Enter.
+  const handleUsbBarcodeScan = (event) => {
+    event.preventDefault();
+    const scannedCode = String(barcodeValue || "").trim();
+    if (!scannedCode) return;
+
+    const normalizedCode = scannedCode.toLowerCase();
+    const product = products.find((item) =>
+      String(item.barcode ?? "").trim().toLowerCase() === normalizedCode ||
+      String(item.sku ?? "").trim().toLowerCase() === normalizedCode
+    );
+
+    if (!product) {
+      setBarcodeMessage(`❌ Product not found for barcode: ${scannedCode}`);
+      setSearch(scannedCode);
+      setBarcodeValue("");
+      playSuccessBeep();
+      requestAnimationFrame(() => barcodeInputRef.current?.focus());
+      return;
+    }
+
+    if (Number(product.stock) <= 0) {
+      setBarcodeMessage(`⚠️ ${product.product_name} is out of stock`);
+      setBarcodeValue("");
+      requestAnimationFrame(() => barcodeInputRef.current?.focus());
+      return;
+    }
+
+    if (scanMode === "quick") {
+      quickAddToCart(product);
+      setBarcodeMessage(`✅ Added ${product.product_name}`);
+    } else {
+      openQuantityModal(product);
+      setBarcodeMessage(`📦 Select quantity for ${product.product_name}`);
+    }
+
+    setSearch("");
+    setBarcodeValue("");
+    playSuccessBeep();
+    requestAnimationFrame(() => barcodeInputRef.current?.focus());
   };
 
   // Quick add mode - automatically add product with quantity 1
@@ -1719,8 +1763,24 @@ export default function BillingPOS() {
                 <button className="tool-btn" onClick={startVoiceBilling}>
                   {isListening ? "🔴 Listening" : "🎤 Voice"}
                 </button>
-                <button className="tool-btn primary" onClick={() => setShowScanner(true)}>▣ Scan</button>
+                <button className="tool-btn primary" onClick={() => { barcodeInputRef.current?.focus(); barcodeInputRef.current?.select(); }}>▣ USB Scan (F4)</button>
               </div>
+
+              <form onSubmit={handleUsbBarcodeScan} style={{display:"flex",gap:9,alignItems:"center",marginBottom:10}}>
+                <input
+                  ref={barcodeInputRef}
+                  className="main-search"
+                  style={{paddingLeft:14,flex:1,minWidth:0,borderColor:"#c8c4ff",background:"#fbfaff"}}
+                  aria-label="USB barcode scanner input"
+                  placeholder="Scan barcode here with USB scanner, then Enter..."
+                  value={barcodeValue}
+                  onChange={(e) => setBarcodeValue(e.target.value)}
+                  autoComplete="off"
+                  inputMode="none"
+                />
+                <button className="tool-btn" type="submit">Add barcode</button>
+              </form>
+              <div style={{fontSize:11,color:barcodeMessage.startsWith("❌") || barcodeMessage.startsWith("⚠️") ? "#e5484d" : "#73798b",margin:"-3px 2px 12px"}}>{barcodeMessage}</div>
 
               {(isListening || voiceText || voiceMessage) && (
                 <div className="voice-banner">
@@ -1898,7 +1958,7 @@ export default function BillingPOS() {
                 </div>
 
                 <div className="shortcuts">
-                  <span><kbd>F2</kbd> Search</span><span><kbd>F4</kbd> Scan</span><span><kbd>F8</kbd> Cash</span><span><kbd>Ctrl+Enter</kbd> Pay</span>
+                  <span><kbd>F2</kbd> Search</span><span><kbd>F4</kbd> USB Scan</span><span><kbd>F8</kbd> Cash</span><span><kbd>Ctrl+Enter</kbd> Pay</span>
                 </div>
               </div>
             </aside>
@@ -1934,15 +1994,6 @@ export default function BillingPOS() {
         </div>
       )}
 
-      {showScanner && (
-        <BarcodeScanner
-          onClose={() => setShowScanner(false)}
-          onProductFound={(product) => {
-            setShowScanner(false);
-            openQuantityModal(product);
-          }}
-        />
-      )}
     </>
   );
 }
