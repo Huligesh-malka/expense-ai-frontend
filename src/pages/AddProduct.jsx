@@ -9,7 +9,16 @@ const CATEGORIES = [
     { value: "food", label: "Food", icon: "🍎" },
     { value: "medicine", label: "Medicine", icon: "💊" },
     { value: "grocery", label: "Grocery", icon: "🛒" },
-    { value: "cosmetics", label: "Cosmetics", icon: "🧴" },
+    { value: "drinks", label: "Drinks", icon: "🥤" },
+    { value: "bakery", label: "Bakery", icon: "🍞" },
+    { value: "dairy", label: "Dairy", icon: "🥛" },
+    { value: "snacks", label: "Snacks", icon: "🍪" },
+    { value: "household", label: "Household", icon: "🧹" },
+    { value: "stationery", label: "Stationery", icon: "✏️" },
+    { value: "hardware", label: "Hardware", icon: "🔧" },
+    { value: "electrical", label: "Electrical", icon: "💡" },
+    { value: "personal-care", label: "Personal Care", icon: "🧴" },
+    { value: "pet-supplies", label: "Pet Supplies", icon: "🐾" },
     { value: "other", label: "Other", icon: "📦" },
 ];
 
@@ -101,6 +110,7 @@ export default function AddProduct() {
         stock_unit: "kg",
         min_stock: 5,
         unit: "kg",
+        tax: "0",
         image: "",
         description: "",
         expiry_date: "",
@@ -361,6 +371,7 @@ export default function AddProduct() {
             stock_unit: "kg",
             min_stock: 5,
             unit: "kg",
+            tax: "0",
             image: "",
             description: "",
             expiry_date: "",
@@ -646,6 +657,7 @@ export default function AddProduct() {
                 form.stock_unit,
             min_stock:
                 minStock,
+            tax: Number(form.tax) || 0,
             image:
                 form.image.trim(),
             description:
@@ -1513,6 +1525,30 @@ export default function AddProduct() {
                                 style={styles.input}
                             />
                         </div>
+
+                        <div style={styles.formGroup}>
+                            <label style={styles.label} htmlFor="add-product-tax">
+                                GST / Tax rate (%)
+                            </label>
+                            <select
+                                id="add-product-tax"
+                                name="tax"
+                                value={form.tax}
+                                onChange={(e) =>
+                                    setForm((p) => ({ ...p, tax: e.target.value }))
+                                }
+                                style={styles.input}
+                            >
+                                <option value="0">0% — Exempt / no tax</option>
+                                <option value="5">5%</option>
+                                <option value="12">12%</option>
+                                <option value="18">18%</option>
+                                <option value="28">28%</option>
+                            </select>
+                            <small style={{ color: "#7A8495", fontSize: 11 }}>
+                                Select the rate applicable to this product.
+                            </small>
+                        </div>
                     </div>
                 )}
 
@@ -1607,6 +1643,11 @@ export default function AddProduct() {
                                             )
                                         </span>
                                     </span>
+                                </div>
+
+                                <div style={styles.reviewRow}>
+                                    <span>GST / Tax</span>
+                                    <span style={styles.reviewMono}>{Number(form.tax || 0)}%</span>
                                 </div>
 
                                 <div
