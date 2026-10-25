@@ -832,7 +832,7 @@ export default function BillingPOS() {
   const saveSale = async () => {
     // The upgraded backend requires a valid 10-digit customer phone number.
     const normalizedPhone = customerPhone.trim();
-    if (!/^\\d{10}$/.test(normalizedPhone)) {
+    if (!/^\d{10}$/.test(normalizedPhone)) {
       alert("Enter a valid 10-digit customer mobile number before completing the bill.");
       return;
     }
