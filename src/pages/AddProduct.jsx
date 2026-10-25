@@ -708,8 +708,17 @@ export default function AddProduct() {
 
     // ─── Render ──────────────────────────────────────────────
     return (
-        <div style={styles.pageWrapper}>
-            <div style={styles.card}>
+        <div className="add-product-page" style={styles.pageWrapper}>
+            <div className="add-product-card" style={styles.card}>
+                <div className="add-product-hero" style={styles.heroHeader}>
+                    <div style={styles.heroMark}>＋</div>
+                    <div style={{ flex: 1 }}>
+                        <div style={styles.eyebrow}>INVENTORY WORKSPACE</div>
+                        <h2 style={styles.heroTitle}>Add a new product</h2>
+                        <p style={styles.heroSubtitle}>A few quick details and your item is ready for billing.</p>
+                    </div>
+                    <div style={styles.securePill}><span style={styles.secureDot} /> Auto-checks enabled</div>
+                </div>
 
                 {/* ─── Top: back + progress ─── */}
                 <div style={styles.topBar}>
@@ -831,7 +840,7 @@ export default function AddProduct() {
                             </span>
                         )}
 
-                        <div style={styles.gridGrid}>
+                        <div className="add-product-grid" style={styles.gridGrid}>
                             {CATEGORIES.map((c) => (
                                 <button
                                     type="button"
@@ -895,7 +904,7 @@ export default function AddProduct() {
                             What you pay, and what you charge
                         </p>
 
-                        <div style={styles.priceRow}>
+                        <div className="add-product-price-row" style={styles.priceRow}>
                             <div style={styles.priceCol}>
                                 <label
                                     style={
@@ -1963,9 +1972,23 @@ export default function AddProduct() {
                 }
 
                 input:focus,
-                textarea:focus {
-                    border-color: #2F6FED !important;
-                    box-shadow: 0 0 0 3px rgba(47,111,237,0.12) !important;
+                textarea:focus,
+                select:focus {
+                    border-color: #4778f5 !important;
+                    box-shadow: 0 0 0 4px rgba(71,120,245,0.13) !important;
+                }
+                button { transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease; }
+                button:not(:disabled):hover { filter: brightness(1.015); }
+                @media (max-width: 720px) {
+                    .add-product-card { padding: 22px 18px !important; border-radius: 22px !important; }
+                    .add-product-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+                    .add-product-hero { align-items: flex-start !important; }
+                    .add-product-secure { display: none !important; }
+                }
+                @media (max-width: 480px) {
+                    .add-product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+                    .add-product-price-row { flex-direction: column !important; }
+                    .add-product-page { padding: 14px 10px !important; }
                 }
             `}</style>
         </div>
@@ -1980,34 +2003,41 @@ const FONT_BODY =
     "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 
 const styles = {
+    heroHeader: { display: "flex", alignItems: "center", gap: "16px", padding: "2px 0 24px", marginBottom: "22px", borderBottom: "1px solid #edf0f6" },
+    heroMark: { width: "52px", height: "52px", borderRadius: "17px", display: "grid", placeItems: "center", flexShrink: 0, background: "linear-gradient(145deg, #4778f5, #254fc4)", color: "#fff", fontSize: "30px", fontWeight: 400, boxShadow: "0 9px 22px rgba(47,111,237,0.25)" },
+    eyebrow: { fontSize: "10px", fontWeight: 800, letterSpacing: "1.7px", color: "#4778f5", marginBottom: "5px" },
+    heroTitle: { margin: 0, fontFamily: FONT_DISPLAY, fontSize: "23px", lineHeight: 1.2, letterSpacing: "-0.6px", color: "#17233c" },
+    heroSubtitle: { margin: "6px 0 0", color: "#7a879e", fontSize: "13px", lineHeight: 1.5 },
+    securePill: { display: "inline-flex", alignItems: "center", gap: "7px", whiteSpace: "nowrap", padding: "9px 12px", borderRadius: "999px", background: "#f0f8f3", color: "#368154", fontSize: "11px", fontWeight: 700 },
+    secureDot: { width: "7px", height: "7px", borderRadius: "50%", background: "#43a66b", boxShadow: "0 0 0 3px rgba(67,166,107,0.12)" },
     pageWrapper: {
-        background: "#F4F6F9",
+        background: "radial-gradient(circle at 10% 0%, #e8efff 0, transparent 30%), linear-gradient(135deg, #f5f7fc 0%, #eef2f8 100%)",
         minHeight: "100vh",
         display: "flex",
         alignItems: "flex-start",
         justifyContent: "center",
-        padding: "28px 16px",
+        padding: "36px 22px",
         fontFamily: FONT_BODY,
     },
 
     card: {
         width: "100%",
-        maxWidth: "480px",
+        maxWidth: "900px",
         background: "#FFFFFF",
-        borderRadius: "20px",
-        padding: "22px 24px 24px",
+        borderRadius: "28px",
+        padding: "30px 34px 30px",
         boxShadow:
-            "0 12px 32px rgba(20,30,50,0.08)",
+            "0 24px 70px rgba(31, 48, 82, 0.13), 0 3px 10px rgba(31,48,82,0.04)",
         display: "flex",
         flexDirection: "column",
-        minHeight: "560px",
+        minHeight: "620px",
     },
 
     topBar: {
         display: "flex",
         alignItems: "center",
         gap: "12px",
-        marginBottom: "20px",
+        marginBottom: "26px",
     },
 
     exitLink: {
@@ -2025,7 +2055,7 @@ const styles = {
 
     progressDot: {
         flex: 1,
-        height: "5px",
+        height: "7px",
         borderRadius: "3px",
         background: "#E7EAF0",
         cursor: "default",
@@ -2076,15 +2106,17 @@ const styles = {
 
     question: {
         fontFamily: FONT_DISPLAY,
-        fontSize: "24px",
+        fontSize: "clamp(26px, 3vw, 34px)",
         fontWeight: 700,
-        color: "#151A23",
+        letterSpacing: "-1px",
+        color: "#17233c",
         margin: 0,
     },
 
     subtext: {
-        fontSize: "13.5px",
-        color: "#8891A0",
+        fontSize: "14px",
+        lineHeight: 1.6,
+        color: "#71809a",
         margin: "-8px 0 4px",
     },
 
@@ -2096,14 +2128,15 @@ const styles = {
 
     bigInput: {
         width: "100%",
-        padding: "16px 16px",
+        padding: "17px 18px",
         fontSize: "18px",
         fontWeight: 600,
         border: "2px solid #E7EAF0",
-        borderRadius: "14px",
+        borderRadius: "15px",
         outline: "none",
-        color: "#151A23",
-        background: "#FAFBFD",
+        color: "#17233c",
+        background: "#fbfcff",
+        transition: "border-color 160ms ease, box-shadow 160ms ease",
     },
 
     checkBadge: {
@@ -2126,8 +2159,8 @@ const styles = {
     gridGrid: {
         display: "grid",
         gridTemplateColumns:
-            "repeat(3, 1fr)",
-        gap: "10px",
+            "repeat(4, minmax(0, 1fr))",
+        gap: "12px",
     },
 
     gridTile: {
@@ -2135,24 +2168,28 @@ const styles = {
         flexDirection: "column",
         alignItems: "center",
         gap: "6px",
-        padding: "16px 6px",
-        borderRadius: "14px",
-        border: "2px solid #E7EAF0",
-        background: "#FAFBFD",
+        padding: "20px 10px",
+        borderRadius: "18px",
+        border: "1.5px solid #e4eaf4",
+        background: "linear-gradient(180deg, #ffffff 0%, #f8faff 100%)",
         color: "#3B4351",
-        fontSize: "12.5px",
-        fontWeight: 600,
+        fontSize: "13px",
+        fontWeight: 650,
         cursor: "pointer",
+        minHeight: "104px",
+        transition: "transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease",
     },
 
     gridTileIcon: {
-        fontSize: "22px",
+        fontSize: "27px",
     },
 
     gridTileActive: {
-        borderColor: "#2F6FED",
-        background: "#EEF3FE",
-        color: "#2F6FED",
+        borderColor: "#4778f5",
+        background: "linear-gradient(145deg, #edf3ff, #e2ebff)",
+        color: "#2459cb",
+        boxShadow: "0 8px 22px rgba(47,111,237,0.14)",
+        transform: "translateY(-2px)",
     },
 
     priceRow: {
@@ -2477,16 +2514,16 @@ const styles = {
 
     nextBtn: {
         marginLeft: "auto",
-        padding: "14px 34px",
-        borderRadius: "14px",
+        padding: "15px 30px",
+        borderRadius: "15px",
         border: "none",
-        background: "#2F6FED",
+        background: "linear-gradient(135deg, #376ff1, #2457d6)",
         color: "#FFFFFF",
         fontWeight: 700,
         fontSize: "15px",
         cursor: "pointer",
         boxShadow:
-            "0 6px 16px rgba(47,111,237,0.28)",
+            "0 10px 24px rgba(47,111,237,0.28)",
     },
 
     nextBtnDisabled: {
