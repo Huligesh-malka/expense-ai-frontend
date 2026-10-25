@@ -460,8 +460,7 @@ export default function BillingPOS() {
   };
 
   const extractCategories = () => {
-    const uniqueCategories = ["All", "Grocery", "Medical", "Drinks", "Snacks", "Other"];
-    setCategories(uniqueCategories);
+    setCategories(["All"]);
   };
 
   const openQuantityModal = (product) => {
