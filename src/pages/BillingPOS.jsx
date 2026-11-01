@@ -156,6 +156,38 @@ export default function BillingPOS() {
     }
   }, [saleComplete]);
 
+  // Normalize saved unit values so older products remain compatible.
+  const normalizeUnit = (unit) => {
+    const value = String(unit || "pcs").trim().toLowerCase();
+    const aliases = {
+      kilogram: "kg",
+      kilograms: "kg",
+      kilo: "kg",
+      kilos: "kg",
+      gram: "g",
+      grams: "g",
+      litre: "l",
+      liter: "l",
+      liters: "l",
+      litres: "l",
+      milliliter: "ml",
+      milliliters: "ml",
+      millilitre: "ml",
+      millilitres: "ml",
+      piece: "pcs",
+      pieces: "pcs",
+      units: "pcs",
+    };
+    return aliases[value] || value;
+  };
+
+  // Weight products always open the quantity editor, even in Quick add mode.
+  // This prevents accidental billing of 1 full kg when the owner needs 200 g.
+  const isWeightProduct = (product) => {
+    const unit = normalizeUnit(product?.price_unit || product?.unit);
+    return unit === "kg" || unit === "g";
+  };
+
   // Get supported units based on price unit
   const getSupportedUnits = (priceUnit) => {
     const unitMap = {
@@ -320,8 +352,10 @@ export default function BillingPOS() {
     setManualSelectedProduct(null);
   };
 
-  // Get compatible units based on product's base unit
+  // Compatible billing units are derived from the product's saved base unit.
+  // Gram is available only inside billing for products whose base unit is kg/g.
   const getCompatibleUnits = (priceUnit) => {
+    const baseUnit = normalizeUnit(priceUnit);
     const unitMap = {
       pcs: ["pcs", "dozen"],
       g: ["g", "kg"],
@@ -335,7 +369,7 @@ export default function BillingPOS() {
       meter: ["meter", "feet"],
       feet: ["meter", "feet"],
     };
-    return unitMap[priceUnit] || ["pcs"];
+    return unitMap[baseUnit] || [baseUnit || "pcs"];
   };
 
   // Unit display names
@@ -355,9 +389,11 @@ export default function BillingPOS() {
 
   // Convert quantity from one unit to another
   const convertDisplayUnit = (quantity, fromUnit, toUnit) => {
-    if (fromUnit === toUnit) return quantity;
+    fromUnit = normalizeUnit(fromUnit);
+    toUnit = normalizeUnit(toUnit);
+    if (fromUnit === toUnit) return Number(quantity);
 
-    let baseQuantity = quantity;
+    let baseQuantity = Number(quantity);
     if (fromUnit === "kg") baseQuantity = quantity * 1000;
     else if (fromUnit === "l") baseQuantity = quantity * 1000;
     else if (fromUnit === "dozen") baseQuantity = quantity * 12;
@@ -382,7 +418,8 @@ export default function BillingPOS() {
 
   // Format unit display
   const formatUnitDisplay = (unit) => {
-    return unitDisplayNames[unit] || unit;
+    const normalized = normalizeUnit(unit);
+    return unitDisplayNames[normalized] || normalized;
   };
 
   // AUTO CUSTOMER SEARCH FUNCTION - FIXED: removed business_id param
@@ -466,9 +503,11 @@ export default function BillingPOS() {
   };
 
   const openQuantityModal = (product) => {
+    const baseUnit = normalizeUnit(product.price_unit || "pcs");
     setSelectedProduct(product);
     setQuantity(1);
-    setSelectedUnit(product.price_unit || "pcs");
+    // Start weight products in kg; owners can switch to grams or use quick presets.
+    setSelectedUnit(isWeightProduct(product) ? "kg" : baseUnit);
     setShowQtyModal(true);
     setTimeout(() => {
       if (quantityInputRef.current) {
@@ -506,12 +545,12 @@ export default function BillingPOS() {
       return;
     }
 
-    if (scanMode === "quick") {
+    if (isWeightProduct(product) || scanMode === "ask") {
+      openQuantityModal(product);
+      setBarcodeMessage(`📦 Enter quantity for ${product.product_name}`);
+    } else {
       quickAddToCart(product);
       setBarcodeMessage(`✅ Added ${product.product_name}`);
-    } else {
-      openQuantityModal(product);
-      setBarcodeMessage(`📦 Select quantity for ${product.product_name}`);
     }
 
     setSearch("");
@@ -579,7 +618,7 @@ export default function BillingPOS() {
   };
 
   const calculateLivePriceForProduct = (product, qty, unit) => {
-    const baseUnit = product.price_unit || "pcs";
+    const baseUnit = normalizeUnit(product.price_unit || "pcs");
     const convertedQuantity = convertDisplayUnit(qty, unit, baseUnit);
     const sellingPrice = getNumericPrice(product.selling_price);
     const pricePerUnit = sellingPrice / (product.price_per || 1);
@@ -1250,17 +1289,20 @@ export default function BillingPOS() {
       return;
     }
 
-    // Add product
+    // Weight products require an explicit entered quantity to avoid billing 1 kg by mistake.
+    if (isWeightProduct(product)) {
+      openQuantityModal(product);
+      setVoiceMessage(`Enter the weight for ${product.product_name} in grams or kilograms.`);
+      return;
+    }
+
+    // Add count-based products from voice command.
     for (let i = 0; i < quantity; i++) {
       quickAddToCart(product);
     }
 
-    // 🔊 Success sound
     playSuccessBeep();
-
-    setVoiceMessage(
-      `✅ Added ${quantity} × ${product.product_name}`
-    );
+    setVoiceMessage(`✅ Added ${quantity} × ${product.product_name}`);
   };
 
   const findVoiceProduct = (voiceName) => {
@@ -1815,7 +1857,11 @@ export default function BillingPOS() {
                   return (
                     <div key={product.id} className={`product-card ${out ? "out" : ""}`} onClick={() => {
                         if (out) return;
-                        scanMode === "quick" ? quickAddToCart(product) : openQuantityModal(product);
+                        if (isWeightProduct(product) || scanMode === "ask") {
+                          openQuantityModal(product);
+                        } else {
+                          quickAddToCart(product);
+                        }
                       }}>
                       <div className="product-top">
                         <div className="product-avatar">{initial}</div>
@@ -1831,7 +1877,11 @@ export default function BillingPOS() {
                         <button className="add-circle" disabled={out} onClick={(e) => {
                             e.stopPropagation();
                             if (!out) {
-                              scanMode === "quick" ? quickAddToCart(product) : openQuantityModal(product);
+                              if (isWeightProduct(product) || scanMode === "ask") {
+                                openQuantityModal(product);
+                              } else {
+                                quickAddToCart(product);
+                              }
                             }
                           }}>
                           +
@@ -1984,10 +2034,14 @@ export default function BillingPOS() {
                   value={quantity}
                   onChange={(e) => setQuantity(Number(e.target.value))}
                   onKeyDown={handleKeyPress}
-                  min="0.01"
-                  step="0.01"
+                  min={selectedUnit === "g" ? "1" : "0.001"}
+                  step={selectedUnit === "g" ? "1" : "0.001"}
                 />
-                {selectedProduct.price_unit === "kg" && (
+                {isWeightProduct(selectedProduct) && (
+                  <>
+                  <div style={{fontSize:11,color:"#68738a",marginTop:7}}>
+                    Enter the weight in grams or kilograms.
+                  </div>
                   <div className="qty-presets" style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:8}}>
                     {[
                       { label: "100 g", quantity: 100, unit: "g" },
@@ -2018,12 +2072,13 @@ export default function BillingPOS() {
                       </button>
                     ))}
                   </div>
+                  </>
                 )}
               </div>
               <div className="qty-field"><label>Billing unit</label><select className="qty-select" value={selectedUnit} onChange={(e)=>setSelectedUnit(e.target.value)}>{getCompatibleUnits(selectedProduct.price_unit || "pcs").map((unit)=><option key={unit} value={unit}>{formatUnitDisplay(unit)}</option>)}</select></div>
               <div className="qty-preview">
                 <div className="qty-preview-row"><span>Entered</span><span>{quantity} {formatUnitDisplay(selectedUnit)}</span></div>
-                {selectedUnit !== (selectedProduct.price_unit || "pcs") && <div className="qty-preview-row"><span>Converted</span><span>{calculateLivePrice().displayQuantity.toFixed(2)} {formatUnitDisplay(calculateLivePrice().displayUnit)}</span></div>}
+                {normalizeUnit(selectedUnit) !== normalizeUnit(selectedProduct.price_unit || "pcs") && <div className="qty-preview-row"><span>Converted</span><span>{calculateLivePrice().displayQuantity.toFixed(2)} {formatUnitDisplay(calculateLivePrice().displayUnit)}</span></div>}
                 <div className="qty-preview-row"><span>Rate</span><span>₹{formatPrice(selectedProduct.selling_price)} / {selectedProduct.price_per || 1} {formatUnitDisplay(selectedProduct.price_unit || "pcs")}</span></div>
                 <div className="qty-total"><span style={{fontSize:10,color:"var(--muted)",fontWeight:700}}>ITEM TOTAL</span><strong>₹{liveTotalDigits}</strong></div>
               </div>
