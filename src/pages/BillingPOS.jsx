@@ -1975,8 +1975,52 @@ export default function BillingPOS() {
             </div>
             <div className="qty-modal-body">
               <div className="qty-rate"><b>₹{formatPrice(selectedProduct.selling_price)}</b> per {selectedProduct.price_per || 1} {formatUnitDisplay(selectedProduct.price_unit || "pcs")}</div>
-              <div className="qty-field"><label>Quantity</label><input ref={quantityInputRef} className="qty-input" type="number" value={quantity} onChange={(e)=>setQuantity(Number(e.target.value))} onKeyDown={handleKeyPress} min="0.01" max={selectedProduct.stock} step="0.01"/></div>
-              <div className="qty-field"><label>Unit</label><select className="qty-select" value={selectedUnit} onChange={(e)=>setSelectedUnit(e.target.value)}>{getCompatibleUnits(selectedProduct.price_unit || "pcs").map((unit)=><option key={unit} value={unit}>{formatUnitDisplay(unit)}</option>)}</select></div>
+              <div className="qty-field">
+                <label>Quantity</label>
+                <input
+                  ref={quantityInputRef}
+                  className="qty-input"
+                  type="number"
+                  value={quantity}
+                  onChange={(e) => setQuantity(Number(e.target.value))}
+                  onKeyDown={handleKeyPress}
+                  min="0.01"
+                  step="0.01"
+                />
+                {selectedProduct.price_unit === "kg" && (
+                  <div className="qty-presets" style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:8}}>
+                    {[
+                      { label: "100 g", quantity: 100, unit: "g" },
+                      { label: "200 g", quantity: 200, unit: "g" },
+                      { label: "250 g", quantity: 250, unit: "g" },
+                      { label: "500 g", quantity: 500, unit: "g" },
+                      { label: "1 kg", quantity: 1, unit: "kg" },
+                    ].map((preset) => (
+                      <button
+                        key={preset.label}
+                        type="button"
+                        onClick={() => {
+                          setQuantity(preset.quantity);
+                          setSelectedUnit(preset.unit);
+                        }}
+                        style={{
+                          border: quantity === preset.quantity && selectedUnit === preset.unit ? "1px solid #4778f5" : "1px solid #dfe5ef",
+                          background: quantity === preset.quantity && selectedUnit === preset.unit ? "#edf3ff" : "#fff",
+                          color: "#2459cb",
+                          borderRadius: 999,
+                          padding: "7px 11px",
+                          fontSize: 12,
+                          fontWeight: 700,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="qty-field"><label>Billing unit</label><select className="qty-select" value={selectedUnit} onChange={(e)=>setSelectedUnit(e.target.value)}>{getCompatibleUnits(selectedProduct.price_unit || "pcs").map((unit)=><option key={unit} value={unit}>{formatUnitDisplay(unit)}</option>)}</select></div>
               <div className="qty-preview">
                 <div className="qty-preview-row"><span>Entered</span><span>{quantity} {formatUnitDisplay(selectedUnit)}</span></div>
                 {selectedUnit !== (selectedProduct.price_unit || "pcs") && <div className="qty-preview-row"><span>Converted</span><span>{calculateLivePrice().displayQuantity.toFixed(2)} {formatUnitDisplay(calculateLivePrice().displayUnit)}</span></div>}

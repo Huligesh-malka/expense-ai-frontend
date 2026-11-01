@@ -22,9 +22,10 @@ const CATEGORIES = [
     { value: "other", label: "Other", icon: "📦" },
 ];
 
+// Units shown to shop owners when creating a product.
+// Gram is intentionally not offered here; gram-based sales are handled in Billing POS.
 const UNITS = [
     { value: "kg", label: "Kilogram", icon: "⚖️" },
-    { value: "g", label: "Gram", icon: "⚖️" },
     { value: "pcs", label: "Pieces", icon: "📦" },
     { value: "l", label: "Liter", icon: "🥤" },
     { value: "ml", label: "Milliliter", icon: "🥤" },
@@ -35,6 +36,54 @@ const UNITS = [
     { value: "bottle", label: "Bottle", icon: "🧴" },
     { value: "dozen", label: "Dozen", icon: "📦" },
 ];
+
+// Keep the unit choices relevant to each type of shop/product.
+const CATEGORY_UNITS = {
+    electronics: ["pcs", "box", "pack"],
+    clothing: ["pcs", "meter", "feet"],
+    food: ["kg", "pcs", "pack"],
+    medicine: ["pcs", "box", "bottle", "pack"],
+    grocery: ["kg", "pcs", "pack"],
+    drinks: ["bottle", "l", "ml", "pack"],
+    bakery: ["pcs", "kg", "pack"],
+    dairy: ["l", "ml", "bottle", "pcs", "pack"],
+    snacks: ["pcs", "pack", "box"],
+    household: ["pcs", "pack", "bottle", "box"],
+    stationery: ["pcs", "pack", "box"],
+    hardware: ["pcs", "meter", "feet", "box"],
+    electrical: ["pcs", "box", "pack"],
+    "personal-care": ["pcs", "bottle", "pack"],
+    "pet-supplies": ["kg", "pcs", "pack"],
+    other: ["pcs", "kg", "l", "pack", "box"],
+};
+
+const getAvailableUnits = (category) => {
+    const allowedUnits = CATEGORY_UNITS[category] || ["pcs", "kg", "pack"];
+    return UNITS.filter((unit) => allowedUnits.includes(unit.value));
+};
+
+const getDefaultUnit = (category) => {
+    const defaults = {
+        electronics: "pcs",
+        clothing: "pcs",
+        food: "kg",
+        medicine: "pcs",
+        grocery: "kg",
+        drinks: "bottle",
+        bakery: "pcs",
+        dairy: "l",
+        snacks: "pcs",
+        household: "pcs",
+        stationery: "pcs",
+        hardware: "pcs",
+        electrical: "pcs",
+        "personal-care": "pcs",
+        "pet-supplies": "kg",
+        other: "pcs",
+    };
+
+    return defaults[category] || "pcs";
+};
 
 const STEPS = ["Item", "Price", "Stock", "Extras", "Review"];
 
@@ -344,11 +393,17 @@ export default function AddProduct() {
         });
     };
 
-    const selectCategory = (value) =>
+    const selectCategory = (value) => {
+        const defaultUnit = getDefaultUnit(value);
+
         setForm((prev) => ({
             ...prev,
             category: value,
+            price_unit: defaultUnit,
+            stock_unit: defaultUnit,
+            unit: defaultUnit,
         }));
+    };
 
     const selectUnit = (value) =>
         setForm((prev) => ({
@@ -911,7 +966,7 @@ export default function AddProduct() {
                                         styles.priceLabel
                                     }
                                 >
-                                    You pay
+                                    Purchase price
                                 </label>
 
                                 <div
@@ -963,7 +1018,7 @@ export default function AddProduct() {
                                         styles.priceLabel
                                     }
                                 >
-                                    You charge
+                                    Selling price
                                 </label>
 
                                 <div
@@ -1044,7 +1099,7 @@ export default function AddProduct() {
                                 styles.miniLabel
                             }
                         >
-                            Sold per
+                            Price is for
                         </span>
 
                         <div
@@ -1052,7 +1107,7 @@ export default function AddProduct() {
                                 styles.chipRow
                             }
                         >
-                            {UNITS.map((u) => (
+                            {getAvailableUnits(form.category).map((u) => (
                                 <button
                                     type="button"
                                     key={u.value}
