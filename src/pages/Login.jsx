@@ -903,7 +903,9 @@ const CSS = `
 
 *{box-sizing:border-box}
 html{scroll-behavior:smooth;scroll-padding-top:84px}
-body{margin:0;background:var(--paper)}
+body{margin:0 !important;background:var(--paper);display:block !important;place-items:initial !important;overflow-x:hidden}
+/* Undo Vite/CRA starter styles (narrow, centered #root) while this page is mounted */
+#root{max-width:none !important;width:100% !important;margin:0 !important;padding:0 !important;text-align:left !important;display:block !important}
 button,input{font:inherit}
 button{cursor:pointer}
 button:disabled{cursor:not-allowed}
@@ -911,7 +913,7 @@ a,button{-webkit-tap-highlight-color:transparent}
 :focus-visible{outline:3px solid var(--blue);outline-offset:3px}
 
 .fx-page{
-  min-height:100vh;color:var(--ink);font-family:var(--body);
+  min-height:100vh;width:100%;text-align:left;color:var(--ink);font-family:var(--body);
   background:var(--paper);overflow-x:hidden;
 }
 .fx-wrap{width:min(1180px,92vw);margin:0 auto}
@@ -980,7 +982,7 @@ a,button{-webkit-tap-highlight-color:transparent}
   transform:rotate(-2deg);box-shadow:var(--hard-sm);
 }
 .fx-hero h1{
-  font:800 clamp(48px,6.2vw,92px)/.96 var(--display);letter-spacing:-.045em;margin:0 0 24px;
+  font:800 clamp(44px,5.6vw,84px)/1 var(--display);letter-spacing:-.025em;margin:0 0 24px;
 }
 .fx-lead{font-size:18px;line-height:1.6;color:var(--muted);max-width:520px;margin:0}
 .fx-hero-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:30px}
@@ -1058,7 +1060,7 @@ a,button{-webkit-tap-highlight-color:transparent}
 /* ── sections ── */
 .fx-section{padding:96px 0}
 .fx-head{max-width:640px}
-.fx-head h2,.fx-login-copy h2{font:800 clamp(34px,4.6vw,58px)/1 var(--display);letter-spacing:-.04em;margin:0 0 16px}
+.fx-head h2,.fx-login-copy h2{font:800 clamp(32px,4.2vw,54px)/1.05 var(--display);letter-spacing:-.02em;margin:0 0 16px}
 .fx-head p{font-size:17px;line-height:1.6;color:var(--muted);margin:0 0 20px}
 .fx-link{color:var(--blue);font-weight:700;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:4px}
 .fx-link:hover{color:var(--blue-d)}
