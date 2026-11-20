@@ -1,275 +1,1232 @@
-import { useState, useContext } from "react";
+import { useState, useContext, useEffect, useRef, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from "../firebase";
 import API from "../services/api";
 import { AuthContext } from "../context/AuthContext";
 
-const DEMO = { email: "demo@financepro.com", password: "password123" };
+/* ───────────────────────── CONFIG ───────────────────────── */
+
+const CONFIG = {
+  brand: "FinancePro",
+  tagline: "Business management for Indian shops",
+  signupNote: "Set up in about 2 minutes",
+  trust: ["Secure sign-in", "Your data stays yours", "Built for Indian businesses"],
+  demo: { enabled: true, email: "demo@financepro.com", password: "password123" },
+};
+
 const LAST_EMAIL_KEY = "financepro_last_email";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-const categories = [
-  ["🛒", "Grocery & Kirana"],
-  ["💊", "Medical stores"],
-  ["👕", "Clothing & retail"],
-  ["📱", "Electronics"],
-  ["🥤", "Beverages"],
-  ["🍞", "Bakery & dairy"],
-  ["🔧", "Hardware"],
-  ["🏪", "Other businesses"],
+/* Sample data for the live counter demo (illustrative only) */
+const PRODUCTS = [
+  { id: "rice", name: "Rice 5 kg", price: 365, stock: 12, low: 4 },
+  { id: "dal", name: "Toor dal 1 kg", price: 168, stock: 9, low: 4 },
+  { id: "oil", name: "Sunflower oil 1 L", price: 142, stock: 5, low: 3 },
+  { id: "milk", name: "Milk 500 ml", price: 27, stock: 30, low: 10 },
+  { id: "biscuit", name: "Biscuits", price: 10, stock: 18, low: 8 },
 ];
 
-const features = [
-  { icon: "🧾", title: "Fast billing", text: "Create customer bills, record payments and keep every sale organized." },
-  { icon: "📦", title: "Smart inventory", text: "Track products, stock quantities, units and low-stock alerts." },
-  { icon: "📊", title: "Business reports", text: "Understand sales, profit, expenses and your business performance." },
-  { icon: "👥", title: "Customers", text: "Maintain customer details and keep sales history in one place." },
-  { icon: "🛍️", title: "Purchases & suppliers", text: "Track purchases, suppliers and inventory coming into your shop." },
-  { icon: "🤖", title: "AI Business Assistant", text: "Ask questions about your business data and get useful insights." },
+const FEATURES = [
+  {
+    id: "billing",
+    label: "Billing",
+    headline: "Make a bill in the time it takes to say the total.",
+    description:
+      "Add products, take payment and keep every sale linked to your stock and your customers.",
+    points: ["Create bills", "Record payments", "Sales history"],
+  },
+  {
+    id: "inventory",
+    label: "Inventory",
+    headline: "See what is running out before a customer asks.",
+    description:
+      "Products, quantities and low-stock alerts sit together, so you can reorder in time.",
+    points: ["Products", "Stock levels", "Low-stock alerts"],
+  },
+  {
+    id: "qr",
+    label: "QR ordering",
+    headline: "Customers scan, pick and send the order.",
+    description:
+      "Put a QR at the counter. Customers browse your products on their phone and the order lands in your workspace.",
+    points: ["Scan QR", "Choose products", "Send order"],
+  },
+  {
+    id: "expenses",
+    label: "Expenses",
+    headline: "Know where the money goes each month.",
+    description:
+      "Record purchases and expenses in one place and review them as clear reports.",
+    points: ["Purchases", "Expenses", "Reports"],
+  },
+  {
+    id: "ai",
+    label: "AI Business",
+    headline: "Ask a question. Get an answer from your own data.",
+    description:
+      "AI Business reads the sales, expenses and stock your account can access and explains them in plain language.",
+    points: ["Sales insights", "Expense analysis", "Business questions"],
+  },
 ];
 
-const sampleProducts = [
-  { name: "Rice · 5 kg", price: 365, stock: 12 },
-  { name: "Toor Dal · 1 kg", price: 168, stock: 9 },
-  { name: "Sunflower Oil · 1 L", price: 142, stock: 5 },
-  { name: "Milk · 500 ml", price: 27, stock: 30 },
+const JOURNEY = [
+  ["Create your business", "Add your shop name and type.", "2 min"],
+  ["Add products", "Prices, units, stock and categories.", "Your pace"],
+  ["Start selling", "Make bills and record payments.", "Day 1"],
+  ["Stay in control", "Check stock, purchases, expenses and customers.", "Daily"],
+  ["Ask AI", "Question the data already in your workspace.", "Anytime"],
 ];
 
-const money = (value) => "₹" + Number(value || 0).toLocaleString("en-IN");
+/* ───────────────────────── HELPERS ───────────────────────── */
+
+const safeGet = (key) => {
+  try {
+    return localStorage.getItem(key) || "";
+  } catch {
+    return "";
+  }
+};
+const safeSet = (key, value) => {
+  try {
+    localStorage.setItem(key, value);
+  } catch {}
+};
+const safeRemove = (key) => {
+  try {
+    localStorage.removeItem(key);
+  } catch {}
+};
+
+const inr = (n) => "₹" + Number(n).toLocaleString("en-IN");
+
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+function useIsMobile(breakpoint = 860) {
+  const [mobile, setMobile] = useState(
+    typeof window !== "undefined" ? window.innerWidth < breakpoint : false
+  );
+  useEffect(() => {
+    const onResize = () => setMobile(window.innerWidth < breakpoint);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, [breakpoint]);
+  return mobile;
+}
+
+/* ───────────────────────── SMALL COMPONENTS ───────────────────────── */
+
+function Brand({ light }) {
+  return (
+    <Link to="/" className={"fx-brand" + (light ? " light" : "")}>
+      <span className="fx-brand-mark">F</span>
+      <span className="fx-brand-text">
+        <strong>{CONFIG.brand}</strong>
+        <small>{CONFIG.tagline}</small>
+      </span>
+    </Link>
+  );
+}
+
+/* The one memorable thing: a counter you can actually use */
+function LiveCounter() {
+  const [cart, setCart] = useState({});
+  const [question, setQuestion] = useState("");
+  const [sold, setSold] = useState(0);
+
+  const lines = PRODUCTS.filter((p) => cart[p.id]).map((p) => ({
+    ...p,
+    qty: cart[p.id],
+    amount: cart[p.id] * p.price,
+  }));
+  const total = lines.reduce((s, l) => s + l.amount, 0);
+  const itemCount = lines.reduce((s, l) => s + l.qty, 0);
+
+  const left = (p) => p.stock - (cart[p.id] || 0);
+  const lowItems = PRODUCTS.filter((p) => left(p) <= p.low);
+
+  const add = (p) => {
+    if (left(p) <= 0) return;
+    setCart((c) => ({ ...c, [p.id]: (c[p.id] || 0) + 1 }));
+  };
+  const remove = (p) => {
+    setCart((c) => {
+      const next = { ...c };
+      if (next[p.id] > 1) next[p.id] -= 1;
+      else delete next[p.id];
+      return next;
+    });
+  };
+  const clear = () => setCart({});
+  const finish = () => {
+    if (!total) return;
+    setSold((s) => s + total);
+    setCart({});
+  };
+
+  const answers = {
+    low: () =>
+      lowItems.length
+        ? `Running low: ${lowItems
+            .map((p) => `${p.name} (${left(p)} left)`)
+            .join(", ")}.`
+        : "Nothing is below its alert level right now.",
+    bill: () =>
+      total
+        ? `This bill has ${itemCount} item${itemCount > 1 ? "s" : ""} and comes to ${inr(total)}.`
+        : "The bill is empty. Tap a product to add it.",
+    today: () =>
+      sold
+        ? `You have billed ${inr(sold)} in this demo session.`
+        : "No bill has been completed yet. Tap Complete sale on a bill.",
+  };
+
+  const questions = [
+    ["low", "What is running low?"],
+    ["bill", "What is on this bill?"],
+    ["today", "How much have I sold?"],
+  ];
+
+  return (
+    <div className="fx-counter" id="product-demo">
+      <div className="fx-counter-bar">
+        <span className="fx-dots"><i /><i /><i /></span>
+        <span>Counter · sample shop</span>
+        <span className="fx-sold">Sold today {inr(sold)}</span>
+      </div>
+
+      <div className="fx-counter-grid">
+        <div className="fx-shelf">
+          <h3>Tap to add</h3>
+          <ul>
+            {PRODUCTS.map((p) => {
+              const remaining = left(p);
+              const isLow = remaining <= p.low;
+              return (
+                <li key={p.id}>
+                  <button
+                    type="button"
+                    onClick={() => add(p)}
+                    disabled={remaining <= 0}
+                    aria-label={`Add ${p.name}, ${inr(p.price)}, ${remaining} left`}
+                  >
+                    <span className="fx-p-name">{p.name}</span>
+                    <span className="fx-p-price">{inr(p.price)}</span>
+                    <span className={"fx-p-stock" + (isLow ? " low" : "")}>
+                      {remaining <= 0 ? "Out of stock" : `${remaining} left`}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+
+        <div className="fx-bill-wrap">
+          <div className="fx-bill" aria-live="polite">
+            <div className="fx-bill-head">
+              <strong>Bill #0042</strong>
+              <span>{new Date().toLocaleDateString("en-IN")}</span>
+            </div>
+            {lines.length === 0 ? (
+              <p className="fx-bill-empty">Your bill prints here as you add products.</p>
+            ) : (
+              <ul className="fx-bill-lines">
+                {lines.map((l) => (
+                  <li key={l.id}>
+                    <span className="fx-bill-name">{l.name}</span>
+                    <span className="fx-bill-qty">
+                      <button type="button" onClick={() => remove(l)} aria-label={`Remove one ${l.name}`}>−</button>
+                      {l.qty}
+                      <button type="button" onClick={() => add(l)} aria-label={`Add one ${l.name}`}>+</button>
+                    </span>
+                    <span className="fx-bill-amt">{inr(l.amount)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="fx-bill-total">
+              <span>Total</span>
+              <strong>{inr(total)}</strong>
+            </div>
+            <div className="fx-bill-actions">
+              <button type="button" className="fx-btn-yellow" onClick={finish} disabled={!total}>
+                Complete sale
+              </button>
+              <button type="button" className="fx-btn-ghost" onClick={clear} disabled={!total}>
+                Clear
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="fx-ask">
+        <div className="fx-ask-chips">
+          <span>Ask AI Business</span>
+          {questions.map(([key, label]) => (
+            <button
+              type="button"
+              key={key}
+              className={question === key ? "on" : ""}
+              onClick={() => setQuestion(key)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <p className="fx-ask-answer">
+          {question ? answers[question]() : "Pick a question. The answer comes from the sample shop above."}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* Mini visuals for the feature explorer */
+function FeatureVisual({ id }) {
+  if (id === "billing") {
+    return (
+      <div className="fx-vis fx-vis-bill">
+        <div className="fx-mini-receipt">
+          <b>Bill #0043</b>
+          <div><span>Rice 5 kg × 2</span><span>₹730</span></div>
+          <div><span>Milk 500 ml × 4</span><span>₹108</span></div>
+          <div><span>Biscuits × 3</span><span>₹30</span></div>
+          <div className="t"><span>Total</span><span>₹868</span></div>
+        </div>
+        <div className="fx-pay">
+          <span>Paid by</span>
+          <i className="on">UPI</i><i>Cash</i><i>Card</i>
+        </div>
+      </div>
+    );
+  }
+  if (id === "inventory") {
+    const rows = [
+      ["Rice 5 kg", 80, "ok", "12 bags"],
+      ["Sunflower oil 1 L", 22, "low", "2 left"],
+      ["Milk 500 ml", 62, "ok", "21 packs"],
+      ["Toor dal 1 kg", 14, "low", "1 left"],
+    ];
+    return (
+      <div className="fx-vis fx-vis-stock">
+        {rows.map(([name, w, s, n]) => (
+          <div className="fx-stock-row" key={name}>
+            <span>{name}</span>
+            <div className="fx-meter"><i className={s} style={{ width: w + "%" }} /></div>
+            <em className={s}>{n}</em>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  if (id === "qr") {
+    return (
+      <div className="fx-vis fx-vis-qr">
+        <div className="fx-qr-code" aria-hidden="true">
+          {Array.from({ length: 49 }).map((_, i) => (
+            <i key={i} className={[0, 1, 2, 7, 9, 14, 15, 16, 4, 5, 6, 11, 13, 20, 18, 22, 24, 26, 29, 31, 33, 35, 36, 40, 42, 43, 44, 46, 48].includes(i) ? "k" : ""} />
+          ))}
+        </div>
+        <div className="fx-phone">
+          <b>Order from our shop</b>
+          <div><span>Milk 500 ml</span><i>Add</i></div>
+          <div><span>Biscuits</span><i>Add</i></div>
+          <div><span>Rice 5 kg</span><i>Add</i></div>
+          <u>Send order to shop</u>
+        </div>
+      </div>
+    );
+  }
+  if (id === "expenses") {
+    const rows = [
+      ["Stock purchases", 88],
+      ["Rent", 46],
+      ["Electricity", 21],
+      ["Transport", 14],
+    ];
+    return (
+      <div className="fx-vis fx-vis-exp">
+        <p>Sample month</p>
+        {rows.map(([name, w]) => (
+          <div className="fx-exp-row" key={name}>
+            <span>{name}</span>
+            <i style={{ width: w + "%" }} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return (
+    <div className="fx-vis fx-vis-ai">
+      <div className="u">Which expense grew the most?</div>
+      <div className="b">
+        <b>AI Business</b>
+        I compare this month with last month using the expenses your account can access, then explain the biggest change.
+      </div>
+      <div className="u">And what should I reorder?</div>
+    </div>
+  );
+}
+
+/* ───────────────────────── PAGE ───────────────────────── */
 
 export default function Login() {
   const navigate = useNavigate();
   const { login } = useContext(AuthContext);
+  const mobile = useIsMobile();
 
-  const [formData, setFormData] = useState({
-    email: (() => {
-      try { return localStorage.getItem(LAST_EMAIL_KEY) || ""; }
-      catch { return ""; }
-    })(),
+  const [returning, setReturning] = useState(() => ({
+    name: (safeGet("userName") || "").split(" ")[0],
+    business: safeGet("businessName"),
+  }));
+
+  const [formData, setFormData] = useState(() => ({
+    email: safeGet(LAST_EMAIL_KEY),
     password: "",
-  });
-  const [showPassword, setShowPassword] = useState(false);
+  }));
+
+  const [active, setActive] = useState(0);
   const [pending, setPending] = useState("");
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [capsOn, setCapsOn] = useState(false);
   const [emailTouched, setEmailTouched] = useState(false);
-  const [demoCart, setDemoCart] = useState({});
-  const [demoSold, setDemoSold] = useState(0);
+  const [mobileMenu, setMobileMenu] = useState(false);
+  const emailRef = useRef(null);
+  const passwordRef = useRef(null);
 
-  const total = sampleProducts.reduce((sum, product, index) => {
-    return sum + product.price * (demoCart[index] || 0);
-  }, 0);
-  const cartCount = Object.values(demoCart).reduce((sum, quantity) => sum + quantity, 0);
-  const emailInvalid = emailTouched && formData.email && !EMAIL_RE.test(formData.email);
+  const feature = FEATURES[active];
+  const isLoading = Boolean(pending);
+  const emailInvalid =
+    emailTouched && formData.email.length > 0 && !EMAIL_RE.test(formData.email);
 
-  const updateField = (key, value) => {
-    setFormData((previous) => ({ ...previous, [key]: value }));
-  };
+  /* Focus the right field only when the person reaches the login section */
+  const loginSectionRef = useRef(null);
+  const focusedOnce = useRef(false);
+  useEffect(() => {
+    const node = loginSectionRef.current;
+    if (!node || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !focusedOnce.current) {
+          focusedOnce.current = true;
+          if (formData.email) passwordRef.current?.focus({ preventScroll: true });
+          else emailRef.current?.focus({ preventScroll: true });
+        }
+      },
+      { threshold: 0.6 }
+    );
+    io.observe(node);
+    return () => io.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const finishLogin = (data) => {
     const { user, business, token } = data;
     login(user, token);
 
-    try {
-      localStorage.setItem("userId", user.id);
-      localStorage.setItem("userName", user.full_name || user.name || "");
-      localStorage.setItem("userEmail", user.email || formData.email);
-      localStorage.setItem(LAST_EMAIL_KEY, user.email || formData.email);
-      if (business) {
-        localStorage.setItem("businessId", business.id);
-        localStorage.setItem("businessName", business.business_name);
-        localStorage.setItem("businessType", business.business_type || "");
-      }
-    } catch {}
+    safeSet("userId", user.id);
+    safeSet("userName", user.full_name);
+    safeSet("userEmail", user.email);
+    safeSet(LAST_EMAIL_KEY, user.email);
 
-    if (user.role === "admin") navigate("/admin/dashboard", { replace: true });
-    else if (business) navigate("/dashboard", { replace: true });
-    else navigate("/create-business", { replace: true });
+    if (business) {
+      safeSet("businessId", business.id);
+      safeSet("businessName", business.business_name);
+      safeSet("businessType", business.business_type);
+    }
+
+    if (user.role === "admin") {
+      navigate("/admin/dashboard", { replace: true });
+    } else if (business) {
+      navigate("/dashboard", { replace: true });
+    } else {
+      navigate("/create-business", { replace: true });
+    }
   };
 
-  const runAuth = async (kind, request, fallback) => {
+  const fail = (message) => setError(message);
+
+  const runAuth = async (kind, request, fallbackMessage) => {
     setPending(kind);
     setError("");
+
     try {
-      const response = await request();
-      if (response?.data?.success) finishLogin(response.data);
-      else setError(response?.data?.message || fallback);
+      const res = await request();
+
+      if (res.data.success) {
+        finishLogin(res.data);
+      } else {
+        fail(res.data.message || fallbackMessage);
+      }
     } catch (err) {
       console.error(`${kind} login error:`, err);
-      if (err.code === "auth/popup-closed-by-user" || err.code === "auth/cancelled-popup-request") {
-        setError("Google sign-in was closed before it finished. Try again.");
+
+      if (
+        err.code === "auth/popup-closed-by-user" ||
+        err.code === "auth/cancelled-popup-request"
+      ) {
+        fail("Google sign-in was closed before it finished. Try again.");
       } else if (err.code === "auth/popup-blocked") {
-        setError("Your browser blocked the Google window. Allow popups and try again.");
+        fail("Your browser blocked the Google window. Allow popups and try again.");
       } else if (!err.response) {
-        setError("Cannot reach the server. Check your internet connection and try again.");
+        fail("Cannot reach the server. Check your internet connection and try again.");
       } else {
-        setError(err.response?.data?.message || err.message || fallback);
+        fail(err.response?.data?.message || err.message || fallbackMessage);
       }
     } finally {
       setPending("");
     }
   };
 
-  const handleSubmit = (event) => {
-    event.preventDefault();
-    if (pending) return;
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (isLoading) return;
+
     if (!EMAIL_RE.test(formData.email)) {
       setEmailTouched(true);
-      setError("Enter a valid email address.");
+      fail("Enter a valid email address.");
       return;
     }
-    if (!formData.password) {
-      setError("Enter your password.");
-      return;
-    }
-    runAuth("email", () => API.post("/auth/login", formData), "Sign in failed. Please try again.");
+
+    runAuth(
+      "email",
+      () => API.post("/auth/login", formData),
+      "Sign in failed. Please try again."
+    );
   };
 
-  const handleGoogleLogin = () => runAuth("google", async () => {
-    const result = await signInWithPopup(auth, googleProvider);
-    const idToken = await result.user.getIdToken();
-    return API.post("/auth/google", { idToken });
-  }, "Google sign-in failed. Please try again.");
+  const handleGoogleLogin = () =>
+    runAuth(
+      "google",
+      async () => {
+        const result = await signInWithPopup(auth, googleProvider);
+        const idToken = await result.user.getIdToken();
+        return API.post("/auth/google", { idToken });
+      },
+      "Google sign-in failed. Please try again."
+    );
 
-  const handleDemoLogin = () => runAuth("demo", () => API.post("/auth/login", DEMO), "Demo account is unavailable right now.");
+  const handleDemo = () =>
+    runAuth(
+      "demo",
+      () =>
+        API.post("/auth/login", {
+          email: CONFIG.demo.email,
+          password: CONFIG.demo.password,
+        }),
+      "The demo is unavailable right now. Please try again."
+    );
 
-  const addDemoProduct = (index) => {
-    const product = sampleProducts[index];
-    if ((demoCart[index] || 0) >= product.stock) return;
-    setDemoCart((previous) => ({ ...previous, [index]: (previous[index] || 0) + 1 }));
+  const forgetReturning = () => {
+    [
+      "userId",
+      "userName",
+      "userEmail",
+      "businessId",
+      "businessName",
+      "businessType",
+      LAST_EMAIL_KEY,
+    ].forEach(safeRemove);
+
+    setReturning({ name: "", business: "" });
+    setFormData({ email: "", password: "" });
+    setTimeout(() => emailRef.current?.focus(), 0);
   };
 
-  const removeDemoProduct = (index) => {
-    setDemoCart((previous) => {
-      const next = { ...previous };
-      if (next[index] > 1) next[index] -= 1;
-      else delete next[index];
-      return next;
-    });
-  };
+  const title = returning.name
+    ? `${getGreeting()}, ${returning.name}`
+    : getGreeting();
 
-  const completeDemoSale = () => {
-    if (!total) return;
-    setDemoSold((previous) => previous + total);
-    setDemoCart({});
+  const subtitle = returning.business
+    ? `${returning.business} is ready when you are.`
+    : "Sign in to open your workspace.";
+
+  const navLinks = useMemo(
+    () => [
+      ["#product", "Try it"],
+      ["#features", "Features"],
+      ["#workflow", "Getting started"],
+      ["#ai", "AI Business"],
+    ],
+    []
+  );
+
+  const onCaps = (e) => {
+    if (e.getModifierState) setCapsOn(e.getModifierState("CapsLock"));
   };
 
   return (
-    <div className="fp-page">
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
-        .fp-page{--ink:#14213d;--muted:#65748b;--blue:#4f46e5;--blue2:#3730a3;--light:#f5f7ff;--border:#e5eaf3;--green:#16a34a;font-family:'DM Sans',sans-serif;color:var(--ink);background:#fff;min-height:100vh}
-        .fp-page *{box-sizing:border-box}.fp-wrap{width:min(1180px,calc(100% - 40px));margin:auto}
-        .fp-nav{height:76px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #edf0f5;position:relative;z-index:5;background:#fff}
-        .fp-brand{display:flex;align-items:center;gap:11px;text-decoration:none;color:var(--ink)}.fp-logo{width:40px;height:40px;border-radius:13px;background:linear-gradient(135deg,#6366f1,#3730a3);color:#fff;display:grid;place-items:center;font:800 22px Manrope;box-shadow:0 6px 16px #4f46e530}.fp-brand strong{font:800 19px Manrope;letter-spacing:-.5px}.fp-brand small{display:block;color:#7b8798;font-size:11px;margin-top:2px}
-        .fp-navlinks{display:flex;gap:28px;align-items:center}.fp-navlinks a{font-size:14px;color:#64748b;text-decoration:none;font-weight:600}.fp-navlinks a:hover{color:var(--blue)}.fp-navactions{display:flex;align-items:center;gap:12px}.fp-loginlink{font-weight:700;color:var(--ink);text-decoration:none;font-size:14px}.fp-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:11px;padding:12px 18px;text-decoration:none;font-weight:700;font-size:14px;border:1px solid transparent;cursor:pointer;transition:.2s}.fp-primary{background:var(--blue);color:#fff;box-shadow:0 7px 15px #4f46e522}.fp-primary:hover{background:var(--blue2);transform:translateY(-1px)}.fp-outline{border-color:var(--border);color:var(--ink);background:#fff}.fp-outline:hover{background:#f8fafc}.fp-mobile-menu{display:none}
-        .fp-hero{background:radial-gradient(circle at 85% 15%,#e0e7ff 0,transparent 35%),linear-gradient(180deg,#f9faff,#fff);padding:72px 0 60px;overflow:hidden}.fp-hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:64px;align-items:center}.fp-eyebrow{display:inline-flex;align-items:center;gap:8px;background:#eef2ff;color:#4338ca;border:1px solid #dfe3ff;border-radius:99px;padding:7px 12px;font-size:12px;font-weight:800;letter-spacing:.4px}.fp-eyebrow i{width:7px;height:7px;border-radius:50%;background:#22c55e}.fp-hero h1{font:800 clamp(38px,5.2vw,64px)/1.08 Manrope;letter-spacing:-2.5px;margin:20px 0;color:#14213d}.fp-hero h1 span{color:var(--blue)}.fp-lead{font-size:17px;line-height:1.75;color:#617087;max-width:570px}.fp-hero-actions{display:flex;flex-wrap:wrap;gap:12px;margin:27px 0 22px}.fp-trust{display:flex;flex-wrap:wrap;gap:16px;color:#68778c;font-size:12px;font-weight:600}.fp-trust span{display:flex;align-items:center;gap:6px}.fp-trust b{color:#16a34a}
-        .fp-demo{background:#fff;border:1px solid #e3e8f2;border-radius:22px;box-shadow:0 24px 65px #23315b18;overflow:hidden;transform:rotate(.5deg)}.fp-demo-head{display:flex;align-items:center;justify-content:space-between;padding:15px 18px;border-bottom:1px solid #edf0f5;background:#fbfcff}.fp-demo-title{font-weight:800;font-size:14px}.fp-live{display:flex;align-items:center;gap:6px;color:#16a34a;font-size:11px;font-weight:800}.fp-live i{width:7px;height:7px;border-radius:50%;background:#22c55e}.fp-demo-body{display:grid;grid-template-columns:1fr 1fr}.fp-products{padding:18px;border-right:1px solid #edf0f5}.fp-products h4,.fp-bill h4{margin:0 0 13px;font-size:12px;color:#66758b;text-transform:uppercase;letter-spacing:.6px}.fp-product{display:flex;align-items:center;justify-content:space-between;gap:9px;padding:11px 0;border-bottom:1px solid #f0f2f6}.fp-product:last-child{border-bottom:0}.fp-product-name{font-size:12px;font-weight:700}.fp-product-stock{display:block;color:#8a96a8;font-size:10px;margin-top:3px}.fp-product-price{font-size:12px;font-weight:800}.fp-add{border:1px solid #e0e7ff;background:#eef2ff;color:#4f46e5;border-radius:8px;width:26px;height:26px;font-weight:800;cursor:pointer}.fp-bill{padding:18px}.fp-bill-row{display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:8px 0;border-bottom:1px solid #f0f2f6}.fp-qty{display:flex;align-items:center;gap:5px}.fp-qty button{width:20px;height:20px;border:1px solid #e2e8f0;background:#fff;border-radius:5px;cursor:pointer}.fp-total{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;border-top:1px dashed #d9dfeb;font-weight:800}.fp-total strong{font-size:20px;color:var(--blue)}.fp-demo-actions{display:flex;gap:7px;margin-top:12px}.fp-demo-actions button{flex:1;padding:9px;border:0;border-radius:8px;background:#4f46e5;color:#fff;font-size:11px;font-weight:800;cursor:pointer}.fp-demo-actions button:last-child{background:#f1f5f9;color:#64748b}.fp-demo-actions button:disabled{opacity:.45;cursor:not-allowed}.fp-sold{background:#f0fdf4;border:1px solid #dcfce7;padding:10px 14px;border-radius:10px;margin:14px 18px 18px;font-size:12px;color:#15803d;font-weight:700;display:flex;justify-content:space-between}
-        .fp-categories{padding:32px 0;border-top:1px solid #f0f2f7;border-bottom:1px solid #f0f2f7}.fp-cat-heading{text-align:center;color:#8a96a8;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin-bottom:20px}.fp-categories-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.fp-category{display:flex;align-items:center;gap:11px;padding:14px;border:1px solid #edf0f5;border-radius:13px;background:#fff}.fp-category-icon{width:38px;height:38px;display:grid;place-items:center;background:#f5f7ff;border-radius:11px;font-size:20px}.fp-category strong{font-size:12px}
-        .fp-section{padding:76px 0}.fp-section-head{text-align:center;max-width:690px;margin:0 auto 40px}.fp-kicker{color:var(--blue);font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase}.fp-section h2{font:800 clamp(28px,3.5vw,42px)/1.2 Manrope;letter-spacing:-1.3px;margin:12px 0}.fp-section-head p{color:var(--muted);font-size:15px;line-height:1.7;margin:0}.fp-features{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.fp-feature{padding:25px;border:1px solid var(--border);border-radius:17px;background:#fff;transition:.2s}.fp-feature:hover{transform:translateY(-4px);box-shadow:0 14px 30px #1725540b;border-color:#c7d2fe}.fp-feature-icon{width:48px;height:48px;display:grid;place-items:center;background:#f0f3ff;border-radius:14px;font-size:23px}.fp-feature h3{font:800 17px Manrope;margin:18px 0 8px}.fp-feature p{color:#718096;font-size:13px;line-height:1.65;margin:0}
-        .fp-workflow{background:#f8faff}.fp-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}.fp-step{padding:22px;background:#fff;border:1px solid #e6eaf3;border-radius:15px}.fp-step-number{width:32px;height:32px;border-radius:10px;background:#eef2ff;color:#4f46e5;display:grid;place-items:center;font-weight:800;font-size:13px}.fp-step h3{font:800 15px Manrope;margin:14px 0 6px}.fp-step p{font-size:12px;color:#718096;line-height:1.6;margin:0}
-        .fp-login-section{padding:78px 0;background:linear-gradient(135deg,#3730a3,#4f46e5 60%,#6366f1);position:relative;overflow:hidden}.fp-login-section:before{content:"";position:absolute;inset:0;background-image:radial-gradient(#ffffff22 1px,transparent 1px);background-size:20px 20px}.fp-login-grid{position:relative;display:grid;grid-template-columns:1fr 430px;gap:60px;align-items:center}.fp-login-copy{color:#fff}.fp-login-copy h2{font:800 clamp(32px,4vw,48px)/1.15 Manrope;letter-spacing:-1.4px;margin:0 0 18px}.fp-login-copy p{color:#dfe2ff;font-size:16px;line-height:1.7;max-width:520px}.fp-login-copy ul{list-style:none;padding:0;margin:25px 0;display:grid;gap:12px}.fp-login-copy li{display:flex;align-items:center;gap:10px;color:#f5f6ff;font-weight:600;font-size:14px}.fp-login-copy li span{width:23px;height:23px;display:grid;place-items:center;background:#ffffff20;border-radius:7px}.fp-login-card{background:#fff;border:1px solid #e4e8f2;border-radius:20px;padding:28px;box-shadow:0 22px 60px #11182730}.fp-login-card h3{font:800 25px Manrope;margin:0 0 6px}.fp-login-sub{color:#718096;font-size:13px;margin:0 0 20px}.fp-login-card form{display:grid;gap:13px}.fp-login-card label{display:grid;gap:7px;font-size:12px;font-weight:800;color:#354258}.fp-login-card input{height:46px;width:100%;border:1px solid #dce3ed;border-radius:10px;padding:0 12px;font:14px 'DM Sans';outline:none}.fp-login-card input:focus{border-color:#6366f1;box-shadow:0 0 0 3px #6366f120}.fp-password{position:relative}.fp-password input{padding-right:64px}.fp-password button{position:absolute;right:7px;top:7px;border:0;background:#f1f5f9;border-radius:7px;padding:7px 9px;font-size:11px;font-weight:800;color:#64748b;cursor:pointer}.fp-error{background:#fff1f2;color:#be123c;border:1px solid #fecdd3;border-radius:9px;padding:10px 12px;font-size:12px;font-weight:600}.fp-submit{height:47px;border:0;border-radius:10px;background:#4f46e5;color:#fff;font-weight:800;cursor:pointer}.fp-submit:disabled{opacity:.6;cursor:not-allowed}.fp-divider{display:flex;align-items:center;gap:12px;color:#9aa4b2;font-size:11px;margin:4px 0}.fp-divider:before,.fp-divider:after{content:"";height:1px;background:#e5eaf1;flex:1}.fp-google{height:45px;border:1px solid #dce3ed;background:#fff;border-radius:10px;font-weight:700;color:#344054;cursor:pointer}.fp-google:hover{background:#f8fafc}.fp-demo{display:block;width:100%;border:0;background:transparent;color:#4f46e5;font-weight:800;font-size:12px;padding:13px 0 0;cursor:pointer;text-decoration:underline;text-underline-offset:3px}.fp-register{text-align:center;color:#718096;font-size:12px;margin:17px 0 0}.fp-register a{color:#4f46e5;font-weight:800;text-decoration:none}.fp-footer{padding:28px 0;background:#111b35;color:#c5cce0}.fp-footer-inner{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}.fp-footer-brand{display:flex;align-items:center;gap:10px}.fp-footer-brand .fp-logo{background:#4f46e5}.fp-footer-brand strong{color:#fff}.fp-footer small{color:#9ba7bf}.fp-footer-links{display:flex;gap:18px}.fp-footer-links a{font-size:12px;color:#c5cce0;text-decoration:none}.fp-footer-links a:hover{color:#fff}
-        @media(max-width:900px){.fp-hero-grid,.fp-login-grid{grid-template-columns:1fr;gap:38px}.fp-hero-grid{max-width:850px}.fp-demo{max-width:620px;margin:auto;width:100%}.fp-login-grid{max-width:800px}.fp-login-card{max-width:480px;width:100%;margin:auto}.fp-features{grid-template-columns:repeat(2,1fr)}.fp-steps{grid-template-columns:repeat(2,1fr)}}
-        @media(max-width:650px){.fp-wrap{width:min(100% - 28px,1180px)}.fp-nav{height:66px}.fp-navlinks,.fp-loginlink{display:none}.fp-navactions .fp-btn{padding:10px 12px;font-size:12px}.fp-hero{padding:46px 0 38px}.fp-hero h1{letter-spacing:-1.7px}.fp-lead{font-size:15px}.fp-hero-actions .fp-btn{flex:1}.fp-trust{gap:10px}.fp-demo-body{grid-template-columns:1fr}.fp-products{border-right:0;border-bottom:1px solid #edf0f5}.fp-bill{padding-top:12px}.fp-categories-grid{grid-template-columns:repeat(2,1fr)}.fp-category{padding:10px}.fp-category strong{font-size:11px}.fp-section{padding:55px 0}.fp-section-head{margin-bottom:28px}.fp-features{grid-template-columns:1fr}.fp-feature{padding:20px}.fp-steps{grid-template-columns:1fr}.fp-login-section{padding:55px 0}.fp-login-card{padding:22px}.fp-login-copy h2{font-size:34px}.fp-footer-inner{align-items:flex-start;flex-direction:column}.fp-footer-links{flex-wrap:wrap}}
-      `}</style>
+    <div className="fx-page">
+      <style>{CSS}</style>
 
-      <header className="fp-nav fp-wrap">
-        <Link to="/" className="fp-brand">
-          <span className="fp-logo">F</span>
-          <span><strong>FinancePro</strong><small>Business management</small></span>
-        </Link>
-        <nav className="fp-navlinks">
-          <a href="#features">Features</a>
-          <a href="#businesses">Businesses</a>
-          <a href="#workflow">How it works</a>
-        </nav>
-        <div className="fp-navactions">
-          <a href="#login" className="fp-loginlink">Login</a>
-          <Link to="/register" className="fp-btn fp-primary">Create business →</Link>
+      <a href="#login" className="fx-skip">Skip to login</a>
+
+      {/* NAV */}
+      <header className="fx-nav">
+        <Brand />
+        {!mobile && (
+          <nav className="fx-nav-links" aria-label="Sections">
+            {navLinks.map(([href, label]) => (
+              <a key={href} href={href}>{label}</a>
+            ))}
+          </nav>
+        )}
+        <div className="fx-nav-actions">
+          {!mobile && <a href="#login" className="fx-nav-login">Login</a>}
+          <Link to="/register" className="fx-btn fx-btn-blue fx-btn-sm">Create business</Link>
+          {mobile && (
+            <button
+              type="button"
+              className="fx-menu-btn"
+              onClick={() => setMobileMenu((v) => !v)}
+              aria-label="Toggle menu"
+              aria-expanded={mobileMenu}
+            >
+              {mobileMenu ? "✕" : "☰"}
+            </button>
+          )}
         </div>
+        {mobile && mobileMenu && (
+          <div className="fx-mobile-menu">
+            {navLinks.map(([href, label]) => (
+              <a key={href} href={href} onClick={() => setMobileMenu(false)}>{label}</a>
+            ))}
+            <a href="#login" onClick={() => setMobileMenu(false)}>Login</a>
+          </div>
+        )}
       </header>
 
       <main>
-        <section className="fp-hero">
-          <div className="fp-wrap fp-hero-grid">
-            <div>
-              <div className="fp-eyebrow"><i /> ONE WORKSPACE FOR YOUR BUSINESS</div>
-              <h1>Run your shop.<br />Know your <span>numbers.</span></h1>
-              <p className="fp-lead">Billing, inventory, purchases, customers, expenses and business reports—together in one simple platform built for Indian businesses.</p>
-              <div className="fp-hero-actions">
-                <Link to="/register" className="fp-btn fp-primary">Start your business free →</Link>
-                <a href="#login" className="fp-btn fp-outline">Sign in</a>
+        {/* HERO */}
+        <section className="fx-hero" id="product">
+          <div className="fx-wrap fx-hero-grid">
+            <div className="fx-hero-copy">
+              <p className="fx-sticker">Billing · Stock · Expenses · AI</p>
+              <h1>
+                Your shop,
+                <br />
+                counted while
+                <br />
+                you sell.
+              </h1>
+              <p className="fx-lead">
+                FinancePro keeps billing, inventory, expenses, customers and QR
+                orders in one workspace, and lets you ask questions about all of it.
+              </p>
+              <div className="fx-hero-actions">
+                <Link to="/register" className="fx-btn fx-btn-blue">Create your business</Link>
+                <a href="#login" className="fx-btn fx-btn-white">Login</a>
               </div>
-              <div className="fp-trust"><span><b>✓</b> Simple setup</span><span><b>✓</b> Secure workspace</span><span><b>✓</b> Built for shop owners</span></div>
+              <ul className="fx-trust">
+                {CONFIG.trust.map((t) => (
+                  <li key={t}>{t}</li>
+                ))}
+              </ul>
             </div>
 
-            <div className="fp-demo" aria-label="Interactive billing demonstration">
-              <div className="fp-demo-head"><span className="fp-demo-title">Quick billing demo</span><span className="fp-live"><i /> LIVE DEMO</span></div>
-              <div className="fp-demo-body">
-                <div className="fp-products">
-                  <h4>Tap products to add</h4>
-                  {sampleProducts.map((product, index) => (
-                    <div className="fp-product" key={product.name}>
-                      <div><span className="fp-product-name">{product.name}</span><span className="fp-product-stock">{product.stock} in stock</span></div>
-                      <span className="fp-product-price">{money(product.price)}</span>
-                      <button className="fp-add" onClick={() => addDemoProduct(index)} type="button" aria-label={`Add ${product.name}`}>+</button>
-                    </div>
-                  ))}
-                </div>
-                <div className="fp-bill">
-                  <h4>Current bill · {cartCount} items</h4>
-                  {cartCount === 0 ? <p style={{color:"#9aa4b2",fontSize:12,lineHeight:1.6}}>Your bill appears here as you add products.</p> : sampleProducts.map((product,index) => demoCart[index] ? (
-                    <div className="fp-bill-row" key={product.name}><span>{product.name}</span><span className="fp-qty"><button onClick={() => removeDemoProduct(index)} type="button">−</button>{demoCart[index]}<button onClick={() => addDemoProduct(index)} type="button">+</button></span><strong>{money(product.price * demoCart[index])}</strong></div>
-                  ) : null)}
-                  <div className="fp-total"><span>Total</span><strong>{money(total)}</strong></div>
-                  <div className="fp-demo-actions"><button onClick={completeDemoSale} disabled={!total} type="button">Complete sale</button><button onClick={() => setDemoCart({})} disabled={!total} type="button">Clear</button></div>
-                </div>
-              </div>
-              <div className="fp-sold"><span>Demo sales completed</span><strong>{money(demoSold)}</strong></div>
+            <div className="fx-hero-demo">
+              <LiveCounter />
+              <p className="fx-demo-note">Sample shop and sample prices. Nothing here is saved.</p>
             </div>
           </div>
         </section>
 
-        <section className="fp-categories" id="businesses">
-          <div className="fp-wrap"><div className="fp-cat-heading">Designed for different types of businesses</div><div className="fp-categories-grid">
-            {categories.map(([icon,label]) => <div className="fp-category" key={label}><span className="fp-category-icon">{icon}</span><strong>{label}</strong></div>)}
-          </div></div>
-        </section>
-
-        <section className="fp-section" id="features">
-          <div className="fp-wrap"><div className="fp-section-head"><span className="fp-kicker">Everything in one place</span><h2>More than just billing software</h2><p>Manage the daily work of your business from one workspace. Spend less time maintaining records and more time serving customers.</p></div>
-            <div className="fp-features">{features.map((feature) => <article className="fp-feature" key={feature.title}><div className="fp-feature-icon">{feature.icon}</div><h3>{feature.title}</h3><p>{feature.text}</p></article>)}</div>
+        {/* MARQUEE-FREE STRIP: who it is for */}
+        <section className="fx-strip" aria-label="Who it is for">
+          <div className="fx-wrap">
+            <span>Kirana stores</span>
+            <span>General stores</span>
+            <span>Medical shops</span>
+            <span>Stationery</span>
+            <span>Hardware</span>
+            <span>Small wholesalers</span>
           </div>
         </section>
 
-        <section className="fp-section fp-workflow" id="workflow">
-          <div className="fp-wrap"><div className="fp-section-head"><span className="fp-kicker">Get started simply</span><h2>Start using it in minutes</h2><p>No complicated setup. Create your business, add products and begin billing.</p></div>
-            <div className="fp-steps"><article className="fp-step"><span className="fp-step-number">1</span><h3>Create your business</h3><p>Enter your shop name and business type to set up your workspace.</p></article><article className="fp-step"><span className="fp-step-number">2</span><h3>Add products</h3><p>Add names, prices, units, categories and your opening stock.</p></article><article className="fp-step"><span className="fp-step-number">3</span><h3>Start billing</h3><p>Create bills, record payments and manage customer sales.</p></article><article className="fp-step"><span className="fp-step-number">4</span><h3>Track your business</h3><p>Review stock, purchases, expenses and reports as you grow.</p></article></div>
+        {/* FEATURES */}
+        <section className="fx-section" id="features">
+          <div className="fx-wrap">
+            <div className="fx-head">
+              <h2>One workspace for everything the counter touches.</h2>
+              <p>Choose a part of the business to see how it works.</p>
+            </div>
+
+            <div className="fx-explorer">
+              <div className="fx-tabs" role="tablist" aria-label="Features">
+                {FEATURES.map((f, i) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    role="tab"
+                    id={`tab-${f.id}`}
+                    aria-selected={i === active}
+                    aria-controls="feature-panel"
+                    className={i === active ? "on" : ""}
+                    onClick={() => setActive(i)}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+
+              <div
+                className="fx-panel"
+                id="feature-panel"
+                role="tabpanel"
+                aria-labelledby={`tab-${feature.id}`}
+                key={feature.id}
+              >
+                <div className="fx-panel-copy">
+                  <h3>{feature.headline}</h3>
+                  <p>{feature.description}</p>
+                  <ul>
+                    {feature.points.map((p) => (
+                      <li key={p}>{p}</li>
+                    ))}
+                  </ul>
+                  <Link to="/register" className="fx-link">Start with {feature.label.toLowerCase()}</Link>
+                </div>
+                <div className="fx-panel-visual">
+                  <FeatureVisual id={feature.id} />
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
-        <section className="fp-login-section" id="login">
-          <div className="fp-wrap fp-login-grid">
-            <div className="fp-login-copy"><h2>Your business workspace<br />is ready to grow.</h2><p>Sign in to continue managing your products, bills, customers, inventory and business performance.</p><ul><li><span>✓</span>Billing and sales management</li><li><span>✓</span>Inventory and low-stock tracking</li><li><span>✓</span>Purchases, suppliers and expenses</li><li><span>✓</span>Reports and AI business insights</li></ul></div>
-            <div className="fp-login-card">
-              <h3>Welcome back</h3><p className="fp-login-sub">Sign in to your FinancePro workspace</p>
-              <form onSubmit={handleSubmit}>
-                <label>Email address<input type="email" autoComplete="email" value={formData.email} onChange={(e) => updateField("email", e.target.value)} onBlur={() => setEmailTouched(true)} placeholder="you@example.com" aria-invalid={Boolean(emailInvalid)} /></label>
-                {emailInvalid && <div className="fp-error">Enter a valid email address.</div>}
-                <label>Password<div className="fp-password"><input type={showPassword ? "text" : "password"} autoComplete="current-password" value={formData.password} onChange={(e) => updateField("password", e.target.value)} placeholder="Enter your password" /><button type="button" onClick={() => setShowPassword((v) => !v)}>{showPassword ? "Hide" : "Show"}</button></div></label>
-                {error && <div className="fp-error" role="alert">{error}</div>}
-                <button className="fp-submit" type="submit" disabled={Boolean(pending)}>{pending === "email" ? "Signing in…" : "Sign in to workspace"}</button>
+        {/* WORKFLOW as a printed bill of steps */}
+        <section className="fx-section fx-dark" id="workflow">
+          <div className="fx-wrap fx-flow-grid">
+            <div className="fx-head">
+              <h2>From empty shop to daily control.</h2>
+              <p>Five steps, in the order a shop owner actually does them.</p>
+              <Link to="/register" className="fx-btn fx-btn-yellow">Create your business</Link>
+              <p className="fx-note">{CONFIG.signupNote}</p>
+            </div>
+
+            <ol className="fx-steps">
+              {JOURNEY.map(([name, text, time], i) => (
+                <li key={name}>
+                  <span className="fx-step-n">{i + 1}</span>
+                  <div className="fx-step-body">
+                    <h3>{name}</h3>
+                    <p>{text}</p>
+                  </div>
+                  <span className="fx-leader" aria-hidden="true" />
+                  <span className="fx-step-time">{time}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
+
+        {/* AI */}
+        <section className="fx-section" id="ai">
+          <div className="fx-wrap fx-ai-grid">
+            <div className="fx-head">
+              <h2>Ask your business a question.</h2>
+              <p>
+                AI Business reads the information your account is allowed to see
+                and answers in plain language. No report building.
+              </p>
+              <ul className="fx-ask-list">
+                <li>Which products sell slowest?</li>
+                <li>Where did my expenses go up?</li>
+                <li>What should I reorder this week?</li>
+              </ul>
+              <a href="#product-demo" className="fx-link">Try a sample question</a>
+            </div>
+
+            <div className="fx-chat" aria-hidden="true">
+              <div className="fx-chat-bar">AI Business</div>
+              <div className="fx-chat-body">
+                <div className="u">What can you help me understand?</div>
+                <div className="b">
+                  <b>FinancePro AI</b>
+                  Sales, inventory, expenses and activity available to your account. Ask in your own words.
+                </div>
+                <div className="fx-chat-input">Ask about your business…</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* LOGIN */}
+        <section className="fx-login" id="login" ref={loginSectionRef}>
+          <div className="fx-wrap fx-login-grid">
+            <div className="fx-login-copy">
+              <h2>{returning.name ? title : "Your workspace is waiting."}</h2>
+              <p>
+                Sign in to keep billing, managing stock and reviewing your numbers.
+              </p>
+              <ul>
+                <li>Billing and sales</li>
+                <li>Inventory and purchases</li>
+                <li>Customers and suppliers</li>
+                <li>AI business insights</li>
+              </ul>
+            </div>
+
+            <div className="fx-login-card">
+              <h3>{title}</h3>
+              <p className="fx-login-sub">{subtitle}</p>
+
+              {returning.name && (
+                <button type="button" className="fx-not-you" onClick={forgetReturning}>
+                  Not {returning.name}? Use a different account
+                </button>
+              )}
+
+              <form onSubmit={handleSubmit} noValidate>
+                <label>
+                  Email address
+                  <input
+                    ref={emailRef}
+                    type="email"
+                    name="email"
+                    placeholder="you@business.in"
+                    value={formData.email}
+                    onChange={(e) => {
+                      setFormData((prev) => ({ ...prev, email: e.target.value }));
+                      if (error) setError("");
+                    }}
+                    onBlur={() => setEmailTouched(true)}
+                    autoComplete="email"
+                    aria-invalid={emailInvalid || !!error}
+                    required
+                  />
+                </label>
+                {emailInvalid && <small className="fx-field-error">Try name@business.in</small>}
+
+                <label>
+                  <span className="fx-pw-label">
+                    Password
+                    <Link to="/forgot-password">Forgot password?</Link>
+                  </span>
+                  <span className="fx-pw-wrap">
+                    <input
+                      ref={passwordRef}
+                      type={showPassword ? "text" : "password"}
+                      name="password"
+                      placeholder="Enter your password"
+                      value={formData.password}
+                      onChange={(e) => {
+                        setFormData((prev) => ({ ...prev, password: e.target.value }));
+                        if (error) setError("");
+                      }}
+                      onKeyUp={onCaps}
+                      onKeyDown={onCaps}
+                      autoComplete="current-password"
+                      minLength={6}
+                      required
+                    />
+                    <button type="button" onClick={() => setShowPassword((v) => !v)}>
+                      {showPassword ? "Hide" : "Show"}
+                    </button>
+                  </span>
+                </label>
+                {capsOn && <small className="fx-field-error">Caps Lock is on.</small>}
+
+                {error && <div className="fx-error" role="alert">{error}</div>}
+
+                <button className="fx-submit" type="submit" disabled={isLoading}>
+                  {pending === "email" ? "Signing in…" : "Sign in"}
+                </button>
+
+                <div className="fx-or"><span />or<span /></div>
+
+                <button className="fx-google" type="button" onClick={handleGoogleLogin} disabled={isLoading}>
+                  {pending === "google" ? "Opening Google…" : "Continue with Google"}
+                </button>
+
+                {CONFIG.demo.enabled && (
+                  <button className="fx-demo-btn" type="button" onClick={handleDemo} disabled={isLoading}>
+                    {pending === "demo" ? "Opening demo…" : "Try the demo business"}
+                  </button>
+                )}
               </form>
-              <div className="fp-divider">OR</div>
-              <button className="fp-google" type="button" onClick={handleGoogleLogin} disabled={Boolean(pending)}>{pending === "google" ? "Connecting to Google…" : "Continue with Google"}</button>
-              <button className="fp-demo" type="button" onClick={handleDemoLogin} disabled={Boolean(pending)}>{pending === "demo" ? "Opening demo…" : "Explore with demo account"}</button>
-              <p className="fp-register">New to FinancePro? <Link to="/register">Create your business</Link></p>
+
+              <div className="fx-login-foot">
+                <span>New here?</span>
+                <Link to="/register">Create your business</Link>
+              </div>
             </div>
           </div>
         </section>
       </main>
 
-      <footer className="fp-footer"><div className="fp-wrap fp-footer-inner"><div className="fp-footer-brand"><span className="fp-logo">F</span><div><strong>FinancePro</strong><br /><small>Business management for Indian shops</small></div></div><div className="fp-footer-links"><a href="#features">Features</a><a href="#businesses">Businesses</a><a href="#workflow">How it works</a><a href="#login">Login</a></div><small>© {new Date().getFullYear()} FinancePro</small></div></footer>
+      <footer className="fx-footer">
+        <div className="fx-wrap fx-footer-in">
+          <Brand light />
+          <nav aria-label="Footer">
+            {navLinks.map(([href, label]) => (
+              <a key={href} href={href}>{label}</a>
+            ))}
+            <Link to="/register">Create business</Link>
+          </nav>
+        </div>
+      </footer>
     </div>
   );
 }
+
+/* ───────────────────────── STYLES ───────────────────────── */
+
+const CSS = `
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=Courier+Prime:wght@400;700&display=swap');
+
+:root{
+  --ink:#14123A;
+  --blue:#2B3BE0;
+  --blue-d:#1E2BB5;
+  --yellow:#FFC61A;
+  --paper:#F3F2FB;
+  --white:#FFFFFF;
+  --red:#E8412C;
+  --green:#12875E;
+  --muted:#55527A;
+  --line:2.5px solid var(--ink);
+  --hard:5px 5px 0 var(--ink);
+  --hard-sm:3px 3px 0 var(--ink);
+  --display:'Bricolage Grotesque','Figtree',system-ui,sans-serif;
+  --body:'Figtree',system-ui,sans-serif;
+  --receipt:'Courier Prime','Courier New',monospace;
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:84px}
+body{margin:0 !important;background:var(--paper);display:block !important;place-items:initial !important;overflow-x:hidden}
+/* Undo Vite/CRA starter styles (narrow, centered #root) while this page is mounted */
+#root{max-width:none !important;width:100% !important;margin:0 !important;padding:0 !important;text-align:left !important;display:block !important}
+button,input{font:inherit}
+button{cursor:pointer}
+button:disabled{cursor:not-allowed}
+a,button{-webkit-tap-highlight-color:transparent}
+:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+
+.fx-page{
+  min-height:100vh;width:100%;text-align:left;color:var(--ink);font-family:var(--body);
+  background:var(--paper);overflow-x:hidden;
+}
+.fx-wrap{width:min(1180px,92vw);margin:0 auto}
+.fx-skip{position:absolute;left:-999px;top:8px;background:var(--yellow);border:var(--line);padding:8px 12px;z-index:200;font-weight:700;color:var(--ink)}
+.fx-skip:focus{left:8px}
+
+/* ── buttons ── */
+.fx-btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  min-height:48px;padding:12px 22px;border-radius:999px;border:var(--line);
+  font:700 15px var(--body);text-decoration:none;color:var(--ink);
+  box-shadow:var(--hard-sm);transition:transform .12s ease, box-shadow .12s ease;
+}
+.fx-btn:hover{transform:translate(-2px,-2px);box-shadow:5px 5px 0 var(--ink)}
+.fx-btn:active{transform:translate(2px,2px);box-shadow:0 0 0 var(--ink)}
+.fx-btn-blue{background:var(--blue);color:#fff}
+.fx-btn-white{background:#fff}
+.fx-btn-yellow{background:var(--yellow)}
+.fx-btn-sm{min-height:42px;padding:8px 16px;font-size:14px}
+
+/* ── nav ── */
+.fx-nav{
+  position:sticky;top:0;z-index:100;
+  display:flex;align-items:center;justify-content:space-between;gap:18px;
+  padding:10px 4vw;background:var(--white);border-bottom:var(--line);
+}
+.fx-brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink)}
+.fx-brand-mark{
+  width:40px;height:40px;display:grid;place-items:center;background:var(--yellow);
+  border:var(--line);border-radius:10px;transform:rotate(-6deg);
+  font:800 22px var(--display);box-shadow:var(--hard-sm);
+}
+.fx-brand-text{display:flex;flex-direction:column;line-height:1.1}
+.fx-brand strong{font:800 20px var(--display);letter-spacing:-.3px}
+.fx-brand small{font-size:11px;color:var(--muted);margin-top:2px}
+.fx-brand.light{color:#fff}
+.fx-brand.light small{color:#B9B6E6}
+.fx-brand.light .fx-brand-mark{box-shadow:none}
+.fx-nav-links{display:flex;gap:4px}
+.fx-nav-links a,.fx-nav-login{
+  color:var(--ink);text-decoration:none;font-weight:600;font-size:14px;
+  padding:8px 12px;border-radius:999px;
+}
+.fx-nav-links a:hover,.fx-nav-login:hover{background:var(--yellow)}
+.fx-nav-actions{display:flex;align-items:center;gap:8px}
+.fx-menu-btn{width:42px;height:42px;border:var(--line);border-radius:10px;background:#fff;font-size:18px}
+.fx-mobile-menu{
+  position:absolute;left:0;right:0;top:100%;background:#fff;border-bottom:var(--line);
+  display:flex;flex-direction:column;padding:8px 4vw 14px;
+}
+.fx-mobile-menu a{padding:13px 4px;text-decoration:none;color:var(--ink);font-weight:700;border-bottom:1.5px dashed #CFCDEB}
+
+/* ── hero ── */
+.fx-hero{
+  padding:64px 0 72px;
+  background-color:var(--paper);
+  background-image:radial-gradient(#C9C6EE 1.4px,transparent 1.4px);
+  background-size:22px 22px;
+  border-bottom:var(--line);
+}
+.fx-hero-grid{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:56px;align-items:start}
+.fx-hero-grid>*{min-width:0}
+.fx-sticker{
+  display:inline-block;margin:0 0 22px;padding:7px 14px;background:var(--yellow);
+  border:var(--line);border-radius:8px;font-weight:700;font-size:13px;
+  transform:rotate(-2deg);box-shadow:var(--hard-sm);
+}
+.fx-hero h1{
+  font:800 clamp(44px,5.6vw,84px)/1 var(--display);letter-spacing:-.025em;margin:0 0 24px;
+}
+.fx-lead{font-size:18px;line-height:1.6;color:var(--muted);max-width:520px;margin:0}
+.fx-hero-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:30px}
+.fx-trust{list-style:none;padding:0;margin:28px 0 0;display:flex;flex-wrap:wrap;gap:8px}
+.fx-trust li{
+  background:#fff;border:2px solid var(--ink);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600;
+}
+.fx-trust li::before{content:"✓";color:var(--green);font-weight:800;margin-right:6px}
+.fx-demo-note{margin:12px 4px 0;font-size:13px;color:var(--muted)}
+
+/* ── live counter ── */
+.fx-counter{background:#fff;border:var(--line);border-radius:20px;box-shadow:8px 8px 0 var(--ink);overflow:hidden}
+.fx-counter-bar{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:10px 14px;background:var(--ink);color:#fff;font-size:13px;font-weight:600;
+}
+.fx-dots{display:flex;gap:5px}
+.fx-dots i{width:10px;height:10px;border-radius:50%;background:var(--yellow);display:block}
+.fx-dots i:nth-child(2){background:var(--red)}
+.fx-dots i:nth-child(3){background:#5CE0A8}
+.fx-sold{color:var(--yellow)}
+.fx-counter-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.fx-counter-grid>*{min-width:0}
+.fx-shelf{padding:16px;border-right:2px dashed #BDBAE3}
+.fx-shelf h3,.fx-ask-chips span{margin:0 0 10px;font:700 13px var(--body);color:var(--muted)}
+.fx-shelf ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.fx-shelf button{
+  width:100%;display:grid;grid-template-columns:1fr auto;gap:2px 10px;text-align:left;
+  padding:10px 12px;background:var(--paper);border:2px solid var(--ink);border-radius:12px;color:var(--ink);
+  transition:transform .1s, background .1s;
+}
+.fx-shelf button:hover:not(:disabled){background:var(--yellow);transform:translateX(3px)}
+.fx-shelf button:disabled{opacity:.45}
+.fx-p-name{font-weight:700;font-size:14px}
+.fx-p-price{font-weight:800;font-size:14px;text-align:right}
+.fx-p-stock{grid-column:1/-1;font-size:12px;color:var(--green);font-weight:600}
+.fx-p-stock.low{color:var(--red)}
+.fx-bill-wrap{padding:16px;background:#F7F6FD}
+.fx-bill{
+  position:relative;background:#fff;border:2px solid var(--ink);padding:14px 14px 22px;
+  font-family:var(--receipt);font-size:13px;min-height:100%;
+  -webkit-mask:linear-gradient(#000 0 0) top/100% calc(100% - 8px) no-repeat,
+    conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) bottom/12px 8px repeat-x;
+  mask:linear-gradient(#000 0 0) top/100% calc(100% - 8px) no-repeat,
+    conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) bottom/12px 8px repeat-x;
+}
+.fx-bill-head{display:flex;justify-content:space-between;border-bottom:2px dashed var(--ink);padding-bottom:8px;margin-bottom:8px}
+.fx-bill-empty{color:var(--muted);margin:18px 0;line-height:1.5}
+.fx-bill-lines{list-style:none;margin:0;padding:0}
+.fx-bill-lines li{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:5px 0;animation:fxPrint .25s ease both}
+@keyframes fxPrint{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.fx-bill-name{min-width:0;overflow-wrap:anywhere}
+.fx-bill-qty{display:inline-flex;align-items:center;gap:6px;font-weight:700}
+.fx-bill-qty button{width:22px;height:22px;border:1.5px solid var(--ink);background:var(--yellow);border-radius:6px;line-height:1;padding:0;font-weight:700}
+.fx-bill-amt{min-width:56px;text-align:right;font-weight:700}
+.fx-bill-total{display:flex;justify-content:space-between;align-items:baseline;border-top:2px dashed var(--ink);margin-top:10px;padding-top:10px;font-size:15px}
+.fx-bill-total strong{font-size:22px}
+.fx-bill-actions{display:flex;gap:8px;margin-top:12px;font-family:var(--body)}
+.fx-btn-yellow,.fx-btn-ghost{border:2px solid var(--ink);border-radius:999px;padding:9px 14px;font-weight:700;font-size:13px;color:var(--ink)}
+.fx-bill-actions .fx-btn-yellow{background:var(--yellow);flex:1}
+.fx-bill-actions .fx-btn-ghost{background:#fff}
+.fx-bill-actions button:disabled{opacity:.4}
+.fx-ask{border-top:var(--line);padding:14px 16px;background:#fff}
+.fx-ask-chips{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.fx-ask-chips span{margin:0 4px 0 0;color:var(--ink)}
+.fx-ask-chips button{border:2px solid var(--ink);background:#fff;border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600;color:var(--ink)}
+.fx-ask-chips button:hover{background:var(--paper)}
+.fx-ask-chips button.on{background:var(--blue);color:#fff}
+.fx-ask-answer{margin:12px 0 0;padding:12px;background:var(--paper);border-left:5px solid var(--blue);border-radius:4px;font-size:14px;line-height:1.5;min-height:48px}
+
+/* ── strip ── */
+.fx-strip{background:var(--yellow);border-bottom:var(--line);padding:14px 0}
+.fx-strip .fx-wrap{display:flex;flex-wrap:wrap;justify-content:center;gap:10px 28px;font-weight:700;font-size:15px}
+
+/* ── sections ── */
+.fx-section{padding:96px 0}
+.fx-head{max-width:640px}
+.fx-head h2,.fx-login-copy h2{font:800 clamp(32px,4.2vw,54px)/1.05 var(--display);letter-spacing:-.02em;margin:0 0 16px}
+.fx-head p{font-size:17px;line-height:1.6;color:var(--muted);margin:0 0 20px}
+.fx-link{color:var(--blue);font-weight:700;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:4px}
+.fx-link:hover{color:var(--blue-d)}
+
+/* feature explorer */
+.fx-explorer{margin-top:44px}
+.fx-tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:-2.5px;position:relative;z-index:2}
+.fx-tabs button{
+  padding:12px 20px;border:var(--line);border-bottom:0;border-radius:14px 14px 0 0;background:#E4E2F7;
+  font-weight:700;font-size:15px;color:var(--ink);
+}
+.fx-tabs button:hover{background:#fff}
+.fx-tabs button.on{background:#fff}
+.fx-panel{
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:40px;align-items:center;
+  background:#fff;border:var(--line);border-radius:0 18px 18px 18px;padding:40px;box-shadow:8px 8px 0 var(--ink);
+  animation:fxSwap .3s ease both;
+}
+@keyframes fxSwap{from{opacity:.4;transform:translateY(6px)}to{opacity:1;transform:none}}
+.fx-panel>*{min-width:0}
+.fx-panel-copy h3{font:800 clamp(26px,3vw,38px)/1.1 var(--display);letter-spacing:-.03em;margin:0 0 14px}
+.fx-panel-copy p{font-size:16px;line-height:1.65;color:var(--muted);margin:0 0 18px}
+.fx-panel-copy ul{list-style:none;padding:0;margin:0 0 22px;display:flex;flex-wrap:wrap;gap:8px}
+.fx-panel-copy li{background:var(--paper);border:2px solid var(--ink);border-radius:8px;padding:6px 10px;font-size:13px;font-weight:600}
+.fx-panel-visual{background:var(--paper);border:2px solid var(--ink);border-radius:14px;padding:22px;min-height:290px;display:grid;place-items:center;
+  background-image:radial-gradient(#D3D0F1 1.2px,transparent 1.2px);background-size:16px 16px}
+
+.fx-vis{width:100%}
+.fx-vis-bill{display:flex;flex-direction:column;gap:14px;align-items:center}
+.fx-mini-receipt{width:min(280px,100%);background:#fff;border:2px solid var(--ink);padding:14px;font:13px var(--receipt);box-shadow:var(--hard-sm);transform:rotate(-1.5deg)}
+.fx-mini-receipt b{display:block;border-bottom:2px dashed var(--ink);padding-bottom:6px;margin-bottom:6px}
+.fx-mini-receipt div{display:flex;justify-content:space-between;padding:3px 0}
+.fx-mini-receipt .t{border-top:2px dashed var(--ink);margin-top:6px;padding-top:7px;font-weight:700}
+.fx-pay{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600}
+.fx-pay i{font-style:normal;border:2px solid var(--ink);border-radius:999px;padding:4px 12px;background:#fff}
+.fx-pay i.on{background:var(--green);color:#fff}
+.fx-vis-stock{display:flex;flex-direction:column;gap:14px}
+.fx-stock-row{display:grid;grid-template-columns:120px 1fr 64px;gap:12px;align-items:center;font-size:13px;font-weight:600}
+.fx-meter{height:14px;border:2px solid var(--ink);border-radius:999px;background:#fff;overflow:hidden}
+.fx-meter i{display:block;height:100%;background:var(--green)}
+.fx-meter i.low{background:var(--red)}
+.fx-stock-row em{font-style:normal;color:var(--green);text-align:right}
+.fx-stock-row em.low{color:var(--red)}
+.fx-vis-qr{display:flex;align-items:center;justify-content:center;gap:22px;flex-wrap:wrap}
+.fx-qr-code{display:grid;grid-template-columns:repeat(7,1fr);width:120px;height:120px;padding:8px;background:#fff;border:2px solid var(--ink);gap:2px}
+.fx-qr-code i{background:#EEEDFA}
+.fx-qr-code i.k{background:var(--ink)}
+.fx-phone{width:170px;background:var(--ink);color:#fff;border-radius:22px;padding:16px 14px;border:3px solid var(--ink);box-shadow:var(--hard-sm)}
+.fx-phone b{display:block;font-size:13px;margin-bottom:10px}
+.fx-phone div{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-top:1px solid #3A3870;font-size:12px}
+.fx-phone i{font-style:normal;background:var(--yellow);color:var(--ink);border-radius:6px;padding:2px 8px;font-weight:700}
+.fx-phone u{display:block;text-decoration:none;text-align:center;background:var(--blue);border-radius:8px;padding:8px;margin-top:10px;font-size:12px;font-weight:700}
+.fx-vis-exp p{margin:0 0 14px;font-size:13px;color:var(--muted);font-weight:600}
+.fx-exp-row{margin-bottom:14px;font-size:13px;font-weight:600}
+.fx-exp-row span{display:block;margin-bottom:5px}
+.fx-exp-row i{display:block;height:20px;background:var(--blue);border:2px solid var(--ink);border-radius:6px}
+.fx-exp-row:nth-child(3) i{background:var(--yellow)}
+.fx-exp-row:nth-child(4) i{background:#8E96F5}
+.fx-exp-row:nth-child(5) i{background:var(--red)}
+.fx-vis-ai{display:flex;flex-direction:column;gap:10px}
+.fx-vis-ai .u,.fx-chat .u{align-self:flex-end;max-width:80%;background:var(--blue);color:#fff;padding:10px 14px;border-radius:16px 16px 4px 16px;font-size:14px;font-weight:600}
+.fx-vis-ai .b,.fx-chat .b{max-width:90%;background:#fff;border:2px solid var(--ink);padding:12px 14px;border-radius:16px 16px 16px 4px;font-size:14px;line-height:1.5}
+.fx-vis-ai .b b,.fx-chat .b b{display:block;margin-bottom:3px}
+
+/* workflow */
+.fx-dark{background:var(--ink);color:#fff;border-top:var(--line);border-bottom:var(--line)}
+.fx-dark .fx-head p{color:#C3C0EA}
+.fx-dark .fx-note{font-size:14px;margin:14px 0 0}
+.fx-flow-grid{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:64px;align-items:start}
+.fx-flow-grid>*{min-width:0}
+.fx-steps{list-style:none;margin:0;padding:22px 26px;background:#fff;color:var(--ink);border:3px solid var(--yellow);border-radius:6px;font-family:var(--receipt);box-shadow:8px 8px 0 var(--yellow)}
+.fx-steps li{display:flex;align-items:center;gap:12px;padding:16px 0;border-bottom:2px dashed var(--ink)}
+.fx-steps li:last-child{border-bottom:0}
+.fx-step-n{flex:none;width:34px;height:34px;display:grid;place-items:center;background:var(--ink);color:var(--yellow);border-radius:50%;font:700 15px var(--receipt)}
+.fx-step-body{min-width:0}
+.fx-step-body h3{margin:0;font:700 17px var(--receipt)}
+.fx-step-body p{margin:3px 0 0;font:400 13px/1.45 var(--receipt);color:#4D4A73}
+.fx-leader{flex:1;min-width:12px;border-bottom:2px dotted #8F8CC0;align-self:flex-end;margin-bottom:6px}
+.fx-step-time{flex:none;font-weight:700;font-size:14px}
+
+/* ai */
+.fx-ai-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:64px;align-items:center}
+.fx-ai-grid>*{min-width:0}
+.fx-ask-list{list-style:none;padding:0;margin:0 0 22px;display:flex;flex-direction:column;gap:8px}
+.fx-ask-list li{background:#fff;border:2px solid var(--ink);border-radius:12px;padding:12px 16px;font-weight:600;box-shadow:var(--hard-sm);width:fit-content;max-width:100%}
+.fx-ask-list li:nth-child(2){margin-left:22px}
+.fx-ask-list li:nth-child(3){margin-left:44px}
+.fx-chat{background:#fff;border:var(--line);border-radius:20px;box-shadow:8px 8px 0 var(--ink);overflow:hidden}
+.fx-chat-bar{background:var(--blue);color:#fff;font-weight:700;padding:12px 16px;border-bottom:var(--line)}
+.fx-chat-body{padding:22px;min-height:290px;display:flex;flex-direction:column;justify-content:flex-end;gap:14px;background:var(--paper)}
+.fx-chat-input{background:#fff;border:2px solid var(--ink);border-radius:999px;padding:12px 16px;font-size:14px;color:#77749D}
+
+/* login */
+.fx-login{background:var(--blue);border-top:var(--line);padding:96px 0;
+  background-image:radial-gradient(rgba(255,255,255,.16) 1.4px,transparent 1.4px);background-size:22px 22px}
+.fx-login-grid{display:grid;grid-template-columns:minmax(0,1fr) 450px;gap:72px;align-items:center}
+.fx-login-grid>*{min-width:0}
+.fx-login-copy{color:#fff}
+.fx-login-copy p{font-size:18px;line-height:1.6;color:#DAD9FA;max-width:480px;margin:0 0 24px}
+.fx-login-copy ul{list-style:none;padding:0;margin:0;display:flex;flex-wrap:wrap;gap:8px}
+.fx-login-copy li{background:rgba(255,255,255,.14);border:2px solid #fff;border-radius:999px;padding:7px 14px;font-weight:600;font-size:14px}
+.fx-login-card{background:#fff;border:var(--line);border-radius:20px;padding:30px;box-shadow:8px 8px 0 var(--ink);color:var(--ink)}
+.fx-login-card h3{font:800 30px/1.1 var(--display);letter-spacing:-.03em;margin:0 0 6px}
+.fx-login-sub{margin:0 0 16px;color:var(--muted);font-size:15px}
+.fx-not-you{border:0;background:none;color:var(--blue);font-weight:700;font-size:14px;padding:0;margin:0 0 16px;text-decoration:underline;text-underline-offset:3px}
+.fx-login-card form{display:flex;flex-direction:column;gap:14px}
+.fx-login-card label{display:flex;flex-direction:column;gap:6px;font-weight:700;font-size:14px}
+.fx-login-card input{
+  width:100%;height:48px;border:2px solid var(--ink);border-radius:12px;padding:0 14px;font-size:15px;
+  background:var(--paper);color:var(--ink);
+}
+.fx-login-card input:focus{outline:3px solid var(--blue);outline-offset:2px;background:#fff}
+.fx-login-card input[aria-invalid="true"]{border-color:var(--red)}
+.fx-pw-label{display:flex;justify-content:space-between;align-items:center}
+.fx-pw-label a{color:var(--blue);font-size:13px;font-weight:700}
+.fx-pw-wrap{position:relative;display:block}
+.fx-pw-wrap input{padding-right:70px}
+.fx-pw-wrap button{position:absolute;right:6px;top:6px;height:36px;padding:0 12px;border:2px solid var(--ink);background:var(--yellow);border-radius:8px;font-weight:700;font-size:13px;color:var(--ink)}
+.fx-field-error{color:var(--red);font-size:13px;font-weight:600;margin-top:-8px}
+.fx-error{background:#FFEDEA;border:2px solid var(--red);color:#9C2616;border-radius:10px;padding:10px 12px;font-size:14px;font-weight:600}
+.fx-submit{height:50px;border:var(--line);border-radius:999px;background:var(--yellow);color:var(--ink);font-weight:800;font-size:16px;box-shadow:var(--hard-sm);transition:transform .12s, box-shadow .12s}
+.fx-submit:hover:not(:disabled){transform:translate(-2px,-2px);box-shadow:5px 5px 0 var(--ink)}
+.fx-submit:active:not(:disabled){transform:translate(2px,2px);box-shadow:none}
+.fx-submit:disabled,.fx-google:disabled,.fx-demo-btn:disabled{opacity:.6}
+.fx-or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px;font-weight:600}
+.fx-or span{flex:1;height:2px;background:#DAD8F0}
+.fx-google{height:48px;border:2px solid var(--ink);border-radius:999px;background:#fff;font-weight:700;font-size:15px;color:var(--ink)}
+.fx-google:hover:not(:disabled){background:var(--paper)}
+.fx-demo-btn{border:0;background:none;color:var(--blue);font-weight:700;font-size:14px;padding:4px;text-decoration:underline;text-underline-offset:3px}
+.fx-login-foot{display:flex;justify-content:center;gap:6px;margin-top:18px;font-size:14px;color:var(--muted)}
+.fx-login-foot a{color:var(--blue);font-weight:700}
+
+/* footer */
+.fx-footer{background:var(--ink);padding:36px 0 44px;border-top:var(--line)}
+.fx-footer-in{display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.fx-footer nav{display:flex;flex-wrap:wrap;gap:6px 20px}
+.fx-footer nav a{color:#C3C0EA;text-decoration:none;font-size:14px;font-weight:600}
+.fx-footer nav a:hover{color:var(--yellow)}
+
+/* ── responsive ── */
+@media(max-width:1000px){
+  .fx-hero-grid,.fx-flow-grid,.fx-ai-grid,.fx-login-grid{grid-template-columns:1fr;gap:40px}
+  .fx-panel{grid-template-columns:1fr;padding:28px}
+  .fx-login-grid{gap:40px}
+}
+@media(max-width:700px){
+  .fx-hero{padding:44px 0 56px}
+  .fx-section,.fx-login{padding:64px 0}
+  .fx-counter-grid{grid-template-columns:1fr}
+  .fx-shelf{border-right:0;border-bottom:2px dashed #BDBAE3}
+  .fx-brand small{display:none}
+  .fx-tabs button{padding:10px 12px;font-size:14px}
+  .fx-panel{padding:20px;border-radius:0 14px 14px 14px}
+  .fx-panel-visual{padding:14px}
+  .fx-stock-row{grid-template-columns:96px 1fr 56px;gap:8px}
+  .fx-steps{padding:14px 16px}
+  .fx-steps li{flex-wrap:wrap}
+  .fx-leader{display:none}
+  .fx-step-time{margin-left:46px;font-size:13px}
+  .fx-step-body{flex:1 1 60%}
+  .fx-ask-list li:nth-child(2),.fx-ask-list li:nth-child(3){margin-left:0}
+  .fx-login-card{padding:22px}
+  .fx-counter,.fx-panel,.fx-chat,.fx-login-card{box-shadow:5px 5px 0 var(--ink)}
+}
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *{animation:none !important;transition:none !important}
+}
+`;
