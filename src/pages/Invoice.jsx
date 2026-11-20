@@ -160,10 +160,10 @@ export default function Invoice() {
                 <p style={styles.errorText}>
                     {error || "This entry doesn't exist in the ledger, or it's been removed."}
                 </p>
-                <Link to="/sales" style={styles.errorButton}>
-                    <FiArrowLeft size={18} />
-                    Back to Sales
-                </Link>
+                <Link to="/sales" replace style={styles.errorButton}>
+    <FiArrowLeft size={18} />
+    Back to Sales
+</Link>
             </div>
         );
     }
@@ -175,10 +175,10 @@ export default function Invoice() {
         <div style={styles.page}>
             {/* Action Bar */}
             <div style={styles.actionBar} className="no-print">
-                <Link to="/sales" style={styles.backLink}>
-                    <FiArrowLeft size={18} />
-                    Back to Sales
-                </Link>
+                <Link to="/sales" replace style={styles.backLink}>
+    <FiArrowLeft size={18} />
+    Back to Sales
+</Link>
                 <div style={styles.actionButtons}>
                     <button style={styles.actionButton} onClick={() => setShowPrintOptions(!showPrintOptions)}>
                         <FiPrinter size={18} />
