@@ -1,15 +1,15 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import API from "../services/api";
 
 /*
-  Products / Inventory — Easy Trading Style
+  Products / Inventory
   ------------------------------------------------
-  - Keeps existing product fields and actions.
-  - Uses authenticated API routes without trusting business_id
-    from localStorage. Backend should scope queries using req.businessId.
-  - View / Edit / Delete are retained.
-  - Search, barcode lookup, category filter, stock filter and sorting retained.
+  - Same API routes and actions as before: list, view, edit, delete,
+    barcode lookup, search, category / stock filters, sorting, pagination.
+  - Does not send business_id from localStorage. The backend should scope
+    queries using the authenticated req.businessId.
+  - All CSS is scoped under .pr- so it never leaks into other pages.
 */
 
 const Icons = {
@@ -93,6 +93,8 @@ const Icons = {
   ),
 };
 
+/* ---------- helpers ---------- */
+
 function money(value) {
   return `₹${Number(value || 0).toLocaleString("en-IN", {
     minimumFractionDigits: 2,
@@ -109,15 +111,23 @@ function stockInfo(stock, minStock) {
   const minimum = Number(minStock || 0);
 
   if (qty <= 0) {
-    return { key: "out", label: "Out of stock", short: "OUT", tone: "danger" };
+    return { key: "out", label: "Out of stock", tone: "danger" };
   }
   if (minimum > 0 && qty <= minimum) {
-    return { key: "low", label: "Low stock", short: "LOW", tone: "warning" };
+    return { key: "low", label: "Low stock", tone: "warning" };
   }
   if (minimum > 0 && qty <= minimum * 3) {
-    return { key: "medium", label: "Healthy", short: "OK", tone: "info" };
+    return { key: "medium", label: "Healthy", tone: "info" };
   }
-  return { key: "good", label: "In stock", short: "READY", tone: "success" };
+  return { key: "good", label: "In stock", tone: "success" };
+}
+
+function stockPercent(stock, minStock) {
+  const qty = Number(stock || 0);
+  const minimum = Number(minStock || 0);
+  if (qty <= 0) return 0;
+  if (minimum <= 0) return 100;
+  return Math.max(6, Math.min(100, (qty / (minimum * 3)) * 100));
 }
 
 function expiryInfo(value) {
@@ -136,6 +146,23 @@ function expiryInfo(value) {
   if (days <= 30) return { label: "This month", tone: "warning" };
   return { label: "Good", tone: "success" };
 }
+
+const SORT_OPTIONS = [
+  { value: "product_name", label: "Name" },
+  { value: "selling_price", label: "Selling price" },
+  { value: "stock", label: "Stock" },
+  { value: "category", label: "Category" },
+  { value: "expiry_date", label: "Expiry date" },
+];
+
+const STOCK_TABS = [
+  { key: "all", label: "All products", note: "In your catalog", tone: "blue", icon: "Package" },
+  { key: "in_stock", label: "Healthy stock", note: "Ready to sell", tone: "green", icon: "Check" },
+  { key: "low_stock", label: "Low stock", note: "Needs restocking", tone: "amber", icon: "Alert" },
+  { key: "out_of_stock", label: "Out of stock", note: "Cannot sell now", tone: "red", icon: "Alert" },
+];
+
+/* ---------- component ---------- */
 
 export default function Products() {
   const [products, setProducts] = useState([]);
@@ -156,23 +183,33 @@ export default function Products() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
 
+  const toastTimer = useRef(null);
   const itemsPerPage = 12;
 
   useEffect(() => {
     loadProducts();
+    return () => window.clearTimeout(toastTimer.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [search, selectedCategory, selectedStockStatus]);
 
+  useEffect(() => {
+    if (!showDetails) return undefined;
+    const onKey = (e) => {
+      if (e.key === "Escape") setShowDetails(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showDetails]);
+
   const showMessage = (text, type = "success") => {
     setMessage(text);
     setMessageType(type);
-    window.clearTimeout(showMessage.timer);
-    showMessage.timer = window.setTimeout(() => {
-      setMessage("");
-    }, 3500);
+    window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setMessage(""), 3500);
   };
 
   const loadProducts = async (silent = false) => {
@@ -214,7 +251,7 @@ export default function Products() {
         setShowDetails(false);
         setSelectedProduct(null);
       }
-      showMessage("Product deleted successfully");
+      showMessage("Product deleted");
     } catch (err) {
       console.error("Error deleting product:", err);
       showMessage(
@@ -261,11 +298,7 @@ export default function Products() {
 
   const categories = useMemo(() => {
     return Array.from(
-      new Set(
-        products
-          .map((product) => product.category)
-          .filter(Boolean)
-      )
+      new Set(products.map((product) => product.category).filter(Boolean))
     ).sort((a, b) => String(a).localeCompare(String(b)));
   }, [products]);
 
@@ -288,6 +321,13 @@ export default function Products() {
 
     return { total, low, out, healthy, stockValue };
   }, [products]);
+
+  const tabCounts = {
+    all: stats.total,
+    in_stock: stats.healthy,
+    low_stock: stats.low,
+    out_of_stock: stats.out,
+  };
 
   const filteredProducts = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -379,6 +419,9 @@ export default function Products() {
     );
   };
 
+  const filtersActive =
+    search !== "" || selectedCategory !== "all" || selectedStockStatus !== "all";
+
   const resetFilters = () => {
     setSearch("");
     setBarcodeInput("");
@@ -387,39 +430,47 @@ export default function Products() {
     setCurrentPage(1);
   };
 
+  const pageNumbers = Array.from({ length: Math.min(totalPages, 5) }, (_, index) => {
+    if (totalPages <= 5) return index + 1;
+    if (safePage <= 3) return index + 1;
+    if (safePage >= totalPages - 2) return totalPages - 4 + index;
+    return safePage - 2 + index;
+  });
+
   return (
-    <div className="products-page">
-      <div className="products-shell">
-        <header className="products-topbar">
+    <div className="pr-page">
+      <div className="pr-shell">
+        {/* HEADER */}
+        <header className="pr-header">
           <div>
-            <div className="eyebrow">
-              <span className="live-dot" />
-              INVENTORY CONTROL
-            </div>
             <h1>Products</h1>
-            <p>Manage your stock, pricing and product availability.</p>
+            <p>Manage your stock, pricing and availability.</p>
           </div>
 
-          <div className="topbar-actions">
+          <div className="pr-header-actions">
             <button
-              className="refresh-button"
+              className="pr-btn pr-btn-ghost"
               onClick={() => loadProducts(true)}
               disabled={refreshing}
-              title="Refresh products"
             >
               <Icons.Refresh size={16} />
-              {refreshing ? "Refreshing..." : "Refresh"}
+              {refreshing ? "Refreshing…" : "Refresh"}
             </button>
 
-            <Link className="primary-button" to="/add-product">
-              <Icons.Plus size={18} />
+            <Link className="pr-btn pr-btn-primary" to="/add-product">
+              <Icons.Plus size={17} />
               Add product
             </Link>
           </div>
         </header>
 
         {message && (
-          <div className={`toast ${messageType === "error" ? "toast-error" : "toast-success"}`}>
+          <div
+            className={`pr-toast ${
+              messageType === "error" ? "pr-toast-error" : "pr-toast-success"
+            }`}
+            role="status"
+          >
             <span>{message}</span>
             <button onClick={() => setMessage("")} aria-label="Close message">
               <Icons.Close size={15} />
@@ -427,77 +478,63 @@ export default function Products() {
           </div>
         )}
 
-        <section className="kpi-grid">
-          <div className="kpi-card">
-            <div className="kpi-icon kpi-blue">
-              <Icons.Package size={20} />
-            </div>
+        {/* STOCK VALUE + CLICKABLE STATUS STRIP */}
+        <section className="pr-overview">
+          <div className="pr-value">
             <div>
-              <span className="kpi-label">Total products</span>
-              <strong>{stats.total}</strong>
-              <small>Products in your catalog</small>
+              <span className="pr-value-label">Stock value at cost</span>
+              <strong className="pr-value-amount">{money(stats.stockValue)}</strong>
             </div>
-          </div>
-
-          <div className="kpi-card">
-            <div className="kpi-icon kpi-green">
-              <Icons.Check size={20} />
-            </div>
-            <div>
-              <span className="kpi-label">Healthy stock</span>
-              <strong>{stats.healthy}</strong>
-              <small>Ready to sell</small>
-            </div>
-          </div>
-
-          <div className="kpi-card">
-            <div className="kpi-icon kpi-yellow">
-              <Icons.Alert size={20} />
-            </div>
-            <div>
-              <span className="kpi-label">Low stock</span>
-              <strong>{stats.low}</strong>
-              <small>Needs restocking</small>
-            </div>
-          </div>
-
-          <div className="kpi-card">
-            <div className="kpi-icon kpi-red">
-              <Icons.Alert size={20} />
-            </div>
-            <div>
-              <span className="kpi-label">Out of stock</span>
-              <strong>{stats.out}</strong>
-              <small>Cannot sell now</small>
-            </div>
-          </div>
-        </section>
-
-        <section className="command-panel">
-          <div className="command-heading">
-            <div>
-              <span className="section-kicker">INVENTORY WORKSPACE</span>
-              <h2>Find and manage products</h2>
-            </div>
-            <span className="result-count">
-              {filteredProducts.length} result{filteredProducts.length === 1 ? "" : "s"}
+            <span className="pr-value-note">
+              {stats.total} {stats.total === 1 ? "product" : "products"} ·{" "}
+              {categories.length} {categories.length === 1 ? "category" : "categories"}
             </span>
           </div>
 
-          <div className="command-grid">
-            <label className="search-control">
-              <Icons.Search size={18} />
+          <div className="pr-tabs" role="group" aria-label="Filter by stock status">
+            {STOCK_TABS.map((tab) => {
+              const Icon = Icons[tab.icon];
+              const active = selectedStockStatus === tab.key;
+
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  className={`pr-tab pr-tab-${tab.tone} ${active ? "pr-tab-active" : ""}`}
+                  onClick={() => setSelectedStockStatus(tab.key)}
+                  aria-pressed={active}
+                >
+                  <span className="pr-tab-icon">
+                    <Icon size={18} />
+                  </span>
+                  <span className="pr-tab-text">
+                    <span className="pr-tab-label">{tab.label}</span>
+                    <strong>{tabCounts[tab.key]}</strong>
+                    <span className="pr-tab-note">{tab.note}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* CATALOG */}
+        <section className="pr-card">
+          <div className="pr-toolbar">
+            <label className="pr-field pr-search">
+              <Icons.Search size={17} />
               <input
                 type="search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search product, code or barcode..."
+                placeholder="Search by name, code or barcode"
                 autoComplete="off"
+                aria-label="Search products"
               />
               {search && (
                 <button
                   type="button"
-                  className="input-clear"
+                  className="pr-clear"
                   onClick={() => setSearch("")}
                   aria-label="Clear search"
                 >
@@ -506,27 +543,28 @@ export default function Products() {
               )}
             </label>
 
-            <div className="barcode-control">
-              <Icons.Scan size={18} />
+            <div className="pr-field pr-barcode">
+              <Icons.Scan size={17} />
               <input
                 value={barcodeInput}
                 onChange={(e) => setBarcodeInput(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleBarcodeSearch();
                 }}
-                placeholder="Scan barcode..."
+                placeholder="Scan or type barcode"
                 autoComplete="off"
+                aria-label="Barcode"
               />
               <button type="button" onClick={handleBarcodeSearch}>
-                Scan
+                Find
               </button>
             </div>
 
-            <label className="select-control">
-              <span>Category</span>
+            <label className="pr-field pr-select">
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
+                aria-label="Category"
               >
                 <option value="all">All categories</option>
                 {categories.map((category) => (
@@ -538,95 +576,119 @@ export default function Products() {
               <Icons.Chevron size={15} />
             </label>
 
-            <label className="select-control">
-              <span>Stock</span>
-              <select
-                value={selectedStockStatus}
-                onChange={(e) => setSelectedStockStatus(e.target.value)}
-              >
-                <option value="all">All stock</option>
-                <option value="in_stock">Healthy</option>
-                <option value="low_stock">Low stock</option>
-                <option value="out_of_stock">Out of stock</option>
-              </select>
-              <Icons.Chevron size={15} />
-            </label>
+            <div className="pr-sort">
+              <label className="pr-field pr-select">
+                <select
+                  value={sortField}
+                  onChange={(e) => setSortField(e.target.value)}
+                  aria-label="Sort by"
+                >
+                  {SORT_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      Sort: {o.label}
+                    </option>
+                  ))}
+                </select>
+                <Icons.Chevron size={15} />
+              </label>
 
-            {(search || selectedCategory !== "all" || selectedStockStatus !== "all") && (
-              <button className="reset-button" type="button" onClick={resetFilters}>
-                Reset
+              <button
+                type="button"
+                className="pr-dir"
+                onClick={() =>
+                  setSortDirection((d) => (d === "asc" ? "desc" : "asc"))
+                }
+                aria-label={
+                  sortDirection === "asc" ? "Sorted ascending" : "Sorted descending"
+                }
+                title={sortDirection === "asc" ? "Ascending" : "Descending"}
+              >
+                {sortDirection === "asc" ? (
+                  <Icons.ArrowUp size={16} />
+                ) : (
+                  <Icons.ArrowDown size={16} />
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div className="pr-subbar">
+            <span>
+              {filtersActive
+                ? `${filteredProducts.length} of ${products.length} products`
+                : `${products.length} ${products.length === 1 ? "product" : "products"}`}
+            </span>
+            {filtersActive && (
+              <button type="button" className="pr-link" onClick={resetFilters}>
+                Clear filters
               </button>
             )}
           </div>
-        </section>
-
-        <section className="inventory-card">
-          <div className="inventory-card-header">
-            <div>
-              <span className="section-kicker">CATALOG</span>
-              <h2>All products</h2>
-            </div>
-            <div className="inventory-header-right">
-              <span className="stock-value">
-                Stock value <strong>{money(stats.stockValue)}</strong>
-              </span>
-              <Link to="/add-product" className="small-add">
-                <Icons.Plus size={15} /> Add
-              </Link>
-            </div>
-          </div>
 
           {loading ? (
-            <div className="loading-box">
-              <div className="spinner" />
+            <div className="pr-state" role="status">
+              <div className="pr-spinner" />
               <strong>Loading inventory</strong>
-              <span>Getting your latest products...</span>
+              <p>Getting your latest products…</p>
             </div>
           ) : currentProducts.length === 0 ? (
-            <div className="empty-box">
-              <div className="empty-icon">
-                <Icons.Package size={28} />
+            <div className="pr-state">
+              <div className="pr-state-icon">
+                <Icons.Package size={26} />
               </div>
-              <h3>{products.length === 0 ? "Your catalog is empty" : "No products found"}</h3>
+              <h3>
+                {products.length === 0 ? "Your catalog is empty" : "No products found"}
+              </h3>
               <p>
                 {products.length === 0
                   ? "Add your first product to start billing and tracking stock."
-                  : "Try changing the search or filters."}
+                  : "Try a different search or clear the filters."}
               </p>
               {products.length === 0 ? (
-                <Link to="/add-product" className="primary-button">
+                <Link to="/add-product" className="pr-btn pr-btn-primary">
                   <Icons.Plus size={17} />
                   Add your first product
                 </Link>
               ) : (
-                <button className="secondary-button" onClick={resetFilters}>
+                <button className="pr-btn pr-btn-ghost" onClick={resetFilters}>
                   Clear filters
                 </button>
               )}
             </div>
           ) : (
             <>
-              <div className="table-scroll">
-                <table className="products-table">
+              <div className="pr-table-wrap">
+                <table className="pr-table">
                   <thead>
                     <tr>
-                      <th onClick={() => handleSort("product_name")}>
-                        <span>Product</span>{sortIndicator("product_name")}
+                      <th>
+                        <button type="button" onClick={() => handleSort("product_name")}>
+                          Product {sortIndicator("product_name")}
+                        </button>
                       </th>
-                      <th onClick={() => handleSort("category")}>
-                        <span>Category</span>{sortIndicator("category")}
+                      <th>
+                        <button type="button" onClick={() => handleSort("category")}>
+                          Category {sortIndicator("category")}
+                        </button>
                       </th>
-                      <th onClick={() => handleSort("selling_price")}>
-                        <span>Selling price</span>{sortIndicator("selling_price")}
+                      <th>
+                        <button type="button" onClick={() => handleSort("selling_price")}>
+                          Selling price {sortIndicator("selling_price")}
+                        </button>
                       </th>
-                      <th onClick={() => handleSort("stock")}>
-                        <span>Stock</span>{sortIndicator("stock")}
+                      <th>
+                        <button type="button" onClick={() => handleSort("stock")}>
+                          Stock {sortIndicator("stock")}
+                        </button>
                       </th>
-                      <th onClick={() => handleSort("expiry_date")}>
-                        <span>Expiry</span>{sortIndicator("expiry_date")}
+                      <th>
+                        <button type="button" onClick={() => handleSort("expiry_date")}>
+                          Expiry {sortIndicator("expiry_date")}
+                        </button>
                       </th>
-                      <th>Status</th>
-                      <th className="actions-heading">Actions</th>
+                      <th className="pr-right">
+                        <span className="pr-sr">Actions</span>
+                      </th>
                     </tr>
                   </thead>
 
@@ -639,47 +701,47 @@ export default function Products() {
                       const formattedQuantity = Number.isInteger(quantity)
                         ? quantity
                         : quantity.toFixed(2);
+                      const isActive = product.status === "active";
 
                       return (
                         <tr key={product.id}>
-                          <td>
-                            <div className="product-cell">
+                          <td data-label="Product">
+                            <div className="pr-product">
                               {product.image ? (
                                 <img
                                   src={product.image}
                                   alt=""
-                                  className="product-avatar"
+                                  className="pr-thumb"
                                   onError={(e) => {
                                     e.currentTarget.style.display = "none";
                                   }}
                                 />
                               ) : (
-                                <div className="product-avatar product-avatar-fallback">
+                                <div className="pr-thumb pr-thumb-fallback">
                                   {(product.product_name || "?")[0].toUpperCase()}
                                 </div>
                               )}
 
-                              <div className="product-main">
+                              <div className="pr-product-text">
                                 <strong>{product.product_name || "Unnamed product"}</strong>
-                                <div className="product-meta">
+                                <span className="pr-product-meta">
                                   {product.product_code && <span>{product.product_code}</span>}
                                   {product.barcode && <span>Barcode {product.barcode}</span>}
-                                </div>
+                                  {!isActive && <span className="pr-inactive">Inactive</span>}
+                                </span>
                               </div>
                             </div>
                           </td>
 
-                          <td>
-                            <span className="category-pill">
-                              {product.category || "Other"}
-                            </span>
+                          <td data-label="Category">
+                            <span className="pr-pill">{product.category || "Other"}</span>
                           </td>
 
-                          <td>
-                            <div className="price-cell">
+                          <td data-label="Selling price">
+                            <div className="pr-price">
                               <strong>{money(product.selling_price)}</strong>
                               <span>
-                                / {product.price_per || 1} {unitLabel(product.price_unit)}
+                                per {product.price_per || 1} {unitLabel(product.price_unit)}
                               </span>
                               {Number(product.purchase_price || 0) > 0 && (
                                 <small>Cost {money(product.purchase_price)}</small>
@@ -687,46 +749,44 @@ export default function Products() {
                             </div>
                           </td>
 
-                          <td>
-                            <div className="stock-cell-modern">
-                              <strong>{formattedQuantity}</strong>
-                              <span>{unit}</span>
-                              <span className={`status-chip ${status.tone}`}>
-                                {status.short}
+                          <td data-label="Stock">
+                            <div className="pr-stock">
+                              <div className="pr-stock-top">
+                                <strong>{formattedQuantity}</strong>
+                                <span>{unit}</span>
+                              </div>
+                              <div className={`pr-bar pr-bar-${status.tone}`} aria-hidden="true">
+                                <span
+                                  style={{
+                                    width: `${stockPercent(product.stock, product.min_stock)}%`,
+                                  }}
+                                />
+                              </div>
+                              <span className={`pr-tag pr-tag-${status.tone}`}>
+                                {status.label}
                               </span>
                             </div>
                           </td>
 
-                          <td>
+                          <td data-label="Expiry">
                             {product.expiry_date ? (
-                              <div className="expiry-cell">
+                              <div className="pr-expiry">
                                 <strong>
                                   {new Date(product.expiry_date).toLocaleDateString("en-IN")}
                                 </strong>
-                                <span className={`mini-chip ${expiry?.tone || "success"}`}>
+                                <span className={`pr-tag pr-tag-${expiry?.tone || "success"}`}>
                                   {expiry?.label}
                                 </span>
                               </div>
                             ) : (
-                              <span className="muted">—</span>
+                              <span className="pr-muted">No expiry</span>
                             )}
                           </td>
 
-                          <td>
-                            <span
-                              className={`active-chip ${
-                                product.status === "active" ? "active" : "inactive"
-                              }`}
-                            >
-                              <span />
-                              {product.status === "active" ? "Active" : "Inactive"}
-                            </span>
-                          </td>
-
-                          <td>
-                            <div className="row-actions">
+                          <td className="pr-right pr-actions-cell" data-label="">
+                            <div className="pr-actions">
                               <button
-                                className="icon-action view"
+                                className="pr-icon pr-icon-view"
                                 onClick={() => viewProductDetails(product.id)}
                                 title="View product"
                                 aria-label={`View ${product.product_name}`}
@@ -735,7 +795,7 @@ export default function Products() {
                               </button>
 
                               <Link
-                                className="icon-action edit"
+                                className="pr-icon pr-icon-edit"
                                 to={`/edit-product/${product.id}`}
                                 title="Edit product"
                                 aria-label={`Edit ${product.product_name}`}
@@ -744,7 +804,7 @@ export default function Products() {
                               </Link>
 
                               <button
-                                className="icon-action delete"
+                                className="pr-icon pr-icon-delete"
                                 onClick={() =>
                                   deleteProduct(product.id, product.product_name)
                                 }
@@ -762,14 +822,16 @@ export default function Products() {
                 </table>
               </div>
 
-              <div className="table-footer">
+              <div className="pr-footer">
                 <span>
                   Showing <strong>{startIndex + 1}</strong>–
-                  <strong>{Math.min(startIndex + itemsPerPage, filteredProducts.length)}</strong>{" "}
+                  <strong>
+                    {Math.min(startIndex + itemsPerPage, filteredProducts.length)}
+                  </strong>{" "}
                   of <strong>{filteredProducts.length}</strong>
                 </span>
 
-                <div className="pagination">
+                <div className="pr-pagination">
                   <button
                     onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                     disabled={safePage === 1}
@@ -777,28 +839,16 @@ export default function Products() {
                     Previous
                   </button>
 
-                  {Array.from({ length: Math.min(totalPages, 5) }, (_, index) => {
-                    let page = index + 1;
-
-                    if (totalPages > 5) {
-                      if (safePage <= 3) page = index + 1;
-                      else if (safePage >= totalPages - 2) {
-                        page = totalPages - 4 + index;
-                      } else {
-                        page = safePage - 2 + index;
-                      }
-                    }
-
-                    return (
-                      <button
-                        key={page}
-                        className={safePage === page ? "current" : ""}
-                        onClick={() => setCurrentPage(page)}
-                      >
-                        {page}
-                      </button>
-                    );
-                  })}
+                  {pageNumbers.map((page) => (
+                    <button
+                      key={page}
+                      className={safePage === page ? "pr-current" : ""}
+                      onClick={() => setCurrentPage(page)}
+                      aria-current={safePage === page ? "page" : undefined}
+                    >
+                      {page}
+                    </button>
+                  ))}
 
                   {totalPages > 5 && safePage < totalPages - 2 && (
                     <>
@@ -822,16 +872,57 @@ export default function Products() {
         </section>
       </div>
 
+      {/* DETAILS MODAL */}
       {showDetails && selectedProduct && (
-        <div className="modal-backdrop" onClick={() => setShowDetails(false)}>
-          <div className="product-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-top">
-              <div>
-                <span className="section-kicker">PRODUCT PROFILE</span>
-                <h2>{selectedProduct.product_name}</h2>
+        <div className="pr-backdrop" onClick={() => setShowDetails(false)}>
+          <div
+            className="pr-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label={selectedProduct.product_name}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="pr-modal-top">
+              <div className="pr-modal-hero">
+                {selectedProduct.image ? (
+                  <img
+                    src={selectedProduct.image}
+                    alt=""
+                    className="pr-modal-img"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
+                ) : (
+                  <div className="pr-modal-img pr-thumb-fallback">
+                    {(selectedProduct.product_name || "?")[0].toUpperCase()}
+                  </div>
+                )}
+
+                <div>
+                  <h2>{selectedProduct.product_name}</h2>
+                  <p>
+                    {selectedProduct.product_code
+                      ? `Code ${selectedProduct.product_code}`
+                      : "No product code"}
+                  </p>
+                  <div className="pr-modal-pills">
+                    <span className="pr-pill">{selectedProduct.category || "Other"}</span>
+                    <span
+                      className={`pr-tag ${
+                        selectedProduct.status === "active"
+                          ? "pr-tag-success"
+                          : "pr-tag-muted"
+                      }`}
+                    >
+                      {selectedProduct.status === "active" ? "Active" : "Inactive"}
+                    </span>
+                  </div>
+                </div>
               </div>
+
               <button
-                className="modal-close"
+                className="pr-modal-close"
                 onClick={() => setShowDetails(false)}
                 aria-label="Close"
               >
@@ -839,62 +930,21 @@ export default function Products() {
               </button>
             </div>
 
-            <div className="modal-content">
-              <div className="modal-product-summary">
-                {selectedProduct.image ? (
-                  <img
-                    src={selectedProduct.image}
-                    alt=""
-                    className="modal-image"
-                    onError={(e) => {
-                      e.currentTarget.style.display = "none";
-                    }}
-                  />
-                ) : (
-                  <div className="modal-image modal-image-fallback">
-                    {(selectedProduct.product_name || "?")[0].toUpperCase()}
-                  </div>
-                )}
-
+            <div className="pr-modal-body">
+              <div className="pr-facts">
                 <div>
-                  <h3>{selectedProduct.product_name}</h3>
-                  <p>
-                    {selectedProduct.product_code
-                      ? `Code: ${selectedProduct.product_code}`
-                      : "Product"}
-                  </p>
-
-                  <div className="modal-pills">
-                    <span className="category-pill">
-                      {selectedProduct.category || "Other"}
-                    </span>
-                    <span
-                      className={`active-chip ${
-                        selectedProduct.status === "active" ? "active" : "inactive"
-                      }`}
-                    >
-                      <span />
-                      {selectedProduct.status === "active" ? "Active" : "Inactive"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="detail-cards">
-                <div className="detail-card">
                   <span>Selling price</span>
                   <strong>{money(selectedProduct.selling_price)}</strong>
                   <small>
-                    Per {selectedProduct.price_per || 1}{" "}
+                    per {selectedProduct.price_per || 1}{" "}
                     {unitLabel(selectedProduct.price_unit)}
                   </small>
                 </div>
 
-                <div className="detail-card">
+                <div>
                   <span>Current stock</span>
                   <strong>
-                    {Number(selectedProduct.stock || 0)}{" "}
-                    {unitLabel(selectedProduct.unit)}
+                    {Number(selectedProduct.stock || 0)} {unitLabel(selectedProduct.unit)}
                   </strong>
                   <small>
                     Minimum {selectedProduct.min_stock || 0}{" "}
@@ -902,48 +952,48 @@ export default function Products() {
                   </small>
                 </div>
 
-                <div className="detail-card">
+                <div>
                   <span>Purchase price</span>
                   <strong>{money(selectedProduct.purchase_price)}</strong>
-                  <small>Current recorded cost</small>
+                  <small>Recorded cost</small>
                 </div>
 
-                <div className="detail-card">
+                <div>
                   <span>Tax</span>
                   <strong>{Number(selectedProduct.tax || 0)}%</strong>
-                  <small>Configured tax rate</small>
+                  <small>Configured rate</small>
                 </div>
               </div>
 
-              <div className="detail-list">
+              <dl className="pr-details">
                 <div>
-                  <span>Barcode</span>
-                  <strong>{selectedProduct.barcode || "Not set"}</strong>
+                  <dt>Barcode</dt>
+                  <dd>{selectedProduct.barcode || "Not set"}</dd>
                 </div>
                 <div>
-                  <span>Expiry</span>
-                  <strong>
+                  <dt>Expiry</dt>
+                  <dd>
                     {selectedProduct.expiry_date
                       ? new Date(selectedProduct.expiry_date).toLocaleDateString("en-IN")
                       : "No expiry"}
-                  </strong>
+                  </dd>
                 </div>
                 <div>
-                  <span>Description</span>
-                  <strong>{selectedProduct.description || "No description"}</strong>
+                  <dt>Description</dt>
+                  <dd>{selectedProduct.description || "No description"}</dd>
                 </div>
-              </div>
+              </dl>
             </div>
 
-            <div className="modal-actions">
+            <div className="pr-modal-actions">
               <button
-                className="secondary-button"
+                className="pr-btn pr-btn-ghost"
                 onClick={() => setShowDetails(false)}
               >
                 Close
               </button>
               <Link
-                className="primary-button"
+                className="pr-btn pr-btn-primary"
                 to={`/edit-product/${selectedProduct.id}`}
                 onClick={() => setShowDetails(false)}
               >
@@ -955,1370 +1005,1215 @@ export default function Products() {
         </div>
       )}
 
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap');
+      <Styles />
+    </div>
+  );
+}
 
-        :root {
-          --p-bg: #f6f8fc;
-          --p-card: #ffffff;
-          --p-text: #101828;
-          --p-muted: #64748b;
-          --p-line: #e7edf5;
-          --p-dark: #0f172a;
-          --p-dark-2: #18233a;
-          --p-lime: #b7f000;
-          --p-blue: #3978ff;
-          --p-green: #0f8b83;
-          --p-green-light: #ecfdf5;
-          --p-yellow: #f2a900;
-          --p-red: #ef476f;
-          --p-purple: #7c5cff;
-          --p-teal: #0f8b83;
-          --p-teal-soft: #f0fdfa;
-          --p-teal-border: #c8eee8;
-          --p-radius: 22px;
-          --p-radius-sm: 14px;
-          --p-shadow: 0 10px 30px rgba(15,23,42,.045);
-          --p-shadow-hover: 0 14px 34px rgba(15,23,42,.08);
-          --p-transition: .2s cubic-bezier(.4,0,.2,1);
+/* ====================================================== */
+/* Styles — scoped under .pr- so nothing leaks globally    */
+/* ====================================================== */
+
+function Styles() {
+  return (
+    <style>{`
+      @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
+
+      .pr-page {
+        --ink: #14213d;
+        --ink-soft: #3b4a68;
+        --muted: #6b7794;
+        --line: #e1e6ef;
+        --bg: #eef1f6;
+        --surface: #ffffff;
+        --brand: #1d4ed8;
+        --brand-soft: #e8eefc;
+        --green: #157347;
+        --green-soft: #dff4e8;
+        --amber: #9a5b00;
+        --amber-soft: #fdf0d2;
+        --red: #b3261e;
+        --red-soft: #fbe3e1;
+        --blue: #1d4ed8;
+        --blue-soft: #e8eefc;
+
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: Manrope, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-variant-numeric: tabular-nums;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .pr-page *,
+      .pr-page *::before,
+      .pr-page *::after {
+        box-sizing: border-box;
+      }
+
+      .pr-page h1,
+      .pr-page h2,
+      .pr-page h3,
+      .pr-page p,
+      .pr-page dl,
+      .pr-page dd {
+        margin: 0;
+      }
+
+      .pr-page :focus-visible {
+        outline: 3px solid #93b4ff;
+        outline-offset: 2px;
+      }
+
+      .pr-sr {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+      }
+
+      .pr-shell {
+        width: min(1360px, calc(100% - 40px));
+        margin: 0 auto;
+        padding: 28px 0 64px;
+      }
+
+      /* ---------- header ---------- */
+
+      .pr-header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 20px;
+        margin-bottom: 20px;
+      }
+
+      .pr-header h1 {
+        font-size: clamp(28px, 4vw, 36px);
+        font-weight: 800;
+        letter-spacing: -1px;
+      }
+
+      .pr-header p {
+        margin-top: 6px;
+        font-size: 14px;
+        color: var(--muted);
+      }
+
+      .pr-header-actions {
+        display: flex;
+        gap: 10px;
+      }
+
+      .pr-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 42px;
+        padding: 0 16px;
+        border-radius: 11px;
+        border: 1px solid transparent;
+        font: 700 13px/1 Manrope, inherit;
+        text-decoration: none;
+        white-space: nowrap;
+        cursor: pointer;
+        transition: background 0.15s, border-color 0.15s, color 0.15s;
+      }
+
+      .pr-btn:disabled {
+        opacity: 0.6;
+        cursor: wait;
+      }
+
+      .pr-btn-primary {
+        background: var(--ink);
+        color: #fff;
+      }
+
+      .pr-btn-primary:hover {
+        background: #0c1529;
+      }
+
+      .pr-btn-ghost {
+        background: var(--surface);
+        color: var(--ink-soft);
+        border-color: var(--line);
+      }
+
+      .pr-btn-ghost:hover:not(:disabled) {
+        border-color: #c5cddd;
+        color: var(--ink);
+      }
+
+      /* ---------- toast ---------- */
+
+      .pr-toast {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 16px;
+        padding: 12px 16px;
+        border-radius: 12px;
+        border: 1px solid;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .pr-toast-success {
+        background: var(--green-soft);
+        border-color: #b6e3c9;
+        color: var(--green);
+      }
+
+      .pr-toast-error {
+        background: var(--red-soft);
+        border-color: #f2c2be;
+        color: var(--red);
+      }
+
+      .pr-toast button {
+        display: flex;
+        padding: 4px;
+        border: 0;
+        border-radius: 6px;
+        background: transparent;
+        color: inherit;
+        cursor: pointer;
+      }
+
+      /* ---------- overview ---------- */
+
+      .pr-overview {
+        margin-bottom: 20px;
+        border-radius: 20px;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        background: var(--surface);
+      }
+
+      .pr-value {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+        padding: 24px 28px;
+        background: var(--ink);
+        color: #fff;
+      }
+
+      .pr-value-label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        color: #b8c3dd;
+      }
+
+      .pr-value-amount {
+        display: block;
+        margin-top: 6px;
+        font-size: clamp(28px, 4vw, 38px);
+        font-weight: 800;
+        letter-spacing: -1px;
+        color: #f6c453;
+      }
+
+      .pr-value-note {
+        font-size: 13px;
+        font-weight: 600;
+        color: #b8c3dd;
+      }
+
+      .pr-tabs {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+      }
+
+      .pr-tab {
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+        padding: 18px 22px;
+        border: 0;
+        border-right: 1px solid var(--line);
+        border-bottom: 3px solid transparent;
+        background: var(--surface);
+        color: inherit;
+        font: inherit;
+        text-align: left;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+
+      .pr-tab:last-child {
+        border-right: 0;
+      }
+
+      .pr-tab:hover {
+        background: #f8f9fc;
+      }
+
+      .pr-tab-active {
+        background: #f8f9fc;
+      }
+
+      .pr-tab-blue.pr-tab-active { border-bottom-color: var(--blue); }
+      .pr-tab-green.pr-tab-active { border-bottom-color: var(--green); }
+      .pr-tab-amber.pr-tab-active { border-bottom-color: #d99100; }
+      .pr-tab-red.pr-tab-active { border-bottom-color: var(--red); }
+
+      .pr-tab-icon {
+        flex: none;
+        width: 40px;
+        height: 40px;
+        display: grid;
+        place-items: center;
+        border-radius: 12px;
+      }
+
+      .pr-tab-blue .pr-tab-icon { background: var(--blue-soft); color: var(--blue); }
+      .pr-tab-green .pr-tab-icon { background: var(--green-soft); color: var(--green); }
+      .pr-tab-amber .pr-tab-icon { background: var(--amber-soft); color: var(--amber); }
+      .pr-tab-red .pr-tab-icon { background: var(--red-soft); color: var(--red); }
+
+      .pr-tab-text {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+      }
+
+      .pr-tab-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--muted);
+      }
+
+      .pr-tab-text strong {
+        font-size: 24px;
+        font-weight: 800;
+        letter-spacing: -0.6px;
+        line-height: 1.15;
+      }
+
+      .pr-tab-note {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      /* ---------- card + toolbar ---------- */
+
+      .pr-card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        overflow: hidden;
+      }
+
+      .pr-toolbar {
+        display: grid;
+        grid-template-columns: minmax(220px, 1.6fr) minmax(200px, 1fr) 190px auto;
+        gap: 12px;
+        padding: 20px 24px 14px;
+      }
+
+      .pr-field {
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        height: 44px;
+        padding: 0 12px;
+        border: 1px solid var(--line);
+        border-radius: 11px;
+        background: #f8f9fc;
+        color: var(--muted);
+        transition: background 0.15s, border-color 0.15s;
+      }
+
+      .pr-field:focus-within {
+        background: #fff;
+        border-color: #93b4ff;
+      }
+
+      .pr-field input,
+      .pr-field select {
+        width: 100%;
+        min-width: 0;
+        height: 100%;
+        border: 0;
+        outline: 0;
+        background: transparent;
+        color: var(--ink);
+        font: 600 13px Manrope, inherit;
+      }
+
+      .pr-field input::placeholder {
+        color: #8c97b0;
+        font-weight: 500;
+      }
+
+      .pr-select select {
+        appearance: none;
+        padding-right: 22px;
+        cursor: pointer;
+      }
+
+      .pr-select svg {
+        position: absolute;
+        right: 12px;
+        pointer-events: none;
+      }
+
+      .pr-clear {
+        display: flex;
+        padding: 4px;
+        border: 0;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+      }
+
+      .pr-barcode {
+        padding-right: 0;
+        overflow: hidden;
+      }
+
+      .pr-barcode button {
+        flex: none;
+        height: 100%;
+        padding: 0 16px;
+        border: 0;
+        border-left: 1px solid var(--line);
+        background: var(--ink);
+        color: #fff;
+        font: 700 12px Manrope, inherit;
+        cursor: pointer;
+      }
+
+      .pr-barcode button:hover {
+        background: #0c1529;
+      }
+
+      .pr-sort {
+        display: flex;
+        gap: 8px;
+      }
+
+      .pr-sort .pr-field {
+        min-width: 170px;
+      }
+
+      .pr-dir {
+        flex: none;
+        width: 44px;
+        height: 44px;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--line);
+        border-radius: 11px;
+        background: #fff;
+        color: var(--ink-soft);
+        cursor: pointer;
+      }
+
+      .pr-dir:hover {
+        border-color: #c5cddd;
+        color: var(--brand);
+      }
+
+      .pr-subbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 0 24px 14px;
+        border-bottom: 1px solid var(--line);
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--muted);
+      }
+
+      .pr-link {
+        border: 0;
+        background: none;
+        color: var(--brand);
+        font: 700 13px Manrope, inherit;
+        cursor: pointer;
+      }
+
+      .pr-link:hover {
+        text-decoration: underline;
+      }
+
+      /* ---------- table ---------- */
+
+      .pr-table-wrap {
+        overflow-x: auto;
+      }
+
+      .pr-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 980px;
+      }
+
+      .pr-table th {
+        padding: 0 20px;
+        height: 46px;
+        text-align: left;
+        background: #f8f9fc;
+        border-bottom: 1px solid var(--line);
+        white-space: nowrap;
+      }
+
+      .pr-table th button {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 0;
+        border: 0;
+        background: none;
+        color: var(--muted);
+        font: 700 12px Manrope, inherit;
+        cursor: pointer;
+      }
+
+      .pr-table th button:hover {
+        color: var(--ink);
+      }
+
+      .pr-table td {
+        padding: 16px 20px;
+        border-bottom: 1px solid #eef1f6;
+        vertical-align: middle;
+        font-size: 13px;
+        color: var(--ink-soft);
+      }
+
+      .pr-table tbody tr:last-child td {
+        border-bottom: 0;
+      }
+
+      .pr-table tbody tr:hover {
+        background: #f8f9fc;
+      }
+
+      .pr-right {
+        text-align: right !important;
+      }
+
+      .pr-product {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 240px;
+      }
+
+      .pr-thumb {
+        flex: none;
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        object-fit: cover;
+        border: 1px solid var(--line);
+        background: #f8f9fc;
+      }
+
+      .pr-thumb-fallback {
+        display: grid;
+        place-items: center;
+        background: #f6c453;
+        border-color: #f6c453;
+        color: var(--ink);
+        font-size: 16px;
+        font-weight: 800;
+      }
+
+      .pr-product-text {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 0;
+      }
+
+      .pr-product-text strong {
+        max-width: 280px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 14px;
+        font-weight: 800;
+        color: var(--ink);
+      }
+
+      .pr-product-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 12px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .pr-inactive {
+        color: var(--red);
+        font-weight: 700;
+      }
+
+      .pr-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 5px 11px;
+        border-radius: 999px;
+        background: #eef1f6;
+        color: var(--ink-soft);
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      .pr-price {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 120px;
+      }
+
+      .pr-price strong {
+        font-size: 15px;
+        font-weight: 800;
+        color: var(--ink);
+      }
+
+      .pr-price span,
+      .pr-price small {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .pr-stock {
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+        min-width: 130px;
+      }
+
+      .pr-stock-top {
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+      }
+
+      .pr-stock-top strong {
+        font-size: 16px;
+        font-weight: 800;
+        color: var(--ink);
+      }
+
+      .pr-stock-top span {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--muted);
+      }
+
+      .pr-bar {
+        height: 6px;
+        border-radius: 999px;
+        background: #e6eaf3;
+        overflow: hidden;
+      }
+
+      .pr-bar span {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: currentColor;
+      }
+
+      .pr-bar-success { color: #2f9e6b; }
+      .pr-bar-info { color: #3b6fe0; }
+      .pr-bar-warning { color: #e0a000; }
+      .pr-bar-danger { color: #d64545; }
+
+      .pr-tag {
+        display: inline-flex;
+        align-items: center;
+        width: fit-content;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      .pr-tag-success { background: var(--green-soft); color: var(--green); }
+      .pr-tag-info { background: var(--blue-soft); color: var(--blue); }
+      .pr-tag-warning { background: var(--amber-soft); color: var(--amber); }
+      .pr-tag-danger { background: var(--red-soft); color: var(--red); }
+      .pr-tag-muted { background: #eef1f6; color: var(--muted); }
+
+      .pr-expiry {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        align-items: flex-start;
+      }
+
+      .pr-expiry strong {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--ink);
+      }
+
+      .pr-muted {
+        color: #9aa5bd;
+        font-size: 13px;
+      }
+
+      /* ---------- row actions ---------- */
+
+      .pr-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 6px;
+      }
+
+      .pr-icon {
+        width: 36px;
+        height: 36px;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: #fff;
+        color: var(--ink-soft);
+        text-decoration: none;
+        cursor: pointer;
+        transition: background 0.15s, color 0.15s, border-color 0.15s;
+      }
+
+      .pr-icon-view:hover { background: var(--blue-soft); color: var(--blue); border-color: #c4d4f8; }
+      .pr-icon-edit:hover { background: var(--green-soft); color: var(--green); border-color: #b6e3c9; }
+      .pr-icon-delete:hover { background: var(--red-soft); color: var(--red); border-color: #f2c2be; }
+
+      /* ---------- footer ---------- */
+
+      .pr-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 14px;
+        padding: 14px 24px;
+        border-top: 1px solid var(--line);
+        background: #f8f9fc;
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .pr-footer strong {
+        color: var(--ink);
+        font-weight: 800;
+      }
+
+      .pr-pagination {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+
+      .pr-pagination button {
+        min-width: 34px;
+        height: 34px;
+        padding: 0 10px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: #fff;
+        color: var(--ink-soft);
+        font: 700 12px Manrope, inherit;
+        cursor: pointer;
+      }
+
+      .pr-pagination button:hover:not(:disabled) {
+        border-color: #c5cddd;
+      }
+
+      .pr-pagination button.pr-current {
+        background: var(--ink);
+        border-color: var(--ink);
+        color: #fff;
+      }
+
+      .pr-pagination button:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+
+      .pr-pagination span {
+        padding: 0 2px;
+      }
+
+      /* ---------- loading / empty ---------- */
+
+      .pr-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 340px;
+        padding: 48px 24px;
+        text-align: center;
+      }
+
+      .pr-state h3 {
+        font-size: 19px;
+        font-weight: 800;
+      }
+
+      .pr-state strong {
+        font-size: 15px;
+        font-weight: 800;
+      }
+
+      .pr-state p {
+        max-width: 360px;
+        margin-top: 6px;
+        font-size: 14px;
+        line-height: 1.5;
+        color: var(--muted);
+      }
+
+      .pr-state .pr-btn {
+        margin-top: 18px;
+      }
+
+      .pr-state-icon {
+        width: 62px;
+        height: 62px;
+        display: grid;
+        place-items: center;
+        margin-bottom: 16px;
+        border-radius: 20px;
+        background: #e6eaf3;
+        color: var(--muted);
+      }
+
+      .pr-spinner {
+        width: 38px;
+        height: 38px;
+        margin-bottom: 14px;
+        border: 4px solid #dbe1ee;
+        border-top-color: var(--brand);
+        border-radius: 50%;
+        animation: pr-spin 0.8s linear infinite;
+      }
+
+      @keyframes pr-spin {
+        to { transform: rotate(360deg); }
+      }
+
+      /* ---------- modal ---------- */
+
+      .pr-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 2000;
+        display: grid;
+        place-items: center;
+        padding: 20px;
+        background: rgba(10, 18, 36, 0.6);
+        backdrop-filter: blur(6px);
+      }
+
+      .pr-modal {
+        width: min(740px, 100%);
+        max-height: min(860px, 92vh);
+        overflow: auto;
+        background: #fff;
+        border-radius: 22px;
+        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.3);
+      }
+
+      .pr-modal-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 24px;
+        background: var(--ink);
+        color: #fff;
+      }
+
+      .pr-modal-hero {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        min-width: 0;
+      }
+
+      .pr-modal-img {
+        flex: none;
+        width: 76px;
+        height: 76px;
+        border-radius: 18px;
+        object-fit: cover;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        font-size: 28px;
+      }
+
+      .pr-modal-hero h2 {
+        font-size: 22px;
+        font-weight: 800;
+        letter-spacing: -0.4px;
+        overflow-wrap: anywhere;
+      }
+
+      .pr-modal-hero p {
+        margin-top: 4px;
+        font-size: 13px;
+        color: #b8c3dd;
+      }
+
+      .pr-modal-pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 12px;
+      }
+
+      .pr-modal-close {
+        flex: none;
+        width: 38px;
+        height: 38px;
+        display: grid;
+        place-items: center;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 11px;
+        background: rgba(255, 255, 255, 0.08);
+        color: #fff;
+        cursor: pointer;
+      }
+
+      .pr-modal-close:hover {
+        background: rgba(255, 255, 255, 0.16);
+      }
+
+      .pr-modal-body {
+        padding: 22px 24px;
+      }
+
+      .pr-facts {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        overflow: hidden;
+      }
+
+      .pr-facts > div {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 16px;
+        border-right: 1px solid var(--line);
+      }
+
+      .pr-facts > div:last-child {
+        border-right: 0;
+      }
+
+      .pr-facts span {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--muted);
+      }
+
+      .pr-facts strong {
+        font-size: 17px;
+        font-weight: 800;
+        letter-spacing: -0.3px;
+        color: var(--ink);
+      }
+
+      .pr-facts small {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .pr-details {
+        margin-top: 16px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        overflow: hidden;
+      }
+
+      .pr-details > div {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 13px 16px;
+        border-bottom: 1px solid #eef1f6;
+      }
+
+      .pr-details > div:last-child {
+        border-bottom: 0;
+      }
+
+      .pr-details dt {
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .pr-details dd {
+        max-width: 70%;
+        font-size: 13px;
+        font-weight: 700;
+        text-align: right;
+        overflow-wrap: anywhere;
+        color: var(--ink);
+      }
+
+      .pr-modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        padding: 16px 24px;
+        border-top: 1px solid var(--line);
+        background: #f8f9fc;
+      }
+
+      /* ---------- responsive ---------- */
+
+      @media (prefers-reduced-motion: reduce) {
+        .pr-spinner { animation-duration: 2s; }
+        .pr-page * { transition: none !important; }
+      }
+
+      @media (max-width: 1100px) {
+        .pr-toolbar {
+          grid-template-columns: 1fr 1fr;
         }
 
-        * {
-          box-sizing: border-box;
+        .pr-search {
+          grid-column: span 2;
+        }
+      }
+
+      @media (max-width: 900px) {
+        .pr-tabs {
+          grid-template-columns: repeat(2, 1fr);
         }
 
-        .products-page {
-          min-height: 100vh;
-          background:
-            radial-gradient(circle at 88% 2%, rgba(14,165,164,.07), transparent 25%),
-            radial-gradient(circle at 8% 4%, rgba(99,102,241,.045), transparent 24%),
-            var(--p-bg);
-          color: var(--p-text);
-          font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-          -webkit-font-smoothing: antialiased;
+        .pr-tab:nth-child(2) {
+          border-right: 0;
         }
 
-        .products-shell {
-          width: min(1460px, calc(100% - 40px));
-          margin: 0 auto;
-          padding: 28px 0 70px;
+        .pr-tab:nth-child(-n + 2) {
+          border-bottom: 1px solid var(--line);
         }
 
-        /* ---------- Topbar ---------- */
-        .products-topbar {
-          display: flex;
-          align-items: flex-end;
-          justify-content: space-between;
-          gap: 24px;
-          margin-bottom: 26px;
+        .pr-facts {
+          grid-template-columns: repeat(2, 1fr);
         }
 
-        .eyebrow,
-        .section-kicker {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          color: #69768b;
-          font-size: 10px;
-          font-weight: 800;
-          letter-spacing: 1.6px;
-          text-transform: uppercase;
+        .pr-facts > div:nth-child(2) {
+          border-right: 0;
         }
 
-        .live-dot {
-          width: 7px;
-          height: 7px;
-          border-radius: 50%;
-          background: var(--p-green);
-          box-shadow: 0 0 0 4px rgba(15,139,131,.12);
-          animation: livePulse 2s infinite;
+        .pr-facts > div:nth-child(-n + 2) {
+          border-bottom: 1px solid var(--line);
+        }
+      }
+
+      /* Table becomes stacked product cards on phones */
+      @media (max-width: 720px) {
+        .pr-shell {
+          width: calc(100% - 24px);
+          padding-top: 18px;
         }
 
-        @keyframes livePulse {
-          0%, 100% { box-shadow: 0 0 0 4px rgba(15,139,131,.12); }
-          50% { box-shadow: 0 0 0 6px rgba(15,139,131,.06); }
+        .pr-header {
+          flex-direction: column;
+          align-items: stretch;
         }
 
-        .products-topbar h1 {
-          margin: 8px 0 6px;
-          font-size: clamp(32px, 4vw, 44px);
-          line-height: 1;
-          letter-spacing: -1.8px;
-          font-weight: 800;
-          color: #101828;
+        .pr-header-actions > * {
+          flex: 1;
         }
 
-        .products-topbar p {
-          margin: 0;
-          color: var(--p-muted);
-          font-size: 14px;
-          letter-spacing: -.1px;
+        .pr-value {
+          padding: 20px;
         }
 
-        .topbar-actions {
-          display: flex;
-          gap: 10px;
-          align-items: center;
-          flex-shrink: 0;
+        .pr-toolbar {
+          grid-template-columns: 1fr;
+          padding: 16px;
         }
 
-        /* ---------- Buttons ---------- */
-        .primary-button,
-        .refresh-button,
-        .secondary-button,
-        .small-add {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          border-radius: 12px;
-          min-height: 44px;
-          padding: 0 18px;
-          font: inherit;
-          font-size: 13px;
-          font-weight: 750;
-          text-decoration: none;
-          cursor: pointer;
-          transition: var(--p-transition);
-          white-space: nowrap;
-          border: 1px solid transparent;
+        .pr-search {
+          grid-column: auto;
         }
 
-        .primary-button {
-          background: var(--p-green);
-          color: #ffffff;
-          border-color: var(--p-green);
-          box-shadow: 0 6px 16px rgba(15,139,131,.22);
-        }
-
-        .primary-button:hover {
-          background: #0b726c;
-          transform: translateY(-1px);
-          box-shadow: 0 10px 24px rgba(15,139,131,.28);
-        }
-
-        .refresh-button,
-        .secondary-button {
-          background: #ffffff;
-          color: #253047;
-          border: 1px solid var(--p-line);
-          box-shadow: 0 2px 6px rgba(15,23,42,.03);
-        }
-
-        .refresh-button:hover,
-        .secondary-button:hover {
-          border-color: #cbd5e1;
-          background: #fafbfd;
-          transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(15,23,42,.06);
-        }
-
-        .refresh-button:disabled {
-          opacity: .6;
-          cursor: wait;
-        }
-
-        /* ---------- Toast ---------- */
-        .toast {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 12px;
-          padding: 14px 18px;
-          margin-bottom: 20px;
-          border-radius: var(--p-radius-sm);
-          font-size: 13px;
-          font-weight: 650;
-          border: 1px solid;
-          animation: toastSlide .25s ease;
-        }
-
-        @keyframes toastSlide {
-          from { opacity: 0; transform: translateY(-8px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-
-        .toast-success {
-          color: #087a55;
-          background: var(--p-green-light);
-          border-color: #bbf7d0;
-        }
-
-        .toast-error {
-          color: #b42346;
-          background: #fff0f3;
-          border-color: #ffd0da;
-        }
-
-        .toast button {
-          border: 0;
-          background: transparent;
-          color: currentColor;
-          cursor: pointer;
-          padding: 4px;
-          border-radius: 6px;
-          display: flex;
-          transition: .15s ease;
-        }
-
-        .toast button:hover {
-          background: rgba(0,0,0,.06);
-        }
-
-        /* ---------- KPI ---------- */
-        .kpi-grid {
-          display: grid;
-          grid-template-columns: repeat(4, minmax(0, 1fr));
-          gap: 16px;
-          margin-bottom: 22px;
-        }
-
-        .kpi-card {
-          min-height: 122px;
-          padding: 22px;
-          background: var(--p-card);
-          border: 1px solid var(--p-line);
-          border-radius: var(--p-radius);
-          box-shadow: var(--p-shadow);
-          display: flex;
-          gap: 16px;
-          align-items: flex-start;
-          transition: transform var(--p-transition), box-shadow var(--p-transition);
-          position: relative;
-          overflow: hidden;
-        }
-
-        .kpi-card::after {
-          content: '';
-          position: absolute;
-          right: -20px;
-          top: -20px;
-          width: 100px;
-          height: 100px;
-          border-radius: 50%;
-          opacity: .04;
-          background: currentColor;
-          pointer-events: none;
-        }
-
-        .kpi-card:hover {
-          transform: translateY(-3px);
-          box-shadow: var(--p-shadow-hover);
-        }
-
-        .kpi-icon {
-          width: 46px;
-          height: 46px;
-          border-radius: 14px;
-          display: grid;
-          place-items: center;
-          flex: 0 0 auto;
-          transition: transform .2s ease;
-        }
-
-        .kpi-card:hover .kpi-icon {
-          transform: scale(1.06);
-        }
-
-        .kpi-blue { color: var(--p-blue); background: #eaf1ff; }
-        .kpi-green { color: var(--p-green); background: #e6faf3; }
-        .kpi-yellow { color: var(--p-yellow); background: #fff6dc; }
-        .kpi-red { color: var(--p-red); background: #fff0f3; }
-
-        .kpi-label {
-          display: block;
-          color: #758197;
-          font-size: 11px;
-          font-weight: 650;
-          margin-bottom: 6px;
-          text-transform: uppercase;
-          letter-spacing: .4px;
-        }
-
-        .kpi-card strong {
-          display: block;
-          font-size: 28px;
-          line-height: 1.1;
-          letter-spacing: -.8px;
-          color: #101828;
-        }
-
-        .kpi-card small {
-          display: block;
-          color: #94a3b8;
-          font-size: 11px;
-          margin-top: 6px;
-        }
-
-        /* ---------- Command panel ---------- */
-        .command-panel {
-          background: #ffffff;
-          border: 1px solid var(--p-line);
-          border-radius: var(--p-radius);
-          padding: 24px;
-          box-shadow: var(--p-shadow);
-          margin-bottom: 22px;
-        }
-
-        .command-heading {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 16px;
-          margin-bottom: 20px;
-        }
-
-        .command-panel .section-kicker {
-          color: var(--p-teal);
-        }
-
-        .command-heading h2,
-        .inventory-card-header h2 {
-          margin: 6px 0 0;
-          font-size: 21px;
-          font-weight: 750;
-          letter-spacing: -.5px;
-          color: #172033;
-        }
-
-        .result-count {
-          background: var(--p-teal-soft);
-          color: #0f766e;
-          border: 1px solid var(--p-teal-border);
-          border-radius: 999px;
-          padding: 8px 14px;
-          font-size: 12px;
-          font-weight: 700;
-          white-space: nowrap;
-        }
-
-        .command-grid {
-          display: grid;
-          grid-template-columns: minmax(240px, 1.7fr) minmax(220px, 1.15fr) 165px 165px auto;
-          gap: 12px;
-          align-items: center;
-        }
-
-        .search-control,
-        .barcode-control,
-        .select-control {
-          height: 50px;
-          background: #f8fafc;
-          border: 1px solid #e3eaf3;
-          border-radius: 13px;
-          display: flex;
-          align-items: center;
-          position: relative;
-          transition: border-color var(--p-transition), box-shadow var(--p-transition), background var(--p-transition);
-        }
-
-        .search-control:focus-within,
-        .barcode-control:focus-within,
-        .select-control:focus-within {
-          background: #ffffff;
-          border-color: #67c9bd;
-          box-shadow: 0 0 0 3px rgba(15,139,131,.10);
-        }
-
-        .search-control {
-          padding: 0 14px;
-          gap: 10px;
-          color: #94a3b8;
-        }
-
-        .search-control input,
-        .barcode-control input {
-          width: 100%;
+        .pr-sort .pr-field {
+          flex: 1;
           min-width: 0;
-          border: 0;
-          outline: 0;
-          background: transparent;
-          color: #172033;
-          font: inherit;
-          font-size: 13px;
-          font-weight: 500;
         }
 
-        .search-control input::placeholder,
-        .barcode-control input::placeholder {
-          color: #94a3b8;
-          font-weight: 400;
+        .pr-subbar {
+          padding: 0 16px 12px;
         }
 
-        .input-clear {
-          border: 0;
-          background: transparent;
-          color: #94a3b8;
-          cursor: pointer;
-          padding: 5px;
-          border-radius: 6px;
-          display: flex;
-          transition: .15s ease;
+        .pr-table {
+          min-width: 0;
         }
 
-        .input-clear:hover {
-          background: #eef2f7;
-          color: #475569;
-        }
-
-        .barcode-control {
-          padding-left: 14px;
-          gap: 9px;
-          color: #94a3b8;
-        }
-
-        .barcode-control button {
-          height: 100%;
-          border: 0;
-          border-left: 1px solid #e3eaf3;
-          background: var(--p-green);
-          color: #ffffff;
-          padding: 0 16px;
-          font: inherit;
-          font-size: 12px;
-          font-weight: 750;
-          cursor: pointer;
-          border-radius: 0 12px 12px 0;
-          transition: background .18s ease;
-          letter-spacing: .2px;
-        }
-
-        .barcode-control button:hover {
-          background: #0b726c;
-        }
-
-        .select-control {
-          padding: 0 12px;
-          gap: 5px;
-          color: #94a3b8;
-        }
-
-        .select-control span {
+        .pr-table thead {
           position: absolute;
-          top: 6px;
-          left: 12px;
-          font-size: 8px;
-          text-transform: uppercase;
-          letter-spacing: 1.1px;
-          font-weight: 800;
-          color: #64748b;
-        }
-
-        .select-control select {
-          width: 100%;
-          height: 100%;
-          padding: 14px 20px 0 0;
-          border: 0;
-          outline: 0;
-          background: transparent;
-          color: #172033;
-          appearance: none;
-          font: inherit;
-          font-size: 12px;
-          font-weight: 650;
-          cursor: pointer;
-        }
-
-        .select-control svg {
-          position: absolute;
-          right: 9px;
-          bottom: 12px;
-          pointer-events: none;
-          color: #94a3b8;
-        }
-
-        .select-control option {
-          color: #111827;
-          background: white;
-          font-weight: 500;
-        }
-
-        .reset-button {
-          height: 50px;
-          padding: 0 16px;
-          border-radius: 12px;
-          border: 1px solid #e3eaf3;
-          color: #64748b;
-          background: #ffffff;
-          cursor: pointer;
-          font: inherit;
-          font-size: 12px;
-          font-weight: 700;
-          transition: .18s ease;
-        }
-
-        .reset-button:hover {
-          background: #f1f5f9;
-          color: #334155;
-          border-color: #cbd5e1;
-        }
-
-        /* ---------- Inventory card ---------- */
-        .inventory-card {
-          background: #ffffff;
-          border: 1px solid var(--p-line);
-          border-radius: var(--p-radius);
+          width: 1px;
+          height: 1px;
           overflow: hidden;
-          box-shadow: var(--p-shadow);
+          clip: rect(0 0 0 0);
         }
 
-        .inventory-card-header {
-          min-height: 82px;
-          padding: 22px 24px;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          gap: 20px;
-          border-bottom: 1px solid #edf1f6;
-        }
-
-        .inventory-card-header .section-kicker {
-          color: #8994a7;
-        }
-
-        .inventory-header-right {
-          display: flex;
-          align-items: center;
-          gap: 16px;
-        }
-
-        .stock-value {
-          color: #64748b;
-          font-size: 12px;
-          white-space: nowrap;
-        }
-
-        .stock-value strong {
-          color: #172033;
-          font-family: "JetBrains Mono", monospace;
-          font-size: 14px;
-          margin-left: 6px;
-        }
-
-        .small-add {
-          min-height: 40px;
-          padding: 0 14px;
-          background: var(--p-green-light);
-          color: #087a55;
-          border: 1px solid #bbf7d0;
-          border-radius: 11px;
-          font-size: 12px;
-        }
-
-        .small-add:hover {
-          background: #d9fbe8;
-          transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(15,139,131,.12);
-        }
-
-        /* ---------- Table ---------- */
-        .table-scroll {
+        .pr-table,
+        .pr-table tbody,
+        .pr-table tr,
+        .pr-table td {
+          display: block;
           width: 100%;
-          overflow-x: auto;
-          scrollbar-width: thin;
         }
 
-        .products-table {
-          width: 100%;
-          border-collapse: collapse;
-          min-width: 1040px;
+        .pr-table tbody tr {
+          padding: 14px 16px;
+          border-bottom: 1px solid var(--line);
         }
 
-        .products-table thead {
-          background: #f8fafc;
-        }
-
-        .products-table th {
-          height: 50px;
-          padding: 0 18px;
-          text-align: left;
-          color: #64748b;
-          font-size: 10px;
-          text-transform: uppercase;
-          letter-spacing: 1.1px;
-          font-weight: 800;
-          border-bottom: 1px solid #e9eef5;
-          white-space: nowrap;
-          cursor: pointer;
-          user-select: none;
-          transition: color .15s ease;
-        }
-
-        .products-table th > span {
-          display: inline-flex;
-          align-items: center;
-          gap: 5px;
-        }
-
-        .products-table th:hover {
-          color: #2f3d56;
-        }
-
-        .products-table th.actions-heading {
-          text-align: right;
-          cursor: default;
-        }
-
-        .products-table td {
-          padding: 18px;
-          border-bottom: 1px solid #edf1f6;
-          vertical-align: middle;
-          font-size: 12px;
-        }
-
-        .products-table tbody tr {
-          transition: background .15s ease;
-        }
-
-        .products-table tbody tr:hover {
-          background: #f8fbff;
-        }
-
-        .products-table tbody tr:last-child td {
+        .pr-table tbody tr:last-child {
           border-bottom: 0;
         }
 
-        .product-cell {
+        .pr-table td {
           display: flex;
           align-items: center;
-          gap: 12px;
-          min-width: 230px;
-        }
-
-        .product-avatar {
-          width: 42px;
-          height: 42px;
-          border-radius: 12px;
-          object-fit: cover;
-          border: 1px solid #e1e7ef;
-          flex: 0 0 auto;
-          background: #f8fafc;
-        }
-
-        .product-avatar-fallback {
-          display: grid;
-          place-items: center;
-          background: linear-gradient(135deg, #eff5ff, #e8edff);
-          color: #5067b5;
-          font-weight: 800;
-          font-size: 15px;
-        }
-
-        .product-main strong {
-          display: block;
-          max-width: 260px;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-          color: #172033;
-          font-size: 13px;
-          font-weight: 750;
-          transition: color .15s ease;
-        }
-
-        .products-table tbody tr:hover .product-main strong {
-          color: var(--p-teal);
-        }
-
-        .product-meta {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 8px;
-          margin-top: 5px;
-          color: #94a3b8;
-          font-size: 9.5px;
-          font-family: "JetBrains Mono", monospace;
-          letter-spacing: .1px;
-        }
-
-        .product-meta span + span {
-          border-left: 1px solid #dce2ea;
-          padding-left: 8px;
-        }
-
-        .category-pill {
-          display: inline-flex;
-          align-items: center;
-          min-height: 28px;
-          padding: 0 10px;
-          border-radius: 999px;
-          background: #f1f5f9;
-          color: #475569;
-          font-size: 10px;
-          font-weight: 700;
-          white-space: nowrap;
-        }
-
-        .price-cell {
-          display: flex;
-          flex-direction: column;
-          gap: 3px;
-          min-width: 108px;
-        }
-
-        .price-cell strong {
-          color: #172033;
-          font-family: "JetBrains Mono", monospace;
-          font-size: 13.5px;
-          font-weight: 700;
-        }
-
-        .price-cell span {
-          color: #94a3b8;
-          font-size: 9.5px;
-        }
-
-        .price-cell small {
-          color: #b0b8c5;
-          font-size: 9.5px;
-        }
-
-        .stock-cell-modern {
-          display: grid;
-          grid-template-columns: auto auto;
-          gap: 3px 6px;
-          align-items: center;
-          width: max-content;
-        }
-
-        .stock-cell-modern strong {
-          color: #172033;
-          font-family: "JetBrains Mono", monospace;
-          font-size: 13.5px;
-          font-weight: 700;
+          justify-content: space-between;
+          gap: 16px;
+          padding: 8px 0;
+          border: 0;
           text-align: right;
         }
 
-        .stock-cell-modern > span:not(.status-chip) {
-          color: #94a3b8;
-          font-size: 9.5px;
-          text-transform: uppercase;
-          font-weight: 600;
+        .pr-table td::before {
+          content: attr(data-label);
+          flex: none;
+          font-size: 12px;
+          font-weight: 700;
+          color: var(--muted);
         }
 
-        .status-chip,
-        .mini-chip {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          width: fit-content;
-          border-radius: 999px;
-          font-size: 8px;
-          line-height: 1;
-          font-weight: 850;
-          letter-spacing: .5px;
-          text-transform: uppercase;
+        .pr-table td[data-label="Product"] {
+          display: block;
+          padding-top: 0;
         }
 
-        .status-chip {
-          grid-column: 1 / -1;
-          padding: 5px 8px;
+        .pr-table td[data-label="Product"]::before,
+        .pr-table td[data-label=""]::before {
+          content: none;
         }
 
-        .status-chip.success,
-        .mini-chip.success {
-          color: #087a55;
-          background: #e7f8f1;
+        .pr-product {
+          min-width: 0;
+          text-align: left;
         }
 
-        .status-chip.warning,
-        .mini-chip.warning {
-          color: #a86c00;
-          background: #fff4d6;
+        .pr-product-text strong {
+          max-width: 100%;
+          white-space: normal;
         }
 
-        .status-chip.danger,
-        .mini-chip.danger {
-          color: #c22f55;
-          background: #ffe9ef;
+        .pr-price,
+        .pr-stock {
+          align-items: flex-end;
+          min-width: 0;
         }
 
-        .status-chip.info {
-          color: #3268ca;
-          background: #eaf1ff;
+        .pr-stock {
+          width: 150px;
         }
 
-        .expiry-cell {
-          display: flex;
-          flex-direction: column;
-          gap: 5px;
+        .pr-expiry {
+          align-items: flex-end;
         }
 
-        .expiry-cell strong {
-          color: #3a465a;
-          font-size: 11.5px;
-          font-weight: 650;
-        }
-
-        .mini-chip {
-          padding: 5px 8px;
-        }
-
-        .muted {
-          color: #cbd5e1;
-          font-size: 14px;
-        }
-
-        .active-chip {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          padding: 6px 10px;
-          border-radius: 999px;
-          font-size: 9.5px;
-          font-weight: 750;
-          white-space: nowrap;
-        }
-
-        .active-chip > span {
-          width: 6px;
-          height: 6px;
-          border-radius: 50%;
-        }
-
-        .active-chip.active {
-          color: #087a55;
-          background: #e8f8f2;
-        }
-
-        .active-chip.active > span {
-          background: #12b981;
-        }
-
-        .active-chip.inactive {
-          color: #7b8494;
-          background: #f0f2f5;
-        }
-
-        .active-chip.inactive > span {
-          background: #8d96a5;
-        }
-
-        /* ---------- Row actions ---------- */
-        .row-actions {
-          display: flex;
+        .pr-actions-cell {
           justify-content: flex-end;
-          align-items: center;
-          gap: 7px;
+          padding-bottom: 0;
         }
 
-        .icon-action {
+        .pr-footer {
+          flex-direction: column;
+          align-items: flex-start;
+          padding: 14px 16px;
+        }
+
+        .pr-pagination {
+          width: 100%;
+          justify-content: center;
+          flex-wrap: wrap;
+        }
+
+        .pr-backdrop {
+          padding: 8px;
+        }
+
+        .pr-modal-top,
+        .pr-modal-body,
+        .pr-modal-actions {
+          padding-left: 16px;
+          padding-right: 16px;
+        }
+
+        .pr-modal-actions > * {
+          flex: 1;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .pr-tab {
+          padding: 14px;
+          gap: 10px;
+        }
+
+        .pr-tab-icon {
           width: 34px;
           height: 34px;
-          display: grid;
-          place-items: center;
-          border-radius: 10px;
-          border: 1px solid;
-          cursor: pointer;
-          text-decoration: none;
-          transition: transform .15s ease, box-shadow .15s ease;
         }
 
-        .icon-action:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(15,23,42,.10);
+        .pr-tab-text strong {
+          font-size: 20px;
         }
 
-        .icon-action.view {
-          color: #3268ca;
-          background: #eef4ff;
-          border-color: #dce8ff;
+        .pr-tab-note {
+          display: none;
         }
 
-        .icon-action.view:hover {
-          background: #e0ebff;
+        .pr-facts {
+          grid-template-columns: 1fr;
         }
 
-        .icon-action.edit {
-          color: #087a55;
-          background: #eafaf4;
-          border-color: #d1f0e3;
+        .pr-facts > div {
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
         }
 
-        .icon-action.edit:hover {
-          background: #d9fbe8;
-        }
-
-        .icon-action.delete {
-          color: #d13b5d;
-          background: #fff0f3;
-          border-color: #ffdce4;
-        }
-
-        .icon-action.delete:hover {
-          background: #ffe0e8;
-        }
-
-        /* ---------- Footer / Pagination ---------- */
-        .table-footer {
-          min-height: 66px;
-          padding: 14px 20px;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          gap: 16px;
-          border-top: 1px solid var(--p-line);
-          color: #94a3b8;
-          font-size: 11.5px;
-        }
-
-        .table-footer strong {
-          color: #47536a;
-          font-weight: 700;
-        }
-
-        .pagination {
-          display: flex;
-          align-items: center;
-          gap: 5px;
-        }
-
-        .pagination button {
-          min-width: 33px;
-          height: 33px;
-          padding: 0 9px;
-          border-radius: 9px;
-          border: 1px solid #e2e7ef;
-          background: white;
-          color: #5c687d;
-          font: inherit;
-          font-size: 10.5px;
-          font-weight: 700;
-          cursor: pointer;
-          transition: .15s ease;
-        }
-
-        .pagination button:hover:not(:disabled) {
-          border-color: #cbd4e2;
-          background: #f8fafc;
-        }
-
-        .pagination button.current {
-          color: #ffffff;
-          background: var(--p-green);
-          border-color: var(--p-green);
-          box-shadow: 0 3px 8px rgba(15,139,131,.25);
-        }
-
-        .pagination button:disabled {
-          opacity: .35;
-          cursor: not-allowed;
-        }
-
-        .pagination span {
-          color: #94a3b8;
-          padding: 0 2px;
-        }
-
-        /* ---------- Loading / Empty ---------- */
-        .loading-box,
-        .empty-box {
-          min-height: 380px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          padding: 56px 24px;
-          text-align: center;
-        }
-
-        .spinner {
-          width: 38px;
-          height: 38px;
-          border: 3px solid #e9edf3;
-          border-top-color: var(--p-green);
-          border-radius: 50%;
-          animation: productsSpin .7s linear infinite;
-          margin-bottom: 18px;
-        }
-
-        @keyframes productsSpin {
-          to { transform: rotate(360deg); }
-        }
-
-        .loading-box strong {
-          font-size: 14px;
-          color: #475569;
-        }
-
-        .loading-box span,
-        .empty-box p {
-          color: #94a3b8;
-          font-size: 12.5px;
-          margin: 7px 0 0;
-        }
-
-        .empty-icon {
-          width: 62px;
-          height: 62px;
-          display: grid;
-          place-items: center;
-          border-radius: 18px;
-          background: #eef4ff;
-          color: #3978ff;
-          margin-bottom: 16px;
-        }
-
-        .empty-box h3 {
-          margin: 0;
-          font-size: 19px;
-          color: #172033;
-        }
-
-        .empty-box .primary-button,
-        .empty-box .secondary-button {
-          margin-top: 20px;
-        }
-
-        /* ---------- Modal ---------- */
-        .modal-backdrop {
-          position: fixed;
-          inset: 0;
-          z-index: 2000;
-          padding: 20px;
-          display: grid;
-          place-items: center;
-          background: rgba(7, 12, 24, .62);
-          backdrop-filter: blur(10px);
-          animation: modalFade .2s ease;
-        }
-
-        @keyframes modalFade {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-
-        .product-modal {
-          width: min(780px, 100%);
-          max-height: min(840px, 92vh);
-          overflow: auto;
-          background: #fff;
-          border: 1px solid rgba(255,255,255,.4);
-          border-radius: 22px;
-          box-shadow: 0 30px 90px rgba(0,0,0,.28);
-          animation: modalSlide .25s cubic-bezier(.16,1,.3,1);
-        }
-
-        @keyframes modalSlide {
-          from { opacity: 0; transform: translateY(16px) scale(.98); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-
-        .modal-top {
-          display: flex;
-          align-items: flex-start;
-          justify-content: space-between;
-          gap: 16px;
-          padding: 22px 24px;
-          border-bottom: 1px solid var(--p-line);
-          position: sticky;
-          top: 0;
-          background: rgba(255,255,255,.95);
-          backdrop-filter: blur(10px);
-          z-index: 2;
-        }
-
-        .modal-top .section-kicker {
-          color: #8a95a7;
-        }
-
-        .modal-top h2 {
-          margin: 6px 0 0;
-          font-size: 22px;
-          letter-spacing: -.5px;
-          color: #101828;
-        }
-
-        .modal-close {
-          width: 36px;
-          height: 36px;
-          display: grid;
-          place-items: center;
-          border-radius: 10px;
-          border: 1px solid #e1e6ee;
-          background: #f8fafc;
-          color: #667289;
-          cursor: pointer;
-          transition: .15s ease;
-        }
-
-        .modal-close:hover {
-          background: #eef2f7;
-          color: #334155;
-        }
-
-        .modal-content {
-          padding: 24px;
-        }
-
-        .modal-product-summary {
-          display: flex;
-          align-items: center;
-          gap: 16px;
-          padding: 18px;
-          border: 1px solid var(--p-line);
-          border-radius: 16px;
-          background: #f9fbfd;
-        }
-
-        .modal-image {
-          width: 80px;
-          height: 80px;
-          border-radius: 14px;
-          object-fit: cover;
-          border: 1px solid #e0e6ef;
-          flex: 0 0 auto;
-        }
-
-        .modal-image-fallback {
-          display: grid;
-          place-items: center;
-          background: #eaf1ff;
-          color: #456cc1;
-          font-size: 28px;
-          font-weight: 800;
-        }
-
-        .modal-product-summary h3 {
-          margin: 0;
-          font-size: 18px;
-          color: #101828;
-        }
-
-        .modal-product-summary p {
-          color: #8a95a7;
-          margin: 5px 0 10px;
-          font-size: 11px;
-          font-family: "JetBrains Mono", monospace;
-        }
-
-        .modal-pills {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 7px;
-        }
-
-        .detail-cards {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 11px;
-          margin-top: 15px;
-        }
-
-        .detail-card {
-          padding: 16px;
-          border: 1px solid var(--p-line);
-          border-radius: 14px;
-          background: white;
-          transition: box-shadow .15s ease;
-        }
-
-        .detail-card:hover {
-          box-shadow: 0 4px 12px rgba(15,23,42,.05);
-        }
-
-        .detail-card span {
-          display: block;
-          color: #8b95a7;
-          font-size: 9px;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: .8px;
-        }
-
-        .detail-card strong {
-          display: block;
-          color: #172033;
-          font-size: 17px;
-          margin-top: 8px;
-          font-family: "JetBrains Mono", monospace;
-        }
-
-        .detail-card small {
-          display: block;
-          color: #a0a8b6;
-          font-size: 9.5px;
-          margin-top: 5px;
-        }
-
-        .detail-list {
-          margin-top: 15px;
-          border: 1px solid var(--p-line);
-          border-radius: 14px;
-          overflow: hidden;
-        }
-
-        .detail-list > div {
-          min-height: 47px;
-          padding: 11px 15px;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 15px;
-          border-bottom: 1px solid #edf0f4;
-        }
-
-        .detail-list > div:last-child {
+        .pr-facts > div:last-child {
           border-bottom: 0;
         }
-
-        .detail-list span {
-          color: #8994a7;
-          font-size: 11.5px;
-        }
-
-        .detail-list strong {
-          color: #344158;
-          font-size: 11.5px;
-          text-align: right;
-          max-width: 70%;
-          word-break: break-word;
-        }
-
-        .modal-actions {
-          display: flex;
-          justify-content: flex-end;
-          gap: 9px;
-          padding: 18px 24px;
-          border-top: 1px solid var(--p-line);
-        }
-
-        /* ---------- Responsive ---------- */
-        @media (max-width: 1150px) {
-          .command-grid {
-            grid-template-columns: 1fr 1fr;
-          }
-
-          .search-control {
-            grid-column: span 2;
-          }
-
-          .reset-button {
-            width: 100%;
-          }
-        }
-
-        @media (max-width: 900px) {
-          .products-shell {
-            width: min(100% - 24px, 1460px);
-            padding-top: 20px;
-          }
-
-          .command-panel {
-            padding: 18px;
-          }
-        }
-
-        @media (max-width: 850px) {
-          .products-topbar {
-            align-items: flex-start;
-            flex-direction: column;
-          }
-
-          .topbar-actions {
-            width: 100%;
-          }
-
-          .topbar-actions > * {
-            flex: 1;
-          }
-
-          .kpi-grid {
-            grid-template-columns: repeat(2, 1fr);
-          }
-
-          .inventory-card-header {
-            align-items: flex-start;
-            flex-direction: column;
-          }
-
-          .inventory-header-right {
-            width: 100%;
-            justify-content: space-between;
-          }
-
-          .detail-cards {
-            grid-template-columns: repeat(2, 1fr);
-          }
-        }
-
-        @media (max-width: 580px) {
-          .products-shell {
-            width: calc(100% - 16px);
-          }
-
-          .products-topbar h1 {
-            font-size: 30px;
-          }
-
-          .kpi-grid {
-            grid-template-columns: 1fr;
-          }
-
-          .command-grid {
-            grid-template-columns: 1fr;
-          }
-
-          .search-control {
-            grid-column: auto;
-          }
-
-          .barcode-control {
-            width: 100%;
-          }
-
-          .table-footer {
-            align-items: flex-start;
-            flex-direction: column;
-          }
-
-          .pagination {
-            width: 100%;
-            justify-content: center;
-            flex-wrap: wrap;
-          }
-
-          .modal-backdrop {
-            padding: 8px;
-          }
-
-          .modal-content,
-          .modal-top {
-            padding: 16px;
-          }
-
-          .modal-product-summary {
-            align-items: flex-start;
-            flex-direction: column;
-          }
-
-          .detail-cards {
-            grid-template-columns: 1fr;
-          }
-
-          .modal-actions {
-            padding: 13px 16px;
-          }
-
-          .modal-actions > * {
-            flex: 1;
-          }
-
-          .command-panel {
-            padding: 15px;
-            border-radius: 18px;
-          }
-
-          .inventory-card,
-          .kpi-card {
-            border-radius: 16px;
-          }
-
-          .inventory-card-header {
-            padding: 16px;
-          }
-        }
-      `}</style>
-    </div>
+      }
+    `}</style>
   );
 }
