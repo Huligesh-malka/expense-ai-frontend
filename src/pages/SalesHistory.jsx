@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 
 import { Link } from "react-router-dom";
 import API from "../services/api";
-import { FiSearch, FiPlus, FiEye, FiFilter, FiCalendar, FiUser, FiCreditCard, FiTrendingUp, FiRefreshCw, FiActivity, FiArrowUpRight } from "react-icons/fi";
+import { FiSearch, FiPlus, FiEye, FiFilter, FiCalendar, FiUser, FiCreditCard, FiTrendingUp, FiRefreshCw, FiActivity, FiArrowUpRight, FiDownload } from "react-icons/fi";
 
 export default function SalesHistory() {
     const [sales, setSales] = useState([]);
@@ -14,19 +14,27 @@ export default function SalesHistory() {
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(20);
     const [totalPages, setTotalPages] = useState(1);
-    const [totalSalesCount, setTotalSalesCount] = useState(0);
+    const [totalSalesCount, setTotalSalesCount] = useState(0);\n    const [customStartDate, setCustomStartDate] = useState("");\n    const [customEndDate, setCustomEndDate] = useState("");
 
     useEffect(() => {
         loadSales();
     }, []);
 
-    const loadSales = async (requestedPage = page, requestedLimit = limit) => {
+    const getDateRange = (period = selectedPeriod) => {
+        const now = new Date();
+        const dateString = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+        if (period === "today") { const d = dateString(now); return { startDate: d, endDate: d }; }
+        if (period === "yesterday") { const date = new Date(now); date.setDate(date.getDate() - 1); const d = dateString(date); return { startDate: d, endDate: d }; }
+        if (period === "week") { const start = new Date(now); start.setDate(start.getDate() - 6); return { startDate: dateString(start), endDate: dateString(now) }; }
+        if (period === "month") { const start = new Date(now.getFullYear(), now.getMonth(), 1); return { startDate: dateString(start), endDate: dateString(now) }; }
+        if (period === "custom") return { startDate: customStartDate || undefined, endDate: customEndDate || undefined };
+        return {};
+    };
+
+    const loadSales = async (requestedPage = page, requestedLimit = limit, period = selectedPeriod) => {
         setLoading(true);
         try {
-            const res = await API.get("/sales", {
-                params: { page: requestedPage, limit: requestedLimit }
-            });
-
+            const res = await API.get("/sales", { params: { page: requestedPage, limit: requestedLimit, ...getDateRange(period) } });
             const rows = Array.isArray(res.data?.data) ? res.data.data : [];
             setSales(rows);
             setPage(Number(res.data?.page) || requestedPage);
@@ -37,12 +45,30 @@ export default function SalesHistory() {
         } catch (err) {
             console.error("Error loading sales:", err);
             alert(err.response?.data?.message || "Failed to load sales data");
-        } finally {
-            setLoading(false);
-        }
+        } finally { setLoading(false); }
     };
 
+    const handlePeriodChange = (period) => {
+        setSelectedPeriod(period); setPage(1);
+        if (period !== "custom") { setCustomStartDate(""); setCustomEndDate(""); }
+        loadSales(1, limit, period);
+    };
 
+    const handleCustomDateChange = (start, end) => {
+        setCustomStartDate(start); setCustomEndDate(end);
+        if (start && end) { setSelectedPeriod("custom"); setPage(1); loadSales(1, limit, "custom"); }
+    };
+
+    const exportSales = async () => {
+        try {
+            const res = await API.get("/sales/export", { params: getDateRange(), responseType: "blob" });
+            const url = window.URL.createObjectURL(new Blob([res.data], { type: "text/csv;charset=utf-8;" }));
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `sales-export-${customStartDate || "all"}-${customEndDate || "all"}.csv`;
+            document.body.appendChild(link); link.click(); link.remove(); window.URL.revokeObjectURL(url);
+        } catch (err) { console.error(err); alert(err.response?.data?.message || "Failed to export sales"); }
+    };
 
     const getStatusConfig = (status) => {
         const configs = {
@@ -65,63 +91,20 @@ export default function SalesHistory() {
     };
 
     const getPeriodStats = () => {
-        const now = new Date();
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const weekAgo = new Date(today);
-        weekAgo.setDate(weekAgo.getDate() - 7);
-        const monthAgo = new Date(today);
-        monthAgo.setMonth(monthAgo.getMonth() - 1);
-
-        let filtered = sales;
-        if (selectedPeriod === "today") {
-            filtered = sales.filter(s => new Date(s.created_at) >= today);
-        } else if (selectedPeriod === "week") {
-            filtered = sales.filter(s => new Date(s.created_at) >= weekAgo);
-        } else if (selectedPeriod === "month") {
-            filtered = sales.filter(s => new Date(s.created_at) >= monthAgo);
-        }
-
-        const total = filtered.reduce((sum, s) => sum + Number(s.total_amount), 0);
-        const count = filtered.length;
-        const paid = filtered.filter(s => s.payment_status?.toLowerCase() === "paid").length;
-        const pending = filtered.filter(s => s.payment_status?.toLowerCase() === "pending").length;
-
+        const total = sales.reduce((sum, sale) => sum + Number(sale.total_amount || 0), 0);
+        const count = sales.length;
+        const paid = sales.filter(s => s.payment_status?.toLowerCase() === "paid").length;
+        const pending = sales.filter(s => s.payment_status?.toLowerCase() === "pending").length;
         return { total, count, paid, pending };
     };
-
-
 
     const stats = getPeriodStats();
 
     const filtered = sales.filter((item) => {
-        const matchesSearch = 
-            (item.invoice_no || "")
-                .toLowerCase()
-                .includes(search.toLowerCase()) ||
-            (item.customer_name || "")
-                .toLowerCase()
-                .includes(search.toLowerCase());
-
-        const matchesStatus = 
-            filterStatus === "all" || 
-            item.payment_status?.toLowerCase() === filterStatus;
-
-        let matchesPeriod = true;
-        if (selectedPeriod === "today") {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            matchesPeriod = new Date(item.created_at) >= today;
-        } else if (selectedPeriod === "week") {
-            const weekAgo = new Date();
-            weekAgo.setDate(weekAgo.getDate() - 7);
-            matchesPeriod = new Date(item.created_at) >= weekAgo;
-        } else if (selectedPeriod === "month") {
-            const monthAgo = new Date();
-            monthAgo.setMonth(monthAgo.getMonth() - 1);
-            matchesPeriod = new Date(item.created_at) >= monthAgo;
-        }
-
-        return matchesSearch && matchesStatus && matchesPeriod;
+        const matchesSearch = (item.invoice_no || "").toLowerCase().includes(search.toLowerCase()) ||
+            (item.customer_name || "").toLowerCase().includes(search.toLowerCase());
+        const matchesStatus = filterStatus === "all" || item.payment_status?.toLowerCase() === filterStatus;
+        return matchesSearch && matchesStatus;
     });
 
     return (
@@ -238,17 +221,28 @@ export default function SalesHistory() {
                         <FiCalendar size={18} color="#6b7280" />
                         <select
                             value={selectedPeriod}
-                            onChange={(e) => setSelectedPeriod(e.target.value)}
+                            onChange={(e) => handlePeriodChange(e.target.value)}
                             style={styles.filterSelect}
                         >
                             <option value="all">All Time</option>
                             <option value="today">Today</option>
+                            <option value="yesterday">Yesterday</option>
                             <option value="week">Last 7 Days</option>
-                            <option value="month">Last 30 Days</option>
+                            <option value="month">This Month</option>
+                            <option value="custom">Custom Range</option>
                         </select>
                     </div>
+                    {selectedPeriod === "custom" && (
+                        <>
+                            <input type="date" value={customStartDate} onChange={(e) => handleCustomDateChange(e.target.value, customEndDate)} style={styles.dateInput} aria-label="Start date" />
+                            <input type="date" value={customEndDate} min={customStartDate || undefined} onChange={(e) => handleCustomDateChange(customStartDate, e.target.value)} style={styles.dateInput} aria-label="End date" />
+                        </>
+                    )}
                 </div>
                                 <div style={styles.filtersRight}>
+                     <button type="button" style={styles.exportButton} onClick={exportSales} disabled={loading}>
+                        <FiDownload size={15} /> Export CSV
+                     </button>
                      <div style={styles.liveIndicator}>
                          <span style={styles.liveDot}></span>
                          Live
@@ -261,7 +255,7 @@ export default function SalesHistory() {
                              Updated {lastUpdated.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
                          </span>
                      )}
-                     <button style={styles.iconButton} onClick={() => loadSales()} title="Refresh sales">
+                     <button style={styles.iconButton} onClick={() => loadSales(page, limit)} title="Refresh sales">
                          <FiRefreshCw size={16} />
                      </button>
                  </div>
@@ -681,6 +675,8 @@ const styles = {
         background: "#f8fafc"
     },
 
+    dateInput: { height: "42px", padding: "0 10px", border: "1px solid #e2e8f0", borderRadius: "11px", background: "#f8fafc", color: "#334155", fontSize: "12px" },
+    exportButton: { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "7px", height: "38px", padding: "0 12px", border: "1px solid #bbf7d0", borderRadius: "10px", background: "#ecfdf5", color: "#047857", fontSize: "11px", fontWeight: "800", cursor: "pointer", whiteSpace: "nowrap" },
     filterSelect: {
         border: "none",
         outline: "none",
