@@ -731,16 +731,17 @@ function PremiumStyles() {
       @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Geist:wght@400;500;600;700&display=swap');
 
       .lux-shell {
-        --canvas: #efece5;
-        --canvas-2: #e7e3d9;
-        --paper: #fbf9f4;
-        --paper-2: #f4f1ea;
+        /* ==== WARMER CANVAS ==== */
+        --canvas: #eee8dd;
+        --canvas-2: #e5dccc;
+        --paper: #fdfbf6;
+        --paper-2: #f6f1e6;
         --ink: #0f0f0e;
         --ink-2: #1a1a18;
         --ink-soft: #3a3a36;
         --muted: #8a8780;
-        --line: #ded9cd;
-        --line-strong: #cdc6b6;
+        --line: #ddd4c2;
+        --line-strong: #cbbfaa;
         --dark: #14140f;
         --dark-2: #1c1c17;
         --gold: #c9a24a;
@@ -751,14 +752,15 @@ function PremiumStyles() {
         --radius-xl: 20px;
         --radius-lg: 16px;
         --radius-md: 12px;
-        --shadow-1: 0 1px 0 rgba(20,20,15,.03), 0 8px 24px rgba(30,28,20,.06);
-        --shadow-2: 0 1px 0 rgba(20,20,15,.03), 0 24px 48px rgba(30,28,20,.08);
+        --shadow-1: 0 1px 0 rgba(20,20,15,.03), 0 8px 24px rgba(30,28,20,.07);
+        --shadow-2: 0 1px 0 rgba(20,20,15,.03), 0 24px 48px rgba(30,28,20,.10);
 
         min-height: 100vh;
-        background: var(--canvas);
+        background-color: var(--canvas);
         background-image:
-          radial-gradient(1200px 600px at 100% -10%, rgba(201,162,74,.07), transparent 60%),
-          radial-gradient(900px 500px at -10% 110%, rgba(20,20,15,.05), transparent 60%);
+          radial-gradient(1100px 600px at 92% -8%, rgba(201,162,74,.16), transparent 55%),
+          radial-gradient(1000px 700px at -10% 105%, rgba(120,100,60,.10), transparent 60%),
+          radial-gradient(700px 400px at 50% 50%, rgba(255,250,240,.35), transparent 70%);
         color: var(--ink);
         font-family: 'Geist', system-ui, -apple-system, sans-serif;
         display: flex;
@@ -787,9 +789,9 @@ function PremiumStyles() {
         overflow-y: auto;
         scrollbar-width: thin;
         z-index: 40;
-        box-shadow: 0 30px 60px rgba(20,20,15,.25);
+        box-shadow: 0 30px 60px rgba(20,20,15,.28);
         background-image:
-          linear-gradient(180deg, rgba(201,162,74,.04), transparent 30%);
+          linear-gradient(180deg, rgba(201,162,74,.06), transparent 35%);
       }
       .lux-sidebar::after {
         content: "";
@@ -1206,7 +1208,7 @@ function PremiumStyles() {
         bottom: -2px;
         height: 6px;
         background: var(--gold);
-        opacity: .28;
+        opacity: .32;
         border-radius: 3px;
         z-index: -1;
       }
@@ -1269,7 +1271,7 @@ function PremiumStyles() {
         border-radius: var(--radius-xl);
         color: #fbf9f4;
         background:
-          radial-gradient(700px 400px at 90% 10%, rgba(201,162,74,.18), transparent 60%),
+          radial-gradient(700px 400px at 90% 10%, rgba(201,162,74,.20), transparent 60%),
           linear-gradient(150deg, #14140f 0%, #1d1d17 60%, #14140f 100%);
         box-shadow: 0 30px 60px rgba(20,20,15,.30);
         min-height: 320px;
