@@ -128,13 +128,36 @@ export default function SalesHistory() {
         window.open(`/invoice/${id}?print=true`, '_blank');
     };
 
-    const handleDownloadPDF = (id) => {
-        // Implement PDF download logic
-        window.open(`/api/sales/invoice/${id}/pdf`, '_blank');
+    const handleDownloadPDF = async (id) => {
+        try {
+            const response = await API.get(`/sales/invoice/${id}/pdf`, {
+                responseType: "blob"
+            });
+            const blob = response.data instanceof Blob
+                ? response.data
+                : new Blob([response.data], { type: "application/pdf" });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `invoice-${id}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error("PDF download failed:", err);
+            alert(err.response?.data?.message || "PDF download failed. Please check whether the invoice PDF endpoint is available.");
+        }
     };
 
     return (
         <div className="sales-page" style={styles.container}>
+            <style>{`
+                .sales-page table tbody tr:hover { background: #f8fbff; }
+                .sales-page table tbody td { padding: 14px 16px; vertical-align: middle; border-bottom: 1px solid #eef2f7; }
+                @media (max-width: 900px) { .sales-page { padding: 14px !important; } .sales-stats { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } }
+                @media print { .sales-page { background: white !important; padding: 0 !important; } .sales-header, .sales-stats, .filtersSection, .paginationBar, .sales-page button, .sales-page a[href="/billing-pos"] { display: none !important; } .sales-page table { min-width: 0 !important; } }
+            `}</style>
             {/* Header */}
             <div className="sales-header" style={styles.header}>
                 <div>
@@ -286,7 +309,6 @@ export default function SalesHistory() {
                             <tr>
                                 <th style={styles.th}>Invoice</th>
                                 <th style={styles.th}>Date & Time</th>
-                                <th style={styles.th}>Customer</th>
                                 <th style={styles.th}>Items</th>
                                 <th style={styles.th}>Payment</th>
                                 <th style={styles.th}>Status</th>
@@ -297,7 +319,7 @@ export default function SalesHistory() {
                         <tbody>
                             {filtered.length === 0 ? (
                                 <tr>
-                                    <td colSpan="8" style={styles.emptyState}>
+                                    <td colSpan="7" style={styles.emptyState}>
                                         <div style={styles.emptyIcon}>📭</div>
                                         <p style={styles.emptyText}>
                                             {search || filterStatus !== "all" || selectedPeriod !== "all"
@@ -336,23 +358,6 @@ export default function SalesHistory() {
                                                             hour: "2-digit",
                                                             minute: "2-digit"
                                                         })}
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <div style={styles.customerCell}>
-                                                    <div style={styles.customerAvatar}>
-                                                        {item.customer_name?.[0] || "W"}
-                                                    </div>
-                                                    <div>
-                                                        <div style={styles.customerName}>
-                                                            {item.customer_name || "Walk-in Customer"}
-                                                        </div>
-                                                        {item.customer_phone && (
-                                                            <div style={styles.customerPhone}>
-                                                                {item.customer_phone}
-                                                            </div>
-                                                        )}
                                                     </div>
                                                 </div>
                                             </td>
@@ -760,14 +765,16 @@ const styles = {
 
     table: {
         width: "100%",
-        minWidth: "980px",
+        minWidth: "860px",
         borderCollapse: "separate",
         borderSpacing: 0,
-        fontSize: "13px"
+        fontSize: "13px",
+        borderRadius: "18px",
+        overflow: "hidden"
     },
 
     th: {
-        padding: "14px 16px",
+        padding: "15px 16px",
         textAlign: "left",
         fontSize: "10px",
         fontWeight: "850",
@@ -781,7 +788,8 @@ const styles = {
 
     tableRow: {
         borderBottom: "1px solid #eef2f7",
-        transition: "background .15s ease"
+        transition: "background .15s ease",
+        borderBottom: "1px solid #eef2f7"
     },
 
     invoiceNumber: {
