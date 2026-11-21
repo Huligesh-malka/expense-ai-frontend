@@ -2071,7 +2071,7 @@ function PremiumStyles() {
       .lux-status-dot { background: #22c55e; box-shadow: 0 0 0 4px rgba(34,197,94,.12); }
 
       /* Main content and top bar */
-      .lux-main { padding: 0 34px 32px; max-width: 1700px; }
+      .lux-main { padding: 0 clamp(24px, 3vw, 48px) 32px; max-width: none; width: 100%; }
       .lux-topbar { min-height: 78px; border-bottom: 1px solid #e8edf4; margin-bottom: 0; }
       .lux-crumbs { color: #94a3b8; font-size: 12px; }
       .lux-crumbs strong { color: #334155; }
@@ -2085,7 +2085,7 @@ function PremiumStyles() {
       .lux-profile-menu { border-radius: 16px; box-shadow: 0 24px 60px rgba(15,23,42,.15); }
 
       /* Heading */
-      .lux-masthead { padding: 30px 0 26px; align-items: center; }
+      .lux-masthead { padding: 26px 0 28px; align-items: center; }
       .lux-eyebrow { color: #94a3b8; font-size: 10px; letter-spacing: 1.5px; }
       .lux-eyebrow i { background: #8b7bff; }
       .lux-masthead-copy h1 { font-family: 'Geist', sans-serif; font-weight: 700; font-size: clamp(26px,3vw,36px); letter-spacing: -1.2px; line-height: 1.2; margin-top: 10px; color: #111827; }
@@ -2096,7 +2096,7 @@ function PremiumStyles() {
       .lux-btn-ghost { border-color: #e5eaf2; border-radius: 12px; color: #334155; background: #fff; }
 
       /* Revenue hero */
-      .lux-grid-hero { grid-template-columns: minmax(0,1.35fr) minmax(0,1fr); gap: 18px; margin-bottom: 20px; }
+      .lux-grid-hero { grid-template-columns: minmax(0,1.45fr) minmax(340px,1fr); gap: 20px; margin-bottom: 22px; }
       .lux-hero {
         border: 0; border-radius: 24px; min-height: 310px;
         background: radial-gradient(circle at 85% 5%,rgba(255,255,255,.22),transparent 36%),
@@ -2108,15 +2108,15 @@ function PremiumStyles() {
       .lux-hero-ring { border-color: rgba(255,255,255,.12); }
       .lux-hero-label { color: #e9e6ff; background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.15); letter-spacing: 1.3px; }
       .lux-dot-pulse { background: #a7f3d0; box-shadow: 0 0 0 4px rgba(167,243,208,.15); }
-      .lux-hero-value { font-family: 'Geist',sans-serif; font-weight: 750; font-size: clamp(42px,4.8vw,60px); letter-spacing: -2.5px; color: #fff; margin-top: 24px; }
+      .lux-hero-value { font-family: 'Geist',sans-serif; font-weight: 750; font-size: clamp(40px,4.5vw,58px); letter-spacing: -2.2px; color: #fff; margin-top: 24px; white-space: nowrap; }
       .lux-hero-suffix { color: rgba(255,255,255,.7); font-size: 13px; }
       .lux-hero-foot { border-top-color: rgba(255,255,255,.16); gap: 20px; }
       .lux-hero-foot-item { color: rgba(255,255,255,.7); }
       .lux-hero-foot-item svg { color: #c4baff; }
       .lux-hero-foot-item strong { color: #fff; }
       .lux-hero-foot-item small { color: rgba(255,255,255,.62); }
-      .lux-hero-cta { background: #fff; color: #5b4be8; box-shadow: 0 8px 20px rgba(25,20,80,.16); border-radius: 12px; }
-      .lux-hero-cta:hover { background: #f3f1ff; color: #4636c8; }
+      .lux-hero-cta { background: #ffffff !important; color: #4b3bd6 !important; font-weight: 700; box-shadow: 0 8px 20px rgba(25,20,80,.16); border-radius: 12px; border: 1px solid rgba(255,255,255,.6); }
+      .lux-hero-cta:hover { background: #f3f1ff !important; color: #3929b8 !important; }
 
       /* KPI cards */
       .lux-stat-grid { gap: 14px; }
