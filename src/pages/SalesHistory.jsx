@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import API from "../services/api";
 import { FiSearch, FiPlus, FiEye, FiDownload, FiFilter, FiCalendar, FiUser, FiCreditCard, FiTrendingUp, FiRefreshCw, FiActivity, FiArrowUpRight } from "react-icons/fi";
+import { downloadInvoicePdf } from "./invoicePdf";
 
 export default function SalesHistory() {
     const [sales, setSales] = useState([]);
@@ -15,6 +16,7 @@ export default function SalesHistory() {
     const [limit, setLimit] = useState(20);
     const [totalPages, setTotalPages] = useState(1);
     const [totalSalesCount, setTotalSalesCount] = useState(0);
+    const [downloadingId, setDownloadingId] = useState(null);
 
     useEffect(() => {
         loadSales();
@@ -43,6 +45,27 @@ export default function SalesHistory() {
     };
 
 
+
+    const handleDownloadPdf = async (sale) => {
+        try {
+            setDownloadingId(sale.id);
+            // Fetch the complete invoice and line items using the same API as Invoice.jsx
+            const res = await API.get(`/sales/invoice/${sale.id}`);
+            const invoice = res.data?.invoice;
+            const items = res.data?.items || [];
+
+            if (!invoice) {
+                throw new Error("Invoice data not found");
+            }
+
+            downloadInvoicePdf(invoice, items);
+        } catch (err) {
+            console.error("PDF download failed:", err);
+            alert(err.response?.data?.message || err.message || "Unable to download invoice PDF");
+        } finally {
+            setDownloadingId(null);
+        }
+    };
 
     const getStatusConfig = (status) => {
         const configs = {
@@ -369,13 +392,16 @@ export default function SalesHistory() {
                                                         <FiEye size={14} />
                                                         View
                                                     </Link>
-                                                    <Link
-                                                        to={`/invoice/${item.id}?download=1`}
-                                                        style={styles.downloadButton}
-                                                        title="Download invoice PDF"
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleDownloadPdf(item)}
+                                                        style={{ ...styles.downloadButton, opacity: downloadingId === item.id ? 0.6 : 1, cursor: downloadingId === item.id ? "wait" : "pointer" }}
+                                                        title="Download invoice PDF directly"
+                                                        disabled={downloadingId === item.id}
                                                     >
                                                         <FiDownload size={14} />
-                                                    </Link>
+                                                        {downloadingId === item.id ? "Preparing..." : "PDF"}
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -885,7 +911,8 @@ const styles = {
         border: "1px solid #dbe3ef",
         textDecoration: "none",
         fontSize: "12px",
-        fontWeight: "800"
+        fontWeight: "800",
+        cursor: "pointer"
     },
 
     viewButton: {
