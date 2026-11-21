@@ -4,6 +4,82 @@ import { Link } from "react-router-dom";
 import API from "../services/api";
 import { FiSearch, FiPlus, FiEye, FiFilter, FiCalendar, FiUser, FiCreditCard, FiTrendingUp, FiRefreshCw, FiActivity, FiArrowUpRight, FiDownload } from "react-icons/fi";
 
+// Creates and downloads a simple invoice PDF directly from Sales History.
+// This is a lightweight PDF generator and does not require an extra npm package.
+const downloadSalePDF = (sale) => {
+    const money = (value) => `INR ${Number(value || 0).toFixed(2)}`;
+    const safe = (value) => String(value ?? "")
+        .replace(/[^\x20-\x7E]/g, "")
+        .replace(/\\/g, "\\\\")
+        .replace(/\(/g, "\\(")
+        .replace(/\)/g, "\\)");
+
+    const items = Array.isArray(sale.items) ? sale.items : [];
+    const lines = [
+        "INVOICE / CASH MEMO",
+        "",
+        `Invoice: ${sale.invoice_no || sale.id || "N/A"}`,
+        `Date: ${new Date(sale.created_at).toLocaleString("en-IN")}`,
+        `Customer: ${sale.customer_name || "Walk-in Customer"}`,
+        `Payment: ${sale.payment_method || "N/A"}`,
+        `Status: ${sale.payment_status || "N/A"}`,
+        "",
+        "ITEMS",
+        "------------------------------------------------------------",
+        ...items.map((item, index) => {
+            const name = item.product_name || item.name || item.product || `Item ${index + 1}`;
+            const qty = Number(item.quantity ?? item.qty ?? 1);
+            const price = Number(item.unit_price ?? item.price ?? item.selling_price ?? 0);
+            const total = Number(item.total ?? item.subtotal ?? item.line_total ?? qty * price);
+            return `${index + 1}. ${name} | Qty: ${qty} | Price: ${money(price)} | Total: ${money(total)}`;
+        }),
+        "------------------------------------------------------------",
+        `Subtotal: ${money(sale.subtotal ?? sale.total_amount)}`,
+        `Tax/GST: ${money(sale.tax_amount ?? sale.gst_amount ?? sale.tax ?? 0)}`,
+        `Discount: ${money(sale.discount_amount ?? sale.discount ?? 0)}`,
+        `TOTAL: ${money(sale.total_amount)}`,
+        "",
+        "Thank you for your purchase!"
+    ];
+
+    // One-page PDF using built-in Helvetica. ASCII-safe text keeps the PDF portable.
+    const content = ["BT", "/F1 10 Tf", "50 790 Td", "14 TL"];
+    lines.forEach((line, i) => {
+        if (i === 0) content.push("/F1 16 Tf");
+        if (i === 1) content.push("/F1 10 Tf");
+        content.push(`(${safe(line)}) Tj`, "T*");
+    });
+    content.push("ET");
+    const stream = content.join("\n");
+    const objects = [
+        "<< /Type /Catalog /Pages 2 0 R >>",
+        "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
+        "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+        `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`
+    ];
+    let pdf = "%PDF-1.4\n";
+    const offsets = [0];
+    objects.forEach((obj, index) => {
+        offsets.push(pdf.length);
+        pdf += `${index + 1} 0 obj\n${obj}\nendobj\n`;
+    });
+    const xrefOffset = pdf.length;
+    pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+    offsets.slice(1).forEach(offset => pdf += `${String(offset).padStart(10, "0")} 00000 n \n`);
+    pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+
+    const blob = new Blob([pdf], { type: "application/pdf" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `Invoice-${sale.invoice_no || sale.id || "receipt"}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
+
 export default function SalesHistory() {
     const [sales, setSales] = useState([]);
     const [search, setSearch] = useState("");
@@ -493,16 +569,15 @@ export default function SalesHistory() {
                                                         <FiEye size={14} />
                                                         View
                                                     </Link>
-                                                    <Link
-                                                        to={`/invoice/${item.id}`}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => downloadSalePDF(item)}
                                                         style={styles.downloadButton}
-                                                        title="Open invoice to download PDF"
+                                                        title="Download invoice PDF directly"
                                                     >
                                                         <FiDownload size={14} />
                                                         Download PDF
-                                                    </Link>
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -1028,6 +1103,8 @@ const styles = {
     },
 
     downloadButton: {
+        cursor: "pointer",
+        border: "none",
         display: "inline-flex",
         alignItems: "center",
         gap: "5px",
