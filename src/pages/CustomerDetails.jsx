@@ -56,16 +56,6 @@ export default function CustomerDetails() {
     });
   };
 
-  const formatDateTime = (date) => {
-    if (!date) return "—";
-
-    return new Date(date).toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  };
-
   const getPaymentStatus = (status) => {
     const value = String(status || "Pending").toLowerCase();
 
@@ -84,10 +74,15 @@ export default function CustomerDetails() {
     return "default";
   };
 
-  const getPaymentMethod = (method) => {
-    if (!method) return "Unknown";
+  const getPaymentIcon = (method) => {
+    const value = String(method || "").toLowerCase();
 
-    return method.charAt(0).toUpperCase() + method.slice(1);
+    if (value.includes("cash")) return "fa-money-bill";
+    if (value.includes("upi")) return "fa-mobile-alt";
+    if (value.includes("card")) return "fa-credit-card";
+    if (value.includes("online")) return "fa-globe";
+
+    return "fa-wallet";
   };
 
   if (loading) {
@@ -95,7 +90,7 @@ export default function CustomerDetails() {
       <div className="customer-page">
         <div className="customer-loading">
           <div className="loading-spinner"></div>
-          <p>Loading customer history...</p>
+          <p>Loading purchase history...</p>
         </div>
       </div>
     );
@@ -121,7 +116,7 @@ export default function CustomerDetails() {
 
             <Link to="/customers" className="back-button">
               <i className="fas fa-arrow-left"></i>
-              Back to Customers
+              Back
             </Link>
           </div>
         </div>
@@ -139,7 +134,7 @@ export default function CustomerDetails() {
 
           <h3>Customer not found</h3>
 
-          <p>The customer information you're looking for doesn't exist.</p>
+          <p>Customer information could not be found.</p>
 
           <Link to="/customers" className="back-button">
             <i className="fas fa-arrow-left"></i>
@@ -153,10 +148,13 @@ export default function CustomerDetails() {
   const totalOrders = Number(customer.total_orders) || sales.length;
   const totalSpent = Number(customer.total_spent) || 0;
 
+  const averageOrder =
+    totalOrders > 0 ? totalSpent / totalOrders : 0;
+
   return (
     <div className="customer-page">
 
-      {/* PAGE HEADER */}
+      {/* HEADER */}
       <div className="customer-page-header">
         <div className="header-left">
 
@@ -169,82 +167,36 @@ export default function CustomerDetails() {
               CUSTOMER MANAGEMENT
             </div>
 
-            <h1>Customer History</h1>
+            <h1>Purchase History</h1>
 
             <p>
-              View purchase activity and transaction history
+              Track transactions and customer purchase activity
             </p>
           </div>
         </div>
 
-        <div className="header-right">
-          <button
-            className="refresh-button"
-            onClick={loadCustomer}
-          >
-            <i className="fas fa-sync-alt"></i>
-            Refresh
-          </button>
-        </div>
+        <button
+          className="refresh-button"
+          onClick={loadCustomer}
+        >
+          <i className="fas fa-sync-alt"></i>
+          Refresh
+        </button>
       </div>
 
-      {/* CUSTOMER PROFILE */}
-      <div className="customer-profile-card">
-
-        <div className="customer-profile-main">
-
-          <div className="customer-avatar">
-            <i className="fas fa-user"></i>
-          </div>
-
-          <div className="customer-profile-info">
-            <span className="profile-label">
-              CUSTOMER
-            </span>
-
-            <h2>
-              {customer.customer_name || "Customer"}
-            </h2>
-
-            <div className="customer-profile-meta">
-              {customer.customer_phone && (
-                <span>
-                  <i className="fas fa-phone"></i>
-                  {customer.customer_phone}
-                </span>
-              )}
-
-              {customer.created_at && (
-                <span>
-                  <i className="fas fa-calendar"></i>
-                  Customer since {formatDate(customer.created_at)}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="customer-profile-status">
-          <span
-            className={`status-pill ${
-              customer.status === "active"
-                ? "status-active"
-                : "status-inactive"
-            }`}
-          >
-            <span className="status-dot"></span>
-
-            {customer.status || "Active"}
-          </span>
-        </div>
-      </div>
-
-      {/* STATS */}
+      {/* SUMMARY CARDS */}
       <div className="customer-stats-grid">
 
+        {/* ORDERS */}
         <div className="customer-stat-card">
-          <div className="stat-icon stat-icon-blue">
-            <i className="fas fa-shopping-bag"></i>
+          <div className="stat-top">
+            <div className="stat-icon stat-icon-blue">
+              <i className="fas fa-shopping-bag"></i>
+            </div>
+
+            <span className="stat-badge">
+              Orders
+            </span>
           </div>
 
           <div className="stat-content">
@@ -255,14 +207,21 @@ export default function CustomerDetails() {
             <h3>{totalOrders}</h3>
 
             <span className="stat-description">
-              Completed transactions
+              Total transactions
             </span>
           </div>
         </div>
 
+        {/* TOTAL SPENT */}
         <div className="customer-stat-card">
-          <div className="stat-icon stat-icon-green">
-            <i className="fas fa-wallet"></i>
+          <div className="stat-top">
+            <div className="stat-icon stat-icon-green">
+              <i className="fas fa-wallet"></i>
+            </div>
+
+            <span className="stat-badge">
+              Revenue
+            </span>
           </div>
 
           <div className="stat-content">
@@ -278,9 +237,16 @@ export default function CustomerDetails() {
           </div>
         </div>
 
+        {/* AVERAGE */}
         <div className="customer-stat-card">
-          <div className="stat-icon stat-icon-purple">
-            <i className="fas fa-receipt"></i>
+          <div className="stat-top">
+            <div className="stat-icon stat-icon-purple">
+              <i className="fas fa-chart-line"></i>
+            </div>
+
+            <span className="stat-badge">
+              Average
+            </span>
           </div>
 
           <div className="stat-content">
@@ -288,13 +254,7 @@ export default function CustomerDetails() {
               Average Order
             </span>
 
-            <h3>
-              {formatCurrency(
-                totalOrders > 0
-                  ? totalSpent / totalOrders
-                  : 0
-              )}
-            </h3>
+            <h3>{formatCurrency(averageOrder)}</h3>
 
             <span className="stat-description">
               Average transaction value
@@ -302,9 +262,16 @@ export default function CustomerDetails() {
           </div>
         </div>
 
+        {/* LAST PURCHASE */}
         <div className="customer-stat-card">
-          <div className="stat-icon stat-icon-orange">
-            <i className="fas fa-clock"></i>
+          <div className="stat-top">
+            <div className="stat-icon stat-icon-orange">
+              <i className="fas fa-clock"></i>
+            </div>
+
+            <span className="stat-badge">
+              Recent
+            </span>
           </div>
 
           <div className="stat-content">
@@ -323,24 +290,26 @@ export default function CustomerDetails() {
             </span>
           </div>
         </div>
+
       </div>
 
       {/* PURCHASE HISTORY */}
       <div className="purchase-history-card">
 
         <div className="purchase-history-header">
-          <div>
-            <div className="section-eyebrow">
-              TRANSACTIONS
+
+          <div className="history-title">
+            <div className="history-icon">
+              <i className="fas fa-receipt"></i>
             </div>
 
-            <h2>
-              Purchase History
-            </h2>
+            <div>
+              <h2>Transaction History</h2>
 
-            <p>
-              All transactions associated with this customer
-            </p>
+              <p>
+                Complete record of customer purchases
+              </p>
+            </div>
           </div>
 
           <div className="orders-count">
@@ -349,22 +318,22 @@ export default function CustomerDetails() {
             </span>
 
             <span>
-              {sales.length === 1 ? "Order" : "Orders"}
+              {sales.length === 1 ? "Transaction" : "Transactions"}
             </span>
           </div>
         </div>
 
-        {/* TABLE */}
+        {/* EMPTY STATE */}
         {sales.length === 0 ? (
           <div className="purchase-empty-state">
             <div className="empty-icon">
               <i className="fas fa-receipt"></i>
             </div>
 
-            <h3>No purchase history</h3>
+            <h3>No transactions found</h3>
 
             <p>
-              This customer hasn't made any purchases yet.
+              Purchase history will appear here once transactions are completed.
             </p>
           </div>
         ) : (
@@ -376,9 +345,9 @@ export default function CustomerDetails() {
                   <th>ORDER</th>
                   <th>INVOICE</th>
                   <th>DATE</th>
-                  <th>PAYMENT METHOD</th>
-                  <th>PAYMENT STATUS</th>
-                  <th className="amount-column">TOTAL</th>
+                  <th>PAYMENT</th>
+                  <th>STATUS</th>
+                  <th className="amount-column">AMOUNT</th>
                   <th className="action-column">ACTION</th>
                 </tr>
               </thead>
@@ -387,12 +356,14 @@ export default function CustomerDetails() {
                 {sales.map((sale, index) => (
                   <tr key={sale.id || index}>
 
+                    {/* ORDER */}
                     <td>
                       <div className="order-number">
                         #{String(index + 1).padStart(3, "0")}
                       </div>
                     </td>
 
+                    {/* INVOICE */}
                     <td>
                       <div className="invoice-cell">
                         <div className="invoice-icon">
@@ -405,41 +376,39 @@ export default function CustomerDetails() {
                       </div>
                     </td>
 
+                    {/* DATE */}
                     <td>
                       <div className="date-cell">
-                        <span className="date-main">
-                          {formatDateTime(sale.created_at)}
-                        </span>
+                        {formatDate(sale.created_at)}
                       </div>
                     </td>
 
+                    {/* PAYMENT METHOD */}
                     <td>
                       <div className="payment-method">
                         <div className="payment-method-icon">
                           <i
-                            className={`fas ${
-                              String(sale.payment_method || "")
-                                .toLowerCase()
-                                .includes("cash")
-                                ? "fa-money-bill"
-                                : String(sale.payment_method || "")
-                                    .toLowerCase()
-                                    .includes("upi")
-                                ? "fa-mobile-alt"
-                                : "fa-credit-card"
-                            }`}
+                            className={`fas ${getPaymentIcon(
+                              sale.payment_method
+                            )}`}
                           ></i>
                         </div>
 
-                        {getPaymentMethod(sale.payment_method)}
+                        <span>
+                          {sale.payment_method
+                            ? sale.payment_method.charAt(0).toUpperCase() +
+                              sale.payment_method.slice(1)
+                            : "Unknown"}
+                        </span>
                       </div>
                     </td>
 
+                    {/* PAYMENT STATUS */}
                     <td>
                       <span
-                        className={`payment-status ${
-                          getPaymentStatus(sale.payment_status)
-                        }`}
+                        className={`payment-status ${getPaymentStatus(
+                          sale.payment_status
+                        )}`}
                       >
                         <span className="payment-status-dot"></span>
 
@@ -447,12 +416,14 @@ export default function CustomerDetails() {
                       </span>
                     </td>
 
+                    {/* AMOUNT */}
                     <td className="amount-column">
                       <div className="sale-amount">
                         {formatCurrency(sale.total_amount)}
                       </div>
                     </td>
 
+                    {/* ACTION */}
                     <td className="action-column">
                       <Link
                         to={`/invoice/${sale.id}`}
@@ -476,18 +447,15 @@ export default function CustomerDetails() {
       <div className="customer-page-footer">
         <div>
           <i className="fas fa-shield-alt"></i>
-          Customer transaction data is securely stored
+          Transaction records are securely stored
         </div>
 
         <span>
-          Updated {new Date().toLocaleTimeString("en-IN", {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
+          {sales.length} records
         </span>
       </div>
 
-      {/* CSS */}
+      {/* STYLES */}
       <style>{`
 
         * {
@@ -509,7 +477,7 @@ export default function CustomerDetails() {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 28px;
+          margin-bottom: 30px;
           gap: 20px;
           flex-wrap: wrap;
         }
@@ -531,33 +499,34 @@ export default function CustomerDetails() {
           border: 1px solid #e2e8f0;
           border-radius: 12px;
           text-decoration: none;
-          transition: all 0.2s ease;
+          transition: all 0.2s;
         }
 
         .back-icon-button:hover {
-          background: #f1f5f9;
+          background: #eff6ff;
           color: #2563eb;
+          border-color: #bfdbfe;
           transform: translateY(-1px);
         }
 
         .page-eyebrow {
-          font-size: 11px;
-          font-weight: 700;
+          font-size: 10px;
+          font-weight: 800;
           letter-spacing: 1.5px;
-          color: #64748b;
-          margin-bottom: 7px;
+          color: #94a3b8;
+          margin-bottom: 8px;
         }
 
         .customer-page-header h1 {
           margin: 0;
           font-size: 28px;
           font-weight: 800;
-          letter-spacing: -0.7px;
+          letter-spacing: -0.8px;
           color: #0f172a;
         }
 
         .customer-page-header p {
-          margin: 6px 0 0;
+          margin: 7px 0 0;
           color: #64748b;
           font-size: 14px;
         }
@@ -582,129 +551,34 @@ export default function CustomerDetails() {
           border-color: #cbd5e1;
         }
 
-        /* PROFILE */
-
-        .customer-profile-card {
-          background: #ffffff;
-          border: 1px solid #e2e8f0;
-          border-radius: 18px;
-          padding: 26px;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 20px;
-          margin-bottom: 24px;
-          box-shadow: 0 2px 10px rgba(15, 23, 42, 0.025);
-        }
-
-        .customer-profile-main {
-          display: flex;
-          align-items: center;
-          gap: 20px;
-        }
-
-        .customer-avatar {
-          width: 68px;
-          height: 68px;
-          border-radius: 20px;
-          background: linear-gradient(135deg, #dbeafe, #bfdbfe);
-          color: #2563eb;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 27px;
-          flex-shrink: 0;
-        }
-
-        .profile-label {
-          display: block;
-          color: #94a3b8;
-          font-size: 10px;
-          font-weight: 800;
-          letter-spacing: 1.5px;
-          margin-bottom: 7px;
-        }
-
-        .customer-profile-info h2 {
-          margin: 0;
-          font-size: 23px;
-          font-weight: 800;
-          color: #0f172a;
-          letter-spacing: -0.5px;
-        }
-
-        .customer-profile-meta {
-          display: flex;
-          align-items: center;
-          flex-wrap: wrap;
-          gap: 16px;
-          margin-top: 10px;
-        }
-
-        .customer-profile-meta span {
-          display: flex;
-          align-items: center;
-          gap: 7px;
-          color: #64748b;
-          font-size: 13px;
-        }
-
-        .customer-profile-meta i {
-          color: #94a3b8;
-        }
-
-        .status-pill {
-          display: inline-flex;
-          align-items: center;
-          gap: 7px;
-          padding: 8px 13px;
-          border-radius: 50px;
-          font-size: 12px;
-          font-weight: 700;
-          text-transform: capitalize;
-        }
-
-        .status-active {
-          background: #dcfce7;
-          color: #15803d;
-        }
-
-        .status-inactive {
-          background: #fee2e2;
-          color: #b91c1c;
-        }
-
-        .status-dot {
-          width: 7px;
-          height: 7px;
-          background: currentColor;
-          border-radius: 50%;
-        }
-
-        /* STATS */
+        /* STAT GRID */
 
         .customer-stats-grid {
           display: grid;
           grid-template-columns: repeat(4, 1fr);
           gap: 18px;
-          margin-bottom: 26px;
+          margin-bottom: 28px;
         }
 
         .customer-stat-card {
           background: #ffffff;
           border: 1px solid #e2e8f0;
-          border-radius: 16px;
-          padding: 21px;
-          display: flex;
-          gap: 15px;
-          align-items: flex-start;
+          border-radius: 18px;
+          padding: 22px;
           transition: all 0.2s ease;
         }
 
         .customer-stat-card:hover {
           transform: translateY(-3px);
-          box-shadow: 0 8px 25px rgba(15, 23, 42, 0.06);
+          box-shadow: 0 10px 25px rgba(15, 23, 42, 0.05);
           border-color: #cbd5e1;
+        }
+
+        .stat-top {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 20px;
         }
 
         .stat-icon {
@@ -715,7 +589,6 @@ export default function CustomerDetails() {
           align-items: center;
           justify-content: center;
           font-size: 18px;
-          flex-shrink: 0;
         }
 
         .stat-icon-blue {
@@ -738,8 +611,14 @@ export default function CustomerDetails() {
           color: #ea580c;
         }
 
-        .stat-content {
-          min-width: 0;
+        .stat-badge {
+          background: #f8fafc;
+          border: 1px solid #f1f5f9;
+          padding: 6px 9px;
+          border-radius: 8px;
+          color: #94a3b8;
+          font-size: 10px;
+          font-weight: 700;
         }
 
         .stat-label {
@@ -753,24 +632,23 @@ export default function CustomerDetails() {
         .stat-content h3 {
           margin: 0;
           color: #0f172a;
-          font-size: 23px;
+          font-size: 25px;
           font-weight: 800;
-          letter-spacing: -0.6px;
-          white-space: nowrap;
+          letter-spacing: -0.7px;
         }
 
         .last-purchase-value {
-          font-size: 17px !important;
+          font-size: 18px !important;
         }
 
         .stat-description {
           display: block;
-          margin-top: 7px;
+          margin-top: 8px;
           font-size: 11px;
           color: #94a3b8;
         }
 
-        /* PURCHASE HISTORY */
+        /* HISTORY CARD */
 
         .purchase-history-card {
           background: #ffffff;
@@ -789,17 +667,27 @@ export default function CustomerDetails() {
           gap: 20px;
         }
 
-        .section-eyebrow {
-          color: #64748b;
-          font-size: 10px;
-          font-weight: 800;
-          letter-spacing: 1.4px;
-          margin-bottom: 8px;
+        .history-title {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+        }
+
+        .history-icon {
+          width: 46px;
+          height: 46px;
+          border-radius: 14px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: #eff6ff;
+          color: #2563eb;
+          font-size: 18px;
         }
 
         .purchase-history-header h2 {
           margin: 0;
-          font-size: 21px;
+          font-size: 20px;
           font-weight: 800;
           letter-spacing: -0.4px;
           color: #0f172a;
@@ -828,9 +716,9 @@ export default function CustomerDetails() {
         .orders-count-number {
           background: #2563eb;
           color: #ffffff;
-          width: 24px;
-          height: 24px;
-          border-radius: 7px;
+          width: 25px;
+          height: 25px;
+          border-radius: 8px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -910,7 +798,7 @@ export default function CustomerDetails() {
           color: #2563eb;
         }
 
-        .date-main {
+        .date-cell {
           color: #475569;
           font-weight: 500;
         }
@@ -918,18 +806,18 @@ export default function CustomerDetails() {
         .payment-method {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 9px;
           color: #475569;
           font-weight: 500;
         }
 
         .payment-method-icon {
-          width: 28px;
-          height: 28px;
+          width: 30px;
+          height: 30px;
           display: flex;
           align-items: center;
           justify-content: center;
-          border-radius: 8px;
+          border-radius: 9px;
           background: #f1f5f9;
           color: #64748b;
           font-size: 12px;
@@ -1188,55 +1076,28 @@ export default function CustomerDetails() {
             font-size: 23px;
           }
 
-          .customer-profile-card {
-            padding: 20px;
-            align-items: flex-start;
-          }
-
-          .customer-profile-main {
-            gap: 14px;
-          }
-
-          .customer-avatar {
-            width: 55px;
-            height: 55px;
-            border-radius: 16px;
-            font-size: 22px;
-          }
-
-          .customer-profile-info h2 {
-            font-size: 19px;
-          }
-
-          .customer-profile-meta {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 8px;
-          }
-
           .customer-stats-grid {
             grid-template-columns: repeat(2, 1fr);
             gap: 12px;
           }
 
           .customer-stat-card {
-            padding: 16px;
-            gap: 12px;
+            padding: 17px;
           }
 
           .stat-icon {
-            width: 38px;
-            height: 38px;
+            width: 40px;
+            height: 40px;
             font-size: 15px;
-            border-radius: 11px;
+            border-radius: 12px;
           }
 
           .stat-content h3 {
-            font-size: 19px;
+            font-size: 20px;
           }
 
           .last-purchase-value {
-            font-size: 14px !important;
+            font-size: 15px !important;
           }
 
           .purchase-history-header {
@@ -1247,8 +1108,8 @@ export default function CustomerDetails() {
             font-size: 19px;
           }
 
-          .customer-page-footer {
-            font-size: 10px;
+          .purchase-table {
+            min-width: 850px;
           }
         }
 
@@ -1279,33 +1140,38 @@ export default function CustomerDetails() {
             font-size: 12px;
           }
 
-          .customer-profile-card {
-            flex-direction: column;
-            gap: 16px;
-          }
-
-          .customer-profile-status {
-            align-self: flex-start;
-          }
-
           .customer-stats-grid {
             grid-template-columns: 1fr;
           }
 
           .customer-stat-card {
-            padding: 17px;
+            padding: 18px;
+          }
+
+          .stat-top {
+            margin-bottom: 15px;
           }
 
           .purchase-history-header {
             align-items: flex-start;
+            flex-wrap: wrap;
+          }
+
+          .history-title {
+            gap: 10px;
+          }
+
+          .history-icon {
+            width: 40px;
+            height: 40px;
+          }
+
+          .purchase-history-header h2 {
+            font-size: 17px;
           }
 
           .purchase-history-header p {
             font-size: 12px;
-          }
-
-          .orders-count {
-            padding: 7px 10px;
           }
 
           .customer-page-footer {
