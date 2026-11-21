@@ -9,6 +9,41 @@ const STATUS_FILTERS = [
   { key: "unpaid", label: "Unpaid" },
 ];
 
+/* Returns the first non-empty value */
+const pick = (...values) => {
+  for (const v of values) {
+    if (v !== undefined && v !== null && String(v).trim() !== "") {
+      return String(v).trim();
+    }
+  }
+  return "";
+};
+
+/* Reads contact details the same way the invoice page does
+   (customer_phone / customer_email), and falls back to the
+   customer's bills if the customer object doesn't have them. */
+function resolveContact(customer, sales) {
+  const c = customer || {};
+  const fromSale =
+    (sales || []).find(
+      (s) => s.customer_phone || s.customer_email || s.customer_name
+    ) || {};
+
+  return {
+    name: pick(c.name, c.customer_name, c.full_name, fromSale.customer_name),
+    phone: pick(
+      c.phone,
+      c.customer_phone,
+      c.mobile,
+      c.phone_number,
+      c.contact,
+      fromSale.customer_phone
+    ),
+    email: pick(c.email, c.customer_email, fromSale.customer_email),
+    address: pick(c.address, c.customer_address),
+  };
+}
+
 export default function CustomerDetails() {
   const { id } = useParams();
 
@@ -155,6 +190,14 @@ export default function CustomerDetails() {
     });
   }, [sales, search, statusFilter, sortOrder]);
 
+  const contact = useMemo(
+    () => resolveContact(customer, sales),
+    [customer, sales]
+  );
+
+  const displayName =
+    contact.name || contact.phone || `Customer #${customer?.id || id}`;
+
   const filtersActive = search.trim() !== "" || statusFilter !== "all";
 
   const clearFilters = () => {
@@ -183,7 +226,7 @@ export default function CustomerDetails() {
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    const safeName = String(customer?.name || "customer")
+    const safeName = String(displayName || "customer")
       .replace(/[^a-z0-9]+/gi, "-")
       .toLowerCase();
 
@@ -281,35 +324,40 @@ export default function CustomerDetails() {
       <section className="cd-profile">
         <div className="cd-profile-main">
           <div className="cd-avatar" aria-hidden="true">
-            {getInitials(customer.name)}
+            {contact.name ? (
+              getInitials(contact.name)
+            ) : (
+              <i className="fas fa-user"></i>
+            )}
           </div>
 
           <div className="cd-identity">
-            <h1>{customer.name || "Unnamed customer"}</h1>
+            <h1>{displayName}</h1>
 
-            <ul className="cd-contact">
-              {customer.phone && (
-                <li>
-                  <i className="fas fa-phone-alt"></i>
-                  {customer.phone}
-                </li>
-              )}
-              {customer.email && (
-                <li>
-                  <i className="fas fa-envelope"></i>
-                  {customer.email}
-                </li>
-              )}
-              {customer.address && (
-                <li>
-                  <i className="fas fa-map-marker-alt"></i>
-                  {customer.address}
-                </li>
-              )}
-              {!customer.phone && !customer.email && !customer.address && (
-                <li>No contact details added</li>
-              )}
-            </ul>
+            {((contact.phone && contact.phone !== displayName) ||
+              contact.email ||
+              contact.address) && (
+              <ul className="cd-contact">
+                {contact.phone && contact.phone !== displayName && (
+                  <li>
+                    <i className="fas fa-phone-alt"></i>
+                    {contact.phone}
+                  </li>
+                )}
+                {contact.email && (
+                  <li>
+                    <i className="fas fa-envelope"></i>
+                    {contact.email}
+                  </li>
+                )}
+                {contact.address && (
+                  <li>
+                    <i className="fas fa-map-marker-alt"></i>
+                    {contact.address}
+                  </li>
+                )}
+              </ul>
+            )}
           </div>
         </div>
 
