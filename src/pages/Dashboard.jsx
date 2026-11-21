@@ -2098,24 +2098,24 @@ function PremiumStyles() {
       /* Revenue hero */
       .lux-grid-hero { grid-template-columns: minmax(0,1.35fr) minmax(340px,1fr); gap: 20px; margin-bottom: 22px; }
       .lux-hero {
-        border: 0; border-radius: 24px; min-height: 290px;
+        border: 0; border-radius: 22px; min-height: 260px;
         background: radial-gradient(circle at 85% 5%,rgba(255,255,255,.18),transparent 36%),
           linear-gradient(135deg,#167c68 0%,#126b5b 52%,#0d5148 100%);
-        box-shadow: 0 16px 34px rgba(13,81,72,.18);
-        padding: 26px;
+        box-shadow: 0 14px 30px rgba(13,81,72,.16);
+        padding: 22px;
       }
       .lux-hero-grain { opacity: .5; }
       .lux-hero-ring { border-color: rgba(255,255,255,.12); }
-      .lux-hero-label { color: #e9e6ff; background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.15); letter-spacing: 1.3px; }
+      .lux-hero-label { color: #e6fffb; background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.18); letter-spacing: 1.1px; font-size: 9px; padding: 5px 10px; }
       .lux-dot-pulse { background: #a7f3d0; box-shadow: 0 0 0 4px rgba(167,243,208,.15); }
-      .lux-hero-value { font-family: 'Geist',sans-serif; font-weight: 750; font-size: clamp(38px,4.2vw,54px); letter-spacing: -2px; color: #fff; margin-top: 20px; white-space: nowrap; }
-      .lux-hero-suffix { color: rgba(255,255,255,.7); font-size: 13px; }
-      .lux-hero-foot { border-top-color: rgba(255,255,255,.16); gap: 20px; }
-      .lux-hero-foot-item { color: rgba(255,255,255,.7); }
-      .lux-hero-foot-item svg { color: #a7e5d6; }
-      .lux-hero-foot-item strong { color: #fff; }
-      .lux-hero-foot-item small { color: rgba(255,255,255,.62); }
-      .lux-hero-cta { background: #ffffff !important; color: #0d6557 !important; font-weight: 700; box-shadow: 0 8px 20px rgba(25,20,80,.16); border-radius: 12px; border: 1px solid rgba(255,255,255,.6); }
+      .lux-hero-value { font-family: 'Geist',sans-serif; font-weight: 750; font-size: clamp(34px,3.6vw,46px); letter-spacing: -1.7px; color: #fff; margin-top: 15px; white-space: nowrap; }
+      .lux-hero-suffix { color: rgba(255,255,255,.78); font-size: 11px; }
+      .lux-hero-foot { border-top-color: rgba(255,255,255,.18); gap: 14px; margin-top: 22px; padding-top: 16px; }
+      .lux-hero-foot-item { color: rgba(255,255,255,.78); gap: 7px; font-size: 10px; }
+      .lux-hero-foot-item svg { color: #d0fff4; font-size: 13px; }
+      .lux-hero-foot-item strong { color: #fff; font-size: 11px; }
+      .lux-hero-foot-item small { color: rgba(255,255,255,.68); font-size: 9px; }
+      .lux-hero-cta { background: rgba(255,255,255,.96) !important; color: #0d6557 !important; font-weight: 700; box-shadow: 0 6px 16px rgba(13,81,72,.14); border-radius: 10px; border: 1px solid rgba(255,255,255,.65); padding: 9px 13px; font-size: 10px; gap: 6px; }
       .lux-hero-cta:hover { background: #edf8f5 !important; color: #084f43 !important; }
 
       /* KPI cards */
