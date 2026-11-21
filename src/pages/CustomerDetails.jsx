@@ -9,12 +9,16 @@ const STATUS_FILTERS = [
   { key: "unpaid", label: "Unpaid" },
 ];
 
-/* Returns the first non-empty value */
+/* Values that mean "nothing here" and should never be shown */
+const PLACEHOLDER = /^(-+|—+|n\/?a|null|undefined|none|walk[\s-]?in(\s+customer)?)$/i;
+
+/* Returns the first real (non-empty, non-placeholder) value */
 const pick = (...values) => {
   for (const v of values) {
-    if (v !== undefined && v !== null && String(v).trim() !== "") {
-      return String(v).trim();
-    }
+    if (v === undefined || v === null) continue;
+
+    const text = String(v).trim();
+    if (text !== "" && !PLACEHOLDER.test(text)) return text;
   }
   return "";
 };
