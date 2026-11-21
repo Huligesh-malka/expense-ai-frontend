@@ -474,6 +474,7 @@ export default function BusinessDashboard() {
               <QuickAction to="/suppliers" icon={<FiTruck />} label="Suppliers" tone="orange" />
               <QuickAction to="/add-purchase" icon={<FiShoppingCart />} label="New Purchase" tone="cyan" />
               <QuickAction to="/reports" icon={<FiBarChart2 />} label="Business Reports" tone="indigo" />
+              <QuickAction to="/sales" icon={<FiList />} label="Invoices" tone="blue" />
               <QuickAction to="/qr-orders" icon={<FiCreditCard />} label="QR Orders" tone="violet" />
               <QuickAction to="/qr-ordering" icon={<FiGrid />} label="QR Ordering Setup" tone="cyan" />
             </div>
