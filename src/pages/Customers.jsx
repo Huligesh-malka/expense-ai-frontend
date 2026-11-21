@@ -2,11 +2,18 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import API from "../services/api";
 
+const SORT_OPTIONS = [
+  { key: "recent", label: "Recent purchase" },
+  { key: "spent", label: "Highest spending" },
+  { key: "orders", label: "Most orders" },
+];
+
 export default function Customers() {
   const [customers, setCustomers] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState("");
   const [sortBy, setSortBy] = useState("recent");
 
   useEffect(() => {
@@ -16,264 +23,1180 @@ export default function Customers() {
   const loadCustomers = async (refresh = false) => {
     if (refresh) setRefreshing(true);
     else setLoading(true);
+
+    setError("");
+
     try {
       const res = await API.get("/customers");
       setCustomers(res.data.data || []);
     } catch (err) {
       console.error("Failed to load customers:", err);
+      setError(
+        err.response?.data?.message || "Unable to load customers right now."
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
+  /* ---------- derived data ---------- */
+
   const filteredCustomers = useMemo(() => {
     const query = search.trim().toLowerCase();
-    let result = customers.filter((customer) =>
-      String(customer.customer_phone || "").toLowerCase().includes(query)
-    );
+    const queryDigits = query.replace(/\D/g, "");
+
+    let result = customers.filter((customer) => {
+      if (!query) return true;
+
+      const phone = String(customer.customer_phone || "").toLowerCase();
+      const phoneDigits = phone.replace(/\D/g, "");
+
+      return (
+        phone.includes(query) ||
+        (queryDigits !== "" && phoneDigits.includes(queryDigits))
+      );
+    });
 
     if (sortBy === "spent") {
-      result = [...result].sort((a, b) => (Number(b.total_spent) || 0) - (Number(a.total_spent) || 0));
+      result = [...result].sort(
+        (a, b) => (Number(b.total_spent) || 0) - (Number(a.total_spent) || 0)
+      );
     } else if (sortBy === "orders") {
-      result = [...result].sort((a, b) => (Number(b.total_orders) || 0) - (Number(a.total_orders) || 0));
+      result = [...result].sort(
+        (a, b) => (Number(b.total_orders) || 0) - (Number(a.total_orders) || 0)
+      );
     } else if (sortBy === "recent") {
-      result = [...result].sort((a, b) => new Date(b.last_purchase || 0) - new Date(a.last_purchase || 0));
+      result = [...result].sort(
+        (a, b) =>
+          new Date(b.last_purchase || 0) - new Date(a.last_purchase || 0)
+      );
     }
+
     return result;
   }, [customers, search, sortBy]);
 
-  const totalOrders = customers.reduce((sum, customer) => sum + (Number(customer.total_orders) || 0), 0);
-  const totalRevenue = customers.reduce((sum, customer) => sum + (Number(customer.total_spent) || 0), 0);
-  const activeCustomers = customers.filter((customer) => customer.status === "active").length;
-  const averageSpend = customers.length ? totalRevenue / customers.length : 0;
-  const topCustomer = [...customers].sort((a, b) => (Number(b.total_spent) || 0) - (Number(a.total_spent) || 0))[0];
+  const stats = useMemo(() => {
+    const totalOrders = customers.reduce(
+      (sum, c) => sum + (Number(c.total_orders) || 0),
+      0
+    );
+    const totalRevenue = customers.reduce(
+      (sum, c) => sum + (Number(c.total_spent) || 0),
+      0
+    );
+    const active = customers.filter((c) => c.status === "active").length;
+    const average = customers.length ? totalRevenue / customers.length : 0;
+    const top = [...customers].sort(
+      (a, b) => (Number(b.total_spent) || 0) - (Number(a.total_spent) || 0)
+    )[0];
+
+    return { totalOrders, totalRevenue, active, average, top };
+  }, [customers]);
 
   const formatCurrency = (value) =>
-    new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 }).format(Number(value) || 0);
+    new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      maximumFractionDigits: 2,
+    }).format(Number(value) || 0);
 
   const formatDate = (value) => {
     if (!value) return "—";
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return "—";
-    return date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+    return date.toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
   };
+
+  /* ---------- loading ---------- */
 
   if (loading) {
     return (
-      <div className="customer-v2-page">
-        <div className="customer-v2-loading"><div className="customer-v2-spinner" /><span>Loading customer workspace...</span></div>
-        <CustomerV2Styles />
+      <div className="cu-page">
+        <div className="cu-center" role="status" aria-live="polite">
+          <div className="cu-spinner" />
+          <span>Loading customers…</span>
+        </div>
+        <Styles />
       </div>
     );
   }
 
+  /* ---------- main ---------- */
+
   return (
-    <div className="customer-v2-page">
-      <main className="customer-v2-shell">
-        <header className="customer-v2-header">
+    <div className="cu-page">
+      <main className="cu-shell">
+        {/* HEADER */}
+        <header className="cu-header">
           <div>
-            <div className="customer-v2-eyebrow"><span className="customer-v2-dot" /> CUSTOMER MANAGEMENT</div>
-            <h1>Customers <span>.</span></h1>
-            <p>Know your customers, track loyalty, and understand their spending.</p>
+            <h1>Customers</h1>
+            <p>See who buys from you, how often, and how much they spend.</p>
           </div>
-          <div className="customer-v2-header-actions">
-            <button className="customer-v2-refresh" onClick={() => loadCustomers(true)} disabled={refreshing} type="button">
-              <i className={`fas fa-rotate ${refreshing ? "customer-v2-spin" : ""}`} />
-              {refreshing ? "Updating" : "Refresh"}
-            </button>
-            <div className="customer-v2-total-pill"><i className="fas fa-users" /> {customers.length} customers</div>
-          </div>
+
+          <button
+            className="cu-btn cu-btn-ghost"
+            onClick={() => loadCustomers(true)}
+            disabled={refreshing}
+            type="button"
+          >
+            <i className={`fas fa-sync-alt ${refreshing ? "cu-spin" : ""}`} />
+            {refreshing ? "Updating…" : "Refresh"}
+          </button>
         </header>
 
-        <section className="customer-v2-stats">
-          <article className="customer-v2-stat customer-v2-stat-primary">
-            <div className="customer-v2-stat-head"><span className="customer-v2-stat-icon"><i className="fas fa-users" /></span><span>Customer base</span></div>
-            <div className="customer-v2-stat-number">{customers.length.toLocaleString("en-IN")}</div>
-            <div className="customer-v2-stat-note">Registered customers</div>
-          </article>
-          <article className="customer-v2-stat">
-            <div className="customer-v2-stat-head"><span className="customer-v2-stat-icon green"><i className="fas fa-user-check" /></span><span>Active customers</span></div>
-            <div className="customer-v2-stat-number">{activeCustomers.toLocaleString("en-IN")}</div>
-            <div className="customer-v2-stat-note"><span className="customer-v2-green-dot" /> Active purchase records</div>
-          </article>
-          <article className="customer-v2-stat">
-            <div className="customer-v2-stat-head"><span className="customer-v2-stat-icon blue"><i className="fas fa-bag-shopping" /></span><span>Total orders</span></div>
-            <div className="customer-v2-stat-number">{totalOrders.toLocaleString("en-IN")}</div>
-            <div className="customer-v2-stat-note">Orders from all customers</div>
-          </article>
-          <article className="customer-v2-stat">
-            <div className="customer-v2-stat-head"><span className="customer-v2-stat-icon amber"><i className="fas fa-indian-rupee-sign" /></span><span>Customer revenue</span></div>
-            <div className="customer-v2-stat-number revenue">{formatCurrency(totalRevenue)}</div>
-            <div className="customer-v2-stat-note">Lifetime spending recorded</div>
-          </article>
-        </section>
-
-        <section className="customer-v2-insight-strip">
-          <div className="customer-v2-insight">
-            <div className="customer-v2-insight-icon"><i className="fas fa-chart-line" /></div>
-            <div><span>Average spend per customer</span><strong>{formatCurrency(averageSpend)}</strong></div>
+        {error && (
+          <div className="cu-alert" role="alert">
+            <span>
+              <i className="fas fa-exclamation-circle" />
+              {error}
+            </span>
+            <button type="button" onClick={() => loadCustomers()}>
+              Try again
+            </button>
           </div>
-          <div className="customer-v2-insight-divider" />
-          <div className="customer-v2-insight">
-            <div className="customer-v2-insight-icon gold"><i className="fas fa-crown" /></div>
-            <div><span>Top customer</span><strong>{topCustomer?.customer_phone || "—"}</strong><small>{topCustomer ? formatCurrency(topCustomer.total_spent) : "No purchase data"}</small></div>
-          </div>
-          <div className="customer-v2-insight-tip"><i className="fas fa-lightbulb" /><span>Customer purchase data helps you identify loyal buyers and improve service.</span></div>
-        </section>
+        )}
 
-        <section className="customer-v2-directory">
-          <div className="customer-v2-directory-head">
+        {/* OVERVIEW */}
+        <section className="cu-overview" aria-label="Customer summary">
+          <div className="cu-revenue">
             <div>
-              <div className="customer-v2-kicker">DIRECTORY</div>
-              <h2>Customer records</h2>
-              <p>Search, sort, and open individual customer purchase history.</p>
+              <span className="cu-revenue-label">Total customer revenue</span>
+              <strong className="cu-revenue-amount">
+                {formatCurrency(stats.totalRevenue)}
+              </strong>
             </div>
-            <div className="customer-v2-result-pill"><strong>{filteredCustomers.length}</strong> results</div>
+
+            <div className="cu-top">
+              <span className="cu-top-icon">
+                <i className="fas fa-crown" />
+              </span>
+              <div>
+                <span className="cu-top-label">Top customer</span>
+                <strong>{stats.top?.customer_phone || "—"}</strong>
+                <small>
+                  {stats.top
+                    ? `${formatCurrency(stats.top.total_spent)} spent`
+                    : "No purchase data yet"}
+                </small>
+              </div>
+            </div>
           </div>
 
-          <div className="customer-v2-toolbar">
-            <div className="customer-v2-search">
+          <div className="cu-stats">
+            <div className="cu-stat">
+              <span className="cu-stat-label">Customers</span>
+              <strong>{customers.length.toLocaleString("en-IN")}</strong>
+              <span className="cu-stat-note">Registered customers</span>
+            </div>
+
+            <div className="cu-stat">
+              <span className="cu-stat-label">Active</span>
+              <strong>{stats.active.toLocaleString("en-IN")}</strong>
+              <span className="cu-stat-note">With active purchase records</span>
+            </div>
+
+            <div className="cu-stat">
+              <span className="cu-stat-label">Total orders</span>
+              <strong>{stats.totalOrders.toLocaleString("en-IN")}</strong>
+              <span className="cu-stat-note">From all customers</span>
+            </div>
+
+            <div className="cu-stat">
+              <span className="cu-stat-label">Average spend</span>
+              <strong>{formatCurrency(stats.average)}</strong>
+              <span className="cu-stat-note">Per customer</span>
+            </div>
+          </div>
+        </section>
+
+        {/* DIRECTORY */}
+        <section className="cu-card">
+          <div className="cu-toolbar">
+            <div className="cu-search">
               <i className="fas fa-search" />
-              <input type="search" placeholder="Search phone number..." value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search customers by phone number" />
-              {search && <button type="button" onClick={() => setSearch("")} aria-label="Clear search"><i className="fas fa-times" /></button>}
+              <input
+                type="search"
+                placeholder="Search by phone number"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                aria-label="Search customers by phone number"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  aria-label="Clear search"
+                >
+                  <i className="fas fa-times" />
+                </button>
+              )}
             </div>
-            <label className="customer-v2-sort">
-              <span>Sort by</span>
-              <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-                <option value="recent">Recent purchase</option>
-                <option value="spent">Highest spending</option>
-                <option value="orders">Most orders</option>
-              </select>
-            </label>
-            <div className="customer-v2-search-hint"><i className="fas fa-shield-halved" /> Phone number search</div>
+
+            <div className="cu-segment" role="group" aria-label="Sort customers">
+              {SORT_OPTIONS.map((option) => (
+                <button
+                  key={option.key}
+                  type="button"
+                  className={sortBy === option.key ? "cu-segment-active" : ""}
+                  onClick={() => setSortBy(option.key)}
+                  aria-pressed={sortBy === option.key}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="customer-v2-table-wrap">
-            <table className="customer-v2-table">
-              <thead><tr><th>#</th><th>Customer</th><th className="center">Orders</th><th className="right">Total spent</th><th>Last purchase</th><th>Status</th><th className="center">Action</th></tr></thead>
-              <tbody>
-                {filteredCustomers.length === 0 ? (
-                  <tr><td colSpan="7"><div className="customer-v2-empty"><div><i className="fas fa-user-slash" /></div><strong>{search ? "No customers found" : "No customer records yet"}</strong><p>{search ? "Try another phone number or clear the search." : "Customers will appear after a sale is recorded."}</p>{search && <button onClick={() => setSearch("")} type="button">Clear search</button>}</div></td></tr>
-                ) : filteredCustomers.map((customer, index) => {
-                  const phone = customer.customer_phone || "";
-                  const status = String(customer.status || "inactive").toLowerCase();
-                  return (
-                    <tr key={customer.id || index}>
-                      <td className="customer-v2-index">{index + 1}</td>
-                      <td><div className="customer-v2-person"><div className="customer-v2-avatar">{phone ? phone.slice(-2) : <i className="fas fa-mobile-alt" />}</div><div><strong>{phone || "Phone unavailable"}</strong><small>Customer #{customer.id || index + 1}</small></div></div></td>
-                      <td className="center"><span className="customer-v2-orders">{Number(customer.total_orders) || 0}</span></td>
-                      <td className="right"><strong className="customer-v2-spent">{formatCurrency(customer.total_spent)}</strong></td>
-                      <td><span className="customer-v2-date">{formatDate(customer.last_purchase)}</span></td>
-                      <td><span className={`customer-v2-status ${status}`}><span />{status}</span></td>
-                      <td className="center"><Link className="customer-v2-view" to={`/customers/${customer.id}`}><span>View</span><i className="fas fa-arrow-up-right-from-square" /></Link></td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div className="cu-subbar">
+            <span>
+              {search
+                ? `${filteredCustomers.length} of ${customers.length} customers`
+                : `${customers.length} ${
+                    customers.length === 1 ? "customer" : "customers"
+                  }`}
+            </span>
+
+            {search && (
+              <button
+                type="button"
+                className="cu-link"
+                onClick={() => setSearch("")}
+              >
+                Clear search
+              </button>
+            )}
           </div>
-          <footer className="customer-v2-footer"><span>Showing <strong>{filteredCustomers.length}</strong> of <strong>{customers.length}</strong> customers</span><span><i className="fas fa-circle-check" /> Customer data synced</span></footer>
+
+          {filteredCustomers.length === 0 ? (
+            <div className="cu-empty">
+              <div className="cu-empty-icon">
+                <i className="fas fa-user-slash" />
+              </div>
+              <h3>{search ? "No customers found" : "No customers yet"}</h3>
+              <p>
+                {search
+                  ? "Try another phone number or clear the search."
+                  : "Customers appear here after you record a sale."}
+              </p>
+              {search && (
+                <button
+                  className="cu-btn cu-btn-primary"
+                  onClick={() => setSearch("")}
+                  type="button"
+                >
+                  Clear search
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="cu-table-wrap">
+              <table className="cu-table">
+                <thead>
+                  <tr>
+                    <th>Customer</th>
+                    <th className="cu-center-text">Orders</th>
+                    <th className="cu-right">Total spent</th>
+                    <th>Last purchase</th>
+                    <th>Status</th>
+                    <th className="cu-right">
+                      <span className="cu-sr">Action</span>
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {filteredCustomers.map((customer, index) => {
+                    const phone = customer.customer_phone || "";
+                    const status = String(
+                      customer.status || "inactive"
+                    ).toLowerCase();
+
+                    return (
+                      <tr key={customer.id || index}>
+                        <td data-label="Customer">
+                          <div className="cu-person">
+                            <div className="cu-avatar" aria-hidden="true">
+                              {phone ? (
+                                phone.slice(-2)
+                              ) : (
+                                <i className="fas fa-mobile-alt" />
+                              )}
+                            </div>
+
+                            <div className="cu-person-text">
+                              <strong>{phone || "Phone unavailable"}</strong>
+                              <small>Customer #{customer.id || index + 1}</small>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td className="cu-center-text" data-label="Orders">
+                          <span className="cu-orders">
+                            {Number(customer.total_orders) || 0}
+                          </span>
+                        </td>
+
+                        <td className="cu-right" data-label="Total spent">
+                          <strong className="cu-spent">
+                            {formatCurrency(customer.total_spent)}
+                          </strong>
+                        </td>
+
+                        <td data-label="Last purchase">
+                          <span className="cu-date">
+                            {formatDate(customer.last_purchase)}
+                          </span>
+                        </td>
+
+                        <td data-label="Status">
+                          <span className={`cu-status cu-status-${status}`}>
+                            <span />
+                            {status}
+                          </span>
+                        </td>
+
+                        <td className="cu-right cu-action" data-label="">
+                          <Link
+                            className="cu-view"
+                            to={`/customers/${customer.id}`}
+                            aria-label={`View purchase history for ${
+                              phone || `customer ${customer.id}`
+                            }`}
+                          >
+                            View history
+                            <i className="fas fa-chevron-right" />
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <footer className="cu-footer">
+            <span>
+              Showing <strong>{filteredCustomers.length}</strong> of{" "}
+              <strong>{customers.length}</strong> customers
+            </span>
+            <span>
+              <i className="fas fa-check-circle" />
+              Customer data is up to date
+            </span>
+          </footer>
         </section>
       </main>
-      <CustomerV2Styles />
+
+      <Styles />
     </div>
   );
 }
 
-function CustomerV2Styles() {
-  return <style>{`
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-    .customer-v2-page{min-height:100vh;background:radial-gradient(circle at 95% 0%,rgba(14,165,153,.07),transparent 27%),#f5f7fb;color:#172033;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-    .customer-v2-shell{width:min(1420px,calc(100% - 36px));margin:auto;padding:26px 0 55px}
-    .customer-v2-header{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:22px}
-    .customer-v2-eyebrow,.customer-v2-kicker{display:flex;align-items:center;gap:8px;font-size:10px;font-weight:800;letter-spacing:1.45px;color:#718096}
-    .customer-v2-dot{width:7px;height:7px;border-radius:50%;background:#0f8b83;box-shadow:0 0 0 4px rgba(15,139,131,.1)}
-    .customer-v2-header h1{margin:8px 0 5px;font-size:clamp(31px,3.5vw,42px);font-weight:900;letter-spacing:-1.7px;line-height:1;color:#111827}
-    .customer-v2-header h1 span{color:#0f8b83}
-    .customer-v2-header p{margin:0;color:#7b8799;font-size:13px}
-    .customer-v2-header-actions{display:flex;align-items:center;gap:9px}
-    .customer-v2-refresh,.customer-v2-total-pill{height:40px;padding:0 14px;border-radius:11px;display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700}
-    .customer-v2-refresh{background:#fff;border:1px solid #e2e8f0;color:#334155;cursor:pointer;transition:.18s}
-    .customer-v2-refresh:hover{color:#0f766e;border-color:#b8e2dc;background:#f0fdfa}
-    .customer-v2-refresh:disabled{opacity:.6}
-    .customer-v2-total-pill{background:#e9f8f6;color:#0f766e;border:1px solid #d0eee9}
-    .customer-v2-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:15px}
-    .customer-v2-stat{background:#fff;border:1px solid #e6edf5;border-radius:17px;padding:17px 19px;min-height:125px;box-shadow:0 5px 20px rgba(15,23,42,.025);transition:.2s}
-    .customer-v2-stat:hover{transform:translateY(-2px);box-shadow:0 12px 25px rgba(15,23,42,.06)}
-    .customer-v2-stat-head{display:flex;align-items:center;gap:9px;color:#64748b;font-size:11px;font-weight:700}
-    .customer-v2-stat-icon{width:34px;height:34px;border-radius:11px;background:#e9f7f5;color:#0f8b83;display:grid;place-items:center;font-size:13px}
-    .customer-v2-stat-icon.green{background:#eaf9f0;color:#16a34a}.customer-v2-stat-icon.blue{background:#edf4ff;color:#4778df}.customer-v2-stat-icon.amber{background:#fff5e5;color:#d99000}
-    .customer-v2-stat-number{margin-top:12px;color:#111827;font-size:29px;font-weight:850;letter-spacing:-1px;line-height:1}
-    .customer-v2-stat-number.revenue{font-size:clamp(19px,1.7vw,26px);letter-spacing:-.8px}
-    .customer-v2-stat-note{margin-top:9px;color:#94a3b8;font-size:10px;display:flex;align-items:center;gap:6px}
-    .customer-v2-green-dot{width:6px;height:6px;background:#16a34a;border-radius:50%}
-    .customer-v2-insight-strip{display:flex;align-items:center;gap:22px;padding:14px 18px;margin-bottom:18px;background:#fff;border:1px solid #e6edf5;border-radius:16px;box-shadow:0 4px 16px rgba(15,23,42,.025)}
-    .customer-v2-insight{display:flex;align-items:center;gap:11px;min-width:185px}
-    .customer-v2-insight-icon{width:34px;height:34px;border-radius:10px;background:#eaf8f6;color:#0f8b83;display:grid;place-items:center}
-    .customer-v2-insight-icon.gold{background:#fff5e3;color:#c58a13}
-    .customer-v2-insight div:last-child{display:flex;flex-direction:column;gap:3px}
-    .customer-v2-insight span{font-size:10px;color:#94a3b8}
-    .customer-v2-insight strong{font-size:13px;color:#172033;font-weight:800}
-    .customer-v2-insight small{font-size:10px;color:#0f8b83}
-    .customer-v2-insight-divider{height:35px;width:1px;background:#edf1f5}
-    .customer-v2-insight-tip{margin-left:auto;display:flex;align-items:center;gap:8px;color:#8491a4;font-size:10px;max-width:310px;line-height:1.5}
-    .customer-v2-insight-tip i{color:#d49a20;font-size:14px}
-    .customer-v2-directory{overflow:hidden;background:#fff;border:1px solid #e5ecf4;border-radius:20px;box-shadow:0 8px 28px rgba(15,23,42,.035)}
-    .customer-v2-directory-head{display:flex;align-items:flex-end;justify-content:space-between;padding:20px 22px 17px;border-bottom:1px solid #edf1f6}
-    .customer-v2-kicker{color:#0f8b83}
-    .customer-v2-directory-head h2{margin:7px 0 5px;font-size:21px;letter-spacing:-.55px;font-weight:800}
-    .customer-v2-directory-head p{margin:0;color:#8491a4;font-size:12px}
-    .customer-v2-result-pill{display:flex;gap:5px;align-items:center;padding:7px 11px;border-radius:999px;background:#f0fdfa;border:1px solid #d1eee9;color:#0f766e;font-size:11px}
-    .customer-v2-result-pill strong{font-size:13px}
-    .customer-v2-toolbar{display:flex;align-items:center;gap:12px;padding:13px 22px;background:#fbfcfe;border-bottom:1px solid #edf1f6}
-    .customer-v2-search{position:relative;display:flex;align-items:center;flex:1;max-width:480px;height:43px;background:#fff;border:1px solid #e2eaf2;border-radius:11px;transition:.18s}
-    .customer-v2-search:focus-within{border-color:#7bc9c1;box-shadow:0 0 0 3px rgba(15,139,131,.08)}
-    .customer-v2-search>i{position:absolute;left:13px;color:#9aa7b7;font-size:12px}
-    .customer-v2-search input{width:100%;height:100%;padding:0 40px;background:transparent;border:0;outline:0;font:inherit;font-size:12px;color:#172033}
-    .customer-v2-search input::placeholder{color:#9aa7b7}
-    .customer-v2-search button{position:absolute;right:8px;width:25px;height:25px;border:0;border-radius:7px;background:#f1f5f9;color:#64748b;cursor:pointer}
-    .customer-v2-sort{display:flex;align-items:center;gap:8px;color:#94a3b8;font-size:10px;font-weight:700}
-    .customer-v2-sort select{height:40px;padding:0 12px;border:1px solid #e2eaf2;border-radius:10px;background:#fff;color:#475569;font:inherit;font-size:11px;outline:0}
-    .customer-v2-search-hint{margin-left:auto;display:flex;align-items:center;gap:6px;color:#94a3b8;font-size:10px;white-space:nowrap}
-    .customer-v2-search-hint i{color:#0f8b83}
-    .customer-v2-table-wrap{overflow-x:auto}
-    .customer-v2-table{width:100%;min-width:850px;border-collapse:collapse;font-size:12px}
-    .customer-v2-table thead{background:#f8fafc}
-    .customer-v2-table th{padding:12px 18px;text-align:left;color:#738196;font-size:9px;font-weight:800;letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid #e8edf4;white-space:nowrap}
-    .customer-v2-table td{padding:13px 18px;border-bottom:1px solid #edf1f6;vertical-align:middle}
-    .customer-v2-table tbody tr{transition:background .15s}
-    .customer-v2-table tbody tr:hover{background:#f9fcfc}
-    .customer-v2-table tbody tr:last-child td{border-bottom:0}
-    .customer-v2-table .center{text-align:center!important}.customer-v2-table .right{text-align:right!important}
-    .customer-v2-index{width:45px;color:#a0aabc;font-size:11px}
-    .customer-v2-person{display:flex;align-items:center;gap:10px}
-    .customer-v2-avatar{width:35px;height:35px;display:grid;place-items:center;flex-shrink:0;border-radius:10px;background:#eaf8f6;color:#0f766e;font-size:11px;font-weight:800}
-    .customer-v2-person>div:last-child{display:flex;flex-direction:column;gap:3px}
-    .customer-v2-person strong{color:#172033;font-size:12px;font-weight:750}
-    .customer-v2-person small{color:#9aa7b7;font-size:9px}
-    .customer-v2-orders{display:inline-flex;min-width:30px;justify-content:center;padding:5px 8px;border-radius:7px;background:#f1f5f9;color:#475569;font-weight:750}
-    .customer-v2-spent{color:#172033;font-size:12px;font-weight:750;font-variant-numeric:tabular-nums}
-    .customer-v2-date{color:#718096;font-size:11px;white-space:nowrap}
-    .customer-v2-status{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border-radius:999px;font-size:9px;font-weight:750;text-transform:capitalize}
-    .customer-v2-status>span{width:5px;height:5px;border-radius:50%}
-    .customer-v2-status.active{background:#e9f9f0;color:#087a55}.customer-v2-status.active>span{background:#16a34a}
-    .customer-v2-status.inactive{background:#fff1f2;color:#be123c}.customer-v2-status.inactive>span{background:#e11d48}
-    .customer-v2-view{display:inline-flex;align-items:center;gap:6px;height:31px;padding:0 10px;border:1px solid #d2eee9;border-radius:8px;background:#f0fdfa;color:#0f766e;text-decoration:none;font-size:10px;font-weight:750;transition:.18s}
-    .customer-v2-view:hover{background:#0f8b83;color:#fff;border-color:#0f8b83}
-    .customer-v2-view i{font-size:9px}
-    .customer-v2-empty{text-align:center;padding:52px 20px}
-    .customer-v2-empty>div{width:48px;height:48px;margin:0 auto 12px;display:grid;place-items:center;border-radius:15px;background:#f1f5f9;color:#94a3b8;font-size:18px}
-    .customer-v2-empty strong{display:block;color:#172033;font-size:14px}
-    .customer-v2-empty p{color:#94a3b8;font-size:12px;margin:7px 0 0}
-    .customer-v2-empty button{margin-top:12px;border:0;border-radius:8px;padding:8px 12px;background:#0f8b83;color:white;font-weight:700;cursor:pointer}
-    .customer-v2-footer{display:flex;justify-content:space-between;gap:12px;padding:12px 18px;background:#fbfcfe;border-top:1px solid #edf1f6;color:#94a3b8;font-size:10px}
-    .customer-v2-footer strong{color:#475569}
-    .customer-v2-footer span:last-child{display:flex;align-items:center;gap:5px}.customer-v2-footer i{color:#16a34a}
-    .customer-v2-loading{min-height:60vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:#64748b;font-size:12px}
-    .customer-v2-spinner{width:34px;height:34px;border:3px solid #dce8e7;border-top-color:#0f8b83;border-radius:50%;animation:customer-v2-spin .8s linear infinite}
-    .customer-v2-spin{animation:customer-v2-spin .8s linear infinite}@keyframes customer-v2-spin{to{transform:rotate(360deg)}}
-    @media(max-width:1050px){.customer-v2-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.customer-v2-insight-tip{display:none}}
-    @media(max-width:700px){.customer-v2-shell{width:calc(100% - 18px);padding:18px 0 35px}.customer-v2-header{align-items:flex-start;flex-direction:column}.customer-v2-header-actions{width:100%;justify-content:space-between}.customer-v2-header h1{font-size:34px}.customer-v2-header p{font-size:12px;line-height:1.5}.customer-v2-stats{gap:9px}.customer-v2-stat{padding:13px;min-height:112px;border-radius:14px}.customer-v2-stat-head{font-size:10px;gap:7px}.customer-v2-stat-icon{width:29px;height:29px;border-radius:9px;font-size:11px}.customer-v2-stat-number{font-size:25px;margin-top:10px}.customer-v2-stat-number.revenue{font-size:19px}.customer-v2-stat-note{font-size:9px}.customer-v2-insight-strip{gap:12px;padding:12px;border-radius:13px}.customer-v2-insight{min-width:0;flex:1;gap:8px}.customer-v2-insight-divider{display:none}.customer-v2-insight-icon{width:30px;height:30px}.customer-v2-insight span{font-size:9px}.customer-v2-insight strong{font-size:11px}.customer-v2-insight small{font-size:9px}.customer-v2-directory{border-radius:15px}.customer-v2-directory-head{padding:16px}.customer-v2-directory-head h2{font-size:18px}.customer-v2-directory-head p{font-size:11px;line-height:1.45;max-width:250px}.customer-v2-toolbar{padding:12px;flex-wrap:wrap}.customer-v2-search{max-width:none;flex-basis:100%}.customer-v2-sort{flex:1}.customer-v2-sort select{flex:1;min-width:0}.customer-v2-search-hint{display:none}.customer-v2-footer{padding:12px;flex-direction:column}.customer-v2-table th,.customer-v2-table td{padding:12px 13px}}
-  `}</style>;
+/* ====================================================== */
+/* Styles — scoped under .cu- so nothing leaks globally    */
+/* ====================================================== */
+
+function Styles() {
+  return (
+    <style>{`
+      @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
+
+      .cu-page {
+        --ink: #14213d;
+        --ink-soft: #3b4a68;
+        --muted: #6b7794;
+        --line: #e1e6ef;
+        --bg: #eef1f6;
+        --surface: #ffffff;
+        --brand: #1d4ed8;
+        --brand-soft: #e8eefc;
+        --green: #157347;
+        --green-soft: #dff4e8;
+        --red: #b3261e;
+        --red-soft: #fbe3e1;
+        --gold: #f6c453;
+
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: Manrope, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-variant-numeric: tabular-nums;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .cu-page *,
+      .cu-page *::before,
+      .cu-page *::after {
+        box-sizing: border-box;
+      }
+
+      .cu-page h1,
+      .cu-page h3,
+      .cu-page p {
+        margin: 0;
+      }
+
+      .cu-page :focus-visible {
+        outline: 3px solid #93b4ff;
+        outline-offset: 2px;
+      }
+
+      .cu-sr {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+      }
+
+      .cu-shell {
+        width: min(1360px, calc(100% - 40px));
+        margin: 0 auto;
+        padding: 28px 0 64px;
+      }
+
+      /* ---------- header ---------- */
+
+      .cu-header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 20px;
+        margin-bottom: 20px;
+      }
+
+      .cu-header h1 {
+        font-size: clamp(28px, 4vw, 36px);
+        font-weight: 800;
+        letter-spacing: -1px;
+      }
+
+      .cu-header p {
+        margin-top: 6px;
+        font-size: 14px;
+        color: var(--muted);
+      }
+
+      .cu-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 42px;
+        padding: 0 16px;
+        border-radius: 11px;
+        border: 1px solid transparent;
+        font: 700 13px/1 Manrope, inherit;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: background 0.15s, border-color 0.15s, color 0.15s;
+      }
+
+      .cu-btn:disabled {
+        opacity: 0.6;
+        cursor: wait;
+      }
+
+      .cu-btn-ghost {
+        background: var(--surface);
+        color: var(--ink-soft);
+        border-color: var(--line);
+      }
+
+      .cu-btn-ghost:hover:not(:disabled) {
+        border-color: #c5cddd;
+        color: var(--ink);
+      }
+
+      .cu-btn-primary {
+        background: var(--ink);
+        color: #fff;
+      }
+
+      .cu-btn-primary:hover {
+        background: #0c1529;
+      }
+
+      .cu-spin {
+        animation: cu-rotate 0.8s linear infinite;
+      }
+
+      .cu-alert {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 16px;
+        padding: 12px 16px;
+        border: 1px solid #f2c2be;
+        border-radius: 12px;
+        background: var(--red-soft);
+        color: var(--red);
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .cu-alert i {
+        margin-right: 8px;
+      }
+
+      .cu-alert button {
+        border: 0;
+        background: none;
+        color: inherit;
+        font: 800 13px Manrope, inherit;
+        text-decoration: underline;
+        cursor: pointer;
+      }
+
+      /* ---------- overview ---------- */
+
+      .cu-overview {
+        margin-bottom: 20px;
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        overflow: hidden;
+        background: var(--surface);
+      }
+
+      .cu-revenue {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 20px;
+        padding: 24px 28px;
+        background: var(--ink);
+        color: #fff;
+      }
+
+      .cu-revenue-label {
+        display: block;
+        font-size: 13px;
+        font-weight: 600;
+        color: #b8c3dd;
+      }
+
+      .cu-revenue-amount {
+        display: block;
+        margin-top: 6px;
+        font-size: clamp(28px, 4vw, 38px);
+        font-weight: 800;
+        letter-spacing: -1px;
+        color: var(--gold);
+      }
+
+      .cu-top {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 12px 18px 12px 12px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.06);
+      }
+
+      .cu-top-icon {
+        width: 42px;
+        height: 42px;
+        display: grid;
+        place-items: center;
+        border-radius: 13px;
+        background: var(--gold);
+        color: var(--ink);
+        font-size: 16px;
+      }
+
+      .cu-top > div {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .cu-top-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #b8c3dd;
+      }
+
+      .cu-top strong {
+        font-size: 16px;
+        font-weight: 800;
+      }
+
+      .cu-top small {
+        font-size: 12px;
+        color: #b8c3dd;
+      }
+
+      .cu-stats {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+      }
+
+      .cu-stat {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 20px 24px;
+        border-right: 1px solid var(--line);
+      }
+
+      .cu-stat:last-child {
+        border-right: 0;
+      }
+
+      .cu-stat-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--muted);
+      }
+
+      .cu-stat strong {
+        font-size: 24px;
+        font-weight: 800;
+        letter-spacing: -0.6px;
+      }
+
+      .cu-stat-note {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      /* ---------- card / toolbar ---------- */
+
+      .cu-card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        overflow: hidden;
+      }
+
+      .cu-toolbar {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+        padding: 20px 24px 14px;
+      }
+
+      .cu-search {
+        position: relative;
+        display: flex;
+        align-items: center;
+        flex: 1 1 280px;
+        max-width: 420px;
+        height: 44px;
+        border: 1px solid var(--line);
+        border-radius: 11px;
+        background: #f8f9fc;
+        transition: background 0.15s, border-color 0.15s;
+      }
+
+      .cu-search:focus-within {
+        background: #fff;
+        border-color: #93b4ff;
+      }
+
+      .cu-search > i {
+        position: absolute;
+        left: 14px;
+        font-size: 13px;
+        color: var(--muted);
+        pointer-events: none;
+      }
+
+      .cu-search input {
+        width: 100%;
+        height: 100%;
+        padding: 0 40px;
+        border: 0;
+        outline: 0;
+        background: transparent;
+        color: var(--ink);
+        font: 600 13px Manrope, inherit;
+      }
+
+      .cu-search input::placeholder {
+        color: #8c97b0;
+        font-weight: 500;
+      }
+
+      .cu-search button {
+        position: absolute;
+        right: 8px;
+        width: 26px;
+        height: 26px;
+        border: 0;
+        border-radius: 7px;
+        background: #e6eaf3;
+        color: var(--muted);
+        cursor: pointer;
+      }
+
+      .cu-segment {
+        display: inline-flex;
+        gap: 4px;
+        margin-left: auto;
+        padding: 4px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #f8f9fc;
+      }
+
+      .cu-segment button {
+        height: 34px;
+        padding: 0 14px;
+        border: 0;
+        border-radius: 9px;
+        background: transparent;
+        color: var(--ink-soft);
+        font: 700 13px Manrope, inherit;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+
+      .cu-segment button:hover {
+        color: var(--ink);
+      }
+
+      .cu-segment .cu-segment-active {
+        background: var(--ink);
+        color: #fff;
+      }
+
+      .cu-subbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 0 24px 14px;
+        border-bottom: 1px solid var(--line);
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--muted);
+      }
+
+      .cu-link {
+        border: 0;
+        background: none;
+        color: var(--brand);
+        font: 700 13px Manrope, inherit;
+        cursor: pointer;
+      }
+
+      .cu-link:hover {
+        text-decoration: underline;
+      }
+
+      /* ---------- table ---------- */
+
+      .cu-table-wrap {
+        overflow-x: auto;
+      }
+
+      .cu-table {
+        width: 100%;
+        min-width: 820px;
+        border-collapse: collapse;
+      }
+
+      .cu-table th {
+        padding: 0 24px;
+        height: 46px;
+        text-align: left;
+        background: #f8f9fc;
+        border-bottom: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      .cu-table td {
+        padding: 16px 24px;
+        border-bottom: 1px solid #eef1f6;
+        vertical-align: middle;
+        font-size: 13px;
+        color: var(--ink-soft);
+      }
+
+      .cu-table tbody tr:last-child td {
+        border-bottom: 0;
+      }
+
+      .cu-table tbody tr:hover {
+        background: #f8f9fc;
+      }
+
+      .cu-right {
+        text-align: right !important;
+      }
+
+      .cu-center-text {
+        text-align: center !important;
+      }
+
+      .cu-person {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .cu-avatar {
+        flex: none;
+        width: 42px;
+        height: 42px;
+        display: grid;
+        place-items: center;
+        border-radius: 13px;
+        background: var(--gold);
+        color: var(--ink);
+        font-size: 14px;
+        font-weight: 800;
+      }
+
+      .cu-person-text {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+
+      .cu-person-text strong {
+        font-size: 14px;
+        font-weight: 800;
+        color: var(--ink);
+      }
+
+      .cu-person-text small {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .cu-orders {
+        display: inline-flex;
+        justify-content: center;
+        min-width: 34px;
+        padding: 5px 10px;
+        border-radius: 8px;
+        background: #eef1f6;
+        color: var(--ink);
+        font-weight: 800;
+      }
+
+      .cu-spent {
+        font-size: 15px;
+        font-weight: 800;
+        color: var(--ink);
+        white-space: nowrap;
+      }
+
+      .cu-date {
+        white-space: nowrap;
+      }
+
+      .cu-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 5px 11px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: capitalize;
+      }
+
+      .cu-status > span {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+      }
+
+      .cu-status-active {
+        background: var(--green-soft);
+        color: var(--green);
+      }
+
+      .cu-status-inactive {
+        background: var(--red-soft);
+        color: var(--red);
+      }
+
+      .cu-view {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 9px;
+        color: var(--brand);
+        font-size: 13px;
+        font-weight: 700;
+        text-decoration: none;
+        white-space: nowrap;
+        transition: background 0.15s;
+      }
+
+      .cu-view i {
+        font-size: 10px;
+      }
+
+      .cu-view:hover {
+        background: var(--brand-soft);
+      }
+
+      /* ---------- footer / empty / loading ---------- */
+
+      .cu-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+        padding: 14px 24px;
+        border-top: 1px solid var(--line);
+        background: #f8f9fc;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .cu-footer strong {
+        color: var(--ink);
+        font-weight: 800;
+      }
+
+      .cu-footer i {
+        margin-right: 7px;
+        color: #2f9e6b;
+      }
+
+      .cu-empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 56px 24px;
+        text-align: center;
+      }
+
+      .cu-empty-icon {
+        width: 62px;
+        height: 62px;
+        display: grid;
+        place-items: center;
+        margin-bottom: 16px;
+        border-radius: 20px;
+        background: #e6eaf3;
+        color: var(--muted);
+        font-size: 22px;
+      }
+
+      .cu-empty h3 {
+        font-size: 19px;
+        font-weight: 800;
+      }
+
+      .cu-empty p {
+        max-width: 360px;
+        margin-top: 6px;
+        font-size: 14px;
+        line-height: 1.5;
+        color: var(--muted);
+      }
+
+      .cu-empty .cu-btn {
+        margin-top: 18px;
+      }
+
+      .cu-center {
+        min-height: 70vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--muted);
+      }
+
+      .cu-spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #dbe1ee;
+        border-top-color: var(--brand);
+        border-radius: 50%;
+        animation: cu-rotate 0.8s linear infinite;
+      }
+
+      @keyframes cu-rotate {
+        to { transform: rotate(360deg); }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .cu-spinner,
+        .cu-spin { animation-duration: 2s; }
+        .cu-page * { transition: none !important; }
+      }
+
+      /* ---------- responsive ---------- */
+
+      @media (max-width: 960px) {
+        .cu-stats {
+          grid-template-columns: repeat(2, 1fr);
+        }
+
+        .cu-stat:nth-child(2) {
+          border-right: 0;
+        }
+
+        .cu-stat:nth-child(-n + 2) {
+          border-bottom: 1px solid var(--line);
+        }
+
+        .cu-segment {
+          margin-left: 0;
+        }
+      }
+
+      /* Table turns into stacked customer cards on phones */
+      @media (max-width: 720px) {
+        .cu-shell {
+          width: calc(100% - 24px);
+          padding-top: 18px;
+        }
+
+        .cu-header {
+          align-items: stretch;
+          flex-direction: column;
+        }
+
+        .cu-revenue {
+          padding: 20px;
+        }
+
+        .cu-top {
+          width: 100%;
+        }
+
+        .cu-toolbar {
+          padding: 16px;
+        }
+
+        .cu-search {
+          max-width: none;
+          flex-basis: 100%;
+        }
+
+        .cu-segment {
+          width: 100%;
+          overflow-x: auto;
+        }
+
+        .cu-segment button {
+          flex: 1;
+        }
+
+        .cu-subbar {
+          padding: 0 16px 12px;
+        }
+
+        .cu-table {
+          min-width: 0;
+        }
+
+        .cu-table thead {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          overflow: hidden;
+          clip: rect(0 0 0 0);
+        }
+
+        .cu-table,
+        .cu-table tbody,
+        .cu-table tr,
+        .cu-table td {
+          display: block;
+          width: 100%;
+        }
+
+        .cu-table tbody tr {
+          padding: 14px 16px;
+          border-bottom: 1px solid var(--line);
+        }
+
+        .cu-table tbody tr:last-child {
+          border-bottom: 0;
+        }
+
+        .cu-table td {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          padding: 7px 0;
+          border: 0;
+          text-align: right;
+        }
+
+        .cu-table td::before {
+          content: attr(data-label);
+          flex: none;
+          font-size: 12px;
+          font-weight: 700;
+          color: var(--muted);
+        }
+
+        .cu-table td[data-label="Customer"] {
+          display: block;
+          padding-top: 0;
+          padding-bottom: 10px;
+          text-align: left;
+        }
+
+        .cu-table td[data-label="Customer"]::before,
+        .cu-table td[data-label=""]::before {
+          content: none;
+        }
+
+        .cu-action {
+          justify-content: flex-end;
+          padding-bottom: 0;
+        }
+
+        .cu-view {
+          background: var(--brand-soft);
+        }
+
+        .cu-footer {
+          flex-direction: column;
+          align-items: flex-start;
+          padding: 14px 16px;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .cu-stats {
+          grid-template-columns: 1fr;
+        }
+
+        .cu-stat {
+          padding: 16px 20px;
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+        }
+
+        .cu-stat:last-child {
+          border-bottom: 0;
+        }
+      }
+    `}</style>
+  );
 }
