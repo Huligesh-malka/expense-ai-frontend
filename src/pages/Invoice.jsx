@@ -251,6 +251,30 @@ export default function Invoice() {
     const hasCustomerContact = invoice.customer_phone || invoice.customer_email;
     const discount = Number(invoice.discount) || 0;
     const docTitle = invoice.gst_number ? t.docTax : t.docCash;
+
+    // GST rate fallback: calculate the rate from the tax amount if the API
+    // doesn't return cgst_rate / sgst_rate (or returns them as zero).
+    const taxableAmount = Math.max(
+        0,
+        Number(invoice.subtotal || 0) - discount
+    );
+
+    const cgstAmount = Number(invoice.cgst || 0);
+    const sgstAmount = Number(invoice.sgst || 0);
+
+    const cgstRate =
+        Number(invoice.cgst_rate) > 0
+            ? Number(invoice.cgst_rate)
+            : taxableAmount > 0
+            ? (cgstAmount / taxableAmount) * 100
+            : 0;
+
+    const sgstRate =
+        Number(invoice.sgst_rate) > 0
+            ? Number(invoice.sgst_rate)
+            : taxableAmount > 0
+            ? (sgstAmount / taxableAmount) * 100
+            : 0;
     const showUpiQr = invoice.upi_id && !isPaid;
     const upiLink = showUpiQr
         ? `upi://pay?pa=${encodeURIComponent(invoice.upi_id)}&pn=${encodeURIComponent(
@@ -454,12 +478,12 @@ export default function Invoice() {
                             </div>
                         )}
                         <div className="rc-sum-row">
-                            <span>CGST ({(Number(invoice.cgst_rate) || 0).toFixed(1)}%)</span>
-                            <b>{formatCurrency(invoice.cgst || 0)}</b>
+                            <span>CGST ({cgstRate.toFixed(2)}%)</span>
+                            <b>{formatCurrency(cgstAmount)}</b>
                         </div>
                         <div className="rc-sum-row">
-                            <span>SGST ({(Number(invoice.sgst_rate) || 0).toFixed(1)}%)</span>
-                            <b>{formatCurrency(invoice.sgst || 0)}</b>
+                            <span>SGST ({sgstRate.toFixed(2)}%)</span>
+                            <b>{formatCurrency(sgstAmount)}</b>
                         </div>
                         <div className="rc-grand">
                             <span>{t.grandTotal}</span>
