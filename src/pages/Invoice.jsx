@@ -54,8 +54,7 @@ export default function Invoice() {
         }).format(Number(amount) || 0);
     };
 
-    // Stamp config — ink colour, label and a slight per-status tilt so each
-    // one reads like it was actually pressed onto the page by hand.
+    // Stamp config — ink colour, label and a slight per-status tilt
     const getStampConfig = (status) => {
         const configs = {
             paid: { ink: "#1F6D4C", label: "PAID", icon: <FiCheckCircle size={15} />, rotate: -7 },
@@ -79,11 +78,8 @@ export default function Invoice() {
     };
 
     const handleDownload = () => {
-        // Option 1: Print to PDF (simplest)
+        // Print to PDF (simplest). For advanced PDF generation use jsPDF or html2canvas.
         window.print();
-        
-        // Option 2: Advanced PDF generation with a library like jsPDF or html2canvas
-        // For now, we'll use the print method which allows "Save as PDF"
         alert("Click 'Print' and select 'Save as PDF' to download the invoice.");
     };
 
@@ -98,7 +94,6 @@ export default function Invoice() {
             if (navigator.share) {
                 await navigator.share(shareData);
             } else {
-                // Fallback: copy to clipboard
                 await navigator.clipboard.writeText(
                     `${shareData.title}\n${shareData.text}\n${shareData.url}`
                 );
@@ -161,9 +156,9 @@ export default function Invoice() {
                     {error || "This entry doesn't exist in the ledger, or it's been removed."}
                 </p>
                 <Link to="/sales" replace style={styles.errorButton}>
-    <FiArrowLeft size={18} />
-    Back to Sales
-</Link>
+                    <FiArrowLeft size={18} />
+                    Back to Sales
+                </Link>
             </div>
         );
     }
@@ -176,9 +171,9 @@ export default function Invoice() {
             {/* Action Bar */}
             <div style={styles.actionBar} className="no-print">
                 <Link to="/sales" replace style={styles.backLink}>
-    <FiArrowLeft size={18} />
-    Back to Sales
-</Link>
+                    <FiArrowLeft size={18} />
+                    Back to Sales
+                </Link>
                 <div style={styles.actionButtons}>
                     <button style={styles.actionButton} onClick={() => setShowPrintOptions(!showPrintOptions)}>
                         <FiPrinter size={18} />
@@ -221,7 +216,7 @@ export default function Invoice() {
                                     <img src={invoice.logo} alt="Business Logo" style={styles.businessLogo} />
                                 ) : (
                                     <div style={styles.businessLogoPlaceholder}>
-                                        <FiBox size={26} color="#1F6D4C" />
+                                        <FiBox size={26} color="#0b1220" />
                                     </div>
                                 )}
                                 <h1 style={styles.businessName}>{invoice.business_name || "Business Name"}</h1>
@@ -230,8 +225,8 @@ export default function Invoice() {
                                         <p style={styles.metaLine}>
                                             <FiMapPin size={12} />
                                             {invoice.address}
-                                            {invoice.city ? `, ${invoice.city}` : ""} 
-                                            {invoice.state ? `, ${invoice.state}` : ""} 
+                                            {invoice.city ? `, ${invoice.city}` : ""}
+                                            {invoice.state ? `, ${invoice.state}` : ""}
                                             {invoice.pincode ? ` - ${invoice.pincode}` : ""}
                                         </p>
                                     )}
@@ -268,7 +263,7 @@ export default function Invoice() {
                                 </span>
                             </div>
 
-                            {/* Ink stamp — the signature element */}
+                            {/* Ink stamp */}
                             <div
                                 style={{
                                     ...styles.stamp,
@@ -337,55 +332,35 @@ export default function Invoice() {
                             </div>
                         </div>
 
-                        {/* Items table */}
+                        {/* Items list (no column headers) */}
                         <div style={styles.tableSection}>
                             <div style={styles.tableHeader}>
                                 <h3 style={styles.tableTitle}>
                                     <FiPackage size={16} />
                                     Items
                                 </h3>
+                                <span style={styles.itemCountPill}>{items.length} items</span>
                             </div>
-                            <div style={styles.tableWrapper}>
-                                <table style={styles.table}>
-                                    <thead>
-                                        <tr>
-                                            <th style={{ ...styles.th, width: "34px" }}>#</th>
-                                            <th style={styles.th}>Product</th>
-                                            <th style={{ ...styles.th, textAlign: "right" }}>Qty</th>
-                                            <th style={{ ...styles.th, textAlign: "right" }}>Rate</th>
-                                            <th style={{ ...styles.th, textAlign: "right" }}>Amount</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {items.map((item, index) => (
-                                            <tr key={index} style={styles.tr}>
-                                                <td style={styles.td}>
-                                                    <span style={styles.serialNumber}>{index + 1}</span>
-                                                </td>
-                                                <td style={styles.td}>
-                                                    <div style={styles.productName}>{item.product_name}</div>
-                                                    {item.description && <div style={styles.productDescription}>{item.description}</div>}
-                                                </td>
-                                                <td style={{ ...styles.td, textAlign: "right" }}>
-                                                    <div style={styles.mono}>{formatQuantity(item)}</div>
-                                                    {item.entered_unit !== item.base_unit && (
-                                                        <div style={styles.convertedQuantity}>
-                                                            = {Number(item.base_quantity || item.quantity || 0)} {item.base_unit || item.unit}
-                                                        </div>
-                                                    )}
-                                                </td>
-                                                <td style={{ ...styles.td, textAlign: "right" }}>
-                                                    <div style={styles.mono}>{formatUnitPrice(item)}</div>
-                                                </td>
-                                                <td style={{ ...styles.td, textAlign: "right" }}>
-                                                    <div style={{ ...styles.mono, fontWeight: 700, color: "#1F2A22" }}>
-                                                        {formatCurrency(item.total)}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
+
+                            <div style={styles.itemList}>
+                                {items.map((item, index) => (
+                                    <div key={index} style={styles.itemCard}>
+                                        <div style={styles.itemIndex}>{String(index + 1).padStart(2, "0")}</div>
+
+                                        <div style={styles.itemInfo}>
+                                            <div style={styles.productName}>{item.product_name}</div>
+                                            {item.description && (
+                                                <div style={styles.productDescription}>{item.description}</div>
+                                            )}
+                                            <div style={styles.itemChips}>
+                                                <span style={styles.qtyChip}>{formatQuantity(item)}</span>
+                                                <span style={styles.rateChip}>@ {formatUnitPrice(item)}</span>
+                                            </div>
+                                        </div>
+
+                                        <div style={styles.itemAmount}>{formatCurrency(item.total)}</div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
 
@@ -444,7 +419,7 @@ export default function Invoice() {
 
 // Helper function to convert number to words
 function numberToWords(num) {
-    if (num === 0) return "Zero Rupees Only";
+    if (num === 0) return "Amount in words: Zero Rupees Only";
 
     const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"];
     const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
@@ -498,8 +473,6 @@ function numberToWords(num) {
 }
 
 // Modern BusinessOS / trading-style invoice theme.
-// Data, API calls and invoice calculations above remain unchanged so every owner
-// gets the same interface while seeing only their own invoice data.
 const styles = {
     page: {
         minHeight: "100vh",
@@ -740,7 +713,7 @@ const styles = {
         fontWeight: "900",
         letterSpacing: "1.5px",
         textTransform: "uppercase",
-        opacity: .95,
+        opacity: 0.95,
         pointerEvents: "none",
     },
 
@@ -807,6 +780,7 @@ const styles = {
         overflowWrap: "anywhere",
     },
 
+    /* ---------- Items list ---------- */
     tableSection: {
         marginBottom: "22px",
     },
@@ -815,7 +789,7 @@ const styles = {
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        marginBottom: "9px",
+        marginBottom: "10px",
     },
 
     tableTitle: {
@@ -830,58 +804,59 @@ const styles = {
         textTransform: "uppercase",
     },
 
-    tableWrapper: {
-        overflowX: "auto",
+    itemCountPill: {
+        padding: "4px 10px",
+        borderRadius: "999px",
+        background: "#0b1220",
+        color: "#c8ff00",
+        fontSize: "10px",
+        fontWeight: "800",
+        letterSpacing: ".4px",
+    },
+
+    itemList: {
+        display: "flex",
+        flexDirection: "column",
+        gap: "8px",
+    },
+
+    itemCard: {
+        display: "flex",
+        alignItems: "center",
+        gap: "14px",
+        padding: "12px 14px",
         border: "1px solid #e5eaf1",
-        borderRadius: "12px",
+        borderRadius: "14px",
+        background: "#ffffff",
+        boxShadow: "0 1px 2px rgba(15,23,42,.04)",
+        breakInside: "avoid",
+        pageBreakInside: "avoid",
     },
 
-    table: {
-        width: "100%",
-        minWidth: "600px",
-        borderCollapse: "collapse",
-        fontSize: "12px",
-    },
-
-    th: {
-        padding: "11px 10px",
-        textAlign: "left",
-        fontWeight: "900",
-        color: "#64748b",
-        background: "#f8fafc",
-        borderBottom: "1px solid #e2e8f0",
-        fontSize: "9px",
-        textTransform: "uppercase",
-        letterSpacing: ".7px",
-        whiteSpace: "nowrap",
-    },
-
-    tr: {
-        borderBottom: "1px solid #eef2f7",
-    },
-
-    td: {
-        padding: "12px 10px",
-        verticalAlign: "top",
-    },
-
-    serialNumber: {
-        display: "inline-flex",
+    itemIndex: {
+        flexShrink: 0,
+        width: "36px",
+        height: "36px",
+        display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        width: "25px",
-        height: "25px",
-        borderRadius: "7px",
-        background: "#eef2ff",
-        color: "#4f46e5",
-        fontSize: "10px",
+        borderRadius: "11px",
+        background: "#0b1220",
+        color: "#c8ff00",
+        fontSize: "11px",
         fontWeight: "900",
+        fontVariantNumeric: "tabular-nums",
+    },
+
+    itemInfo: {
+        flex: 1,
+        minWidth: 0,
     },
 
     productName: {
         color: "#0f172a",
         fontWeight: "800",
-        fontSize: "12px",
+        fontSize: "13px",
     },
 
     productDescription: {
@@ -890,10 +865,42 @@ const styles = {
         fontSize: "10px",
     },
 
-    convertedQuantity: {
-        marginTop: "3px",
-        color: "#94a3b8",
-        fontSize: "9px",
+    itemChips: {
+        display: "flex",
+        flexWrap: "wrap",
+        gap: "6px",
+        marginTop: "7px",
+    },
+
+    qtyChip: {
+        padding: "3px 9px",
+        borderRadius: "999px",
+        background: "#f1f5f9",
+        border: "1px solid #e2e8f0",
+        color: "#0f172a",
+        fontSize: "10px",
+        fontWeight: "800",
+        fontVariantNumeric: "tabular-nums",
+    },
+
+    rateChip: {
+        padding: "3px 9px",
+        borderRadius: "999px",
+        background: "rgba(200,255,0,.18)",
+        border: "1px solid rgba(160,205,0,.35)",
+        color: "#3f4f00",
+        fontSize: "10px",
+        fontWeight: "800",
+        fontVariantNumeric: "tabular-nums",
+    },
+
+    itemAmount: {
+        flexShrink: 0,
+        color: "#0b1220",
+        fontSize: "15px",
+        fontWeight: "900",
+        letterSpacing: "-.3px",
+        fontVariantNumeric: "tabular-nums",
     },
 
     mono: {
@@ -902,6 +909,7 @@ const styles = {
         fontVariantNumeric: "tabular-nums",
     },
 
+    /* ---------- Summary ---------- */
     summarySection: {
         display: "flex",
         justifyContent: "flex-end",
@@ -1084,7 +1092,9 @@ styleSheet.textContent = `
     * { box-sizing: border-box; }
 
     @media (max-width: 760px) {
-        .invoice-mobile-fix {}
+        #invoice-content [style*="grid-template-columns: 1fr 1fr"] {
+            grid-template-columns: 1fr !important;
+        }
     }
 
     @media print {
