@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 
 import { Link } from "react-router-dom";
 import API from "../services/api";
-import { FiSearch, FiPlus, FiEye, FiFilter, FiDownload, FiCalendar, FiUser, FiCreditCard, FiTrendingUp, FiPrinter, FiRefreshCw, FiActivity, FiArrowUpRight } from "react-icons/fi";
+import { FiSearch, FiPlus, FiEye, FiFilter, FiCalendar, FiUser, FiCreditCard, FiTrendingUp, FiRefreshCw, FiActivity, FiArrowUpRight } from "react-icons/fi";
 
 export default function SalesHistory() {
     const [sales, setSales] = useState([]);
@@ -123,32 +123,6 @@ export default function SalesHistory() {
 
         return matchesSearch && matchesStatus && matchesPeriod;
     });
-
-    const handlePrint = (id) => {
-        window.open(`/invoice/${id}?print=true`, '_blank');
-    };
-
-    const handleDownloadPDF = async (id) => {
-        try {
-            const response = await API.get(`/sales/invoice/${id}/pdf`, {
-                responseType: "blob"
-            });
-            const blob = response.data instanceof Blob
-                ? response.data
-                : new Blob([response.data], { type: "application/pdf" });
-            const url = window.URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.href = url;
-            link.download = `invoice-${id}.pdf`;
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            window.URL.revokeObjectURL(url);
-        } catch (err) {
-            console.error("PDF download failed:", err);
-            alert(err.response?.data?.message || "PDF download failed. Please check whether the invoice PDF endpoint is available.");
-        }
-    };
 
     return (
         <div className="sales-page" style={styles.container}>
@@ -290,9 +264,6 @@ export default function SalesHistory() {
                      <button style={styles.iconButton} onClick={() => loadSales()} title="Refresh sales">
                          <FiRefreshCw size={16} />
                      </button>
-                     <button style={styles.iconButton} onClick={() => window.print()} title="Print page">
-                         <FiDownload size={16} />
-                     </button>
                  </div>
             </div>
 
@@ -398,21 +369,6 @@ export default function SalesHistory() {
                                                         <FiEye size={14} />
                                                         View
                                                     </Link>
-                                                    <button
-                                                        style={styles.printButton}
-                                                        onClick={() => handlePrint(item.id)}
-                                                        title="Print Invoice"
-                                                    >
-                                                        <FiPrinter size={14} />
-                                                    </button>
-                                                    <button
-                                                        style={styles.pdfButton}
-                                                        onClick={() => handleDownloadPDF(item.id)}
-                                                        title="Download PDF"
-                                                    >
-                                                        <FiDownload size={14} />
-                                                    </button>
-
                                                 </div>
                                             </td>
                                         </tr>
@@ -923,31 +879,9 @@ const styles = {
         fontWeight: "850"
     },
 
-    printButton: {
-        width: "32px",
-        height: "32px",
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        border: "none",
-        borderRadius: "8px",
-        background: "#2563eb",
-        color: "#fff",
-        cursor: "pointer"
-    },
 
-    pdfButton: {
-        width: "32px",
-        height: "32px",
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        border: "none",
-        borderRadius: "8px",
-        background: "#7c3aed",
-        color: "#fff",
-        cursor: "pointer"
-    },
+
+
 
     loadingContainer: {
         minHeight: "360px",
