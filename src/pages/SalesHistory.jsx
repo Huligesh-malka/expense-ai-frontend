@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 
 import { Link } from "react-router-dom";
 import API from "../services/api";
-import { FiSearch, FiPlus, FiEye, FiFilter, FiCalendar, FiUser, FiCreditCard, FiTrendingUp, FiRefreshCw, FiActivity, FiArrowUpRight } from "react-icons/fi";
+import { FiSearch, FiPlus, FiEye, FiFilter, FiCalendar, FiUser, FiCreditCard, FiTrendingUp, FiRefreshCw, FiActivity, FiArrowUpRight, FiDownload } from "react-icons/fi";
 
 export default function SalesHistory() {
     const [sales, setSales] = useState([]);
@@ -492,6 +492,16 @@ export default function SalesHistory() {
                                                     >
                                                         <FiEye size={14} />
                                                         View
+                                                    </Link>
+                                                    <Link
+                                                        to={`/invoice/${item.id}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        style={styles.downloadButton}
+                                                        title="Open invoice to download PDF"
+                                                    >
+                                                        <FiDownload size={14} />
+                                                        Download PDF
                                                     </Link>
                                                 </div>
                                             </td>
@@ -1015,6 +1025,21 @@ const styles = {
         textDecoration: "none",
         fontSize: "10px",
         fontWeight: "850"
+    },
+
+    downloadButton: {
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "5px",
+        padding: "8px 11px",
+        borderRadius: "8px",
+        background: "#ecfdf5",
+        color: "#047857",
+        border: "1px solid #a7f3d0",
+        textDecoration: "none",
+        fontSize: "10px",
+        fontWeight: "850",
+        whiteSpace: "nowrap"
     },
 
 
