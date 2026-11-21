@@ -199,8 +199,7 @@ export default function CustomerDetails() {
     [customer, sales]
   );
 
-  const displayName =
-    contact.name || contact.phone || `Customer #${customer?.id || id}`;
+  const displayName = contact.name || `Customer #${customer?.id || id}`;
 
   const filtersActive = search.trim() !== "" || statusFilter !== "all";
 
@@ -338,11 +337,9 @@ export default function CustomerDetails() {
           <div className="cd-identity">
             <h1>{displayName}</h1>
 
-            {((contact.phone && contact.phone !== displayName) ||
-              contact.email ||
-              contact.address) && (
+            {(contact.phone || contact.email || contact.address) && (
               <ul className="cd-contact">
-                {contact.phone && contact.phone !== displayName && (
+                {contact.phone && (
                   <li>
                     <i className="fas fa-phone-alt"></i>
                     {contact.phone}
@@ -796,9 +793,9 @@ function Styles() {
         gap: 6px 18px;
         margin-top: 10px;
         list-style: none;
-        color: #b8c3dd;
-        font-size: 13px;
-        font-weight: 500;
+        color: #ffffff;
+        font-size: 14px;
+        font-weight: 600;
       }
 
       .cd-contact li {
@@ -808,7 +805,8 @@ function Styles() {
       }
 
       .cd-contact i {
-        color: #7f8fb3;
+        color: #ffffff;
+        opacity: 0.75;
         font-size: 12px;
       }
 
