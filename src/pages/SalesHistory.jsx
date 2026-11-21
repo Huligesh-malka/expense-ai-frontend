@@ -2,153 +2,7 @@ import { useState, useEffect } from "react";
 
 import { Link } from "react-router-dom";
 import API from "../services/api";
-import { FiSearch, FiPlus, FiEye, FiFilter, FiCalendar, FiUser, FiCreditCard, FiTrendingUp, FiRefreshCw, FiActivity, FiArrowUpRight, FiDownload } from "react-icons/fi";
-
-// Generates a styled, professional invoice PDF directly in the browser.
-const downloadSalePDF = (sale) => {
-    const money = (value) => `Rs. ${Number(value || 0).toFixed(2)}`;
-    const safe = (value) => String(value ?? "")
-        .replace(/[^\x20-\x7E]/g, "")
-        .replace(/\\/g, "\\\\")
-        .replace(/\(/g, "\\(")
-        .replace(/\)/g, "\\)");
-
-    const items = Array.isArray(sale.items) ? sale.items : [];
-    const invoiceNo = sale.invoice_no || sale.id || "N/A";
-    const dateText = new Date(sale.created_at || Date.now()).toLocaleString("en-IN");
-    const customer = sale.customer_name || "Walk-in Customer";
-    const payment = sale.payment_method || "N/A";
-    const status = sale.payment_status || "N/A";
-    const subtotal = Number(sale.subtotal ?? sale.total_amount ?? 0);
-    const tax = Number(sale.tax_amount ?? sale.gst_amount ?? sale.tax ?? 0);
-    const discount = Number(sale.discount_amount ?? sale.discount ?? 0);
-    const total = Number(sale.total_amount ?? subtotal + tax - discount);
-
-    // PDF drawing helpers (A4: 595 x 842 points)
-    const commands = [];
-    const rgb = (r, g, b) => `${r} ${g} ${b}`;
-    const rect = (x, y, w, h, color) => commands.push(`${rgb(...color)} rg ${x} ${y} ${w} ${h} re f`);
-    const line = (x1, y1, x2, y2, color = [0.87, 0.90, 0.94], width = 1) =>
-        commands.push(`${rgb(...color)} RG ${width} w ${x1} ${y1} m ${x2} ${y2} l S`);
-    const text = (value, x, y, size = 10, color = [0.12, 0.16, 0.22], font = "F1") =>
-        commands.push(`BT ${rgb(...color)} rg /${font} ${size} Tf 1 0 0 1 ${x} ${y} Tm (${safe(value)}) Tj ET`);
-    const rightText = (value, rightX, y, size = 10, color = [0.12, 0.16, 0.22], font = "F1") => {
-        const estimated = String(value).length * size * 0.52;
-        text(value, rightX - estimated, y, size, color, font);
-    };
-    const wrap = (value, maxChars = 35) => {
-        const words = String(value || "").split(/\s+/);
-        const result = [];
-        let current = "";
-        words.forEach(word => {
-            if ((current + " " + word).trim().length > maxChars && current) {
-                result.push(current);
-                current = word;
-            } else current = (current + " " + word).trim();
-        });
-        if (current) result.push(current);
-        return result;
-    };
-
-    // Header banner
-    rect(0, 742, 595, 100, [0.07, 0.11, 0.20]);
-    rect(0, 742, 8, 100, [0.22, 0.48, 0.95]);
-    text("INVOICE / CASH MEMO", 42, 798, 22, [1, 1, 1], "F2");
-    text("SALES RECEIPT", 42, 777, 9, [0.72, 0.80, 0.91], "F2");
-    rightText("INVOICE", 550, 800, 9, [0.72, 0.80, 0.91], "F2");
-    rightText(invoiceNo, 550, 780, 11, [1, 1, 1], "F2");
-
-    // Invoice information cards
-    rect(38, 674, 519, 48, [0.96, 0.97, 0.99]);
-    text("BILL TO", 52, 704, 8, [0.42, 0.48, 0.57], "F2");
-    text(customer, 52, 688, 11, [0.12, 0.16, 0.22], "F2");
-    text("DATE & TIME", 290, 704, 8, [0.42, 0.48, 0.57], "F2");
-    text(dateText, 290, 688, 10, [0.12, 0.16, 0.22], "F2");
-
-    // Payment status row
-    text("PAYMENT METHOD", 42, 650, 8, [0.42, 0.48, 0.57], "F2");
-    text(payment.toUpperCase(), 42, 634, 10, [0.12, 0.16, 0.22], "F2");
-    text("PAYMENT STATUS", 235, 650, 8, [0.42, 0.48, 0.57], "F2");
-    text(status.toUpperCase(), 235, 634, 10, status.toLowerCase() === "paid" ? [0.05, 0.55, 0.36] : [0.75, 0.42, 0.05], "F2");
-    line(38, 617, 557, 617, [0.87, 0.90, 0.94], 1);
-
-    // Items table
-    text("ITEM DETAILS", 42, 596, 10, [0.12, 0.16, 0.22], "F2");
-    rect(38, 568, 519, 25, [0.07, 0.11, 0.20]);
-    text("ITEM", 50, 577, 8, [1, 1, 1], "F2");
-    rightText("QTY", 365, 577, 8, [1, 1, 1], "F2");
-    rightText("PRICE", 455, 577, 8, [1, 1, 1], "F2");
-    rightText("AMOUNT", 545, 577, 8, [1, 1, 1], "F2");
-
-    let y = 550;
-    items.forEach((item, index) => {
-        const name = item.product_name || item.name || item.product || `Item ${index + 1}`;
-        const qty = Number(item.quantity ?? item.qty ?? 1);
-        const price = Number(item.unit_price ?? item.price ?? item.selling_price ?? 0);
-        const amount = Number(item.total ?? item.subtotal ?? item.line_total ?? qty * price);
-        const nameLines = wrap(name, 34);
-        const rowHeight = Math.max(30, nameLines.length * 12 + 12);
-        if (index % 2 === 0) rect(38, y - rowHeight + 6, 519, rowHeight, [0.98, 0.99, 1]);
-        nameLines.forEach((part, lineIndex) => text(part, 50, y - lineIndex * 12, 9, [0.12, 0.16, 0.22]));
-        rightText(String(qty), 365, y, 9);
-        rightText(money(price), 455, y, 9);
-        rightText(money(amount), 545, y, 9, [0.12, 0.16, 0.22], "F2");
-        y -= rowHeight;
-    });
-
-    const tableBottom = Math.max(y - 5, 360);
-    line(38, tableBottom, 557, tableBottom, [0.87, 0.90, 0.94], 1);
-
-    // Totals panel
-    const summaryTop = tableBottom - 20;
-    const summaryX = 330;
-    rect(summaryX, summaryTop - 112, 227, 112, [0.96, 0.97, 0.99]);
-    text("Subtotal", summaryX + 15, summaryTop - 24, 9, [0.42, 0.48, 0.57]);
-    rightText(money(subtotal), 542, summaryTop - 24, 9);
-    text("GST / Tax", summaryX + 15, summaryTop - 44, 9, [0.42, 0.48, 0.57]);
-    rightText(money(tax), 542, summaryTop - 44, 9);
-    text("Discount", summaryX + 15, summaryTop - 64, 9, [0.42, 0.48, 0.57]);
-    rightText(money(discount), 542, summaryTop - 64, 9);
-    line(summaryX + 15, summaryTop - 76, 542, summaryTop - 76, [0.82, 0.86, 0.91], 1);
-    text("TOTAL", summaryX + 15, summaryTop - 98, 10, [0.07, 0.11, 0.20], "F2");
-    rightText(money(total), 542, summaryTop - 98, 13, [0.07, 0.11, 0.20], "F2");
-
-    // Footer
-    line(38, 95, 557, 95, [0.87, 0.90, 0.94], 1);
-    text("Thank you for your purchase!", 42, 75, 11, [0.07, 0.11, 0.20], "F2");
-    text("Generated by Expense AI POS", 42, 58, 8, [0.55, 0.59, 0.65]);
-    rightText("Keep this receipt for your records", 550, 58, 8, [0.55, 0.59, 0.65]);
-
-    const stream = commands.join("\n");
-    const objects = [
-        "<< /Type /Catalog /Pages 2 0 R >>",
-        "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>",
-        "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
-        "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>",
-        `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`
-    ];
-    let pdf = "%PDF-1.4\n";
-    const offsets = [0];
-    objects.forEach((obj, index) => {
-        offsets.push(pdf.length);
-        pdf += `${index + 1} 0 obj\n${obj}\nendobj\n`;
-    });
-    const xrefOffset = pdf.length;
-    pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
-    offsets.slice(1).forEach(offset => pdf += `${String(offset).padStart(10, "0")} 00000 n \n`);
-    pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
-
-    const blob = new Blob([pdf], { type: "application/pdf" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `Invoice-${invoiceNo}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-};
+import { FiSearch, FiPlus, FiEye, FiDownload, FiFilter, FiCalendar, FiUser, FiCreditCard, FiTrendingUp, FiRefreshCw, FiActivity, FiArrowUpRight } from "react-icons/fi";
 
 export default function SalesHistory() {
     const [sales, setSales] = useState([]);
@@ -159,49 +13,18 @@ export default function SalesHistory() {
     const [lastUpdated, setLastUpdated] = useState(null);
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(20);
-    const [allRecordsMode, setAllRecordsMode] = useState(false);
     const [totalPages, setTotalPages] = useState(1);
     const [totalSalesCount, setTotalSalesCount] = useState(0);
-    const [customStartDate, setCustomStartDate] = useState("");
-    const [customEndDate, setCustomEndDate] = useState("");
 
     useEffect(() => {
         loadSales();
     }, []);
 
-    const getDateRange = (period = selectedPeriod, startDate = customStartDate, endDate = customEndDate) => {
-        const now = new Date();
-        const formatDate = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-        if (period === "today") return { startDate: formatDate(now), endDate: formatDate(now) };
-        if (period === "yesterday") {
-            const yesterday = new Date(now);
-            yesterday.setDate(yesterday.getDate() - 1);
-            const date = formatDate(yesterday);
-            return { startDate: date, endDate: date };
-        }
-        if (period === "week") {
-            const start = new Date(now);
-            start.setDate(start.getDate() - 6);
-            return { startDate: formatDate(start), endDate: formatDate(now) };
-        }
-        if (period === "month") {
-            const start = new Date(now.getFullYear(), now.getMonth(), 1);
-            return { startDate: formatDate(start), endDate: formatDate(now) };
-        }
-        if (period === "custom") return { startDate: startDate || undefined, endDate: endDate || undefined };
-        return {};
-    };
-
-    const loadSales = async (requestedPage = page, requestedLimit = limit, period = selectedPeriod, customDates = {}) => {
-        setAllRecordsMode(false);
+    const loadSales = async (requestedPage = page, requestedLimit = limit) => {
         setLoading(true);
         try {
             const res = await API.get("/sales", {
-                params: {
-                    page: requestedPage,
-                    limit: requestedLimit,
-                    ...getDateRange(period, customDates.startDate ?? customStartDate, customDates.endDate ?? customEndDate)
-                }
+                params: { page: requestedPage, limit: requestedLimit }
             });
 
             const rows = Array.isArray(res.data?.data) ? res.data.data : [];
@@ -219,86 +42,7 @@ export default function SalesHistory() {
         }
     };
 
-    // Backend maximum is 100 per request. "All Records" fetches every page
-    // and combines them on the frontend without changing the backend.
-    const loadAllSales = async (period = selectedPeriod, customDates = {}, displayLimit = "all") => {
-        setAllRecordsMode(true);
-        setLoading(true);
-        try {
-            const dateParams = getDateRange(
-                period,
-                customDates.startDate ?? customStartDate,
-                customDates.endDate ?? customEndDate
-            );
-            const firstResponse = await API.get("/sales", {
-                params: { page: 1, limit: 100, ...dateParams }
-            });
 
-            const firstRows = Array.isArray(firstResponse.data?.data) ? firstResponse.data.data : [];
-            const total = Number(firstResponse.data?.total) || firstRows.length;
-            const pages = Math.max(1, Number(firstResponse.data?.totalPages) || 1);
-
-            let allRows = [...firstRows];
-
-            if (pages > 1) {
-                const requests = [];
-                for (let currentPage = 2; currentPage <= pages; currentPage++) {
-                    requests.push(
-                        API.get("/sales", {
-                            params: { page: currentPage, limit: 100, ...dateParams }
-                        })
-                    );
-                }
-
-                const responses = await Promise.all(requests);
-                responses.forEach(response => {
-                    const rows = Array.isArray(response.data?.data) ? response.data.data : [];
-                    allRows.push(...rows);
-                });
-            }
-
-            setSales(allRows);
-            setPage(1);
-            setLimit(displayLimit === "all" ? (allRows.length || total) : Number(displayLimit));
-            setTotalPages(1);
-            setTotalSalesCount(total);
-            setLastUpdated(new Date());
-        } catch (err) {
-            console.error("Error loading all sales:", err);
-            alert(err.response?.data?.message || "Failed to load all sales data");
-        } finally {
-            setLoading(false);
-        }
-    };
-
-
-    const handlePeriodChange = (period) => {
-        setSelectedPeriod(period);
-        setPage(1);
-        if (period !== "custom") {
-            setCustomStartDate("");
-            setCustomEndDate("");
-        }
-        if (allRecordsMode) {
-            loadAllSales(period, { startDate: "", endDate: "" });
-        } else {
-            loadSales(1, limit, period, { startDate: "", endDate: "" });
-        }
-    };
-
-    const handleCustomDateChange = (startDate, endDate) => {
-        setCustomStartDate(startDate);
-        setCustomEndDate(endDate);
-        if (startDate && endDate) {
-            setSelectedPeriod("custom");
-            setPage(1);
-            if (allRecordsMode) {
-                loadAllSales("custom", { startDate, endDate });
-            } else {
-                loadSales(1, limit, "custom", { startDate, endDate });
-            }
-        }
-    };
 
     const getStatusConfig = (status) => {
         const configs = {
@@ -363,28 +107,22 @@ export default function SalesHistory() {
             item.payment_status?.toLowerCase() === filterStatus;
 
         let matchesPeriod = true;
-        const saleDate = new Date(item.created_at);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        if (selectedPeriod === "today") matchesPeriod = saleDate >= today;
-        else if (selectedPeriod === "yesterday") {
-            const yesterday = new Date(today);
-            yesterday.setDate(yesterday.getDate() - 1);
-            matchesPeriod = saleDate >= yesterday && saleDate < today;
+        if (selectedPeriod === "today") {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            matchesPeriod = new Date(item.created_at) >= today;
         } else if (selectedPeriod === "week") {
-            const weekAgo = new Date(today);
-            weekAgo.setDate(weekAgo.getDate() - 6);
-            matchesPeriod = saleDate >= weekAgo;
+            const weekAgo = new Date();
+            weekAgo.setDate(weekAgo.getDate() - 7);
+            matchesPeriod = new Date(item.created_at) >= weekAgo;
         } else if (selectedPeriod === "month") {
-            matchesPeriod = saleDate >= new Date(today.getFullYear(), today.getMonth(), 1);
-        } else if (selectedPeriod === "custom" && customStartDate && customEndDate) {
-            matchesPeriod = saleDate >= new Date(`${customStartDate}T00:00:00`) && saleDate <= new Date(`${customEndDate}T23:59:59`);
+            const monthAgo = new Date();
+            monthAgo.setMonth(monthAgo.getMonth() - 1);
+            matchesPeriod = new Date(item.created_at) >= monthAgo;
         }
 
         return matchesSearch && matchesStatus && matchesPeriod;
     });
-
-    const displayedSales = allRecordsMode && limit !== "all" ? filtered.slice(0, Number(limit)) : filtered;
 
     return (
         <div className="sales-page" style={styles.container}>
@@ -500,23 +238,15 @@ export default function SalesHistory() {
                         <FiCalendar size={18} color="#6b7280" />
                         <select
                             value={selectedPeriod}
-                            onChange={(e) => handlePeriodChange(e.target.value)}
+                            onChange={(e) => setSelectedPeriod(e.target.value)}
                             style={styles.filterSelect}
                         >
                             <option value="all">All Time</option>
                             <option value="today">Today</option>
-                            <option value="yesterday">Yesterday</option>
                             <option value="week">Last 7 Days</option>
-                            <option value="month">This Month</option>
-                            <option value="custom">Custom Range</option>
+                            <option value="month">Last 30 Days</option>
                         </select>
                     </div>
-                    {selectedPeriod === "custom" && (
-                        <>
-                            <input type="date" value={customStartDate} onChange={(e) => handleCustomDateChange(e.target.value, customEndDate)} style={styles.dateInput} aria-label="Start date" />
-                            <input type="date" value={customEndDate} min={customStartDate || undefined} onChange={(e) => handleCustomDateChange(customStartDate, e.target.value)} style={styles.dateInput} aria-label="End date" />
-                        </>
-                    )}
                 </div>
                                 <div style={styles.filtersRight}>
                      <div style={styles.liveIndicator}>
@@ -531,7 +261,7 @@ export default function SalesHistory() {
                              Updated {lastUpdated.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
                          </span>
                      )}
-                     <button style={styles.iconButton} onClick={() => allRecordsMode ? loadAllSales(selectedPeriod) : loadSales(page, limit, selectedPeriod)} title="Refresh sales">
+                     <button style={styles.iconButton} onClick={() => loadSales()} title="Refresh sales">
                          <FiRefreshCw size={16} />
                      </button>
                  </div>
@@ -575,7 +305,7 @@ export default function SalesHistory() {
                                     </td>
                                 </tr>
                             ) : (
-                                displayedSales.map((item) => {
+                                filtered.map((item) => {
                                     const statusConfig = getStatusConfig(item.payment_status);
                                     const itemsList = item.items || [];
                                     return (
@@ -639,15 +369,13 @@ export default function SalesHistory() {
                                                         <FiEye size={14} />
                                                         View
                                                     </Link>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => downloadSalePDF(item)}
+                                                    <Link
+                                                        to={`/invoice/${item.id}?download=1`}
                                                         style={styles.downloadButton}
-                                                        title="Download invoice PDF directly"
+                                                        title="Download invoice PDF"
                                                     >
                                                         <FiDownload size={14} />
-                                                        Download PDF
-                                                    </button>
+                                                    </Link>
                                                 </div>
                                             </td>
                                         </tr>
@@ -662,23 +390,16 @@ export default function SalesHistory() {
             {/* Pagination for the paginated /sales API */}
             <div style={styles.paginationBar}>
                 <div style={styles.paginationInfo}>
-                    {allRecordsMode
-                        ? `Showing ${Math.min(sales.length, Number(limit) || sales.length)} of ${totalSalesCount} sales`
-                        : `Showing ${sales.length ? ((page - 1) * limit + 1) : 0}–${Math.min(page * limit, totalSalesCount)} of ${totalSalesCount} sales`}
+                    Showing {sales.length ? ((page - 1) * limit + 1) : 0}
+                    {"–"}
+                    {Math.min(page * limit, totalSalesCount)} of {totalSalesCount} sales
                 </div>
                 <div style={styles.paginationControls}>
                     <label style={styles.pageSizeLabel}>
                         Rows
                         <select
-                            value={allRecordsMode ? (limit === 500 || limit === 1000 ? String(limit) : "all") : limit}
-                            onChange={(e) => {
-                                const value = e.target.value;
-                                if (value === "all" || value === "500" || value === "1000") {
-                                    loadAllSales(selectedPeriod, {}, value);
-                                } else {
-                                    loadSales(1, Number(value), selectedPeriod);
-                                }
-                            }}
+                            value={limit}
+                            onChange={(e) => loadSales(1, Number(e.target.value))}
                             style={styles.pageSizeSelect}
                             disabled={loading}
                         >
@@ -686,30 +407,25 @@ export default function SalesHistory() {
                             <option value={20}>20</option>
                             <option value={50}>50</option>
                             <option value={100}>100</option>
-                            <option value={500}>500</option>
-                            <option value={1000}>1000</option>
-                            <option value="all">All Records</option>
                         </select>
                     </label>
-                    {!allRecordsMode && <>
-                        <button
-                            type="button"
-                            style={{ ...styles.pageButton, opacity: page <= 1 || loading ? 0.5 : 1 }}
-                            disabled={page <= 1 || loading}
-                            onClick={() => loadSales(page - 1, limit, selectedPeriod)}
-                        >
-                            Previous
-                        </button>
-                        <span style={styles.pageNumber}>Page {page} of {totalPages}</span>
-                        <button
-                            type="button"
-                            style={{ ...styles.pageButton, opacity: page >= totalPages || loading ? 0.5 : 1 }}
-                            disabled={page >= totalPages || loading}
-                            onClick={() => loadSales(page + 1, limit, selectedPeriod)}
-                        >
-                            Next
-                        </button>
-                    </>}
+                    <button
+                        type="button"
+                        style={{ ...styles.pageButton, opacity: page <= 1 || loading ? 0.5 : 1 }}
+                        disabled={page <= 1 || loading}
+                        onClick={() => loadSales(page - 1, limit)}
+                    >
+                        Previous
+                    </button>
+                    <span style={styles.pageNumber}>Page {page} of {totalPages}</span>
+                    <button
+                        type="button"
+                        style={{ ...styles.pageButton, opacity: page >= totalPages || loading ? 0.5 : 1 }}
+                        disabled={page >= totalPages || loading}
+                        onClick={() => loadSales(page + 1, limit)}
+                    >
+                        Next
+                    </button>
                 </div>
             </div>
         </div>
@@ -972,8 +688,6 @@ const styles = {
         background: "#f8fafc"
     },
 
-    dateInput: { height: "42px", padding: "0 10px", border: "1px solid #e2e8f0", borderRadius: "11px", background: "#f8fafc", color: "#334155", fontSize: "12px" },
-
     filterSelect: {
         border: "none",
         outline: "none",
@@ -1159,6 +873,21 @@ const styles = {
         flexWrap: "wrap"
     },
 
+    downloadButton: {
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: "34px",
+        height: "34px",
+        borderRadius: "8px",
+        background: "#f1f5f9",
+        color: "#334155",
+        border: "1px solid #dbe3ef",
+        textDecoration: "none",
+        fontSize: "12px",
+        fontWeight: "800"
+    },
+
     viewButton: {
         display: "inline-flex",
         alignItems: "center",
@@ -1170,23 +899,6 @@ const styles = {
         textDecoration: "none",
         fontSize: "10px",
         fontWeight: "850"
-    },
-
-    downloadButton: {
-        cursor: "pointer",
-        border: "none",
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "5px",
-        padding: "8px 11px",
-        borderRadius: "8px",
-        background: "#ecfdf5",
-        color: "#047857",
-        border: "1px solid #a7f3d0",
-        textDecoration: "none",
-        fontSize: "10px",
-        fontWeight: "850",
-        whiteSpace: "nowrap"
     },
 
 
