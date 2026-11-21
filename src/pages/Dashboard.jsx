@@ -731,17 +731,17 @@ function PremiumStyles() {
       @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Geist:wght@400;500;600;700&display=swap');
 
       .lux-shell {
-        /* ==== WARMER CANVAS ==== */
-        --canvas: #eee8dd;
-        --canvas-2: #e5dccc;
-        --paper: #fdfbf6;
-        --paper-2: #f6f1e6;
+        /* ==== CLEAN WHITE CANVAS ==== */
+        --canvas: #ffffff;
+        --canvas-2: #f4f4f0;
+        --paper: #ffffff;
+        --paper-2: #f7f7f4;
         --ink: #0f0f0e;
         --ink-2: #1a1a18;
         --ink-soft: #3a3a36;
         --muted: #8a8780;
-        --line: #ddd4c2;
-        --line-strong: #cbbfaa;
+        --line: #e8e6dd;
+        --line-strong: #d4d1c4;
         --dark: #14140f;
         --dark-2: #1c1c17;
         --gold: #c9a24a;
@@ -752,15 +752,14 @@ function PremiumStyles() {
         --radius-xl: 20px;
         --radius-lg: 16px;
         --radius-md: 12px;
-        --shadow-1: 0 1px 0 rgba(20,20,15,.03), 0 8px 24px rgba(30,28,20,.07);
-        --shadow-2: 0 1px 0 rgba(20,20,15,.03), 0 24px 48px rgba(30,28,20,.10);
+        --shadow-1: 0 1px 2px rgba(20,20,15,.04), 0 8px 24px rgba(20,20,15,.04);
+        --shadow-2: 0 1px 2px rgba(20,20,15,.05), 0 24px 48px rgba(20,20,15,.06);
 
         min-height: 100vh;
         background-color: var(--canvas);
         background-image:
-          radial-gradient(1100px 600px at 92% -8%, rgba(201,162,74,.16), transparent 55%),
-          radial-gradient(1000px 700px at -10% 105%, rgba(120,100,60,.10), transparent 60%),
-          radial-gradient(700px 400px at 50% 50%, rgba(255,250,240,.35), transparent 70%);
+          radial-gradient(1200px 600px at 95% -10%, rgba(201,162,74,.04), transparent 55%),
+          radial-gradient(900px 500px at -5% 105%, rgba(20,20,15,.02), transparent 60%);
         color: var(--ink);
         font-family: 'Geist', system-ui, -apple-system, sans-serif;
         display: flex;
@@ -789,7 +788,7 @@ function PremiumStyles() {
         overflow-y: auto;
         scrollbar-width: thin;
         z-index: 40;
-        box-shadow: 0 30px 60px rgba(20,20,15,.28);
+        box-shadow: 0 24px 50px rgba(20,20,15,.20);
         background-image:
           linear-gradient(180deg, rgba(201,162,74,.06), transparent 35%);
       }
@@ -1094,7 +1093,7 @@ function PremiumStyles() {
         background: var(--paper);
         border: 1px solid var(--line);
         border-radius: 14px;
-        box-shadow: 0 30px 80px rgba(20,20,15,.18);
+        box-shadow: 0 30px 80px rgba(20,20,15,.14);
         padding: 8px;
         z-index: 100;
         animation: lux-menu-in .2s ease;
@@ -1208,7 +1207,7 @@ function PremiumStyles() {
         bottom: -2px;
         height: 6px;
         background: var(--gold);
-        opacity: .32;
+        opacity: .30;
         border-radius: 3px;
         z-index: -1;
       }
@@ -1236,12 +1235,12 @@ function PremiumStyles() {
       .lux-btn-primary {
         background: var(--ink);
         color: var(--paper);
-        box-shadow: 0 8px 22px rgba(20,20,15,.20);
+        box-shadow: 0 8px 22px rgba(20,20,15,.16);
       }
       .lux-btn-primary:hover {
         background: var(--ink-2);
         transform: translateY(-2px);
-        box-shadow: 0 14px 28px rgba(20,20,15,.24);
+        box-shadow: 0 14px 28px rgba(20,20,15,.20);
       }
 
       .lux-btn-ghost {
@@ -1251,7 +1250,7 @@ function PremiumStyles() {
       }
       .lux-btn-ghost:hover {
         border-color: var(--ink);
-        background: var(--paper);
+        background: var(--paper-2);
       }
       .lux-btn-sm { min-height: 38px; font-size: 11.5px; }
 
@@ -1273,7 +1272,7 @@ function PremiumStyles() {
         background:
           radial-gradient(700px 400px at 90% 10%, rgba(201,162,74,.20), transparent 60%),
           linear-gradient(150deg, #14140f 0%, #1d1d17 60%, #14140f 100%);
-        box-shadow: 0 30px 60px rgba(20,20,15,.30);
+        box-shadow: 0 24px 50px rgba(20,20,15,.22);
         min-height: 320px;
         display: flex;
         flex-direction: column;
@@ -1575,7 +1574,7 @@ function PremiumStyles() {
         transform: translateY(-3px);
         background: var(--paper);
         border-color: var(--line-strong);
-        box-shadow: 0 14px 28px rgba(30,28,20,.06);
+        box-shadow: 0 14px 28px rgba(20,20,15,.06);
       }
 
       .lux-quick-icon {
