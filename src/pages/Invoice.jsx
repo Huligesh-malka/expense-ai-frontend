@@ -437,28 +437,30 @@ export default function Invoice() {
 
                     <div className="rc-dash" />
 
-                    {/* Items */}
+                    {/* Items: clear product, quantity, unit price and amount columns */}
                     <div className="rc-items-head">
-                        <span>
-                            {t.items} ({items.length}) · {totalUnits} {t.units}
-                        </span>
-                        <span>₹</span>
+                        <span>{t.items} ({items.length}) · {totalUnits} {t.units}</span>
                     </div>
 
-                    <div className="rc-items">
+                    <div className="rc-item-table">
+                        <div className="rc-item-table-head">
+                            <span className="rc-col-product">Product</span>
+                            <span className="rc-col-qty">Qty</span>
+                            <span className="rc-col-price">Price</span>
+                            <span className="rc-col-total">Total</span>
+                        </div>
                         {items.map((item, index) => (
-                            <div className="rc-item" key={index} style={{ animationDelay: `${0.35 + index * 0.05}s` }}>
-                                <div className="rc-item-left">
+                            <div className="rc-item-row" key={index} style={{ animationDelay: `${0.35 + index * 0.05}s` }}>
+                                <div className="rc-col-product rc-product-cell">
                                     <span className="rc-idx">{index + 1}</span>
-                                    <div style={{ minWidth: 0 }}>
+                                    <div className="rc-product-info">
                                         <div className="rc-item-name">{item.product_name}</div>
                                         {item.description && <div className="rc-item-desc">{item.description}</div>}
-                                        <div className="rc-item-meta">
-                                            {formatQuantity(item)} × {formatUnitPrice(item)}
-                                        </div>
                                     </div>
                                 </div>
-                                <div className="rc-item-total">{formatCurrency(item.total)}</div>
+                                <div className="rc-col-qty rc-quantity-cell">{formatQuantity(item)}</div>
+                                <div className="rc-col-price rc-price-cell">{formatUnitPrice(item)}</div>
+                                <div className="rc-col-total rc-item-total">{formatCurrency(item.total)}</div>
                             </div>
                         ))}
                     </div>
@@ -717,19 +719,30 @@ const baseCss = `
 .rc-billed .rc-k { margin-bottom: 6px; }
 .rc-billed-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: 12px; font-weight: 700; color: var(--ink); overflow-wrap: anywhere; }
 
-/* Items */
+/* Items: four clear columns, quantity visible for every unit type */
 .rc-items-head { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 10px; font-weight: 800;
     letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
-.rc-items { display: flex; flex-direction: column; gap: 12px; }
-.rc-item { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; animation: rise .45s ease both; }
+.rc-item-table { width: 100%; }
+.rc-item-table-head, .rc-item-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1.7fr) minmax(48px, .65fr) minmax(65px, .9fr) minmax(70px, .9fr);
+    gap: 7px;
+    align-items: start;
+}
+.rc-item-table-head { padding: 8px 0; border-bottom: 1px solid var(--line); color: var(--muted);
+    font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: .5px; }
+.rc-item-row { padding: 12px 0; border-bottom: 1px dashed var(--line); animation: rise .45s ease both; }
 @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-.rc-item-left { display: flex; gap: 10px; min-width: 0; }
-.rc-idx { flex-shrink: 0; width: 22px; height: 22px; border-radius: 7px; background: var(--idx-bg); color: var(--idx-ink);
-    font-size: 10px; font-weight: 900; display: flex; align-items: center; justify-content: center; }
-.rc-item-name { font-size: 13px; font-weight: 800; color: var(--ink); }
+.rc-col-qty, .rc-col-price, .rc-col-total { text-align: right; }
+.rc-product-cell { display: flex; align-items: flex-start; gap: 7px; min-width: 0; }
+.rc-product-info { min-width: 0; }
+.rc-idx { flex-shrink: 0; width: 20px; height: 20px; border-radius: 6px; background: var(--idx-bg); color: var(--idx-ink);
+    font-size: 9px; font-weight: 900; display: flex; align-items: center; justify-content: center; }
+.rc-item-name { font-size: 12px; font-weight: 800; color: var(--ink); overflow-wrap: anywhere; }
 .rc-item-desc { font-size: 10px; color: var(--soft); margin-top: 2px; }
-.rc-item-meta { font-size: 11px; color: var(--muted); margin-top: 3px; font-variant-numeric: tabular-nums; }
-.rc-item-total { flex-shrink: 0; font-size: 13px; font-weight: 900; color: var(--ink); font-variant-numeric: tabular-nums; }
+.rc-quantity-cell { font-size: 11px; font-weight: 800; color: var(--ink); overflow-wrap: anywhere; }
+.rc-price-cell { font-size: 10px; color: var(--muted); overflow-wrap: anywhere; }
+.rc-item-total { font-size: 12px; font-weight: 900; color: var(--ink); font-variant-numeric: tabular-nums; }
 
 /* Summary */
 .rc-sum { display: flex; flex-direction: column; gap: 2px; }
@@ -770,6 +783,14 @@ const baseCss = `
 @media (max-width: 420px) {
     .rc-actions { grid-template-columns: 1fr 1fr; }
     .rc-hero-amount { font-size: 30px; }
+    .rc-item-table-head, .rc-item-row {
+        grid-template-columns: minmax(0, 1.35fr) minmax(42px, .55fr) minmax(54px, .75fr) minmax(62px, .8fr);
+        gap: 4px;
+    }
+    .rc-item-name { font-size: 11px; }
+    .rc-quantity-cell { font-size: 10px; }
+    .rc-price-cell { font-size: 9px; }
+    .rc-item-total { font-size: 11px; }
 }
 
 /* Print: always light, no UI, no animation */
