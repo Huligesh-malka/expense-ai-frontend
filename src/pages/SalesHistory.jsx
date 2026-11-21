@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 
 import { Link } from "react-router-dom";
 import API from "../services/api";
-import { FiSearch, FiPlus, FiEye, FiDownload, FiFilter, FiCalendar, FiUser, FiCreditCard, FiTrendingUp, FiRefreshCw, FiActivity, FiArrowUpRight } from "react-icons/fi";
 import { downloadInvoicePdf } from "./invoicePdf";
+import { FiSearch, FiPlus, FiEye, FiDownload, FiFilter, FiCalendar, FiUser, FiCreditCard, FiTrendingUp, FiRefreshCw, FiActivity, FiArrowUpRight } from "react-icons/fi";
 
 export default function SalesHistory() {
     const [sales, setSales] = useState([]);
@@ -44,24 +44,16 @@ export default function SalesHistory() {
         }
     };
 
-
-
-    const handleDownloadPdf = async (sale) => {
+    /* Direct PDF download: fetch the invoice, build the PDF, save it. No dialog, no page change. */
+    const handleDownload = async (saleId) => {
+        if (downloadingId) return;
+        setDownloadingId(saleId);
         try {
-            setDownloadingId(sale.id);
-            // Fetch the complete invoice and line items using the same API as Invoice.jsx
-            const res = await API.get(`/sales/invoice/${sale.id}`);
-            const invoice = res.data?.invoice;
-            const items = res.data?.items || [];
-
-            if (!invoice) {
-                throw new Error("Invoice data not found");
-            }
-
-            downloadInvoicePdf(invoice, items);
+            const res = await API.get(`/sales/invoice/${saleId}`);
+            downloadInvoicePdf(res.data.invoice, res.data.items || []);
         } catch (err) {
-            console.error("PDF download failed:", err);
-            alert(err.response?.data?.message || err.message || "Unable to download invoice PDF");
+            console.error("Error downloading invoice:", err);
+            alert(err.response?.data?.message || "Failed to download invoice");
         } finally {
             setDownloadingId(null);
         }
@@ -112,12 +104,10 @@ export default function SalesHistory() {
         return { total, count, paid, pending };
     };
 
-
-
     const stats = getPeriodStats();
 
     const filtered = sales.filter((item) => {
-        const matchesSearch = 
+        const matchesSearch =
             (item.invoice_no || "")
                 .toLowerCase()
                 .includes(search.toLowerCase()) ||
@@ -125,8 +115,8 @@ export default function SalesHistory() {
                 .toLowerCase()
                 .includes(search.toLowerCase());
 
-        const matchesStatus = 
-            filterStatus === "all" || 
+        const matchesStatus =
+            filterStatus === "all" ||
             item.payment_status?.toLowerCase() === filterStatus;
 
         let matchesPeriod = true;
@@ -150,8 +140,10 @@ export default function SalesHistory() {
     return (
         <div className="sales-page" style={styles.container}>
             <style>{`
+                @keyframes spin { to { transform: rotate(360deg); } }
                 .sales-page table tbody tr:hover { background: #f8fbff; }
                 .sales-page table tbody td { padding: 14px 16px; vertical-align: middle; border-bottom: 1px solid #eef2f7; }
+                .sales-page .dl-btn:hover:not(:disabled) { background: #e2e8f0; }
                 @media (max-width: 900px) { .sales-page { padding: 14px !important; } .sales-stats { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; } }
                 @media print { .sales-page { background: white !important; padding: 0 !important; } .sales-header, .sales-stats, .filtersSection, .paginationBar, .sales-page button, .sales-page a[href="/billing-pos"] { display: none !important; } .sales-page table { min-width: 0 !important; } }
             `}</style>
@@ -180,17 +172,17 @@ export default function SalesHistory() {
                     </div>
                 </div>
                 <div style={styles.statCard}>
-                    <div style={{...styles.statIcon, background: "#d1fae5"}}>
+                    <div style={{ ...styles.statIcon, background: "#d1fae5" }}>
                         <FiCreditCard size={20} color="#10b981" />
                     </div>
                     <div>
                         <div style={styles.statLabel}>Paid</div>
                         <div style={styles.statValue}>{stats.paid}</div>
-                        <div style={styles.statSub}>{((stats.paid/stats.count)*100 || 0).toFixed(0)}% of total</div>
+                        <div style={styles.statSub}>{((stats.paid / stats.count) * 100 || 0).toFixed(0)}% of total</div>
                     </div>
                 </div>
                 <div style={styles.statCard}>
-                    <div style={{...styles.statIcon, background: "#fef3c7"}}>
+                    <div style={{ ...styles.statIcon, background: "#fef3c7" }}>
                         <FiCalendar size={20} color="#f59e0b" />
                     </div>
                     <div>
@@ -200,7 +192,7 @@ export default function SalesHistory() {
                     </div>
                 </div>
                 <div style={styles.statCard}>
-                    <div style={{...styles.statIcon, background: "#dbeafe"}}>
+                    <div style={{ ...styles.statIcon, background: "#dbeafe" }}>
                         <FiUser size={20} color="#3b82f6" />
                     </div>
                     <div>
@@ -271,23 +263,23 @@ export default function SalesHistory() {
                         </select>
                     </div>
                 </div>
-                                <div style={styles.filtersRight}>
-                     <div style={styles.liveIndicator}>
-                         <span style={styles.liveDot}></span>
-                         Live
-                     </div>
-                     <span style={styles.resultCount}>
-                         {filtered.length} result{filtered.length !== 1 ? "s" : ""}
-                     </span>
-                     {lastUpdated && (
-                         <span style={styles.updatedText}>
-                             Updated {lastUpdated.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
-                         </span>
-                     )}
-                     <button style={styles.iconButton} onClick={() => loadSales()} title="Refresh sales">
-                         <FiRefreshCw size={16} />
-                     </button>
-                 </div>
+                <div style={styles.filtersRight}>
+                    <div style={styles.liveIndicator}>
+                        <span style={styles.liveDot}></span>
+                        Live
+                    </div>
+                    <span style={styles.resultCount}>
+                        {filtered.length} result{filtered.length !== 1 ? "s" : ""}
+                    </span>
+                    {lastUpdated && (
+                        <span style={styles.updatedText}>
+                            Updated {lastUpdated.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                    )}
+                    <button style={styles.iconButton} onClick={() => loadSales()} title="Refresh sales">
+                        <FiRefreshCw size={16} />
+                    </button>
+                </div>
             </div>
 
             {/* Table */}
@@ -306,8 +298,8 @@ export default function SalesHistory() {
                                 <th style={styles.th}>Items</th>
                                 <th style={styles.th}>Payment</th>
                                 <th style={styles.th}>Status</th>
-                                <th style={{...styles.th, textAlign: "right"}}>Total</th>
-                                <th style={{...styles.th, textAlign: "center"}}>Invoice Actions</th>
+                                <th style={{ ...styles.th, textAlign: "right" }}>Total</th>
+                                <th style={{ ...styles.th, textAlign: "center" }}>Invoice Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -331,6 +323,7 @@ export default function SalesHistory() {
                                 filtered.map((item) => {
                                     const statusConfig = getStatusConfig(item.payment_status);
                                     const itemsList = item.items || [];
+                                    const isDownloading = downloadingId === item.id;
                                     return (
                                         <tr key={item.id} style={styles.tableRow}>
                                             <td>
@@ -363,7 +356,8 @@ export default function SalesHistory() {
                                                     <div style={styles.itemHint}>
                                                         View invoice for details
                                                     </div>
-                                                </div></td>
+                                                </div>
+                                            </td>
                                             <td>
                                                 <span style={styles.paymentMethodBadge}>
                                                     {getPaymentIcon(item.payment_method)} {item.payment_method || "N/A"}
@@ -394,13 +388,21 @@ export default function SalesHistory() {
                                                     </Link>
                                                     <button
                                                         type="button"
-                                                        onClick={() => handleDownloadPdf(item)}
-                                                        style={{ ...styles.downloadButton, opacity: downloadingId === item.id ? 0.6 : 1, cursor: downloadingId === item.id ? "wait" : "pointer" }}
-                                                        title="Download invoice PDF directly"
-                                                        disabled={downloadingId === item.id}
+                                                        className="dl-btn"
+                                                        style={{
+                                                            ...styles.downloadButton,
+                                                            cursor: isDownloading ? "wait" : "pointer",
+                                                            opacity: downloadingId && !isDownloading ? 0.5 : 1
+                                                        }}
+                                                        title="Download invoice PDF"
+                                                        disabled={!!downloadingId}
+                                                        onClick={() => handleDownload(item.id)}
                                                     >
-                                                        <FiDownload size={14} />
-                                                        {downloadingId === item.id ? "Preparing..." : "PDF"}
+                                                        {isDownloading ? (
+                                                            <span style={styles.btnSpinner}></span>
+                                                        ) : (
+                                                            <FiDownload size={14} />
+                                                        )}
                                                     </button>
                                                 </div>
                                             </td>
@@ -777,8 +779,7 @@ const styles = {
 
     tableRow: {
         borderBottom: "1px solid #eef2f7",
-        transition: "background .15s ease",
-        borderBottom: "1px solid #eef2f7"
+        transition: "background .15s ease"
     },
 
     invoiceNumber: {
@@ -905,14 +906,23 @@ const styles = {
         justifyContent: "center",
         width: "34px",
         height: "34px",
+        padding: 0,
         borderRadius: "8px",
         background: "#f1f5f9",
         color: "#334155",
         border: "1px solid #dbe3ef",
-        textDecoration: "none",
         fontSize: "12px",
-        fontWeight: "800",
-        cursor: "pointer"
+        fontWeight: "800"
+    },
+
+    btnSpinner: {
+        width: "14px",
+        height: "14px",
+        border: "2px solid #cbd5e1",
+        borderTop: "2px solid #0f172a",
+        borderRadius: "50%",
+        display: "inline-block",
+        animation: "spin .7s linear infinite"
     },
 
     viewButton: {
@@ -927,10 +937,6 @@ const styles = {
         fontSize: "10px",
         fontWeight: "850"
     },
-
-
-
-
 
     loadingContainer: {
         minHeight: "360px",
