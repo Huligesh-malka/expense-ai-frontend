@@ -14,7 +14,6 @@ import {
     FiPhone,
     FiMapPin,
     FiFileText,
-    FiPackage,
     FiBox,
 } from "react-icons/fi";
 
@@ -23,11 +22,11 @@ export default function Invoice() {
     const [invoice, setInvoice] = useState(null);
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [showPrintOptions, setShowPrintOptions] = useState(false);
     const [error, setError] = useState(null);
 
     useEffect(() => {
         loadInvoice();
+        // eslint-disable-next-line
     }, [id]);
 
     const loadInvoice = async () => {
@@ -45,42 +44,36 @@ export default function Invoice() {
         }
     };
 
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat("en-IN", {
+    const formatCurrency = (amount) =>
+        new Intl.NumberFormat("en-IN", {
             style: "currency",
             currency: "INR",
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
         }).format(Number(amount) || 0);
-    };
 
-    // Stamp config — ink colour, label and a slight per-status tilt
-    const getStampConfig = (status) => {
+    const getStatus = (status) => {
         const configs = {
-            paid: { ink: "#1F6D4C", label: "PAID", icon: <FiCheckCircle size={15} />, rotate: -7 },
-            pending: { ink: "#9C6B15", label: "PENDING", icon: <FiClock size={15} />, rotate: -4 },
-            failed: { ink: "#B4402F", label: "FAILED", icon: <FiXCircle size={15} />, rotate: -9 },
-            refunded: { ink: "#6B6355", label: "REFUNDED", icon: <FiRefreshCw size={15} />, rotate: -5 },
+            paid: { color: "#0f7a4d", bg: "#dcfce7", label: "Paid", icon: <FiCheckCircle size={14} /> },
+            pending: { color: "#a16207", bg: "#fef3c7", label: "Pending", icon: <FiClock size={14} /> },
+            failed: { color: "#b91c1c", bg: "#fee2e2", label: "Failed", icon: <FiXCircle size={14} /> },
+            refunded: { color: "#475569", bg: "#e2e8f0", label: "Refunded", icon: <FiRefreshCw size={14} /> },
         };
         return (
             configs[status?.toLowerCase()] || {
-                ink: "#6B6355",
-                label: (status || "N/A").toUpperCase(),
-                icon: <FiFileText size={15} />,
-                rotate: -6,
+                color: "#475569",
+                bg: "#e2e8f0",
+                label: status || "N/A",
+                icon: <FiFileText size={14} />,
             }
         );
     };
 
-    const handlePrint = () => {
-        window.print();
-        setShowPrintOptions(false);
-    };
+    const handlePrint = () => window.print();
 
     const handleDownload = () => {
-        // Print to PDF (simplest). For advanced PDF generation use jsPDF or html2canvas.
         window.print();
-        alert("Click 'Print' and select 'Save as PDF' to download the invoice.");
+        alert("Choose 'Save as PDF' in the print dialog to download the invoice.");
     };
 
     const handleShare = async () => {
@@ -90,13 +83,10 @@ export default function Invoice() {
                 text: `Invoice #${invoice.invoice_no} - Total: ${formatCurrency(invoice.total_amount)}`,
                 url: window.location.href,
             };
-
             if (navigator.share) {
                 await navigator.share(shareData);
             } else {
-                await navigator.clipboard.writeText(
-                    `${shareData.title}\n${shareData.text}\n${shareData.url}`
-                );
+                await navigator.clipboard.writeText(`${shareData.title}\n${shareData.text}\n${shareData.url}`);
                 alert("Invoice link copied to clipboard!");
             }
         } catch (err) {
@@ -129,20 +119,36 @@ export default function Invoice() {
         return `₹${price.toFixed(2)} / ${baseUnit.toUpperCase()}`;
     };
 
-    const PunchRow = () => (
-        <div style={styles.perforationRow} aria-hidden="true">
-            {Array.from({ length: 26 }).map((_, i) => (
-                <span key={i} style={styles.hole}></span>
-            ))}
-        </div>
-    );
+    // Decorative barcode generated from the bill number
+    const Barcode = ({ value }) => {
+        const text = String(value || "000000");
+        const bars = [];
+        for (let i = 0; i < 48; i++) {
+            const code = text.charCodeAt(i % text.length) + i * 7;
+            bars.push(1 + (code % 3));
+        }
+        return (
+            <div style={styles.barcode} aria-hidden="true">
+                {bars.map((w, i) => (
+                    <span
+                        key={i}
+                        style={{
+                            width: `${w}px`,
+                            marginRight: i % 2 === 0 ? "2px" : "1px",
+                            background: i % 2 === 0 ? "#0f172a" : "transparent",
+                            height: "100%",
+                        }}
+                    />
+                ))}
+            </div>
+        );
+    };
 
     if (loading) {
         return (
             <div style={styles.loadingContainer}>
                 <div style={styles.loadingSpinner}></div>
-                <p style={styles.loadingText}>Tallying the bill...</p>
-                <p style={styles.loadingSubtext}>Fetching entry from the ledger</p>
+                <p style={styles.loadingText}>Preparing your receipt...</p>
             </div>
         );
     }
@@ -150,10 +156,10 @@ export default function Invoice() {
     if (error || !invoice) {
         return (
             <div style={styles.errorContainer}>
-                <div style={styles.errorIcon}>📄</div>
-                <h2 style={styles.errorTitle}>Bill not found</h2>
+                <div style={styles.errorIcon}>🧾</div>
+                <h2 style={styles.errorTitle}>Receipt not found</h2>
                 <p style={styles.errorText}>
-                    {error || "This entry doesn't exist in the ledger, or it's been removed."}
+                    {error || "This receipt doesn't exist, or it has been removed."}
                 </p>
                 <Link to="/sales" replace style={styles.errorButton}>
                     <FiArrowLeft size={18} />
@@ -163,8 +169,12 @@ export default function Invoice() {
         );
     }
 
-    const stamp = getStampConfig(invoice.payment_status);
-    const totalItems = items.reduce((sum, item) => sum + Number(item.entered_quantity || item.quantity || 0), 0);
+    const status = getStatus(invoice.payment_status);
+    const totalUnits = items.reduce(
+        (sum, item) => sum + Number(item.entered_quantity || item.quantity || 0),
+        0
+    );
+    const hasCustomerContact = invoice.customer_phone || invoice.customer_email;
 
     return (
         <div style={styles.page}>
@@ -172,245 +182,210 @@ export default function Invoice() {
             <div style={styles.actionBar} className="no-print">
                 <Link to="/sales" replace style={styles.backLink}>
                     <FiArrowLeft size={18} />
-                    Back to Sales
+                    Back
                 </Link>
                 <div style={styles.actionButtons}>
-                    <button style={styles.actionButton} onClick={() => setShowPrintOptions(!showPrintOptions)}>
-                        <FiPrinter size={18} />
+                    <button style={styles.actionButton} onClick={handlePrint}>
+                        <FiPrinter size={16} />
                         Print
                     </button>
                     <button style={styles.actionButton} onClick={handleDownload}>
-                        <FiDownload size={18} />
-                        Download
+                        <FiDownload size={16} />
+                        PDF
                     </button>
-                    <button style={styles.actionButton} onClick={handleShare}>
-                        <FiShare2 size={18} />
+                    <button style={styles.actionButtonPrimary} onClick={handleShare}>
+                        <FiShare2 size={16} />
                         Share
                     </button>
                 </div>
             </div>
 
-            {showPrintOptions && (
-                <div style={styles.printOptions} className="no-print">
-                    <button onClick={handlePrint} style={styles.printOptionButton}>
-                        <FiPrinter size={16} />
-                        Print Invoice
-                    </button>
-                    <button onClick={() => window.print()} style={styles.printOptionButton}>
-                        <FiFileText size={16} />
-                        Print Preview
-                    </button>
-                </div>
-            )}
-
-            {/* Bill */}
-            <div style={styles.invoiceContainer} id="invoice-content">
-                <div style={styles.invoice}>
-                    <PunchRow />
-
-                    <div style={styles.paperBody}>
-                        {/* Masthead */}
-                        <div style={styles.masthead}>
-                            <div style={styles.businessBlock}>
-                                {invoice.logo ? (
-                                    <img src={invoice.logo} alt="Business Logo" style={styles.businessLogo} />
-                                ) : (
-                                    <div style={styles.businessLogoPlaceholder}>
-                                        <FiBox size={26} color="#0b1220" />
-                                    </div>
-                                )}
-                                <h1 style={styles.businessName}>{invoice.business_name || "Business Name"}</h1>
-                                <div style={styles.businessMeta}>
-                                    {invoice.address && (
-                                        <p style={styles.metaLine}>
-                                            <FiMapPin size={12} />
-                                            {invoice.address}
-                                            {invoice.city ? `, ${invoice.city}` : ""}
-                                            {invoice.state ? `, ${invoice.state}` : ""}
-                                            {invoice.pincode ? ` - ${invoice.pincode}` : ""}
-                                        </p>
-                                    )}
-                                    {invoice.business_phone && (
-                                        <p style={styles.metaLine}>
-                                            <FiPhone size={12} />
-                                            {invoice.business_phone}
-                                        </p>
-                                    )}
-                                    {invoice.business_email && (
-                                        <p style={styles.metaLine}>
-                                            <FiMail size={12} />
-                                            {invoice.business_email}
-                                        </p>
-                                    )}
-                                </div>
-                                {invoice.gst_number && <div style={styles.gstTag}>GSTIN {invoice.gst_number}</div>}
-                            </div>
-
-                            <div style={styles.billTag}>
-                                <span style={styles.billTagLabel}>Bill No.</span>
-                                <span style={styles.billTagNo}>#{invoice.invoice_no}</span>
-                                <span style={styles.billTagDate}>
-                                    {new Date(invoice.created_at).toLocaleDateString("en-IN", {
-                                        day: "2-digit",
-                                        month: "short",
-                                        year: "numeric",
-                                    })}{" "}
-                                    ·{" "}
-                                    {new Date(invoice.created_at).toLocaleTimeString("en-IN", {
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                    })}
-                                </span>
-                            </div>
-
-                            {/* Ink stamp */}
-                            <div
-                                style={{
-                                    ...styles.stamp,
-                                    color: stamp.ink,
-                                    borderColor: stamp.ink,
-                                    transform: `rotate(${stamp.rotate}deg)`,
-                                }}
-                            >
-                                {stamp.icon}
-                                {stamp.label}
-                            </div>
-                        </div>
-
-                        <div style={styles.tornDivider}></div>
-
-                        {/* Ledger fields */}
-                        <div style={styles.ledgerGrid}>
-                            <div style={styles.ledgerCol}>
-                                <div style={styles.ledgerColTitle}>Billed to</div>
-                                <div style={styles.ledgerField}>
-                                    <span style={styles.ledgerLabel}>Name</span>
-                                    <span style={styles.ledgerLeader}></span>
-                                    <span style={styles.ledgerValue}>{invoice.customer_name || "Walk-in Customer"}</span>
-                                </div>
-                                {invoice.customer_phone && (
-                                    <div style={styles.ledgerField}>
-                                        <span style={styles.ledgerLabel}>
-                                            <FiPhone size={11} /> Phone
-                                        </span>
-                                        <span style={styles.ledgerLeader}></span>
-                                        <span style={styles.ledgerValue}>{invoice.customer_phone}</span>
-                                    </div>
-                                )}
-                                {invoice.customer_email && (
-                                    <div style={styles.ledgerField}>
-                                        <span style={styles.ledgerLabel}>
-                                            <FiMail size={11} /> Email
-                                        </span>
-                                        <span style={styles.ledgerLeader}></span>
-                                        <span style={styles.ledgerValue}>{invoice.customer_email}</span>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div style={styles.ledgerCol}>
-                                <div style={styles.ledgerColTitle}>Payment</div>
-                                <div style={styles.ledgerField}>
-                                    <span style={styles.ledgerLabel}>Method</span>
-                                    <span style={styles.ledgerLeader}></span>
-                                    <span style={styles.ledgerValue}>
-                                        {getPaymentIcon(invoice.payment_method)} {invoice.payment_method || "N/A"}
-                                    </span>
-                                </div>
-                                <div style={styles.ledgerField}>
-                                    <span style={styles.ledgerLabel}>Items</span>
-                                    <span style={styles.ledgerLeader}></span>
-                                    <span style={styles.ledgerValue}>
-                                        {items.length} items · {totalItems} units
-                                    </span>
-                                </div>
-                                <div style={styles.ledgerField}>
-                                    <span style={styles.ledgerLabel}>Status</span>
-                                    <span style={styles.ledgerLeader}></span>
-                                    <span style={{ ...styles.ledgerValue, color: stamp.ink, fontWeight: 700 }}>{stamp.label}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Items list (no column headers) */}
-                        <div style={styles.tableSection}>
-                            <div style={styles.tableHeader}>
-                                <h3 style={styles.tableTitle}>
-                                    <FiPackage size={16} />
-                                    Items
-                                </h3>
-                                <span style={styles.itemCountPill}>{items.length} items</span>
-                            </div>
-
-                            <div style={styles.itemList}>
-                                {items.map((item, index) => (
-                                    <div key={index} style={styles.itemCard}>
-                                        <div style={styles.itemIndex}>{String(index + 1).padStart(2, "0")}</div>
-
-                                        <div style={styles.itemInfo}>
-                                            <div style={styles.productName}>{item.product_name}</div>
-                                            {item.description && (
-                                                <div style={styles.productDescription}>{item.description}</div>
-                                            )}
-                                            <div style={styles.itemChips}>
-                                                <span style={styles.qtyChip}>{formatQuantity(item)}</span>
-                                                <span style={styles.rateChip}>@ {formatUnitPrice(item)}</span>
-                                            </div>
-                                        </div>
-
-                                        <div style={styles.itemAmount}>{formatCurrency(item.total)}</div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Summary */}
-                        <div style={styles.summarySection}>
-                            <div style={styles.summaryBox}>
-                                <div style={styles.summaryRow}>
-                                    <span>Subtotal</span>
-                                    <span style={styles.mono}>{formatCurrency(invoice.subtotal)}</span>
-                                </div>
-                                {invoice.discount > 0 && (
-                                    <div style={styles.summaryRow}>
-                                        <span>Discount</span>
-                                        <span style={{ ...styles.mono, color: "#B4402F" }}>-{formatCurrency(invoice.discount)}</span>
-                                    </div>
-                                )}
-                                <div style={styles.summaryRow}>
-                                    <span>CGST ({(Number(invoice.cgst_rate) || 0).toFixed(1)}%)</span>
-                                    <span style={styles.mono}>{formatCurrency(invoice.cgst || 0)}</span>
-                                </div>
-                                <div style={styles.summaryRow}>
-                                    <span>SGST ({(Number(invoice.sgst_rate) || 0).toFixed(1)}%)</span>
-                                    <span style={styles.mono}>{formatCurrency(invoice.sgst || 0)}</span>
-                                </div>
-                                <div style={styles.summaryDashedDivider}></div>
-                                <div style={{ ...styles.summaryRow, ...styles.grandTotal }}>
-                                    <span>Grand Total</span>
-                                    <span style={styles.mono}>{formatCurrency(invoice.total_amount)}</span>
-                                </div>
-                                <div style={styles.wordsChit}>{numberToWords(Number(invoice.total_amount) || 0)}</div>
-                            </div>
-                        </div>
-
-                        {invoice.notes && (
-                            <div style={styles.notesSection}>
-                                <div style={styles.notesTitle}>Note</div>
-                                <p style={styles.notesText}>{invoice.notes}</p>
+            {/* Receipt */}
+            <div style={styles.receiptWrap} id="invoice-content">
+                <div className="receipt-card" style={styles.receipt}>
+                    {/* Header */}
+                    <div style={styles.header}>
+                        {invoice.logo ? (
+                            <img src={invoice.logo} alt="Business Logo" style={styles.logo} />
+                        ) : (
+                            <div style={styles.logoPlaceholder}>
+                                <FiBox size={24} color="#0b1220" />
                             </div>
                         )}
+                        <h1 style={styles.businessName}>{invoice.business_name || "Business Name"}</h1>
 
-                        {/* Footer */}
-                        <div style={styles.bottomRow}>
-                            <div style={styles.footerNote}>
-                                <p style={styles.thankYou}>Thank you for your business!</p>
-                                <p style={styles.footerSmall}>Computer-generated bill · no signature required</p>
-                            </div>
+                        <div style={styles.businessMeta}>
+                            {invoice.address && (
+                                <p style={styles.metaLine}>
+                                    <FiMapPin size={12} />
+                                    <span>
+                                        {invoice.address}
+                                        {invoice.city ? `, ${invoice.city}` : ""}
+                                        {invoice.state ? `, ${invoice.state}` : ""}
+                                        {invoice.pincode ? ` - ${invoice.pincode}` : ""}
+                                    </span>
+                                </p>
+                            )}
+                            {invoice.business_phone && (
+                                <p style={styles.metaLine}>
+                                    <FiPhone size={12} />
+                                    <span>{invoice.business_phone}</span>
+                                </p>
+                            )}
+                            {invoice.business_email && (
+                                <p style={styles.metaLine}>
+                                    <FiMail size={12} />
+                                    <span>{invoice.business_email}</span>
+                                </p>
+                            )}
+                        </div>
+                        {invoice.gst_number && <div style={styles.gstTag}>GSTIN {invoice.gst_number}</div>}
+                    </div>
+
+                    {/* Amount hero */}
+                    <div style={styles.hero}>
+                        <span style={styles.heroLabel}>Total Amount</span>
+                        <span style={styles.heroAmount}>{formatCurrency(invoice.total_amount)}</span>
+                        <span
+                            style={{
+                                ...styles.statusPill,
+                                color: status.color,
+                                background: status.bg,
+                            }}
+                        >
+                            {status.icon}
+                            {status.label}
+                        </span>
+                    </div>
+
+                    <div style={styles.dashed}></div>
+
+                    {/* Bill info */}
+                    <div style={styles.infoGrid}>
+                        <div style={styles.infoCell}>
+                            <span style={styles.infoLabel}>Bill No.</span>
+                            <span style={styles.infoValue}>#{invoice.invoice_no}</span>
+                        </div>
+                        <div style={styles.infoCell}>
+                            <span style={styles.infoLabel}>Date</span>
+                            <span style={styles.infoValue}>
+                                {new Date(invoice.created_at).toLocaleDateString("en-IN", {
+                                    day: "2-digit",
+                                    month: "short",
+                                    year: "numeric",
+                                })}
+                            </span>
+                        </div>
+                        <div style={styles.infoCell}>
+                            <span style={styles.infoLabel}>Time</span>
+                            <span style={styles.infoValue}>
+                                {new Date(invoice.created_at).toLocaleTimeString("en-IN", {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                })}
+                            </span>
+                        </div>
+                        <div style={styles.infoCell}>
+                            <span style={styles.infoLabel}>Payment</span>
+                            <span style={styles.infoValue}>
+                                {getPaymentIcon(invoice.payment_method)}{" "}
+                                <span style={{ textTransform: "capitalize" }}>{invoice.payment_method || "N/A"}</span>
+                            </span>
                         </div>
                     </div>
 
-                    <PunchRow />
+                    {/* Billed to — customer NAME row removed, only contact shown */}
+                    {hasCustomerContact && (
+                        <div style={styles.billedTo}>
+                            <div style={styles.billedToTitle}>Billed to</div>
+                            {invoice.customer_phone && (
+                                <div style={styles.billedField}>
+                                    <FiPhone size={13} color="#64748b" />
+                                    <span style={styles.billedValue}>{invoice.customer_phone}</span>
+                                </div>
+                            )}
+                            {invoice.customer_email && (
+                                <div style={styles.billedField}>
+                                    <FiMail size={13} color="#64748b" />
+                                    <span style={styles.billedValue}>{invoice.customer_email}</span>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    <div style={styles.dashed}></div>
+
+                    {/* Items */}
+                    <div style={styles.itemsHeader}>
+                        <span>Items ({items.length})</span>
+                        <span>{totalUnits} units</span>
+                    </div>
+
+                    <div style={styles.itemList}>
+                        {items.map((item, index) => (
+                            <div key={index} style={styles.itemRow}>
+                                <div style={styles.itemLeft}>
+                                    <span style={styles.itemIndex}>{index + 1}</span>
+                                    <div style={{ minWidth: 0 }}>
+                                        <div style={styles.itemName}>{item.product_name}</div>
+                                        {item.description && <div style={styles.itemDesc}>{item.description}</div>}
+                                        <div style={styles.itemMeta}>
+                                            {formatQuantity(item)} × {formatUnitPrice(item)}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style={styles.itemTotal}>{formatCurrency(item.total)}</div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div style={styles.dashed}></div>
+
+                    {/* Summary */}
+                    <div style={styles.summary}>
+                        <div style={styles.summaryRow}>
+                            <span>Subtotal</span>
+                            <span style={styles.num}>{formatCurrency(invoice.subtotal)}</span>
+                        </div>
+                        {invoice.discount > 0 && (
+                            <div style={styles.summaryRow}>
+                                <span>Discount</span>
+                                <span style={{ ...styles.num, color: "#b91c1c" }}>-{formatCurrency(invoice.discount)}</span>
+                            </div>
+                        )}
+                        <div style={styles.summaryRow}>
+                            <span>CGST ({(Number(invoice.cgst_rate) || 0).toFixed(1)}%)</span>
+                            <span style={styles.num}>{formatCurrency(invoice.cgst || 0)}</span>
+                        </div>
+                        <div style={styles.summaryRow}>
+                            <span>SGST ({(Number(invoice.sgst_rate) || 0).toFixed(1)}%)</span>
+                            <span style={styles.num}>{formatCurrency(invoice.sgst || 0)}</span>
+                        </div>
+
+                        <div style={styles.grandTotal}>
+                            <span>Grand Total</span>
+                            <span style={styles.num}>{formatCurrency(invoice.total_amount)}</span>
+                        </div>
+                        <div style={styles.words}>{numberToWords(Number(invoice.total_amount) || 0)}</div>
+                    </div>
+
+                    {invoice.notes && (
+                        <div style={styles.notes}>
+                            <div style={styles.notesTitle}>Note</div>
+                            <p style={styles.notesText}>{invoice.notes}</p>
+                        </div>
+                    )}
+
+                    <div style={styles.dashed}></div>
+
+                    {/* Footer */}
+                    <div style={styles.footer}>
+                        <p style={styles.thankYou}>Thank you, visit again! 🙏</p>
+                        <Barcode value={invoice.invoice_no} />
+                        <p style={styles.footerSmall}>
+                            {invoice.invoice_no} · Computer-generated receipt, no signature required
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -472,541 +447,364 @@ function numberToWords(num) {
     return "Amount in words: " + result.trim();
 }
 
-// Modern BusinessOS / trading-style invoice theme.
 const styles = {
     page: {
         minHeight: "100vh",
-        background: "#eef1f6",
-        padding: "24px 18px 50px",
+        background: "linear-gradient(180deg, #e8ecf3 0%, #dfe5ee 100%)",
+        padding: "22px 14px 50px",
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
         color: "#0f172a",
     },
 
     actionBar: {
-        maxWidth: "980px",
+        maxWidth: "460px",
         margin: "0 auto 16px",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        gap: "14px",
-        flexWrap: "wrap",
-        padding: "11px 14px",
+        gap: "10px",
+        padding: "8px 10px",
         background: "#0b1220",
-        border: "1px solid #1e293b",
         borderRadius: "14px",
-        boxShadow: "0 12px 30px rgba(15,23,42,.12)",
+        boxShadow: "0 10px 28px rgba(15,23,42,.18)",
     },
 
     backLink: {
         display: "inline-flex",
         alignItems: "center",
-        gap: "8px",
-        padding: "9px 11px",
+        gap: "7px",
+        padding: "8px 10px",
         borderRadius: "9px",
         color: "#e2e8f0",
         textDecoration: "none",
         fontSize: "12px",
-        fontWeight: "800",
+        fontWeight: "700",
     },
 
-    actionButtons: {
-        display: "flex",
-        alignItems: "center",
-        gap: "7px",
-        flexWrap: "wrap",
-    },
+    actionButtons: { display: "flex", alignItems: "center", gap: "6px" },
 
     actionButton: {
         display: "inline-flex",
         alignItems: "center",
-        justifyContent: "center",
-        gap: "7px",
-        minHeight: "38px",
-        padding: "8px 13px",
+        gap: "6px",
+        padding: "8px 12px",
         border: "1px solid #334155",
         borderRadius: "9px",
         background: "#172033",
         color: "#f8fafc",
         fontSize: "12px",
-        fontWeight: "800",
+        fontWeight: "700",
         cursor: "pointer",
     },
 
-    printOptions: {
-        maxWidth: "980px",
-        margin: "0 auto 12px",
-        display: "flex",
-        justifyContent: "flex-end",
-        gap: "7px",
-        padding: "10px",
-        borderRadius: "12px",
-        background: "#fff",
-        border: "1px solid #dce2eb",
-        boxShadow: "0 8px 22px rgba(15,23,42,.06)",
-    },
-
-    printOptionButton: {
+    actionButtonPrimary: {
         display: "inline-flex",
         alignItems: "center",
         gap: "6px",
-        padding: "9px 12px",
-        border: "1px solid #dce2eb",
-        borderRadius: "8px",
-        background: "#f8fafc",
-        color: "#0f172a",
+        padding: "8px 12px",
+        border: "1px solid #c8ff00",
+        borderRadius: "9px",
+        background: "#c8ff00",
+        color: "#0b1220",
         fontSize: "12px",
         fontWeight: "800",
         cursor: "pointer",
     },
 
-    invoiceContainer: {
-        maxWidth: "980px",
+    receiptWrap: {
+        maxWidth: "460px",
         margin: "0 auto",
+        filter: "drop-shadow(0 18px 30px rgba(15,23,42,.16))",
     },
 
-    invoice: {
-        overflow: "hidden",
-        background: "#ffffff",
-        border: "1px solid #dce2eb",
-        borderRadius: "18px",
-        boxShadow: "0 18px 55px rgba(15,23,42,.10)",
-    },
-
-    perforationRow: {
-        display: "none",
-    },
-
-    hole: {
-        display: "none",
-    },
-
-    paperBody: {
-        padding: "0 34px 34px",
-    },
-
-    masthead: {
+    receipt: {
         position: "relative",
-        display: "grid",
-        gridTemplateColumns: "1fr auto",
-        gap: "24px",
+        background: "#ffffff",
+        padding: "30px 24px 28px",
+    },
+
+    header: {
+        display: "flex",
+        flexDirection: "column",
         alignItems: "center",
-        margin: "0 -34px 26px",
-        padding: "30px 34px",
-        minHeight: "205px",
-        overflow: "hidden",
-        background: "linear-gradient(135deg, #0b1220 0%, #111827 60%, #18243c 100%)",
-        color: "#fff",
+        textAlign: "center",
     },
 
-    businessBlock: {
-        position: "relative",
-        zIndex: 2,
-        minWidth: 0,
-    },
-
-    businessLogo: {
-        width: "58px",
-        height: "58px",
+    logo: {
+        width: "60px",
+        height: "60px",
         objectFit: "contain",
-        padding: "7px",
-        marginBottom: "12px",
-        borderRadius: "13px",
-        background: "#ffffff",
-        border: "1px solid rgba(255,255,255,.18)",
+        borderRadius: "16px",
+        padding: "6px",
+        marginBottom: "10px",
+        border: "1px solid #e5eaf1",
+        background: "#fff",
     },
 
-    businessLogoPlaceholder: {
-        width: "58px",
-        height: "58px",
-        marginBottom: "12px",
-        borderRadius: "13px",
+    logoPlaceholder: {
+        width: "56px",
+        height: "56px",
+        borderRadius: "16px",
         background: "#c8ff00",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        color: "#0b1220",
+        marginBottom: "10px",
     },
 
     businessName: {
-        margin: "0 0 8px",
-        fontSize: "30px",
-        lineHeight: 1.05,
+        margin: "0 0 6px",
+        fontSize: "22px",
         fontWeight: "900",
-        letterSpacing: "-1px",
-        color: "#ffffff",
+        letterSpacing: "-.5px",
+        color: "#0b1220",
     },
 
     businessMeta: {
-        color: "#aeb9ca",
-        fontSize: "12px",
-        lineHeight: 1.75,
+        color: "#64748b",
+        fontSize: "11px",
+        lineHeight: 1.7,
     },
 
     metaLine: {
         display: "flex",
         alignItems: "flex-start",
-        gap: "7px",
+        justifyContent: "center",
+        gap: "6px",
         margin: 0,
     },
 
     gstTag: {
-        display: "inline-flex",
         marginTop: "10px",
-        padding: "5px 9px",
-        borderRadius: "7px",
-        background: "rgba(200,255,0,.10)",
-        border: "1px solid rgba(200,255,0,.30)",
-        color: "#d9ff65",
+        padding: "4px 10px",
+        borderRadius: "999px",
+        background: "#f1f5f9",
+        border: "1px solid #e2e8f0",
+        color: "#334155",
         fontSize: "10px",
         fontWeight: "800",
-        letterSpacing: ".5px",
+        letterSpacing: ".6px",
     },
 
-    billTag: {
-        position: "relative",
-        zIndex: 2,
-        minWidth: "235px",
-        padding: "17px",
-        borderRadius: "14px",
-        background: "rgba(255,255,255,.07)",
-        border: "1px solid rgba(255,255,255,.12)",
-        textAlign: "right",
+    hero: {
         display: "flex",
         flexDirection: "column",
-        gap: "5px",
+        alignItems: "center",
+        gap: "6px",
+        margin: "22px 0 20px",
+        padding: "20px 14px",
+        borderRadius: "18px",
+        background: "linear-gradient(135deg, #0b1220 0%, #18243c 100%)",
     },
 
-    billTagLabel: {
-        fontSize: "9px",
+    heroLabel: {
+        fontSize: "10px",
+        fontWeight: "800",
+        letterSpacing: "1.5px",
         textTransform: "uppercase",
-        letterSpacing: "1.4px",
-        color: "#aeb9ca",
-        fontWeight: "900",
+        color: "#94a3b8",
     },
 
-    billTagNo: {
-        fontSize: "20px",
+    heroAmount: {
+        fontSize: "34px",
         fontWeight: "900",
+        letterSpacing: "-1px",
         color: "#c8ff00",
-        letterSpacing: "-.3px",
-        overflowWrap: "anywhere",
+        fontVariantNumeric: "tabular-nums",
     },
 
-    billTagDate: {
-        fontSize: "11px",
-        color: "#cbd5e1",
-    },
-
-    stamp: {
-        position: "absolute",
-        right: "34px",
-        bottom: "20px",
-        zIndex: 3,
+    statusPill: {
         display: "inline-flex",
         alignItems: "center",
         gap: "6px",
-        padding: "6px 11px",
-        border: "2px solid currentColor",
-        borderRadius: "7px",
-        background: "rgba(11,18,32,.72)",
-        fontSize: "10px",
-        fontWeight: "900",
-        letterSpacing: "1.5px",
-        textTransform: "uppercase",
-        opacity: 0.95,
-        pointerEvents: "none",
+        padding: "5px 12px",
+        borderRadius: "999px",
+        fontSize: "11px",
+        fontWeight: "800",
     },
 
-    tornDivider: {
-        height: "1px",
-        margin: "0 0 22px",
-        background: "#e5eaf1",
+    dashed: {
+        borderTop: "2px dashed #dbe2eb",
+        margin: "18px 0",
     },
 
-    ledgerGrid: {
+    infoGrid: {
         display: "grid",
         gridTemplateColumns: "1fr 1fr",
-        gap: "14px",
-        marginBottom: "24px",
+        gap: "14px 12px",
     },
 
-    ledgerCol: {
-        padding: "16px",
-        border: "1px solid #e5eaf1",
-        borderRadius: "13px",
+    infoCell: { display: "flex", flexDirection: "column", gap: "3px" },
+
+    infoLabel: {
+        fontSize: "9px",
+        fontWeight: "800",
+        letterSpacing: "1px",
+        textTransform: "uppercase",
+        color: "#94a3b8",
+    },
+
+    infoValue: {
+        fontSize: "13px",
+        fontWeight: "800",
+        color: "#0f172a",
+        overflowWrap: "anywhere",
+    },
+
+    billedTo: {
+        marginTop: "16px",
+        padding: "12px 14px",
+        borderRadius: "12px",
         background: "#f8fafc",
+        border: "1px solid #e5eaf1",
     },
 
-    ledgerColTitle: {
+    billedToTitle: {
+        marginBottom: "6px",
+        fontSize: "9px",
+        fontWeight: "800",
+        letterSpacing: "1px",
+        textTransform: "uppercase",
+        color: "#94a3b8",
+    },
+
+    billedField: {
         display: "flex",
         alignItems: "center",
+        gap: "8px",
+        padding: "3px 0",
+    },
+
+    billedValue: {
+        fontSize: "12px",
+        fontWeight: "700",
+        color: "#0f172a",
+        overflowWrap: "anywhere",
+    },
+
+    itemsHeader: {
+        display: "flex",
         justifyContent: "space-between",
         marginBottom: "10px",
         fontSize: "10px",
-        fontWeight: "900",
+        fontWeight: "800",
         letterSpacing: "1px",
         textTransform: "uppercase",
         color: "#64748b",
     },
 
-    ledgerField: {
+    itemList: { display: "flex", flexDirection: "column", gap: "12px" },
+
+    itemRow: {
         display: "flex",
-        alignItems: "baseline",
-        gap: "7px",
-        minHeight: "29px",
-        padding: "3px 0",
-        fontSize: "12px",
-    },
-
-    ledgerLabel: {
-        display: "flex",
-        alignItems: "center",
-        gap: "4px",
-        color: "#94a3b8",
-        whiteSpace: "nowrap",
-    },
-
-    ledgerLeader: {
-        flex: 1,
-        minWidth: "10px",
-        borderBottom: "1px dotted #cbd5e1",
-        transform: "translateY(-3px)",
-    },
-
-    ledgerValue: {
-        color: "#0f172a",
-        fontWeight: "800",
-        textAlign: "right",
-        overflowWrap: "anywhere",
-    },
-
-    /* ---------- Items list ---------- */
-    tableSection: {
-        marginBottom: "22px",
-    },
-
-    tableHeader: {
-        display: "flex",
-        alignItems: "center",
         justifyContent: "space-between",
-        marginBottom: "10px",
+        alignItems: "flex-start",
+        gap: "12px",
     },
 
-    tableTitle: {
-        display: "flex",
-        alignItems: "center",
-        gap: "7px",
-        margin: 0,
-        fontSize: "11px",
-        fontWeight: "900",
-        color: "#0f172a",
-        letterSpacing: ".8px",
-        textTransform: "uppercase",
-    },
-
-    itemCountPill: {
-        padding: "4px 10px",
-        borderRadius: "999px",
-        background: "#0b1220",
-        color: "#c8ff00",
-        fontSize: "10px",
-        fontWeight: "800",
-        letterSpacing: ".4px",
-    },
-
-    itemList: {
-        display: "flex",
-        flexDirection: "column",
-        gap: "8px",
-    },
-
-    itemCard: {
-        display: "flex",
-        alignItems: "center",
-        gap: "14px",
-        padding: "12px 14px",
-        border: "1px solid #e5eaf1",
-        borderRadius: "14px",
-        background: "#ffffff",
-        boxShadow: "0 1px 2px rgba(15,23,42,.04)",
-        breakInside: "avoid",
-        pageBreakInside: "avoid",
-    },
+    itemLeft: { display: "flex", gap: "10px", minWidth: 0 },
 
     itemIndex: {
         flexShrink: 0,
-        width: "36px",
-        height: "36px",
+        width: "22px",
+        height: "22px",
+        borderRadius: "7px",
+        background: "#eef2ff",
+        color: "#4f46e5",
+        fontSize: "10px",
+        fontWeight: "900",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        borderRadius: "11px",
-        background: "#0b1220",
-        color: "#c8ff00",
+    },
+
+    itemName: { fontSize: "13px", fontWeight: "800", color: "#0f172a" },
+    itemDesc: { fontSize: "10px", color: "#94a3b8", marginTop: "2px" },
+    itemMeta: {
         fontSize: "11px",
-        fontWeight: "900",
-        fontVariantNumeric: "tabular-nums",
-    },
-
-    itemInfo: {
-        flex: 1,
-        minWidth: 0,
-    },
-
-    productName: {
-        color: "#0f172a",
-        fontWeight: "800",
-        fontSize: "13px",
-    },
-
-    productDescription: {
+        color: "#64748b",
         marginTop: "3px",
-        color: "#94a3b8",
-        fontSize: "10px",
-    },
-
-    itemChips: {
-        display: "flex",
-        flexWrap: "wrap",
-        gap: "6px",
-        marginTop: "7px",
-    },
-
-    qtyChip: {
-        padding: "3px 9px",
-        borderRadius: "999px",
-        background: "#f1f5f9",
-        border: "1px solid #e2e8f0",
-        color: "#0f172a",
-        fontSize: "10px",
-        fontWeight: "800",
         fontVariantNumeric: "tabular-nums",
     },
 
-    rateChip: {
-        padding: "3px 9px",
-        borderRadius: "999px",
-        background: "rgba(200,255,0,.18)",
-        border: "1px solid rgba(160,205,0,.35)",
-        color: "#3f4f00",
-        fontSize: "10px",
-        fontWeight: "800",
-        fontVariantNumeric: "tabular-nums",
-    },
-
-    itemAmount: {
+    itemTotal: {
         flexShrink: 0,
-        color: "#0b1220",
-        fontSize: "15px",
+        fontSize: "13px",
         fontWeight: "900",
-        letterSpacing: "-.3px",
-        fontVariantNumeric: "tabular-nums",
-    },
-
-    mono: {
         color: "#0f172a",
-        fontSize: "11px",
         fontVariantNumeric: "tabular-nums",
     },
 
-    /* ---------- Summary ---------- */
-    summarySection: {
-        display: "flex",
-        justifyContent: "flex-end",
-        marginBottom: "22px",
-    },
-
-    summaryBox: {
-        width: "100%",
-        maxWidth: "390px",
-        padding: "17px",
-        borderRadius: "14px",
-        border: "1px solid #e5eaf1",
-        background: "#f8fafc",
-    },
+    summary: { display: "flex", flexDirection: "column", gap: "2px" },
 
     summaryRow: {
         display: "flex",
-        alignItems: "center",
         justifyContent: "space-between",
-        gap: "18px",
-        padding: "5px 0",
+        padding: "4px 0",
         fontSize: "12px",
         color: "#64748b",
     },
 
-    summaryDashedDivider: {
-        borderTop: "1px dashed #cbd5e1",
-        margin: "9px 0",
-    },
+    num: { fontVariantNumeric: "tabular-nums", color: "#0f172a", fontWeight: "700" },
 
     grandTotal: {
-        margin: "0 -8px",
-        padding: "12px 10px",
-        borderRadius: "10px",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginTop: "10px",
+        padding: "13px 14px",
+        borderRadius: "12px",
         background: "#c8ff00",
         color: "#0b1220",
-        fontSize: "18px",
-        fontWeight: "950",
+        fontSize: "16px",
+        fontWeight: "900",
     },
 
-    wordsChit: {
+    words: {
         marginTop: "10px",
-        paddingTop: "9px",
-        borderTop: "1px solid #e2e8f0",
-        color: "#64748b",
         fontSize: "10px",
         lineHeight: 1.5,
+        color: "#64748b",
+        textAlign: "center",
     },
 
-    notesSection: {
-        marginBottom: "22px",
-        padding: "12px 14px",
-        border: "1px solid #e5eaf1",
+    notes: {
+        marginTop: "16px",
+        padding: "10px 12px",
         borderLeft: "4px solid #c8ff00",
-        borderRadius: "10px",
+        borderRadius: "8px",
         background: "#f8fafc",
     },
 
     notesTitle: {
-        marginBottom: "4px",
-        color: "#64748b",
         fontSize: "9px",
-        fontWeight: "900",
+        fontWeight: "800",
+        letterSpacing: "1px",
         textTransform: "uppercase",
-        letterSpacing: ".9px",
-    },
-
-    notesText: {
-        margin: 0,
-        color: "#334155",
-        fontSize: "11px",
-        lineHeight: 1.55,
-    },
-
-    bottomRow: {
-        display: "flex",
-        justifyContent: "flex-end",
-        paddingTop: "17px",
-        borderTop: "1px solid #e5eaf1",
-    },
-
-    footerNote: {
-        textAlign: "right",
-    },
-
-    thankYou: {
-        margin: "0 0 4px",
-        color: "#0f172a",
-        fontSize: "13px",
-        fontWeight: "900",
-    },
-
-    footerSmall: {
-        margin: 0,
         color: "#94a3b8",
-        fontSize: "9px",
+        marginBottom: "3px",
     },
+
+    notesText: { margin: 0, fontSize: "11px", lineHeight: 1.5, color: "#334155" },
+
+    footer: {
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: "10px",
+        textAlign: "center",
+    },
+
+    thankYou: { margin: 0, fontSize: "14px", fontWeight: "900", color: "#0b1220" },
+
+    barcode: {
+        display: "flex",
+        alignItems: "stretch",
+        height: "42px",
+        padding: "0 4px",
+    },
+
+    footerSmall: { margin: 0, fontSize: "9px", color: "#94a3b8" },
 
     loadingContainer: {
         minHeight: "60vh",
@@ -1015,7 +813,6 @@ const styles = {
         alignItems: "center",
         justifyContent: "center",
         padding: "40px",
-        background: "#eef1f6",
     },
 
     loadingSpinner: {
@@ -1029,16 +826,9 @@ const styles = {
 
     loadingText: {
         marginTop: "15px",
-        marginBottom: 0,
         color: "#0f172a",
         fontSize: "14px",
         fontWeight: "800",
-    },
-
-    loadingSubtext: {
-        marginTop: "5px",
-        color: "#64748b",
-        fontSize: "11px",
     },
 
     errorContainer: {
@@ -1048,10 +838,7 @@ const styles = {
         textAlign: "center",
     },
 
-    errorIcon: {
-        marginBottom: "15px",
-        fontSize: "50px",
-    },
+    errorIcon: { marginBottom: "15px", fontSize: "50px" },
 
     errorTitle: {
         marginBottom: "8px",
@@ -1077,11 +864,11 @@ const styles = {
         color: "#fff",
         textDecoration: "none",
         fontSize: "12px",
-        fontWeight: "850",
+        fontWeight: "800",
     },
 };
 
-// Fonts + responsive + print rules.
+// Animations, scalloped tear-off edges and print rules.
 const styleSheet = document.createElement("style");
 styleSheet.textContent = `
     @keyframes spin {
@@ -1091,41 +878,33 @@ styleSheet.textContent = `
 
     * { box-sizing: border-box; }
 
-    @media (max-width: 760px) {
-        #invoice-content [style*="grid-template-columns: 1fr 1fr"] {
-            grid-template-columns: 1fr !important;
-        }
+    /* Scalloped top and bottom edges */
+    .receipt-card {
+        --r: 9px;
+        -webkit-mask:
+            radial-gradient(circle var(--r) at 50% 0, transparent 98%, #000) top / calc(var(--r) * 2.4) 51% repeat-x,
+            radial-gradient(circle var(--r) at 50% 100%, transparent 98%, #000) bottom / calc(var(--r) * 2.4) 51% repeat-x;
+        mask:
+            radial-gradient(circle var(--r) at 50% 0, transparent 98%, #000) top / calc(var(--r) * 2.4) 51% repeat-x,
+            radial-gradient(circle var(--r) at 50% 100%, transparent 98%, #000) bottom / calc(var(--r) * 2.4) 51% repeat-x;
     }
 
     @media print {
-        @page {
-            size: A4;
-            margin: 8mm;
-        }
+        @page { size: A4; margin: 8mm; }
 
-        html, body {
-            background: #fff !important;
-        }
+        html, body { background: #fff !important; }
 
         body {
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
         }
 
-        .no-print {
-            display: none !important;
-        }
+        .no-print { display: none !important; }
 
         #invoice-content {
-            width: 100% !important;
-            max-width: none !important;
-            margin: 0 !important;
-            border: none !important;
-            box-shadow: none !important;
-        }
-
-        #invoice-content > div {
-            box-shadow: none !important;
+            max-width: 460px !important;
+            margin: 0 auto !important;
+            filter: none !important;
         }
     }
 `;
