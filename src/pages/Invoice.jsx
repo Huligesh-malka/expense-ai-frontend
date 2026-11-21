@@ -19,31 +19,78 @@ import {
     FiSun,
     FiMoon,
     FiZap,
+    FiGlobe,
 } from "react-icons/fi";
 
-/* ───────────────────────── Labels (English / Kannada) ───────────────────────── */
+/* ───────────────────── Languages: real-world shop-bill wording ───────────────────── */
+const LANG_ORDER = ["en", "kn", "hi", "te", "ta"];
+const LANG_NAMES = { en: "English", kn: "ಕನ್ನಡ", hi: "हिन्दी", te: "తెలుగు", ta: "தமிழ்" };
+
 const T = {
     en: {
         back: "Back", print: "Print", pdf: "PDF", whatsapp: "WhatsApp", share: "Share",
-        totalAmount: "Total Amount", billNo: "Bill No.", date: "Date", time: "Time", payment: "Payment",
-        billedTo: "Billed to", items: "Items", units: "units", subtotal: "Subtotal", discount: "Discount",
-        grandTotal: "Grand Total", note: "Note", thanks: "Thank you, visit again!",
-        footer: "Computer-generated receipt, no signature required",
+        docTax: "TAX INVOICE", docCash: "CASH MEMO",
+        totalAmount: "Total Amount", billNo: "Bill No.", date: "Date", time: "Time", payment: "Paid By",
+        billedTo: "Customer", items: "Items", units: "qty", subtotal: "Sub Total", discount: "Discount",
+        grandTotal: "Net Payable", note: "Note", thanks: "Thank you! Visit again",
+        footer: "Computer generated bill, no signature required",
         saved: "You saved", scanToPay: "Scan to pay with any UPI app",
-        paid: "Paid", pending: "Pending", failed: "Failed", refunded: "Refunded",
-        copied: "Invoice link copied", shareFail: "Unable to share", pdfHint: "Choose 'Save as PDF' in the print dialog",
-        loading: "Preparing your receipt...", notFound: "Receipt not found", backSales: "Back to Sales",
+        paid: "Paid", pending: "Due", failed: "Failed", refunded: "Refunded",
+        copied: "Bill link copied", shareFail: "Unable to share", pdfHint: "Choose 'Save as PDF' in the print dialog",
+        loading: "Preparing your bill...", notFound: "Bill not found", backSales: "Back to Sales",
+        terms: "Terms",
     },
     kn: {
-        back: "ಹಿಂದೆ", print: "ಮುದ್ರಿಸಿ", pdf: "PDF", whatsapp: "ವಾಟ್ಸಾಪ್", share: "ಹಂಚಿ",
-        totalAmount: "ಒಟ್ಟು ಮೊತ್ತ", billNo: "ಬಿಲ್ ಸಂಖ್ಯೆ", date: "ದಿನಾಂಕ", time: "ಸಮಯ", payment: "ಪಾವತಿ",
-        billedTo: "ಗ್ರಾಹಕರು", items: "ವಸ್ತುಗಳು", units: "ಘಟಕಗಳು", subtotal: "ಉಪಮೊತ್ತ", discount: "ರಿಯಾಯಿತಿ",
-        grandTotal: "ಒಟ್ಟು ಮೊತ್ತ", note: "ಟಿಪ್ಪಣಿ", thanks: "ಧನ್ಯವಾದಗಳು, ಮತ್ತೆ ಬನ್ನಿ!",
-        footer: "ಕಂಪ್ಯೂಟರ್ ರಚಿತ ರಸೀದಿ, ಸಹಿ ಅಗತ್ಯವಿಲ್ಲ",
-        saved: "ನೀವು ಉಳಿಸಿದ್ದು", scanToPay: "ಯಾವುದೇ UPI ಆ್ಯಪ್‌ನಲ್ಲಿ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ",
-        paid: "ಪಾವತಿಸಲಾಗಿದೆ", pending: "ಬಾಕಿ", failed: "ವಿಫಲ", refunded: "ಮರುಪಾವತಿ",
-        copied: "ಲಿಂಕ್ ನಕಲಿಸಲಾಗಿದೆ", shareFail: "ಹಂಚಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ", pdfHint: "ಪ್ರಿಂಟ್ ವಿಂಡೋದಲ್ಲಿ 'Save as PDF' ಆಯ್ಕೆಮಾಡಿ",
-        loading: "ರಸೀದಿ ಸಿದ್ಧವಾಗುತ್ತಿದೆ...", notFound: "ರಸೀದಿ ಸಿಗಲಿಲ್ಲ", backSales: "ಮಾರಾಟಕ್ಕೆ ಹಿಂತಿರುಗಿ",
+        back: "ಹಿಂದೆ", print: "ಪ್ರಿಂಟ್", pdf: "PDF", whatsapp: "ವಾಟ್ಸಾಪ್", share: "ಶೇರ್",
+        docTax: "ತೆರಿಗೆ ಬಿಲ್", docCash: "ನಗದು ಬಿಲ್",
+        totalAmount: "ಒಟ್ಟು ಮೊತ್ತ", billNo: "ಬಿಲ್ ನಂ.", date: "ದಿನಾಂಕ", time: "ಸಮಯ", payment: "ಪಾವತಿ ವಿಧಾನ",
+        billedTo: "ಗ್ರಾಹಕರು", items: "ಸಾಮಾನುಗಳು", units: "ಸಂಖ್ಯೆ", subtotal: "ಉಪ ಮೊತ್ತ", discount: "ರಿಯಾಯಿತಿ",
+        grandTotal: "ಕಟ್ಟಬೇಕಾದ ಮೊತ್ತ", note: "ಟಿಪ್ಪಣಿ", thanks: "ಧನ್ಯವಾದಗಳು, ಮತ್ತೆ ಬನ್ನಿ",
+        footer: "ಕಂಪ್ಯೂಟರ್ ಬಿಲ್, ಸಹಿ ಬೇಕಿಲ್ಲ",
+        saved: "ನಿಮ್ಮ ಉಳಿತಾಯ", scanToPay: "ಯಾವುದೇ UPI ಆ್ಯಪ್‌ನಲ್ಲಿ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ",
+        paid: "ಪಾವತಿಯಾಗಿದೆ", pending: "ಬಾಕಿ", failed: "ವಿಫಲ", refunded: "ವಾಪಸ್",
+        copied: "ಬಿಲ್ ಲಿಂಕ್ ಕಾಪಿ ಆಗಿದೆ", shareFail: "ಶೇರ್ ಮಾಡಲಾಗಲಿಲ್ಲ", pdfHint: "ಪ್ರಿಂಟ್ ವಿಂಡೋದಲ್ಲಿ 'Save as PDF' ಆಯ್ಕೆಮಾಡಿ",
+        loading: "ಬಿಲ್ ಸಿದ್ಧವಾಗುತ್ತಿದೆ...", notFound: "ಬಿಲ್ ಸಿಗಲಿಲ್ಲ", backSales: "ಮಾರಾಟಕ್ಕೆ ಹಿಂದಿರುಗಿ",
+        terms: "ನಿಯಮಗಳು",
+    },
+    hi: {
+        back: "वापस", print: "प्रिंट", pdf: "PDF", whatsapp: "व्हाट्सऐप", share: "शेयर",
+        docTax: "टैक्स इनवॉइस", docCash: "कैश मेमो",
+        totalAmount: "कुल रकम", billNo: "बिल नं.", date: "तारीख", time: "समय", payment: "भुगतान का तरीका",
+        billedTo: "ग्राहक", items: "सामान", units: "नग", subtotal: "उप-योग", discount: "छूट",
+        grandTotal: "देय राशि", note: "नोट", thanks: "धन्यवाद, फिर आइएगा",
+        footer: "कंप्यूटर बिल, हस्ताक्षर की ज़रूरत नहीं",
+        saved: "आपकी बचत", scanToPay: "किसी भी UPI ऐप से स्कैन करें",
+        paid: "भुगतान हुआ", pending: "बाकी", failed: "असफल", refunded: "वापस किया",
+        copied: "बिल लिंक कॉपी हुआ", shareFail: "शेयर नहीं हो सका", pdfHint: "प्रिंट विंडो में 'Save as PDF' चुनें",
+        loading: "बिल तैयार हो रहा है...", notFound: "बिल नहीं मिला", backSales: "बिक्री पर वापस",
+        terms: "शर्तें",
+    },
+    te: {
+        back: "వెనుకకు", print: "ప్రింట్", pdf: "PDF", whatsapp: "వాట్సాప్", share: "షేర్",
+        docTax: "ట్యాక్స్ ఇన్వాయిస్", docCash: "క్యాష్ మెమో",
+        totalAmount: "మొత్తం", billNo: "బిల్ నం.", date: "తేదీ", time: "సమయం", payment: "చెల్లింపు విధానం",
+        billedTo: "కస్టమర్", items: "వస్తువులు", units: "సంఖ్య", subtotal: "ఉప మొత్తం", discount: "తగ్గింపు",
+        grandTotal: "చెల్లించవలసినది", note: "గమనిక", thanks: "ధన్యవాదాలు, మళ్ళీ రండి",
+        footer: "కంప్యూటర్ బిల్, సంతకం అవసరం లేదు",
+        saved: "మీరు ఆదా చేసింది", scanToPay: "ఏదైనా UPI యాప్‌తో స్కాన్ చేయండి",
+        paid: "చెల్లించారు", pending: "బాకీ", failed: "విఫలం", refunded: "వాపసు",
+        copied: "బిల్ లింక్ కాపీ అయింది", shareFail: "షేర్ చేయలేకపోయాం", pdfHint: "ప్రింట్ విండోలో 'Save as PDF' ఎంచుకోండి",
+        loading: "బిల్ సిద్ధమవుతోంది...", notFound: "బిల్ దొరకలేదు", backSales: "అమ్మకాలకు తిరిగి",
+        terms: "నిబంధనలు",
+    },
+    ta: {
+        back: "பின்", print: "பிரிண்ட்", pdf: "PDF", whatsapp: "வாட்ஸ்அப்", share: "ஷேர்",
+        docTax: "வரி விலைப்பட்டியல்", docCash: "ரொக்க ரசீது",
+        totalAmount: "மொத்தத் தொகை", billNo: "பில் எண்", date: "தேதி", time: "நேரம்", payment: "பணம் செலுத்திய முறை",
+        billedTo: "வாடிக்கையாளர்", items: "பொருட்கள்", units: "எண்ணிக்கை", subtotal: "கூட்டுத் தொகை", discount: "தள்ளுபடி",
+        grandTotal: "செலுத்த வேண்டியது", note: "குறிப்பு", thanks: "நன்றி, மீண்டும் வருக",
+        footer: "கணினி பில், கையொப்பம் தேவையில்லை",
+        saved: "நீங்கள் சேமித்தது", scanToPay: "எந்த UPI செயலியிலும் ஸ்கேன் செய்யுங்கள்",
+        paid: "செலுத்தப்பட்டது", pending: "நிலுவை", failed: "தோல்வி", refunded: "திரும்பப் பெறப்பட்டது",
+        copied: "பில் இணைப்பு நகலெடுக்கப்பட்டது", shareFail: "பகிர முடியவில்லை", pdfHint: "பிரிண்ட் சாளரத்தில் 'Save as PDF' தேர்வு செய்யவும்",
+        loading: "பில் தயாராகிறது...", notFound: "பில் கிடைக்கவில்லை", backSales: "விற்பனைக்குத் திரும்பு",
+        terms: "விதிமுறைகள்",
     },
 };
 
@@ -170,9 +217,9 @@ export default function Invoice() {
             .map((it, i) => `${i + 1}. ${it.product_name} - ${formatQuantity(it)} = ${formatCurrency(it.total)}`)
             .join("\n");
         return (
-            `*${invoice.business_name || "Receipt"}*\n` +
-            `Bill #${invoice.invoice_no}\n\n${lines}\n\n` +
-            `*Total: ${formatCurrency(invoice.total_amount)}*\n${window.location.href}`
+            `*${invoice.business_name || "Bill"}*\n` +
+            `${t.billNo} #${invoice.invoice_no}\n\n${lines}\n\n` +
+            `*${t.totalAmount}: ${formatCurrency(invoice.total_amount)}*\n${window.location.href}`
         );
     };
 
@@ -205,6 +252,7 @@ export default function Invoice() {
     };
 
     const cycleTheme = () => setTheme(THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length]);
+    const cycleLang = () => setLang(LANG_ORDER[(LANG_ORDER.indexOf(lang) + 1) % LANG_ORDER.length]);
 
     /* ── Formatters ── */
     const getPaymentIcon = (method) => {
@@ -247,7 +295,7 @@ export default function Invoice() {
                 <div style={{ fontSize: 50 }}>🧾</div>
                 <h2 style={{ margin: "10px 0 6px", fontWeight: 900 }}>{t.notFound}</h2>
                 <p style={{ color: "#64748b", fontSize: 13, marginBottom: 18 }}>
-                    {error || "This receipt doesn't exist, or it has been removed."}
+                    {error || "This bill doesn't exist, or it has been removed."}
                 </p>
                 <Link to="/sales" replace className="rc-btn rc-btn-dark">
                     <FiArrowLeft size={16} />
@@ -263,6 +311,7 @@ export default function Invoice() {
     const totalUnits = items.reduce((sum, it) => sum + Number(it.entered_quantity || it.quantity || 0), 0);
     const hasCustomerContact = invoice.customer_phone || invoice.customer_email;
     const discount = Number(invoice.discount) || 0;
+    const docTitle = invoice.gst_number ? t.docTax : t.docCash;
     const showUpiQr = invoice.upi_id && !isPaid;
     const upiLink = showUpiQr
         ? `upi://pay?pa=${encodeURIComponent(invoice.upi_id)}&pn=${encodeURIComponent(
@@ -284,8 +333,9 @@ export default function Invoice() {
                     {t.back}
                 </Link>
                 <div className="rc-bar-right">
-                    <button className="rc-chip" onClick={() => setLang(lang === "en" ? "kn" : "en")} title="Language">
-                        {lang === "en" ? "ಕನ್ನಡ" : "EN"}
+                    <button className="rc-chip" onClick={cycleLang} title="Language">
+                        <FiGlobe size={14} />
+                        {LANG_NAMES[lang]}
                     </button>
                     <button className="rc-chip" onClick={cycleTheme} title="Change style">
                         <ThemeIcon size={14} />
@@ -348,6 +398,7 @@ export default function Invoice() {
                             )}
                         </div>
                         {invoice.gst_number && <div className="rc-gst">GSTIN {invoice.gst_number}</div>}
+                        <div className="rc-doctitle">{docTitle}</div>
                     </div>
 
                     {/* Hero */}
@@ -406,7 +457,7 @@ export default function Invoice() {
                         </div>
                     </div>
 
-                    {/* Billed to — contact only, no customer name */}
+                    {/* Customer — contact only, no customer name */}
                     {hasCustomerContact && (
                         <div className="rc-billed">
                             <div className="rc-k">{t.billedTo}</div>
@@ -430,11 +481,9 @@ export default function Invoice() {
                     {/* Items */}
                     <div className="rc-items-head">
                         <span>
-                            {t.items} ({items.length})
+                            {t.items} ({items.length}) · {totalUnits} {t.units}
                         </span>
-                        <span>
-                            {totalUnits} {t.units}
-                        </span>
+                        <span>₹</span>
                     </div>
 
                     <div className="rc-items">
@@ -491,6 +540,14 @@ export default function Invoice() {
                         </div>
                     )}
 
+                    {/* Shop's own terms (e.g. return policy) — shown only if your API sends `terms` */}
+                    {invoice.terms && (
+                        <div className="rc-notes">
+                            <div className="rc-k">{t.terms}</div>
+                            <p>{invoice.terms}</p>
+                        </div>
+                    )}
+
                     {showUpiQr && (
                         <div className="rc-qr">
                             <img
@@ -508,7 +565,6 @@ export default function Invoice() {
                     {/* Footer */}
                     <div className="rc-footer">
                         <p className="rc-thanks">{t.thanks} 🙏</p>
-                        <Barcode value={invoice.invoice_no} />
                         <p className="rc-small">
                             {invoice.invoice_no} · {t.footer}
                         </p>
@@ -517,30 +573,6 @@ export default function Invoice() {
             </div>
 
             {toast && <div className="rc-toast no-print">{toast}</div>}
-        </div>
-    );
-}
-
-/* ───────────────────────── Barcode ───────────────────────── */
-function Barcode({ value }) {
-    const text = String(value || "000000");
-    const bars = [];
-    for (let i = 0; i < 48; i++) {
-        const code = text.charCodeAt(i % text.length) + i * 7;
-        bars.push(1 + (code % 3));
-    }
-    return (
-        <div className="rc-barcode" aria-hidden="true">
-            {bars.map((w, i) => (
-                <span
-                    key={i}
-                    style={{
-                        width: `${w}px`,
-                        marginRight: i % 2 === 0 ? "2px" : "1px",
-                        background: i % 2 === 0 ? "currentColor" : "transparent",
-                    }}
-                />
-            ))}
         </div>
     );
 }
@@ -610,7 +642,7 @@ const baseCss = `
     --hero-bg: linear-gradient(135deg, #0b1220 0%, #18243c 100%); --hero-label: #94a3b8; --hero-amount: #c8ff00;
     --page: linear-gradient(180deg, #e8ecf3 0%, #dfe5ee 100%);
     --bar: #0b1220; --idx-bg: #eef2ff; --idx-ink: #4f46e5;
-    --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font: 'Inter', 'Noto Sans Kannada', 'Noto Sans Devanagari', 'Noto Sans Telugu', 'Noto Sans Tamil', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     --width: 460px;
     min-height: 100vh; padding: 20px 14px 60px; background: var(--page);
     font-family: var(--font); color: var(--ink); transition: background .3s;
@@ -628,7 +660,7 @@ const baseCss = `
     --line: #111111; --panel: transparent; --accent: #111111; --accent-ink: #ffffff;
     --hero-bg: transparent; --hero-label: #444; --hero-amount: #111;
     --page: #d9d6cc; --idx-bg: transparent; --idx-ink: #111;
-    --font: 'Courier New', Courier, monospace; --width: 380px;
+    --font: 'Courier New', 'Noto Sans Kannada', 'Noto Sans Devanagari', 'Noto Sans Telugu', 'Noto Sans Tamil', Courier, monospace; --width: 380px;
 }
 
 .rc-bar, .rc-actions, .rc-wrap { max-width: var(--width); margin-left: auto; margin-right: auto; }
@@ -691,6 +723,8 @@ const baseCss = `
 .rc-meta p { display: flex; align-items: flex-start; justify-content: center; gap: 6px; margin: 0; }
 .rc-gst { margin-top: 10px; padding: 4px 10px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line);
     color: var(--ink); font-size: 10px; font-weight: 800; letter-spacing: .6px; }
+.rc-doctitle { margin-top: 12px; padding: 3px 14px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+    font-size: 11px; font-weight: 900; letter-spacing: 2px; color: var(--ink); text-transform: uppercase; }
 
 /* Hero */
 .rc-hero { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 22px 0 14px;
@@ -757,9 +791,8 @@ const baseCss = `
 .rc-qr img { background: #fff; padding: 6px; border-radius: 10px; }
 
 /* Footer */
-.rc-footer { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
+.rc-footer { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
 .rc-thanks { margin: 0; font-size: 14px; font-weight: 900; color: var(--ink); }
-.rc-barcode { display: flex; align-items: stretch; height: 42px; padding: 0 4px; color: var(--ink); }
 .rc-small { margin: 0; font-size: 9px; color: var(--soft); }
 
 /* Toast */
@@ -789,7 +822,7 @@ const baseCss = `
         --paper: #ffffff; --ink: #0b1220; --muted: #64748b; --soft: #94a3b8; --line: #dbe2eb; --panel: #f8fafc;
         --idx-bg: #eef2ff; --idx-ink: #4f46e5; --hero-bg: linear-gradient(135deg, #0b1220 0%, #18243c 100%);
     }
-    .rc-wrap { filter: none !important; max-width: ${"var(--width)"} !important; }
+    .rc-wrap { filter: none !important; max-width: var(--width) !important; }
     .rc-card, .rc-item, .rc-stamp { animation: none !important; }
     .rc-stamp { opacity: .95; }
     .rc-root:not([data-theme="thermal"]) .rc-card { -webkit-mask: none; mask: none; }
