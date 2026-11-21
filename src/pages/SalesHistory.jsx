@@ -75,7 +75,7 @@ export default function SalesHistory() {
 
     // Backend maximum is 100 per request. "All Records" fetches every page
     // and combines them on the frontend without changing the backend.
-    const loadAllSales = async (period = selectedPeriod, customDates = {}) => {
+    const loadAllSales = async (period = selectedPeriod, customDates = {}, displayLimit = "all") => {
         setAllRecordsMode(true);
         setLoading(true);
         try {
@@ -113,7 +113,7 @@ export default function SalesHistory() {
 
             setSales(allRows);
             setPage(1);
-            setLimit(allRows.length || total);
+            setLimit(displayLimit === "all" ? (allRows.length || total) : Number(displayLimit));
             setTotalPages(1);
             setTotalSalesCount(total);
             setLastUpdated(new Date());
@@ -237,6 +237,8 @@ export default function SalesHistory() {
 
         return matchesSearch && matchesStatus && matchesPeriod;
     });
+
+    const displayedSales = allRecordsMode && limit !== "all" ? filtered.slice(0, Number(limit)) : filtered;
 
     return (
         <div className="sales-page" style={styles.container}>
@@ -427,7 +429,7 @@ export default function SalesHistory() {
                                     </td>
                                 </tr>
                             ) : (
-                                filtered.map((item) => {
+                                displayedSales.map((item) => {
                                     const statusConfig = getStatusConfig(item.payment_status);
                                     const itemsList = item.items || [];
                                     return (
@@ -506,18 +508,18 @@ export default function SalesHistory() {
             <div style={styles.paginationBar}>
                 <div style={styles.paginationInfo}>
                     {allRecordsMode
-                        ? `Showing all ${sales.length} of ${totalSalesCount} sales`
+                        ? `Showing ${Math.min(sales.length, Number(limit) || sales.length)} of ${totalSalesCount} sales`
                         : `Showing ${sales.length ? ((page - 1) * limit + 1) : 0}–${Math.min(page * limit, totalSalesCount)} of ${totalSalesCount} sales`}
                 </div>
                 <div style={styles.paginationControls}>
                     <label style={styles.pageSizeLabel}>
                         Rows
                         <select
-                            value={allRecordsMode ? "all" : limit}
+                            value={allRecordsMode ? (limit === 500 || limit === 1000 ? String(limit) : "all") : limit}
                             onChange={(e) => {
                                 const value = e.target.value;
-                                if (value === "all") {
-                                    loadAllSales(selectedPeriod);
+                                if (value === "all" || value === "500" || value === "1000") {
+                                    loadAllSales(selectedPeriod, {}, value);
                                 } else {
                                     loadSales(1, Number(value), selectedPeriod);
                                 }
@@ -529,6 +531,8 @@ export default function SalesHistory() {
                             <option value={20}>20</option>
                             <option value={50}>50</option>
                             <option value={100}>100</option>
+                            <option value={500}>500</option>
+                            <option value={1000}>1000</option>
                             <option value="all">All Records</option>
                         </select>
                     </label>
