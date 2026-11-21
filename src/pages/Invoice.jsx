@@ -15,19 +15,102 @@ import {
     FiMapPin,
     FiFileText,
     FiBox,
+    FiMessageCircle,
+    FiSun,
+    FiMoon,
+    FiZap,
 } from "react-icons/fi";
 
+/* ───────────────────────── Labels (English / Kannada) ───────────────────────── */
+const T = {
+    en: {
+        back: "Back", print: "Print", pdf: "PDF", whatsapp: "WhatsApp", share: "Share",
+        totalAmount: "Total Amount", billNo: "Bill No.", date: "Date", time: "Time", payment: "Payment",
+        billedTo: "Billed to", items: "Items", units: "units", subtotal: "Subtotal", discount: "Discount",
+        grandTotal: "Grand Total", note: "Note", thanks: "Thank you, visit again!",
+        footer: "Computer-generated receipt, no signature required",
+        saved: "You saved", scanToPay: "Scan to pay with any UPI app",
+        paid: "Paid", pending: "Pending", failed: "Failed", refunded: "Refunded",
+        copied: "Invoice link copied", shareFail: "Unable to share", pdfHint: "Choose 'Save as PDF' in the print dialog",
+        loading: "Preparing your receipt...", notFound: "Receipt not found", backSales: "Back to Sales",
+    },
+    kn: {
+        back: "ಹಿಂದೆ", print: "ಮುದ್ರಿಸಿ", pdf: "PDF", whatsapp: "ವಾಟ್ಸಾಪ್", share: "ಹಂಚಿ",
+        totalAmount: "ಒಟ್ಟು ಮೊತ್ತ", billNo: "ಬಿಲ್ ಸಂಖ್ಯೆ", date: "ದಿನಾಂಕ", time: "ಸಮಯ", payment: "ಪಾವತಿ",
+        billedTo: "ಗ್ರಾಹಕರು", items: "ವಸ್ತುಗಳು", units: "ಘಟಕಗಳು", subtotal: "ಉಪಮೊತ್ತ", discount: "ರಿಯಾಯಿತಿ",
+        grandTotal: "ಒಟ್ಟು ಮೊತ್ತ", note: "ಟಿಪ್ಪಣಿ", thanks: "ಧನ್ಯವಾದಗಳು, ಮತ್ತೆ ಬನ್ನಿ!",
+        footer: "ಕಂಪ್ಯೂಟರ್ ರಚಿತ ರಸೀದಿ, ಸಹಿ ಅಗತ್ಯವಿಲ್ಲ",
+        saved: "ನೀವು ಉಳಿಸಿದ್ದು", scanToPay: "ಯಾವುದೇ UPI ಆ್ಯಪ್‌ನಲ್ಲಿ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ",
+        paid: "ಪಾವತಿಸಲಾಗಿದೆ", pending: "ಬಾಕಿ", failed: "ವಿಫಲ", refunded: "ಮರುಪಾವತಿ",
+        copied: "ಲಿಂಕ್ ನಕಲಿಸಲಾಗಿದೆ", shareFail: "ಹಂಚಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ", pdfHint: "ಪ್ರಿಂಟ್ ವಿಂಡೋದಲ್ಲಿ 'Save as PDF' ಆಯ್ಕೆಮಾಡಿ",
+        loading: "ರಸೀದಿ ಸಿದ್ಧವಾಗುತ್ತಿದೆ...", notFound: "ರಸೀದಿ ಸಿಗಲಿಲ್ಲ", backSales: "ಮಾರಾಟಕ್ಕೆ ಹಿಂತಿರುಗಿ",
+    },
+};
+
+const THEMES = ["modern", "thermal", "night"];
+
+/* ───────────────────────── Hooks ───────────────────────── */
+function useCountUp(target, ms = 900) {
+    const [value, setValue] = useState(0);
+    useEffect(() => {
+        let raf;
+        let start;
+        const step = (t) => {
+            if (!start) start = t;
+            const p = Math.min((t - start) / ms, 1);
+            setValue(target * (1 - Math.pow(1 - p, 3)));
+            if (p < 1) raf = requestAnimationFrame(step);
+        };
+        raf = requestAnimationFrame(step);
+        return () => cancelAnimationFrame(raf);
+    }, [target, ms]);
+    return value;
+}
+
+function usePersisted(key, initial) {
+    const [val, setVal] = useState(() => {
+        try {
+            return localStorage.getItem(key) || initial;
+        } catch {
+            return initial;
+        }
+    });
+    const set = (v) => {
+        setVal(v);
+        try {
+            localStorage.setItem(key, v);
+        } catch {
+            /* ignore */
+        }
+    };
+    return [val, set];
+}
+
+/* ───────────────────────── Component ───────────────────────── */
 export default function Invoice() {
     const { id } = useParams();
     const [invoice, setInvoice] = useState(null);
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [theme, setTheme] = usePersisted("receipt_theme", "modern");
+    const [lang, setLang] = usePersisted("receipt_lang", "en");
+    const [toast, setToast] = useState("");
+
+    const t = T[lang] || T.en;
+    const totalNumber = Number(invoice?.total_amount) || 0;
+    const animatedTotal = useCountUp(totalNumber);
 
     useEffect(() => {
         loadInvoice();
         // eslint-disable-next-line
     }, [id]);
+
+    useEffect(() => {
+        if (!toast) return;
+        const timer = setTimeout(() => setToast(""), 2400);
+        return () => clearTimeout(timer);
+    }, [toast]);
 
     const loadInvoice = async () => {
         setLoading(true);
@@ -53,27 +136,51 @@ export default function Invoice() {
         }).format(Number(amount) || 0);
 
     const getStatus = (status) => {
+        const key = status?.toLowerCase();
         const configs = {
-            paid: { color: "#0f7a4d", bg: "#dcfce7", label: "Paid", icon: <FiCheckCircle size={14} /> },
-            pending: { color: "#a16207", bg: "#fef3c7", label: "Pending", icon: <FiClock size={14} /> },
-            failed: { color: "#b91c1c", bg: "#fee2e2", label: "Failed", icon: <FiXCircle size={14} /> },
-            refunded: { color: "#475569", bg: "#e2e8f0", label: "Refunded", icon: <FiRefreshCw size={14} /> },
+            paid: { color: "#0f7a4d", bg: "#dcfce7", label: t.paid, icon: <FiCheckCircle size={14} />, rotate: -8 },
+            pending: { color: "#a16207", bg: "#fef3c7", label: t.pending, icon: <FiClock size={14} />, rotate: -5 },
+            failed: { color: "#b91c1c", bg: "#fee2e2", label: t.failed, icon: <FiXCircle size={14} />, rotate: -9 },
+            refunded: { color: "#475569", bg: "#e2e8f0", label: t.refunded, icon: <FiRefreshCw size={14} />, rotate: -6 },
         };
         return (
-            configs[status?.toLowerCase()] || {
+            configs[key] || {
                 color: "#475569",
                 bg: "#e2e8f0",
                 label: status || "N/A",
                 icon: <FiFileText size={14} />,
+                rotate: -6,
             }
         );
     };
 
+    /* ── Actions ── */
     const handlePrint = () => window.print();
 
     const handleDownload = () => {
+        const oldTitle = document.title;
+        document.title = `Invoice-${invoice.invoice_no}`;
         window.print();
-        alert("Choose 'Save as PDF' in the print dialog to download the invoice.");
+        document.title = oldTitle;
+        setToast(t.pdfHint);
+    };
+
+    const buildSummaryText = () => {
+        const lines = items
+            .map((it, i) => `${i + 1}. ${it.product_name} - ${formatQuantity(it)} = ${formatCurrency(it.total)}`)
+            .join("\n");
+        return (
+            `*${invoice.business_name || "Receipt"}*\n` +
+            `Bill #${invoice.invoice_no}\n\n${lines}\n\n` +
+            `*Total: ${formatCurrency(invoice.total_amount)}*\n${window.location.href}`
+        );
+    };
+
+    const handleWhatsApp = () => {
+        const digits = String(invoice.customer_phone || "").replace(/\D/g, "");
+        const number = digits.length === 10 ? `91${digits}` : digits;
+        const base = number ? `https://wa.me/${number}` : "https://wa.me/";
+        window.open(`${base}?text=${encodeURIComponent(buildSummaryText())}`, "_blank", "noopener");
     };
 
     const handleShare = async () => {
@@ -87,16 +194,19 @@ export default function Invoice() {
                 await navigator.share(shareData);
             } else {
                 await navigator.clipboard.writeText(`${shareData.title}\n${shareData.text}\n${shareData.url}`);
-                alert("Invoice link copied to clipboard!");
+                setToast(t.copied);
             }
         } catch (err) {
             if (err.name !== "AbortError") {
                 console.error("Share failed:", err);
-                alert("Unable to share. Please try again.");
+                setToast(t.shareFail);
             }
         }
     };
 
+    const cycleTheme = () => setTheme(THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length]);
+
+    /* ── Formatters ── */
     const getPaymentIcon = (method) => {
         const icons = { cash: "💵", card: "💳", upi: "📱", bank: "🏦", credit: "💳", debit: "🏦" };
         return icons[method?.toLowerCase()] || "💵";
@@ -116,107 +226,105 @@ export default function Invoice() {
     const formatUnitPrice = (item) => {
         const price = Number(item.price || 0);
         const baseUnit = item.base_unit || item.unit || "pcs";
-        return `₹${price.toFixed(2)} / ${baseUnit.toUpperCase()}`;
+        return `₹${price.toFixed(2)}/${baseUnit.toUpperCase()}`;
     };
 
-    // Decorative barcode generated from the bill number
-    const Barcode = ({ value }) => {
-        const text = String(value || "000000");
-        const bars = [];
-        for (let i = 0; i < 48; i++) {
-            const code = text.charCodeAt(i % text.length) + i * 7;
-            bars.push(1 + (code % 3));
-        }
-        return (
-            <div style={styles.barcode} aria-hidden="true">
-                {bars.map((w, i) => (
-                    <span
-                        key={i}
-                        style={{
-                            width: `${w}px`,
-                            marginRight: i % 2 === 0 ? "2px" : "1px",
-                            background: i % 2 === 0 ? "#0f172a" : "transparent",
-                            height: "100%",
-                        }}
-                    />
-                ))}
-            </div>
-        );
-    };
-
+    /* ── Loading / error ── */
     if (loading) {
         return (
-            <div style={styles.loadingContainer}>
-                <div style={styles.loadingSpinner}></div>
-                <p style={styles.loadingText}>Preparing your receipt...</p>
+            <div className="rc-center">
+                <style>{baseCss}</style>
+                <div className="rc-spinner" />
+                <p className="rc-center-text">{t.loading}</p>
             </div>
         );
     }
 
     if (error || !invoice) {
         return (
-            <div style={styles.errorContainer}>
-                <div style={styles.errorIcon}>🧾</div>
-                <h2 style={styles.errorTitle}>Receipt not found</h2>
-                <p style={styles.errorText}>
+            <div className="rc-center">
+                <style>{baseCss}</style>
+                <div style={{ fontSize: 50 }}>🧾</div>
+                <h2 style={{ margin: "10px 0 6px", fontWeight: 900 }}>{t.notFound}</h2>
+                <p style={{ color: "#64748b", fontSize: 13, marginBottom: 18 }}>
                     {error || "This receipt doesn't exist, or it has been removed."}
                 </p>
-                <Link to="/sales" replace style={styles.errorButton}>
-                    <FiArrowLeft size={18} />
-                    Back to Sales
+                <Link to="/sales" replace className="rc-btn rc-btn-dark">
+                    <FiArrowLeft size={16} />
+                    {t.backSales}
                 </Link>
             </div>
         );
     }
 
+    /* ── Derived ── */
     const status = getStatus(invoice.payment_status);
-    const totalUnits = items.reduce(
-        (sum, item) => sum + Number(item.entered_quantity || item.quantity || 0),
-        0
-    );
+    const isPaid = invoice.payment_status?.toLowerCase() === "paid";
+    const totalUnits = items.reduce((sum, it) => sum + Number(it.entered_quantity || it.quantity || 0), 0);
     const hasCustomerContact = invoice.customer_phone || invoice.customer_email;
+    const discount = Number(invoice.discount) || 0;
+    const showUpiQr = invoice.upi_id && !isPaid;
+    const upiLink = showUpiQr
+        ? `upi://pay?pa=${encodeURIComponent(invoice.upi_id)}&pn=${encodeURIComponent(
+              invoice.business_name || "Store"
+          )}&am=${totalNumber.toFixed(2)}&cu=INR&tn=${encodeURIComponent(invoice.invoice_no)}`
+        : null;
+
+    const ThemeIcon = theme === "night" ? FiMoon : theme === "thermal" ? FiZap : FiSun;
 
     return (
-        <div style={styles.page}>
-            {/* Action Bar */}
-            <div style={styles.actionBar} className="no-print">
-                <Link to="/sales" replace style={styles.backLink}>
-                    <FiArrowLeft size={18} />
-                    Back
+        <div className="rc-root" data-theme={theme}>
+            <style>{baseCss}</style>
+            <style>{`@media print { @page { size: ${theme === "thermal" ? "80mm auto" : "A4"}; margin: ${theme === "thermal" ? "3mm" : "8mm"}; } }`}</style>
+
+            {/* Action bar */}
+            <div className="rc-bar no-print">
+                <Link to="/sales" replace className="rc-back">
+                    <FiArrowLeft size={17} />
+                    {t.back}
                 </Link>
-                <div style={styles.actionButtons}>
-                    <button style={styles.actionButton} onClick={handlePrint}>
-                        <FiPrinter size={16} />
-                        Print
+                <div className="rc-bar-right">
+                    <button className="rc-chip" onClick={() => setLang(lang === "en" ? "kn" : "en")} title="Language">
+                        {lang === "en" ? "ಕನ್ನಡ" : "EN"}
                     </button>
-                    <button style={styles.actionButton} onClick={handleDownload}>
-                        <FiDownload size={16} />
-                        PDF
-                    </button>
-                    <button style={styles.actionButtonPrimary} onClick={handleShare}>
-                        <FiShare2 size={16} />
-                        Share
+                    <button className="rc-chip" onClick={cycleTheme} title="Change style">
+                        <ThemeIcon size={14} />
+                        <span style={{ textTransform: "capitalize" }}>{theme}</span>
                     </button>
                 </div>
             </div>
 
+            <div className="rc-actions no-print">
+                <button className="rc-btn" onClick={handlePrint}>
+                    <FiPrinter size={15} /> {t.print}
+                </button>
+                <button className="rc-btn" onClick={handleDownload}>
+                    <FiDownload size={15} /> {t.pdf}
+                </button>
+                <button className="rc-btn rc-btn-wa" onClick={handleWhatsApp}>
+                    <FiMessageCircle size={15} /> {t.whatsapp}
+                </button>
+                <button className="rc-btn rc-btn-accent" onClick={handleShare}>
+                    <FiShare2 size={15} /> {t.share}
+                </button>
+            </div>
+
             {/* Receipt */}
-            <div style={styles.receiptWrap} id="invoice-content">
-                <div className="receipt-card" style={styles.receipt}>
+            <div className="rc-wrap" id="invoice-content">
+                <div className="rc-card">
                     {/* Header */}
-                    <div style={styles.header}>
+                    <div className="rc-header">
                         {invoice.logo ? (
-                            <img src={invoice.logo} alt="Business Logo" style={styles.logo} />
+                            <img src={invoice.logo} alt="Business Logo" className="rc-logo" />
                         ) : (
-                            <div style={styles.logoPlaceholder}>
+                            <div className="rc-logo-ph">
                                 <FiBox size={24} color="#0b1220" />
                             </div>
                         )}
-                        <h1 style={styles.businessName}>{invoice.business_name || "Business Name"}</h1>
-
-                        <div style={styles.businessMeta}>
+                        <h1 className="rc-biz">{invoice.business_name || "Business Name"}</h1>
+                        <div className="rc-meta">
                             {invoice.address && (
-                                <p style={styles.metaLine}>
+                                <p>
                                     <FiMapPin size={12} />
                                     <span>
                                         {invoice.address}
@@ -227,48 +335,53 @@ export default function Invoice() {
                                 </p>
                             )}
                             {invoice.business_phone && (
-                                <p style={styles.metaLine}>
+                                <p>
                                     <FiPhone size={12} />
                                     <span>{invoice.business_phone}</span>
                                 </p>
                             )}
                             {invoice.business_email && (
-                                <p style={styles.metaLine}>
+                                <p>
                                     <FiMail size={12} />
                                     <span>{invoice.business_email}</span>
                                 </p>
                             )}
                         </div>
-                        {invoice.gst_number && <div style={styles.gstTag}>GSTIN {invoice.gst_number}</div>}
+                        {invoice.gst_number && <div className="rc-gst">GSTIN {invoice.gst_number}</div>}
                     </div>
 
-                    {/* Amount hero */}
-                    <div style={styles.hero}>
-                        <span style={styles.heroLabel}>Total Amount</span>
-                        <span style={styles.heroAmount}>{formatCurrency(invoice.total_amount)}</span>
-                        <span
-                            style={{
-                                ...styles.statusPill,
-                                color: status.color,
-                                background: status.bg,
-                            }}
-                        >
+                    {/* Hero */}
+                    <div className="rc-hero">
+                        <span className="rc-hero-label">{t.totalAmount}</span>
+                        <span className="rc-hero-amount">{formatCurrency(animatedTotal)}</span>
+                        <span className="rc-pill" style={{ color: status.color, background: status.bg }}>
                             {status.icon}
                             {status.label}
                         </span>
+                        {isPaid && (
+                            <div className="rc-stamp" style={{ "--rot": `${status.rotate}deg` }}>
+                                {status.label}
+                            </div>
+                        )}
                     </div>
 
-                    <div style={styles.dashed}></div>
+                    {discount > 0 && (
+                        <div className="rc-saved">
+                            🎉 {t.saved} {formatCurrency(discount)}
+                        </div>
+                    )}
+
+                    <div className="rc-dash" />
 
                     {/* Bill info */}
-                    <div style={styles.infoGrid}>
-                        <div style={styles.infoCell}>
-                            <span style={styles.infoLabel}>Bill No.</span>
-                            <span style={styles.infoValue}>#{invoice.invoice_no}</span>
+                    <div className="rc-info">
+                        <div>
+                            <span className="rc-k">{t.billNo}</span>
+                            <span className="rc-v">#{invoice.invoice_no}</span>
                         </div>
-                        <div style={styles.infoCell}>
-                            <span style={styles.infoLabel}>Date</span>
-                            <span style={styles.infoValue}>
+                        <div>
+                            <span className="rc-k">{t.date}</span>
+                            <span className="rc-v">
                                 {new Date(invoice.created_at).toLocaleDateString("en-IN", {
                                     day: "2-digit",
                                     month: "short",
@@ -276,123 +389,163 @@ export default function Invoice() {
                                 })}
                             </span>
                         </div>
-                        <div style={styles.infoCell}>
-                            <span style={styles.infoLabel}>Time</span>
-                            <span style={styles.infoValue}>
+                        <div>
+                            <span className="rc-k">{t.time}</span>
+                            <span className="rc-v">
                                 {new Date(invoice.created_at).toLocaleTimeString("en-IN", {
                                     hour: "2-digit",
                                     minute: "2-digit",
                                 })}
                             </span>
                         </div>
-                        <div style={styles.infoCell}>
-                            <span style={styles.infoLabel}>Payment</span>
-                            <span style={styles.infoValue}>
-                                {getPaymentIcon(invoice.payment_method)}{" "}
-                                <span style={{ textTransform: "capitalize" }}>{invoice.payment_method || "N/A"}</span>
+                        <div>
+                            <span className="rc-k">{t.payment}</span>
+                            <span className="rc-v" style={{ textTransform: "capitalize" }}>
+                                {getPaymentIcon(invoice.payment_method)} {invoice.payment_method || "N/A"}
                             </span>
                         </div>
                     </div>
 
-                    {/* Billed to — customer NAME row removed, only contact shown */}
+                    {/* Billed to — contact only, no customer name */}
                     {hasCustomerContact && (
-                        <div style={styles.billedTo}>
-                            <div style={styles.billedToTitle}>Billed to</div>
+                        <div className="rc-billed">
+                            <div className="rc-k">{t.billedTo}</div>
                             {invoice.customer_phone && (
-                                <div style={styles.billedField}>
-                                    <FiPhone size={13} color="#64748b" />
-                                    <span style={styles.billedValue}>{invoice.customer_phone}</span>
+                                <div className="rc-billed-row">
+                                    <FiPhone size={13} />
+                                    <span>{invoice.customer_phone}</span>
                                 </div>
                             )}
                             {invoice.customer_email && (
-                                <div style={styles.billedField}>
-                                    <FiMail size={13} color="#64748b" />
-                                    <span style={styles.billedValue}>{invoice.customer_email}</span>
+                                <div className="rc-billed-row">
+                                    <FiMail size={13} />
+                                    <span>{invoice.customer_email}</span>
                                 </div>
                             )}
                         </div>
                     )}
 
-                    <div style={styles.dashed}></div>
+                    <div className="rc-dash" />
 
                     {/* Items */}
-                    <div style={styles.itemsHeader}>
-                        <span>Items ({items.length})</span>
-                        <span>{totalUnits} units</span>
+                    <div className="rc-items-head">
+                        <span>
+                            {t.items} ({items.length})
+                        </span>
+                        <span>
+                            {totalUnits} {t.units}
+                        </span>
                     </div>
 
-                    <div style={styles.itemList}>
+                    <div className="rc-items">
                         {items.map((item, index) => (
-                            <div key={index} style={styles.itemRow}>
-                                <div style={styles.itemLeft}>
-                                    <span style={styles.itemIndex}>{index + 1}</span>
+                            <div className="rc-item" key={index} style={{ animationDelay: `${0.35 + index * 0.05}s` }}>
+                                <div className="rc-item-left">
+                                    <span className="rc-idx">{index + 1}</span>
                                     <div style={{ minWidth: 0 }}>
-                                        <div style={styles.itemName}>{item.product_name}</div>
-                                        {item.description && <div style={styles.itemDesc}>{item.description}</div>}
-                                        <div style={styles.itemMeta}>
+                                        <div className="rc-item-name">{item.product_name}</div>
+                                        {item.description && <div className="rc-item-desc">{item.description}</div>}
+                                        <div className="rc-item-meta">
                                             {formatQuantity(item)} × {formatUnitPrice(item)}
                                         </div>
                                     </div>
                                 </div>
-                                <div style={styles.itemTotal}>{formatCurrency(item.total)}</div>
+                                <div className="rc-item-total">{formatCurrency(item.total)}</div>
                             </div>
                         ))}
                     </div>
 
-                    <div style={styles.dashed}></div>
+                    <div className="rc-dash" />
 
                     {/* Summary */}
-                    <div style={styles.summary}>
-                        <div style={styles.summaryRow}>
-                            <span>Subtotal</span>
-                            <span style={styles.num}>{formatCurrency(invoice.subtotal)}</span>
+                    <div className="rc-sum">
+                        <div className="rc-sum-row">
+                            <span>{t.subtotal}</span>
+                            <b>{formatCurrency(invoice.subtotal)}</b>
                         </div>
-                        {invoice.discount > 0 && (
-                            <div style={styles.summaryRow}>
-                                <span>Discount</span>
-                                <span style={{ ...styles.num, color: "#b91c1c" }}>-{formatCurrency(invoice.discount)}</span>
+                        {discount > 0 && (
+                            <div className="rc-sum-row">
+                                <span>{t.discount}</span>
+                                <b style={{ color: "#b91c1c" }}>-{formatCurrency(discount)}</b>
                             </div>
                         )}
-                        <div style={styles.summaryRow}>
+                        <div className="rc-sum-row">
                             <span>CGST ({(Number(invoice.cgst_rate) || 0).toFixed(1)}%)</span>
-                            <span style={styles.num}>{formatCurrency(invoice.cgst || 0)}</span>
+                            <b>{formatCurrency(invoice.cgst || 0)}</b>
                         </div>
-                        <div style={styles.summaryRow}>
+                        <div className="rc-sum-row">
                             <span>SGST ({(Number(invoice.sgst_rate) || 0).toFixed(1)}%)</span>
-                            <span style={styles.num}>{formatCurrency(invoice.sgst || 0)}</span>
+                            <b>{formatCurrency(invoice.sgst || 0)}</b>
                         </div>
-
-                        <div style={styles.grandTotal}>
-                            <span>Grand Total</span>
-                            <span style={styles.num}>{formatCurrency(invoice.total_amount)}</span>
+                        <div className="rc-grand">
+                            <span>{t.grandTotal}</span>
+                            <span>{formatCurrency(invoice.total_amount)}</span>
                         </div>
-                        <div style={styles.words}>{numberToWords(Number(invoice.total_amount) || 0)}</div>
+                        <div className="rc-words">{numberToWords(totalNumber)}</div>
                     </div>
 
                     {invoice.notes && (
-                        <div style={styles.notes}>
-                            <div style={styles.notesTitle}>Note</div>
-                            <p style={styles.notesText}>{invoice.notes}</p>
+                        <div className="rc-notes">
+                            <div className="rc-k">{t.note}</div>
+                            <p>{invoice.notes}</p>
                         </div>
                     )}
 
-                    <div style={styles.dashed}></div>
+                    {showUpiQr && (
+                        <div className="rc-qr">
+                            <img
+                                src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&margin=0&data=${encodeURIComponent(upiLink)}`}
+                                alt="UPI QR"
+                                width="110"
+                                height="110"
+                            />
+                            <span>{t.scanToPay}</span>
+                        </div>
+                    )}
+
+                    <div className="rc-dash" />
 
                     {/* Footer */}
-                    <div style={styles.footer}>
-                        <p style={styles.thankYou}>Thank you, visit again! 🙏</p>
+                    <div className="rc-footer">
+                        <p className="rc-thanks">{t.thanks} 🙏</p>
                         <Barcode value={invoice.invoice_no} />
-                        <p style={styles.footerSmall}>
-                            {invoice.invoice_no} · Computer-generated receipt, no signature required
+                        <p className="rc-small">
+                            {invoice.invoice_no} · {t.footer}
                         </p>
                     </div>
                 </div>
             </div>
+
+            {toast && <div className="rc-toast no-print">{toast}</div>}
         </div>
     );
 }
 
-// Helper function to convert number to words
+/* ───────────────────────── Barcode ───────────────────────── */
+function Barcode({ value }) {
+    const text = String(value || "000000");
+    const bars = [];
+    for (let i = 0; i < 48; i++) {
+        const code = text.charCodeAt(i % text.length) + i * 7;
+        bars.push(1 + (code % 3));
+    }
+    return (
+        <div className="rc-barcode" aria-hidden="true">
+            {bars.map((w, i) => (
+                <span
+                    key={i}
+                    style={{
+                        width: `${w}px`,
+                        marginRight: i % 2 === 0 ? "2px" : "1px",
+                        background: i % 2 === 0 ? "currentColor" : "transparent",
+                    }}
+                />
+            ))}
+        </div>
+    );
+}
+
+/* ───────────────────────── Amount in words ───────────────────────── */
 function numberToWords(num) {
     if (num === 0) return "Amount in words: Zero Rupees Only";
 
@@ -447,465 +600,198 @@ function numberToWords(num) {
     return "Amount in words: " + result.trim();
 }
 
-const styles = {
-    page: {
-        minHeight: "100vh",
-        background: "linear-gradient(180deg, #e8ecf3 0%, #dfe5ee 100%)",
-        padding: "22px 14px 50px",
-        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-        color: "#0f172a",
-    },
+/* ───────────────────────── Styles ───────────────────────── */
+const baseCss = `
+* { box-sizing: border-box; }
 
-    actionBar: {
-        maxWidth: "460px",
-        margin: "0 auto 16px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: "10px",
-        padding: "8px 10px",
-        background: "#0b1220",
-        borderRadius: "14px",
-        boxShadow: "0 10px 28px rgba(15,23,42,.18)",
-    },
+.rc-root {
+    --paper: #ffffff; --ink: #0b1220; --muted: #64748b; --soft: #94a3b8;
+    --line: #dbe2eb; --panel: #f8fafc; --accent: #c8ff00; --accent-ink: #0b1220;
+    --hero-bg: linear-gradient(135deg, #0b1220 0%, #18243c 100%); --hero-label: #94a3b8; --hero-amount: #c8ff00;
+    --page: linear-gradient(180deg, #e8ecf3 0%, #dfe5ee 100%);
+    --bar: #0b1220; --idx-bg: #eef2ff; --idx-ink: #4f46e5;
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --width: 460px;
+    min-height: 100vh; padding: 20px 14px 60px; background: var(--page);
+    font-family: var(--font); color: var(--ink); transition: background .3s;
+}
 
-    backLink: {
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "7px",
-        padding: "8px 10px",
-        borderRadius: "9px",
-        color: "#e2e8f0",
-        textDecoration: "none",
-        fontSize: "12px",
-        fontWeight: "700",
-    },
+.rc-root[data-theme="night"] {
+    --paper: #0f172a; --ink: #f1f5f9; --muted: #94a3b8; --soft: #64748b;
+    --line: #263349; --panel: #162033; --idx-bg: #1e293b; --idx-ink: #a5b4fc;
+    --hero-bg: linear-gradient(135deg, #020617 0%, #111c33 100%);
+    --page: linear-gradient(180deg, #020617 0%, #0b1220 100%); --bar: #162033;
+}
 
-    actionButtons: { display: "flex", alignItems: "center", gap: "6px" },
+.rc-root[data-theme="thermal"] {
+    --paper: #fffef8; --ink: #111111; --muted: #444444; --soft: #666666;
+    --line: #111111; --panel: transparent; --accent: #111111; --accent-ink: #ffffff;
+    --hero-bg: transparent; --hero-label: #444; --hero-amount: #111;
+    --page: #d9d6cc; --idx-bg: transparent; --idx-ink: #111;
+    --font: 'Courier New', Courier, monospace; --width: 380px;
+}
 
-    actionButton: {
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "6px",
-        padding: "8px 12px",
-        border: "1px solid #334155",
-        borderRadius: "9px",
-        background: "#172033",
-        color: "#f8fafc",
-        fontSize: "12px",
-        fontWeight: "700",
-        cursor: "pointer",
-    },
+.rc-bar, .rc-actions, .rc-wrap { max-width: var(--width); margin-left: auto; margin-right: auto; }
 
-    actionButtonPrimary: {
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "6px",
-        padding: "8px 12px",
-        border: "1px solid #c8ff00",
-        borderRadius: "9px",
-        background: "#c8ff00",
-        color: "#0b1220",
-        fontSize: "12px",
-        fontWeight: "800",
-        cursor: "pointer",
-    },
+/* Top bar */
+.rc-bar {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    margin-bottom: 10px; padding: 8px 10px; background: var(--bar); border-radius: 14px;
+    box-shadow: 0 10px 28px rgba(15,23,42,.18);
+}
+.rc-back { display: inline-flex; align-items: center; gap: 7px; padding: 8px 10px; border-radius: 9px;
+    color: #e2e8f0; text-decoration: none; font-size: 12px; font-weight: 700; }
+.rc-bar-right { display: flex; gap: 6px; }
+.rc-chip { display: inline-flex; align-items: center; gap: 6px; padding: 7px 11px; border-radius: 999px;
+    border: 1px solid #334155; background: #172033; color: #f8fafc; font-size: 11px; font-weight: 800; cursor: pointer; }
+.rc-chip:hover { border-color: var(--accent); }
 
-    receiptWrap: {
-        maxWidth: "460px",
-        margin: "0 auto",
-        filter: "drop-shadow(0 18px 30px rgba(15,23,42,.16))",
-    },
+/* Action buttons */
+.rc-actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin-bottom: 16px; }
+.rc-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 6px;
+    border-radius: 11px; border: 1px solid #cbd5e1; background: #fff; color: #0f172a; font-size: 12px;
+    font-weight: 800; cursor: pointer; text-decoration: none; transition: transform .15s, box-shadow .15s; }
+.rc-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(15,23,42,.14); }
+.rc-btn:active { transform: translateY(0); }
+.rc-btn-accent { background: #c8ff00; border-color: #c8ff00; }
+.rc-btn-wa { background: #25d366; border-color: #25d366; color: #fff; }
+.rc-btn-dark { background: #0b1220; border-color: #0b1220; color: #fff; }
 
-    receipt: {
-        position: "relative",
-        background: "#ffffff",
-        padding: "30px 24px 28px",
-    },
+/* Receipt wrapper + printing animation */
+.rc-wrap { filter: drop-shadow(0 18px 30px rgba(15,23,42,.18)); }
+.rc-card { position: relative; background: var(--paper); padding: 30px 24px 28px; animation: feed .9s cubic-bezier(.2,.8,.2,1) both; }
 
-    header: {
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        textAlign: "center",
-    },
+.rc-root:not([data-theme="thermal"]) .rc-card {
+    --r: 9px;
+    -webkit-mask:
+        radial-gradient(circle var(--r) at 50% 0, transparent 98%, #000) top / calc(var(--r) * 2.4) 51% repeat-x,
+        radial-gradient(circle var(--r) at 50% 100%, transparent 98%, #000) bottom / calc(var(--r) * 2.4) 51% repeat-x;
+    mask:
+        radial-gradient(circle var(--r) at 50% 0, transparent 98%, #000) top / calc(var(--r) * 2.4) 51% repeat-x,
+        radial-gradient(circle var(--r) at 50% 100%, transparent 98%, #000) bottom / calc(var(--r) * 2.4) 51% repeat-x;
+}
 
-    logo: {
-        width: "60px",
-        height: "60px",
-        objectFit: "contain",
-        borderRadius: "16px",
-        padding: "6px",
-        marginBottom: "10px",
-        border: "1px solid #e5eaf1",
-        background: "#fff",
-    },
+.rc-root[data-theme="thermal"] .rc-card { padding: 22px 16px 22px; border-top: 3px double #111; border-bottom: 3px double #111; }
 
-    logoPlaceholder: {
-        width: "56px",
-        height: "56px",
-        borderRadius: "16px",
-        background: "#c8ff00",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        marginBottom: "10px",
-    },
+@keyframes feed {
+    0%   { clip-path: inset(0 0 100% 0); transform: translateY(-14px); }
+    100% { clip-path: inset(0 0 0 0);    transform: translateY(0); }
+}
 
-    businessName: {
-        margin: "0 0 6px",
-        fontSize: "22px",
-        fontWeight: "900",
-        letterSpacing: "-.5px",
-        color: "#0b1220",
-    },
+/* Header */
+.rc-header { display: flex; flex-direction: column; align-items: center; text-align: center; }
+.rc-logo { width: 60px; height: 60px; object-fit: contain; border-radius: 16px; padding: 6px; margin-bottom: 10px;
+    border: 1px solid var(--line); background: #fff; }
+.rc-logo-ph { width: 56px; height: 56px; border-radius: 16px; background: #c8ff00; display: flex;
+    align-items: center; justify-content: center; margin-bottom: 10px; }
+.rc-root[data-theme="thermal"] .rc-logo, .rc-root[data-theme="thermal"] .rc-logo-ph { filter: grayscale(1) contrast(1.4); border-radius: 6px; }
+.rc-biz { margin: 0 0 6px; font-size: 22px; font-weight: 900; letter-spacing: -.5px; color: var(--ink); }
+.rc-root[data-theme="thermal"] .rc-biz { text-transform: uppercase; letter-spacing: 1px; font-size: 18px; }
+.rc-meta { color: var(--muted); font-size: 11px; line-height: 1.7; }
+.rc-meta p { display: flex; align-items: flex-start; justify-content: center; gap: 6px; margin: 0; }
+.rc-gst { margin-top: 10px; padding: 4px 10px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line);
+    color: var(--ink); font-size: 10px; font-weight: 800; letter-spacing: .6px; }
 
-    businessMeta: {
-        color: "#64748b",
-        fontSize: "11px",
-        lineHeight: 1.7,
-    },
+/* Hero */
+.rc-hero { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 22px 0 14px;
+    padding: 20px 14px; border-radius: 18px; background: var(--hero-bg); overflow: hidden; }
+.rc-hero-label { font-size: 10px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: var(--hero-label); }
+.rc-hero-amount { font-size: 34px; font-weight: 900; letter-spacing: -1px; color: var(--hero-amount); font-variant-numeric: tabular-nums; }
+.rc-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; font-size: 11px; font-weight: 800; }
+.rc-root[data-theme="thermal"] .rc-hero { border: 2px dashed #111; border-radius: 4px; }
 
-    metaLine: {
-        display: "flex",
-        alignItems: "flex-start",
-        justifyContent: "center",
-        gap: "6px",
-        margin: 0,
-    },
+.rc-stamp { position: absolute; right: 12px; bottom: 10px; padding: 4px 10px; border: 2px solid #4ade80; color: #4ade80;
+    border-radius: 6px; font-size: 11px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase;
+    transform: rotate(var(--rot)); animation: slam .5s .7s cubic-bezier(.2,1.6,.4,1) both; pointer-events: none; }
+.rc-root[data-theme="thermal"] .rc-stamp { border-color: #111; color: #111; }
+@keyframes slam {
+    0%   { opacity: 0; transform: rotate(var(--rot)) scale(2.4); }
+    100% { opacity: .95; transform: rotate(var(--rot)) scale(1); }
+}
 
-    gstTag: {
-        marginTop: "10px",
-        padding: "4px 10px",
-        borderRadius: "999px",
-        background: "#f1f5f9",
-        border: "1px solid #e2e8f0",
-        color: "#334155",
-        fontSize: "10px",
-        fontWeight: "800",
-        letterSpacing: ".6px",
-    },
+.rc-saved { margin: 0 auto; width: fit-content; padding: 6px 14px; border-radius: 999px; background: #dcfce7;
+    color: #0f7a4d; font-size: 12px; font-weight: 800; }
 
-    hero: {
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: "6px",
-        margin: "22px 0 20px",
-        padding: "20px 14px",
-        borderRadius: "18px",
-        background: "linear-gradient(135deg, #0b1220 0%, #18243c 100%)",
-    },
+.rc-dash { border-top: 2px dashed var(--line); margin: 18px 0; }
 
-    heroLabel: {
-        fontSize: "10px",
-        fontWeight: "800",
-        letterSpacing: "1.5px",
-        textTransform: "uppercase",
-        color: "#94a3b8",
-    },
+/* Info */
+.rc-info { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 12px; }
+.rc-info > div { display: flex; flex-direction: column; gap: 3px; }
+.rc-k { display: block; font-size: 9px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: var(--soft); }
+.rc-v { font-size: 13px; font-weight: 800; color: var(--ink); overflow-wrap: anywhere; }
 
-    heroAmount: {
-        fontSize: "34px",
-        fontWeight: "900",
-        letterSpacing: "-1px",
-        color: "#c8ff00",
-        fontVariantNumeric: "tabular-nums",
-    },
+.rc-billed { margin-top: 16px; padding: 12px 14px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); }
+.rc-billed .rc-k { margin-bottom: 6px; }
+.rc-billed-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: 12px; font-weight: 700; color: var(--ink); overflow-wrap: anywhere; }
 
-    statusPill: {
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "6px",
-        padding: "5px 12px",
-        borderRadius: "999px",
-        fontSize: "11px",
-        fontWeight: "800",
-    },
+/* Items */
+.rc-items-head { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 10px; font-weight: 800;
+    letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+.rc-items { display: flex; flex-direction: column; gap: 12px; }
+.rc-item { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; animation: rise .45s ease both; }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.rc-item-left { display: flex; gap: 10px; min-width: 0; }
+.rc-idx { flex-shrink: 0; width: 22px; height: 22px; border-radius: 7px; background: var(--idx-bg); color: var(--idx-ink);
+    font-size: 10px; font-weight: 900; display: flex; align-items: center; justify-content: center; }
+.rc-item-name { font-size: 13px; font-weight: 800; color: var(--ink); }
+.rc-item-desc { font-size: 10px; color: var(--soft); margin-top: 2px; }
+.rc-item-meta { font-size: 11px; color: var(--muted); margin-top: 3px; font-variant-numeric: tabular-nums; }
+.rc-item-total { flex-shrink: 0; font-size: 13px; font-weight: 900; color: var(--ink); font-variant-numeric: tabular-nums; }
 
-    dashed: {
-        borderTop: "2px dashed #dbe2eb",
-        margin: "18px 0",
-    },
+/* Summary */
+.rc-sum { display: flex; flex-direction: column; gap: 2px; }
+.rc-sum-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px; color: var(--muted); }
+.rc-sum-row b { color: var(--ink); font-weight: 700; font-variant-numeric: tabular-nums; }
+.rc-grand { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding: 13px 14px;
+    border-radius: 12px; background: var(--accent); color: var(--accent-ink); font-size: 16px; font-weight: 900;
+    font-variant-numeric: tabular-nums; }
+.rc-root[data-theme="thermal"] .rc-grand { border-radius: 3px; }
+.rc-words { margin-top: 10px; font-size: 10px; line-height: 1.5; color: var(--muted); text-align: center; }
 
-    infoGrid: {
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        gap: "14px 12px",
-    },
+.rc-notes { margin-top: 16px; padding: 10px 12px; border-left: 4px solid var(--accent); border-radius: 8px; background: var(--panel); }
+.rc-notes p { margin: 3px 0 0; font-size: 11px; line-height: 1.5; color: var(--muted); }
 
-    infoCell: { display: "flex", flexDirection: "column", gap: "3px" },
+/* UPI QR */
+.rc-qr { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 16px; padding: 14px;
+    border: 1px dashed var(--line); border-radius: 14px; font-size: 11px; font-weight: 700; color: var(--muted); }
+.rc-qr img { background: #fff; padding: 6px; border-radius: 10px; }
 
-    infoLabel: {
-        fontSize: "9px",
-        fontWeight: "800",
-        letterSpacing: "1px",
-        textTransform: "uppercase",
-        color: "#94a3b8",
-    },
+/* Footer */
+.rc-footer { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
+.rc-thanks { margin: 0; font-size: 14px; font-weight: 900; color: var(--ink); }
+.rc-barcode { display: flex; align-items: stretch; height: 42px; padding: 0 4px; color: var(--ink); }
+.rc-small { margin: 0; font-size: 9px; color: var(--soft); }
 
-    infoValue: {
-        fontSize: "13px",
-        fontWeight: "800",
-        color: "#0f172a",
-        overflowWrap: "anywhere",
-    },
+/* Toast */
+.rc-toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); padding: 11px 18px; border-radius: 999px;
+    background: #0b1220; color: #c8ff00; font-size: 12px; font-weight: 800; box-shadow: 0 12px 28px rgba(0,0,0,.3);
+    animation: rise .3s ease both; z-index: 50; }
 
-    billedTo: {
-        marginTop: "16px",
-        padding: "12px 14px",
-        borderRadius: "12px",
-        background: "#f8fafc",
-        border: "1px solid #e5eaf1",
-    },
+/* Loading */
+.rc-center { min-height: 60vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 40px; text-align: center; font-family: 'Inter', sans-serif; }
+.rc-center-text { margin-top: 15px; color: #0f172a; font-size: 14px; font-weight: 800; }
+.rc-spinner { width: 42px; height: 42px; border: 3px solid #dbe2eb; border-top: 3px solid #c8ff00; border-radius: 50%;
+    animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 
-    billedToTitle: {
-        marginBottom: "6px",
-        fontSize: "9px",
-        fontWeight: "800",
-        letterSpacing: "1px",
-        textTransform: "uppercase",
-        color: "#94a3b8",
-    },
+@media (max-width: 420px) {
+    .rc-actions { grid-template-columns: 1fr 1fr; }
+    .rc-hero-amount { font-size: 30px; }
+}
 
-    billedField: {
-        display: "flex",
-        alignItems: "center",
-        gap: "8px",
-        padding: "3px 0",
-    },
-
-    billedValue: {
-        fontSize: "12px",
-        fontWeight: "700",
-        color: "#0f172a",
-        overflowWrap: "anywhere",
-    },
-
-    itemsHeader: {
-        display: "flex",
-        justifyContent: "space-between",
-        marginBottom: "10px",
-        fontSize: "10px",
-        fontWeight: "800",
-        letterSpacing: "1px",
-        textTransform: "uppercase",
-        color: "#64748b",
-    },
-
-    itemList: { display: "flex", flexDirection: "column", gap: "12px" },
-
-    itemRow: {
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "flex-start",
-        gap: "12px",
-    },
-
-    itemLeft: { display: "flex", gap: "10px", minWidth: 0 },
-
-    itemIndex: {
-        flexShrink: 0,
-        width: "22px",
-        height: "22px",
-        borderRadius: "7px",
-        background: "#eef2ff",
-        color: "#4f46e5",
-        fontSize: "10px",
-        fontWeight: "900",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-    },
-
-    itemName: { fontSize: "13px", fontWeight: "800", color: "#0f172a" },
-    itemDesc: { fontSize: "10px", color: "#94a3b8", marginTop: "2px" },
-    itemMeta: {
-        fontSize: "11px",
-        color: "#64748b",
-        marginTop: "3px",
-        fontVariantNumeric: "tabular-nums",
-    },
-
-    itemTotal: {
-        flexShrink: 0,
-        fontSize: "13px",
-        fontWeight: "900",
-        color: "#0f172a",
-        fontVariantNumeric: "tabular-nums",
-    },
-
-    summary: { display: "flex", flexDirection: "column", gap: "2px" },
-
-    summaryRow: {
-        display: "flex",
-        justifyContent: "space-between",
-        padding: "4px 0",
-        fontSize: "12px",
-        color: "#64748b",
-    },
-
-    num: { fontVariantNumeric: "tabular-nums", color: "#0f172a", fontWeight: "700" },
-
-    grandTotal: {
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginTop: "10px",
-        padding: "13px 14px",
-        borderRadius: "12px",
-        background: "#c8ff00",
-        color: "#0b1220",
-        fontSize: "16px",
-        fontWeight: "900",
-    },
-
-    words: {
-        marginTop: "10px",
-        fontSize: "10px",
-        lineHeight: 1.5,
-        color: "#64748b",
-        textAlign: "center",
-    },
-
-    notes: {
-        marginTop: "16px",
-        padding: "10px 12px",
-        borderLeft: "4px solid #c8ff00",
-        borderRadius: "8px",
-        background: "#f8fafc",
-    },
-
-    notesTitle: {
-        fontSize: "9px",
-        fontWeight: "800",
-        letterSpacing: "1px",
-        textTransform: "uppercase",
-        color: "#94a3b8",
-        marginBottom: "3px",
-    },
-
-    notesText: { margin: 0, fontSize: "11px", lineHeight: 1.5, color: "#334155" },
-
-    footer: {
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: "10px",
-        textAlign: "center",
-    },
-
-    thankYou: { margin: 0, fontSize: "14px", fontWeight: "900", color: "#0b1220" },
-
-    barcode: {
-        display: "flex",
-        alignItems: "stretch",
-        height: "42px",
-        padding: "0 4px",
-    },
-
-    footerSmall: { margin: 0, fontSize: "9px", color: "#94a3b8" },
-
-    loadingContainer: {
-        minHeight: "60vh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "40px",
-    },
-
-    loadingSpinner: {
-        width: "42px",
-        height: "42px",
-        border: "3px solid #dbe2eb",
-        borderTop: "3px solid #c8ff00",
-        borderRadius: "50%",
-        animation: "spin .8s linear infinite",
-    },
-
-    loadingText: {
-        marginTop: "15px",
-        color: "#0f172a",
-        fontSize: "14px",
-        fontWeight: "800",
-    },
-
-    errorContainer: {
-        maxWidth: "460px",
-        margin: "0 auto",
-        padding: "80px 20px",
-        textAlign: "center",
-    },
-
-    errorIcon: { marginBottom: "15px", fontSize: "50px" },
-
-    errorTitle: {
-        marginBottom: "8px",
-        color: "#0f172a",
-        fontSize: "22px",
-        fontWeight: "900",
-    },
-
-    errorText: {
-        marginBottom: "20px",
-        color: "#64748b",
-        fontSize: "13px",
-        lineHeight: 1.5,
-    },
-
-    errorButton: {
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "7px",
-        padding: "10px 16px",
-        borderRadius: "9px",
-        background: "#0b1220",
-        color: "#fff",
-        textDecoration: "none",
-        fontSize: "12px",
-        fontWeight: "800",
-    },
-};
-
-// Animations, scalloped tear-off edges and print rules.
-const styleSheet = document.createElement("style");
-styleSheet.textContent = `
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
+/* Print: always light, no UI, no animation */
+@media print {
+    html, body { background: #fff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    .no-print { display: none !important; }
+    .rc-root { padding: 0 !important; background: #fff !important; min-height: 0 !important; }
+    .rc-root[data-theme="night"] {
+        --paper: #ffffff; --ink: #0b1220; --muted: #64748b; --soft: #94a3b8; --line: #dbe2eb; --panel: #f8fafc;
+        --idx-bg: #eef2ff; --idx-ink: #4f46e5; --hero-bg: linear-gradient(135deg, #0b1220 0%, #18243c 100%);
     }
-
-    * { box-sizing: border-box; }
-
-    /* Scalloped top and bottom edges */
-    .receipt-card {
-        --r: 9px;
-        -webkit-mask:
-            radial-gradient(circle var(--r) at 50% 0, transparent 98%, #000) top / calc(var(--r) * 2.4) 51% repeat-x,
-            radial-gradient(circle var(--r) at 50% 100%, transparent 98%, #000) bottom / calc(var(--r) * 2.4) 51% repeat-x;
-        mask:
-            radial-gradient(circle var(--r) at 50% 0, transparent 98%, #000) top / calc(var(--r) * 2.4) 51% repeat-x,
-            radial-gradient(circle var(--r) at 50% 100%, transparent 98%, #000) bottom / calc(var(--r) * 2.4) 51% repeat-x;
-    }
-
-    @media print {
-        @page { size: A4; margin: 8mm; }
-
-        html, body { background: #fff !important; }
-
-        body {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-        }
-
-        .no-print { display: none !important; }
-
-        #invoice-content {
-            max-width: 460px !important;
-            margin: 0 auto !important;
-            filter: none !important;
-        }
-    }
+    .rc-wrap { filter: none !important; max-width: ${"var(--width)"} !important; }
+    .rc-card, .rc-item, .rc-stamp { animation: none !important; }
+    .rc-stamp { opacity: .95; }
+    .rc-root:not([data-theme="thermal"]) .rc-card { -webkit-mask: none; mask: none; }
+}
 `;
-document.head.appendChild(styleSheet);
