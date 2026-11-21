@@ -151,31 +151,31 @@ export default function BusinessDashboard() {
 
   if (loading) {
     return (
-      <div className="lux-shell lux-loading">
-        <div className="lux-loading-card">
-          <div className="lux-mark"><FiZap /></div>
-          <div className="lux-spin" />
-          <h3>Opening your workspace</h3>
-          <p>Connecting to live business data…</p>
+      <div className="neo-dashboard neo-loading-screen">
+        <div className="neo-loading-card">
+          <div className="neo-loading-logo"><FiZap /></div>
+          <div className="neo-loader" />
+          <h3>Warming up your workspace</h3>
+          <p>Fetching live business intelligence…</p>
         </div>
-        <PremiumStyles />
+        <NeoStyles />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="lux-shell lux-loading">
-        <div className="lux-loading-card">
-          <div className="lux-mark lux-mark-danger"><FiAlertCircle /></div>
-          <span className="lux-eyebrow">WORKSPACE ERROR</span>
+      <div className="neo-dashboard neo-loading-screen">
+        <div className="neo-loading-card">
+          <div className="neo-error-icon"><FiAlertCircle /></div>
+          <span className="neo-eyebrow">WORKSPACE ERROR</span>
           <h2>Couldn't load your dashboard</h2>
           <p>{error}</p>
-          <button className="lux-btn-primary" onClick={() => loadAll(true)}>
+          <button className="neo-btn-primary" onClick={() => loadAll(true)}>
             <FiRefreshCw /> Try Again
           </button>
         </div>
-        <PremiumStyles />
+        <NeoStyles />
       </div>
     );
   }
@@ -186,7 +186,7 @@ export default function BusinessDashboard() {
       value: formatCurrency(dashboard.todaySales),
       note: "Today's completed sales",
       icon: <FiDollarSign />,
-      tone: "gold",
+      tone: "lime",
       to: "/sales",
     },
     {
@@ -194,7 +194,7 @@ export default function BusinessDashboard() {
       value: formatCurrency(dashboard.monthSales),
       note: "Current month",
       icon: <FiTrendingUp />,
-      tone: "ink",
+      tone: "violet",
       to: "/reports",
     },
     {
@@ -202,7 +202,7 @@ export default function BusinessDashboard() {
       value: Number(dashboard.totalProducts || 0).toLocaleString("en-IN"),
       note: `${dashboard.lowStock || 0} low stock`,
       icon: <FiBox />,
-      tone: "slate",
+      tone: "sky",
       to: "/products",
     },
     {
@@ -210,7 +210,7 @@ export default function BusinessDashboard() {
       value: Number(dashboard.totalCustomers || 0).toLocaleString("en-IN"),
       note: "Customer records",
       icon: <FiUsers />,
-      tone: "clay",
+      tone: "peach",
       to: "/customers",
     },
   ];
@@ -230,117 +230,118 @@ export default function BusinessDashboard() {
         );
 
   return (
-    <div className="lux-shell">
-      {/* ---------- SIDEBAR ---------- */}
-      <aside className="lux-sidebar">
-        <Link to="/dashboard" className="lux-brand">
-          <span className="lux-mark"><FiZap /></span>
-          <span className="lux-brand-text">
+    <div className="neo-dashboard">
+      {/* Floating Sidebar */}
+      <aside className="neo-sidebar">
+        <Link to="/dashboard" className="neo-brand">
+          <span className="neo-brand-mark"><FiZap /></span>
+          <span className="neo-brand-text">
             <strong>BusinessOS</strong>
-            <small>Retail Terminal</small>
+            <small>Retail workspace</small>
           </span>
         </Link>
 
-        <nav className="lux-nav">
-          <p className="lux-nav-label">Workspace</p>
-          <Link className="lux-nav-item is-active" to="/dashboard">
+        <nav className="neo-nav">
+          <p className="neo-nav-label">Workspace</p>
+          <Link className="neo-nav-item is-active" to="/dashboard">
             <FiHome />
             <span>Overview</span>
           </Link>
-          <Link className="lux-nav-item" to="/billing-pos">
+          <Link className="neo-nav-item" to="/billing-pos">
             <FiShoppingBag />
             <span>Billing POS</span>
             <kbd>F2</kbd>
           </Link>
-          <Link className="lux-nav-item" to="/products">
+          <Link className="neo-nav-item" to="/products">
             <FiGrid />
             <span>Products</span>
           </Link>
-          <Link className="lux-nav-item" to="/customers">
+          <Link className="neo-nav-item" to="/customers">
             <FiUsers />
             <span>Customers</span>
           </Link>
-          <Link className="lux-nav-item" to="/suppliers">
+          <Link className="neo-nav-item" to="/suppliers">
             <FiTruck />
             <span>Suppliers</span>
           </Link>
-          <Link className="lux-nav-item" to="/purchases">
+          <Link className="neo-nav-item" to="/purchases">
             <FiShoppingCart />
             <span>Purchases</span>
           </Link>
 
-          <p className="lux-nav-label lux-nav-gap">Insights</p>
-          <Link className="lux-nav-item" to="/sales">
+          <p className="neo-nav-label neo-nav-gap">Insights</p>
+          <Link className="neo-nav-item" to="/sales">
             <FiList />
             <span>Sales History</span>
           </Link>
-          <Link className="lux-nav-item" to="/reports">
+          <Link className="neo-nav-item" to="/reports">
             <FiBarChart2 />
             <span>Reports</span>
           </Link>
-          <Link className="lux-nav-item" to="/qr-orders">
+          <Link className="neo-nav-item" to="/qr-orders">
             <FiCreditCard />
             <span>QR Orders</span>
           </Link>
-          <Link className="lux-nav-item" to="/qr-ordering">
+          <Link className="neo-nav-item" to="/qr-ordering">
             <FiGrid />
             <span>QR Setup</span>
           </Link>
         </nav>
 
-        <div className="lux-sidebar-foot">
-          <div className="lux-status">
-            <span className="lux-status-dot" />
+        <div className="neo-sidebar-footer">
+          <div className="neo-pulse-card">
+            <span className="neo-pulse-dot" />
             <div>
-              <strong>Systems live</strong>
-              <small>Secure session</small>
+              <strong>All systems live</strong>
+              <small>Connected & secure</small>
             </div>
           </div>
         </div>
       </aside>
 
-      {/* ---------- MAIN ---------- */}
-      <main className="lux-main">
-        {/* Topbar */}
-        <header className="lux-topbar">
-          <div className="lux-mobile-brand">
-            <span className="lux-mark"><FiZap /></span>
+      {/* Main */}
+      <main className="neo-main">
+        {/* Top bar */}
+        <header className="neo-topbar">
+          <div className="neo-mobile-brand">
+            <span className="neo-brand-mark"><FiZap /></span>
             <strong>BusinessOS</strong>
           </div>
 
-          <div className="lux-crumbs">
+          <div className="neo-crumbs">
             <span>Workspace</span>
-            <span className="lux-slash">/</span>
+            <FiChevronDown />
             <strong>Overview</strong>
           </div>
 
-          <div className="lux-topbar-actions">
-            <span className="lux-live-chip">
+          <div className="neo-topbar-actions">
+            <span className="neo-live-chip">
               <i />
+              <FiClock />
               {formatTime()}
             </span>
 
             <button
-              className={`lux-icon-btn ${refreshing ? "is-spinning" : ""}`}
+              className={`neo-icon-btn ${refreshing ? "is-spinning" : ""}`}
               title="Refresh dashboard"
               onClick={() => loadAll(true)}
             >
               <FiRefreshCw />
             </button>
 
-            <div className="lux-profile-wrap">
+            <div className="neo-profile-wrap">
               <button
-                className="lux-profile-btn"
+                className="neo-profile-btn"
                 onClick={() => setShowProfileMenu((v) => !v)}
               >
-                <span className="lux-avatar">
+                <span className="neo-avatar">
                   {businessLogo ? (
                     <img src={businessLogo} alt="Business logo" />
                   ) : (
                     <FiBriefcase />
                   )}
                 </span>
-                <span className="lux-profile-copy">
+                <span className="neo-profile-copy">
                   <strong>
                     {businessName.length > 18
                       ? businessName.substring(0, 18) + "…"
@@ -348,18 +349,20 @@ export default function BusinessDashboard() {
                   </strong>
                   <small>{businessType || "Business"}</small>
                 </span>
-                <FiChevronDown className={showProfileMenu ? "is-up" : ""} />
+                <FiChevronDown
+                  className={showProfileMenu ? "is-up" : ""}
+                />
               </button>
 
               {showProfileMenu && (
                 <>
                   <div
-                    className="lux-menu-backdrop"
+                    className="neo-menu-backdrop"
                     onClick={() => setShowProfileMenu(false)}
                   />
-                  <div className="lux-profile-menu">
-                    <div className="lux-menu-head">
-                      <span className="lux-avatar-lg">
+                  <div className="neo-profile-menu">
+                    <div className="neo-menu-head">
+                      <span className="neo-avatar-lg">
                         {businessLogo ? (
                           <img src={businessLogo} alt="Business logo" />
                         ) : (
@@ -377,7 +380,7 @@ export default function BusinessDashboard() {
                     <Link to="/edit-business" onClick={() => setShowProfileMenu(false)}>
                       <FiEdit /> Edit Business Profile
                     </Link>
-                    <button onClick={handleLogout} className="lux-menu-danger">
+                    <button onClick={handleLogout} className="neo-menu-danger">
                       <FiLogOut /> Logout
                     </button>
                   </div>
@@ -387,196 +390,172 @@ export default function BusinessDashboard() {
           </div>
         </header>
 
-        {/* Masthead */}
-        <section className="lux-masthead">
-          <div className="lux-masthead-copy">
-            <span className="lux-eyebrow">
-              <i /> {formatDate(new Date())} · COMMAND CENTER
+        {/* Hero greeting */}
+        <section className="neo-hero-row">
+          <div className="neo-hero-copy">
+            <span className="neo-eyebrow">
+              <i /> BUSINESS COMMAND CENTER
             </span>
             <h1>
-              Good to see you,{" "}
-              <span className="lux-accent">{businessName}</span>
+              Good to see you, <span className="neo-accent">{businessName}</span>
             </h1>
+            <p>Track sales, inventory and customers from one clean workspace.</p>
           </div>
 
-          <div className="lux-masthead-actions">
-            <Link className="lux-btn-ghost" to="/reports">
+          <div className="neo-hero-actions">
+            <Link className="neo-btn-ghost" to="/reports">
               <FiBarChart2 /> Reports
             </Link>
-            <Link className="lux-btn-primary" to="/billing-pos">
+            <Link className="neo-btn-primary" to="/billing-pos">
               <FiShoppingBag /> Open POS <FiArrowUpRight />
             </Link>
           </div>
         </section>
 
-        {/* Hero + Stats */}
-        <section className="lux-grid-hero">
-          <div className="lux-hero">
-            <div className="lux-hero-grain" />
-            <div className="lux-hero-ring lux-ring-a" />
-            <div className="lux-hero-ring lux-ring-b" />
-
-            <div className="lux-hero-inner">
-              <div className="lux-hero-label">
-                <span className="lux-dot-pulse" />
-                LIVE · TODAY
-              </div>
-
-              <div className="lux-hero-value">
-                {formatCurrency(dashboard.todaySales)}
-              </div>
-              <div className="lux-hero-suffix">
-                today's revenue
-              </div>
-
-              <div className="lux-hero-foot">
-                <div className="lux-hero-foot-item">
-                  <FiActivity />
-                  <div>
-                    <strong>{Number(dashboard.todaySales || 0) > 0 ? "Active" : "Ready"}</strong>
-                    <small>Session status</small>
-                  </div>
-                </div>
-                <div className="lux-hero-foot-item">
-                  <FiTrendingUp />
-                  <div>
-                    <strong>{formatCurrency(dashboard.monthSales)}</strong>
-                    <small>this month</small>
-                  </div>
-                </div>
-                <Link to="/billing-pos" className="lux-hero-cta">
-                  Start Billing <FiArrowRight />
-                </Link>
+        {/* Bento: hero + stat tiles */}
+        <section className="neo-bento">
+          <div className="neo-hero-card">
+            <div className="neo-orb neo-orb-a" />
+            <div className="neo-orb neo-orb-b" />
+            <div className="neo-orb neo-orb-c" />
+            <div className="neo-hero-card-body">
+              <span className="neo-hero-tag"><FiZap /> SMART BUSINESS</span>
+              <h2>Everything you need to run today's store.</h2>
+              <p>
+                Your business activity is organised here so you can move from
+                insight to action without extra clicks.
+              </p>
+              <Link to="/billing-pos" className="neo-hero-cta">
+                Start Billing <FiArrowRight />
+              </Link>
+            </div>
+            <div className="neo-hero-metric">
+              <span className="neo-hero-metric-label">Today's revenue</span>
+              <strong>{formatCurrency(dashboard.todaySales)}</strong>
+              <div className="neo-hero-metric-foot">
+                <span><FiActivity /> Live dashboard</span>
+                <span>{Number(dashboard.todaySales || 0) > 0 ? "Active" : "Ready"}</span>
               </div>
             </div>
           </div>
 
-          <div className="lux-stat-grid">
+          <div className="neo-stat-grid">
             {statCards.map((card) => (
-              <Link
-                to={card.to}
-                className={`lux-stat lux-tone-${card.tone}`}
-                key={card.title}
-              >
-                <span className="lux-stat-icon">{card.icon}</span>
-                <span className="lux-stat-arrow"><FiArrowUpRight /></span>
-                <span className="lux-stat-title">{card.title}</span>
-                <strong className="lux-stat-value">{card.value}</strong>
-                <span className="lux-stat-note">{card.note}</span>
+              <Link to={card.to} className={`neo-stat neo-tone-${card.tone}`} key={card.title}>
+                <span className="neo-stat-icon">{card.icon}</span>
+                <span className="neo-stat-arrow"><FiArrowUpRight /></span>
+                <span className="neo-stat-title">{card.title}</span>
+                <strong className="neo-stat-value">{card.value}</strong>
+                <span className="neo-stat-note">{card.note}</span>
               </Link>
             ))}
           </div>
         </section>
 
-        {/* Quick actions + Store health */}
-        <section className="lux-grid-two">
-          <div className="lux-card">
-            <header className="lux-card-head">
+        {/* Quick actions + inventory health */}
+        <section className="neo-two-col">
+          <div className="neo-card">
+            <header className="neo-card-head">
               <div>
-                <span className="lux-eyebrow">SHORTCUTS</span>
-                <h3>Move fast</h3>
+                <span className="neo-eyebrow">FAST ACCESS</span>
+                <h3>What do you want to do?</h3>
               </div>
-              <span className="lux-hint">10 actions</span>
+              <span className="neo-hint">Built for speed</span>
             </header>
 
-            <div className="lux-action-grid">
-              <QuickAction to="/add-product" icon={<FiPlus />} label="Add Product" tone="gold" />
-              <QuickAction to="/billing-pos" icon={<FiShoppingBag />} label="New Sale" tone="ink" />
-              <QuickAction to="/products" icon={<FiGrid />} label="Manage Products" tone="slate" />
-              <QuickAction to="/customers" icon={<FiUsers />} label="Customers" tone="clay" />
-              <QuickAction to="/suppliers" icon={<FiTruck />} label="Suppliers" tone="sage" />
-              <QuickAction to="/add-purchase" icon={<FiShoppingCart />} label="New Purchase" tone="gold" />
-              <QuickAction to="/reports" icon={<FiBarChart2 />} label="Business Reports" tone="ink" />
-              <QuickAction to="/sales" icon={<FiList />} label="Invoices" tone="slate" />
-              <QuickAction to="/qr-orders" icon={<FiCreditCard />} label="QR Orders" tone="clay" />
-              <QuickAction to="/qr-ordering" icon={<FiGrid />} label="QR Setup" tone="sage" />
+            <div className="neo-action-grid">
+              <QuickAction to="/add-product" icon={<FiPlus />} label="Add Product" tone="sky" />
+              <QuickAction to="/billing-pos" icon={<FiShoppingBag />} label="New Sale" tone="lime" />
+              <QuickAction to="/products" icon={<FiGrid />} label="Manage Products" tone="violet" />
+              <QuickAction to="/customers" icon={<FiUsers />} label="Customers" tone="pink" />
+              <QuickAction to="/suppliers" icon={<FiTruck />} label="Suppliers" tone="peach" />
+              <QuickAction to="/add-purchase" icon={<FiShoppingCart />} label="New Purchase" tone="mint" />
+              <QuickAction to="/reports" icon={<FiBarChart2 />} label="Business Reports" tone="indigo" />
+              <QuickAction to="/sales" icon={<FiList />} label="Invoices" tone="sky" />
+              <QuickAction to="/qr-orders" icon={<FiCreditCard />} label="QR Orders" tone="violet" />
+              <QuickAction to="/qr-ordering" icon={<FiGrid />} label="QR Ordering Setup" tone="mint" />
             </div>
           </div>
 
-          <div className="lux-card">
-            <header className="lux-card-head">
+          <div className="neo-card">
+            <header className="neo-card-head">
               <div>
-                <span className="lux-eyebrow">INVENTORY</span>
+                <span className="neo-eyebrow">INVENTORY</span>
                 <h3>Store health</h3>
               </div>
-              <Link to="/products" className="lux-text-link">
+              <Link to="/products" className="neo-text-link">
                 View all <FiArrowRight />
               </Link>
             </header>
 
-            <div className="lux-health-top">
+            <div className="neo-health-top">
               <div>
                 <strong>{dashboard.totalProducts || 0}</strong>
                 <span>Total products</span>
               </div>
               <span
-                className={`lux-health-badge ${
+                className={`neo-health-badge ${
                   (dashboard.lowStock || 0) > 0 ? "warn" : "good"
                 }`}
               >
-                {(dashboard.lowStock || 0) > 0 ? (
-                  <FiAlertCircle />
-                ) : (
-                  <FiCheckCircle />
-                )}
+                {(dashboard.lowStock || 0) > 0 ? <FiAlertCircle /> : <FiCheckCircle />}
                 {(dashboard.lowStock || 0) > 0 ? "Attention" : "Healthy"}
               </span>
             </div>
 
-            <div className="lux-health-bar">
+            <div className="neo-health-bar">
               <span style={{ width: `${healthPct}%` }} />
             </div>
 
-            <div className="lux-health-row">
-              <span><i className="lux-dot ok" /> Healthy stock</span>
+            <div className="neo-health-row">
+              <span><i className="neo-dot ok" /> Healthy stock</span>
               <strong>
                 {Math.max(
                   0,
-                  Number(dashboard.totalProducts || 0) -
-                    Number(dashboard.lowStock || 0)
+                  Number(dashboard.totalProducts || 0) - Number(dashboard.lowStock || 0)
                 )}
               </strong>
             </div>
-            <div className="lux-health-row">
-              <span><i className="lux-dot bad" /> Low stock</span>
-              <strong className="lux-danger">{dashboard.lowStock || 0}</strong>
+            <div className="neo-health-row">
+              <span><i className="neo-dot bad" /> Low stock</span>
+              <strong className="neo-danger">{dashboard.lowStock || 0}</strong>
             </div>
 
-            <Link to="/products" className="lux-health-cta">
+            <Link to="/products" className="neo-health-cta">
               Review inventory <FiArrowRight />
             </Link>
           </div>
         </section>
 
         {/* Recent sales */}
-        <section className="lux-card lux-sales-card">
-          <header className="lux-card-head">
+        <section className="neo-card neo-sales-card">
+          <header className="neo-card-head">
             <div>
-              <span className="lux-eyebrow">LIVE ACTIVITY</span>
+              <span className="neo-eyebrow">LIVE ACTIVITY</span>
               <h3>Recent sales</h3>
             </div>
-            <div className="lux-head-right">
-              <span className="lux-activity-chip">
+            <div className="neo-head-right">
+              <span className="neo-activity-chip">
                 <FiActivity /> {recentSales.length} recent
               </span>
-              <Link to="/sales" className="lux-text-link">
+              <Link to="/sales" className="neo-text-link">
                 View all <FiArrowRight />
               </Link>
             </div>
           </header>
 
           {recentSales.length === 0 ? (
-            <div className="lux-empty">
-              <span className="lux-empty-icon"><FiShoppingBag /></span>
+            <div className="neo-empty">
+              <span className="neo-empty-icon"><FiShoppingBag /></span>
               <h4>No sales yet</h4>
               <p>Start your first sale from the POS and it will appear here.</p>
-              <Link className="lux-btn-primary lux-btn-sm" to="/billing-pos">
+              <Link className="neo-btn-primary neo-btn-sm" to="/billing-pos">
                 Open Billing POS <FiArrowRight />
               </Link>
             </div>
           ) : (
-            <div className="lux-table-wrap">
-              <table className="lux-table">
+            <div className="neo-table-wrap">
+              <table className="neo-table">
                 <thead>
                   <tr>
                     <th>Invoice</th>
@@ -600,18 +579,18 @@ export default function BusinessDashboard() {
                     return (
                       <tr key={sale.id || idx}>
                         <td>
-                          <strong className="lux-invoice">
+                          <strong className="neo-invoice">
                             #{sale.invoice_no || "0001"}
                           </strong>
                         </td>
                         <td>
-                          <div className="lux-customer">
-                            <span className="lux-customer-avatar"><FiUser /></span>
+                          <div className="neo-customer">
+                            <span className="neo-customer-avatar"><FiUser /></span>
                             <span>{sale.customer_phone || "Walk-in Customer"}</span>
                           </div>
                         </td>
                         <td>
-                          <div className="lux-item-cell">
+                          <div className="neo-item-cell">
                             <strong>
                               {sale.items?.length || 0} item
                               {(sale.items?.length || 0) !== 1 ? "s" : ""}
@@ -630,13 +609,13 @@ export default function BusinessDashboard() {
                           </div>
                         </td>
                         <td>
-                          <strong className="lux-amount">
+                          <strong className="neo-amount">
                             {formatCurrency(sale.total_amount || 0)}
                           </strong>
                         </td>
                         <td>
                           <span
-                            className={`lux-status ${
+                            className={`neo-status ${
                               paid ? "paid" : pending ? "pending" : "failed"
                             }`}
                           >
@@ -650,9 +629,9 @@ export default function BusinessDashboard() {
                             {sale.payment_status || "Paid"}
                           </span>
                         </td>
-                        <td className="lux-date">{formatDate(sale.created_at)}</td>
+                        <td className="neo-date">{formatDate(sale.created_at)}</td>
                         <td>
-                          <button className="lux-row-menu" title="More">
+                          <button className="neo-row-menu" title="More">
                             <FiMoreHorizontal />
                           </button>
                         </td>
@@ -666,443 +645,382 @@ export default function BusinessDashboard() {
         </section>
 
         {/* Bottom mini cards */}
-        <section className="lux-grid-three">
-          <div className="lux-mini">
-            <span className="lux-mini-icon ink"><FiUsers /></span>
+        <section className="neo-bottom-grid">
+          <div className="neo-mini">
+            <span className="neo-mini-icon violet"><FiUsers /></span>
             <div>
               <span>Customers</span>
               <strong>{dashboard.totalCustomers || 0}</strong>
               <small>Registered customers</small>
             </div>
-            <Link to="/customers" className="lux-mini-arrow">
-              <FiArrowUpRight />
-            </Link>
+            <Link to="/customers" className="neo-mini-arrow"><FiArrowUpRight /></Link>
           </div>
 
-          <div className="lux-mini">
-            <span className="lux-mini-icon sage"><FiTruck /></span>
+          <div className="neo-mini">
+            <span className="neo-mini-icon mint"><FiTruck /></span>
             <div>
               <span>Suppliers</span>
               <strong>{dashboard.totalSuppliers || 0}</strong>
               <small>Supplier records</small>
             </div>
-            <Link to="/suppliers" className="lux-mini-arrow">
-              <FiArrowUpRight />
-            </Link>
+            <Link to="/suppliers" className="neo-mini-arrow"><FiArrowUpRight /></Link>
           </div>
 
-          <div className="lux-mini">
-            <span className="lux-mini-icon gold"><FiCreditCard /></span>
+          <div className="neo-mini">
+            <span className="neo-mini-icon lime"><FiCreditCard /></span>
             <div>
               <span>Total Sales</span>
               <strong>{formatCurrency(dashboard.totalSales)}</strong>
               <small>All-time sales value</small>
             </div>
-            <Link to="/sales" className="lux-mini-arrow">
-              <FiArrowUpRight />
-            </Link>
+            <Link to="/sales" className="neo-mini-arrow"><FiArrowUpRight /></Link>
           </div>
         </section>
 
-        <footer className="lux-footer">
-          <span>BusinessOS · Retail Terminal</span>
-          <span><i className="lux-dot ok" /> Connected</span>
+        <footer className="neo-footer">
+          <span>BusinessOS · Smart retail workspace</span>
+          <span><i className="neo-dot ok" /> Connected</span>
         </footer>
       </main>
 
-      <PremiumStyles />
+      <NeoStyles />
     </div>
   );
 }
 
 function QuickAction({ to, icon, label, tone }) {
   return (
-    <Link to={to} className={`lux-quick lux-tone-${tone}`}>
-      <span className="lux-quick-icon">{icon}</span>
-      <span className="lux-quick-label">{label}</span>
-      <FiArrowUpRight className="lux-quick-arrow" />
+    <Link to={to} className={`neo-quick neo-tone-${tone}`}>
+      <span className="neo-quick-icon">{icon}</span>
+      <span className="neo-quick-label">{label}</span>
+      <FiArrowUpRight className="neo-quick-arrow" />
     </Link>
   );
 }
 
-function PremiumStyles() {
+function NeoStyles() {
   return (
     <style>{`
-      @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Geist:wght@400;500;600;700&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap');
 
-      .lux-shell {
-        --canvas: #efece5;
-        --canvas-2: #e7e3d9;
-        --paper: #fbf9f4;
-        --paper-2: #f4f1ea;
-        --ink: #0f0f0e;
-        --ink-2: #1a1a18;
-        --ink-soft: #3a3a36;
-        --muted: #8a8780;
-        --line: #ded9cd;
-        --line-strong: #cdc6b6;
-        --dark: #14140f;
-        --dark-2: #1c1c17;
-        --gold: #c9a24a;
-        --gold-soft: #e6c987;
-        --gold-bg: #f7edd4;
-        --danger: #b63b3b;
-        --ok: #3f7d4f;
-        --radius-xl: 20px;
-        --radius-lg: 16px;
-        --radius-md: 12px;
-        --shadow-1: 0 1px 0 rgba(20,20,15,.03), 0 8px 24px rgba(30,28,20,.06);
-        --shadow-2: 0 1px 0 rgba(20,20,15,.03), 0 24px 48px rgba(30,28,20,.08);
+      .neo-dashboard {
+        --bg: #f4f2ee;
+        --bg-alt: #efede7;
+        --surface: #ffffff;
+        --surface-2: #faf9f6;
+        --ink: #0e1014;
+        --ink-soft: #4b4f58;
+        --muted: #8b8f99;
+        --line: #ecebe5;
+        --line-strong: #dfdcd2;
+        --dark: #101219;
+        --dark-2: #171a24;
+        --lime: #c9f63a;
+        --lime-ink: #1c2500;
+        --violet: #7b5bff;
+        --sky: #2f8dff;
+        --peach: #ff9448;
+        --pink: #f45ba6;
+        --mint: #1ec6b6;
+        --indigo: #5a63e8;
+        --danger: #e5484d;
+        --ok: #2fbb6b;
+        --radius-lg: 26px;
+        --radius-md: 18px;
+        --radius-sm: 12px;
+        --shadow-soft: 0 2px 4px rgba(20,20,30,.03), 0 22px 48px rgba(30,30,50,.05);
+        --shadow-hero: 0 26px 60px rgba(20,20,40,.16);
 
         min-height: 100vh;
-        background: var(--canvas);
-        background-image:
-          radial-gradient(1200px 600px at 100% -10%, rgba(201,162,74,.07), transparent 60%),
-          radial-gradient(900px 500px at -10% 110%, rgba(20,20,15,.05), transparent 60%);
+        background:
+          radial-gradient(1200px 600px at 90% -10%, rgba(123,91,255,.06), transparent 60%),
+          radial-gradient(900px 500px at -10% 40%, rgba(201,246,58,.05), transparent 60%),
+          var(--bg);
         color: var(--ink);
-        font-family: 'Geist', system-ui, -apple-system, sans-serif;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
         display: flex;
         -webkit-font-smoothing: antialiased;
-        letter-spacing: -.005em;
       }
 
-      .lux-shell a { color: inherit; text-decoration: none; }
-      .lux-shell * { box-sizing: border-box; }
+      .neo-dashboard a { color: inherit; text-decoration: none; }
+      .neo-dashboard * { box-sizing: border-box; }
 
       /* ============ SIDEBAR ============ */
-      .lux-sidebar {
-        width: 252px;
-        min-width: 252px;
-        margin: 16px 0 16px 16px;
-        padding: 24px 14px 18px;
+      .neo-sidebar {
+        width: 258px;
+        min-width: 258px;
+        margin: 14px 0 14px 14px;
+        padding: 22px 14px;
         background: var(--dark);
-        border-radius: var(--radius-xl);
-        color: #efece5;
+        border-radius: var(--radius-lg);
+        color: #fff;
         display: flex;
         flex-direction: column;
-        gap: 6px;
+        gap: 8px;
         position: sticky;
-        top: 16px;
-        height: calc(100vh - 32px);
+        top: 14px;
+        height: calc(100vh - 28px);
         overflow-y: auto;
         scrollbar-width: thin;
         z-index: 40;
-        box-shadow: 0 30px 60px rgba(20,20,15,.25);
-        background-image:
-          linear-gradient(180deg, rgba(201,162,74,.04), transparent 30%);
-      }
-      .lux-sidebar::after {
-        content: "";
-        position: absolute;
-        inset: 1px;
-        border-radius: inherit;
-        border: 1px solid rgba(255,255,255,.04);
-        pointer-events: none;
+        box-shadow: 0 30px 60px rgba(15,18,30,.18);
       }
 
-      .lux-brand {
+      .neo-brand {
         display: flex;
         align-items: center;
         gap: 12px;
-        padding: 4px 8px 22px;
-        margin-bottom: 4px;
-        border-bottom: 1px solid rgba(255,255,255,.06);
+        padding: 6px 8px 20px;
       }
-      .lux-mark {
-        width: 38px;
-        height: 38px;
+
+      .neo-brand-mark {
+        width: 40px;
+        height: 40px;
         display: grid;
         place-items: center;
-        border-radius: 11px;
-        background: linear-gradient(160deg, var(--gold-soft), var(--gold));
-        color: #14140f;
-        font-size: 17px;
-        flex-shrink: 0;
-        box-shadow: 0 8px 22px rgba(201,162,74,.25);
-      }
-      .lux-mark-danger {
-        background: linear-gradient(160deg, #e88a8a, var(--danger));
-        color: #fff;
-        box-shadow: 0 8px 22px rgba(182,59,59,.25);
+        border-radius: 14px;
+        background: linear-gradient(135deg, var(--lime), #a8d921);
+        color: var(--lime-ink);
+        font-size: 20px;
+        box-shadow: 0 12px 28px rgba(201,246,58,.22);
       }
 
-      .lux-brand-text strong {
+      .neo-brand-text strong {
         display: block;
-        font-family: 'Fraunces', Georgia, serif;
-        font-size: 16px;
-        letter-spacing: -.3px;
-        font-weight: 600;
-        color: #fbf9f4;
+        font-family: 'Sora', sans-serif;
+        font-size: 15px;
+        letter-spacing: -.2px;
       }
-      .lux-brand-text small {
+      .neo-brand-text small {
         display: block;
-        color: #8a8780;
+        color: #7a8090;
         font-size: 10px;
-        margin-top: 3px;
-        letter-spacing: .3px;
+        margin-top: 2px;
       }
 
-      .lux-nav { display: flex; flex-direction: column; gap: 2px; }
+      .neo-nav { display: flex; flex-direction: column; gap: 3px; }
 
-      .lux-nav-label {
-        color: #6b6961;
-        font-size: 9.5px;
-        letter-spacing: 1.8px;
-        font-weight: 600;
-        margin: 12px 12px 6px;
+      .neo-nav-label {
+        color: #5f6577;
+        font-size: 10px;
+        letter-spacing: 1.6px;
+        font-weight: 700;
+        margin: 8px 10px 6px;
         text-transform: uppercase;
       }
-      .lux-nav-gap { margin-top: 22px; }
+      .neo-nav-gap { margin-top: 22px; }
 
-      .lux-nav-item {
+      .neo-nav-item {
         display: flex;
         align-items: center;
         gap: 11px;
-        min-height: 40px;
+        min-height: 42px;
         padding: 0 12px;
-        border-radius: 10px;
-        color: #b5b2a6;
+        border-radius: 12px;
+        color: #9aa0af;
         font-size: 13px;
         font-weight: 500;
-        transition: all .2s ease;
-        position: relative;
+        transition: all .18s ease;
       }
-      .lux-nav-item svg { font-size: 16px; flex-shrink: 0; }
-      .lux-nav-item span { flex: 1; }
-      .lux-nav-item kbd {
+      .neo-nav-item svg { font-size: 17px; flex-shrink: 0; }
+      .neo-nav-item span { flex: 1; }
+      .neo-nav-item kbd {
         font-size: 9px;
-        color: #6b6961;
-        border: 1px solid rgba(255,255,255,.08);
+        color: #636a7c;
+        border: 1px solid #2b3140;
         padding: 2px 5px;
-        border-radius: 4px;
-        font-family: 'Geist', sans-serif;
+        border-radius: 5px;
+        font-family: inherit;
       }
-      .lux-nav-item:hover {
-        color: #fbf9f4;
-        background: rgba(255,255,255,.035);
+      .neo-nav-item:hover {
+        color: #fff;
+        background: rgba(255,255,255,.05);
       }
-      .lux-nav-item.is-active {
-        color: #fbf9f4;
-        background: rgba(201,162,74,.08);
+      .neo-nav-item.is-active {
+        color: var(--lime-ink);
+        background: linear-gradient(135deg, var(--lime), #b7e42d);
         font-weight: 600;
+        box-shadow: 0 10px 22px rgba(201,246,58,.18);
       }
-      .lux-nav-item.is-active::before {
-        content: "";
-        position: absolute;
-        left: -14px;
-        top: 10px;
-        bottom: 10px;
-        width: 2px;
-        border-radius: 4px;
-        background: var(--gold);
-      }
-      .lux-nav-item.is-active svg { color: var(--gold); }
-      .lux-nav-item.is-active kbd {
-        color: var(--gold);
-        border-color: rgba(201,162,74,.3);
+      .neo-nav-item.is-active kbd {
+        color: rgba(28,37,0,.6);
+        border-color: rgba(28,37,0,.2);
       }
 
-      .lux-sidebar-foot { margin-top: auto; padding-top: 16px; }
+      .neo-sidebar-footer { margin-top: auto; padding-top: 14px; }
 
-      .lux-status {
+      .neo-pulse-card {
         display: flex;
         align-items: center;
         gap: 11px;
-        padding: 12px;
-        border-radius: 11px;
-        background: rgba(255,255,255,.03);
-        border: 1px solid rgba(255,255,255,.06);
+        padding: 13px;
+        border-radius: 14px;
+        background: var(--dark-2);
+        border: 1px solid #222838;
       }
-      .lux-status strong {
+      .neo-pulse-card strong {
         display: block;
         font-size: 11px;
-        color: #fbf9f4;
-        font-weight: 600;
+        color: #fff;
       }
-      .lux-status small {
+      .neo-pulse-card small {
         display: block;
-        color: #6b6961;
+        color: #7a8090;
         font-size: 9.5px;
         margin-top: 2px;
       }
-      .lux-status-dot {
+      .neo-pulse-dot {
         width: 8px;
         height: 8px;
         border-radius: 50%;
-        background: #6fbf7c;
-        box-shadow: 0 0 0 4px rgba(111,191,124,.12);
-        animation: lux-pulse 2.4s ease-in-out infinite;
-        flex-shrink: 0;
+        background: #4ade80;
+        box-shadow: 0 0 0 5px rgba(74,222,128,.10);
+        animation: neo-pulse 2s ease-in-out infinite;
       }
-      @keyframes lux-pulse {
-        0%,100% { box-shadow: 0 0 0 4px rgba(111,191,124,.12); }
-        50%     { box-shadow: 0 0 0 6px rgba(111,191,124,.04); }
+      @keyframes neo-pulse {
+        0%,100% { box-shadow: 0 0 0 5px rgba(74,222,128,.10); }
+        50%     { box-shadow: 0 0 0 7px rgba(74,222,128,.04); }
       }
 
       /* ============ MAIN ============ */
-      .lux-main {
+      .neo-main {
         flex: 1;
         min-width: 0;
-        padding: 0 32px 28px;
+        padding: 0 32px 26px;
         display: flex;
         flex-direction: column;
       }
 
       /* Topbar */
-      .lux-topbar {
-        min-height: 84px;
+      .neo-topbar {
+        min-height: 82px;
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 20px;
-        padding: 12px 0;
-        margin-bottom: 8px;
+        padding: 10px 0;
+        margin-bottom: 22px;
         border-bottom: 1px solid var(--line);
       }
-      .lux-mobile-brand {
-        display: none;
-        align-items: center;
-        gap: 9px;
-        font-family: 'Fraunces', serif;
-        font-size: 15px;
-        font-weight: 600;
-      }
-      .lux-mobile-brand .lux-mark { width: 32px; height: 32px; font-size: 15px; border-radius: 9px; }
+      .neo-mobile-brand { display: none; align-items: center; gap: 9px; font-family: 'Sora', sans-serif; font-size: 14px; }
+      .neo-mobile-brand .neo-brand-mark { width: 34px; height: 34px; font-size: 16px; border-radius: 11px; }
 
-      .lux-crumbs {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        color: var(--muted);
-        font-size: 12px;
-        letter-spacing: .2px;
-      }
-      .lux-slash { color: var(--line-strong); }
-      .lux-crumbs strong { color: var(--ink); font-weight: 600; }
-
-      .lux-topbar-actions { display: flex; align-items: center; gap: 9px; }
-
-      .lux-live-chip,
-      .lux-icon-btn,
-      .lux-profile-btn {
-        height: 42px;
-        background: var(--paper);
-        border: 1px solid var(--line);
-        border-radius: 11px;
-      }
-
-      .lux-live-chip {
+      .neo-crumbs {
         display: flex;
         align-items: center;
         gap: 8px;
-        padding: 0 14px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .neo-crumbs svg { font-size: 12px; }
+      .neo-crumbs strong { color: var(--ink); }
+
+      .neo-topbar-actions { display: flex; align-items: center; gap: 9px; }
+
+      .neo-live-chip,
+      .neo-icon-btn,
+      .neo-profile-btn {
+        height: 44px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+      }
+
+      .neo-live-chip {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 13px;
         color: var(--ink-soft);
         font-size: 11.5px;
         font-weight: 500;
-        font-variant-numeric: tabular-nums;
       }
-      .lux-live-chip i {
-        width: 6px;
-        height: 6px;
+      .neo-live-chip i {
+        width: 7px;
+        height: 7px;
         border-radius: 50%;
         background: var(--ok);
-        box-shadow: 0 0 0 3px rgba(63,125,79,.15);
+        box-shadow: 0 0 0 4px rgba(47,187,107,.1);
       }
 
-      .lux-icon-btn {
-        width: 42px;
+      .neo-icon-btn {
+        width: 44px;
         display: grid;
         place-items: center;
         color: var(--ink-soft);
         cursor: pointer;
-        transition: all .2s ease;
+        transition: all .18s ease;
       }
-      .lux-icon-btn:hover {
-        color: var(--ink);
-        border-color: var(--line-strong);
-        transform: translateY(-1px);
-      }
-      .lux-icon-btn.is-spinning svg { animation: lux-spin .8s linear infinite; }
-      @keyframes lux-spin { to { transform: rotate(360deg); } }
+      .neo-icon-btn:hover { color: var(--ink); border-color: var(--line-strong); transform: translateY(-1px); }
+      .neo-icon-btn.is-spinning svg { animation: neo-spin .8s linear infinite; }
+      @keyframes neo-spin { to { transform: rotate(360deg); } }
 
-      .lux-profile-wrap { position: relative; }
+      .neo-profile-wrap { position: relative; }
 
-      .lux-profile-btn {
+      .neo-profile-btn {
         display: flex;
         align-items: center;
         gap: 10px;
         padding: 4px 11px 4px 5px;
         cursor: pointer;
-        min-width: 190px;
+        min-width: 186px;
         text-align: left;
-        transition: all .2s ease;
+        transition: all .18s ease;
       }
-      .lux-profile-btn:hover { border-color: var(--line-strong); }
+      .neo-profile-btn:hover { border-color: var(--line-strong); }
 
-      .lux-avatar {
-        width: 32px;
-        height: 32px;
-        border-radius: 9px;
+      .neo-avatar {
+        width: 34px;
+        height: 34px;
+        border-radius: 11px;
         display: grid;
         place-items: center;
         overflow: hidden;
         color: #fff;
-        background: linear-gradient(160deg, #4a4a40, var(--ink));
+        background: linear-gradient(135deg, var(--violet), #9b7bff);
         flex-shrink: 0;
-        font-size: 14px;
       }
-      .lux-avatar img,
-      .lux-avatar-lg img {
-        width: 100%; height: 100%; object-fit: cover;
-      }
+      .neo-avatar img, .neo-avatar-lg img { width: 100%; height: 100%; object-fit: cover; }
 
-      .lux-profile-copy { flex: 1; min-width: 0; }
-      .lux-profile-copy strong,
-      .lux-profile-copy small {
+      .neo-profile-copy { flex: 1; min-width: 0; }
+      .neo-profile-copy strong,
+      .neo-profile-copy small {
         display: block;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
       }
-      .lux-profile-copy strong {
-        font-size: 12px;
-        font-weight: 600;
-        color: var(--ink);
-      }
-      .lux-profile-copy small {
-        font-size: 10.5px;
+      .neo-profile-copy strong { font-size: 12px; font-weight: 600; }
+      .neo-profile-copy small { font-size: 10.5px; color: var(--muted); margin-top: 1px; }
+
+      .neo-profile-btn > svg {
         color: var(--muted);
-        margin-top: 1px;
+        font-size: 14px;
+        transition: transform .2s ease;
       }
+      .neo-profile-btn > svg.is-up { transform: rotate(180deg); }
 
-      .lux-profile-btn > svg {
-        color: var(--muted);
-        font-size: 13px;
-        transition: transform .25s ease;
-      }
-      .lux-profile-btn > svg.is-up { transform: rotate(180deg); }
+      .neo-menu-backdrop { position: fixed; inset: 0; z-index: 90; }
 
-      .lux-menu-backdrop { position: fixed; inset: 0; z-index: 90; }
-
-      .lux-profile-menu {
+      .neo-profile-menu {
         position: absolute;
-        top: 52px;
+        top: 54px;
         right: 0;
         width: 280px;
-        background: var(--paper);
+        background: var(--surface);
         border: 1px solid var(--line);
-        border-radius: 14px;
-        box-shadow: 0 30px 80px rgba(20,20,15,.18);
+        border-radius: 18px;
+        box-shadow: 0 30px 80px rgba(15,18,30,.15);
         padding: 8px;
         z-index: 100;
-        animation: lux-menu-in .2s ease;
+        animation: neo-menu-in .18s ease;
       }
-      @keyframes lux-menu-in {
+      @keyframes neo-menu-in {
         from { opacity: 0; transform: translateY(-6px); }
         to   { opacity: 1; transform: translateY(0); }
       }
 
-      .lux-menu-head {
+      .neo-menu-head {
         display: flex;
         align-items: center;
         gap: 11px;
@@ -1110,33 +1028,22 @@ function PremiumStyles() {
         border-bottom: 1px solid var(--line);
         margin-bottom: 6px;
       }
-      .lux-avatar-lg {
-        width: 40px;
-        height: 40px;
-        border-radius: 10px;
+      .neo-avatar-lg {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
         display: grid;
         place-items: center;
         overflow: hidden;
         color: #fff;
-        background: linear-gradient(160deg, #4a4a40, var(--ink));
+        background: linear-gradient(135deg, var(--violet), #9b7bff);
         flex-shrink: 0;
-        font-size: 16px;
       }
-      .lux-menu-head strong {
-        display: block;
-        font-size: 12.5px;
-        font-weight: 600;
-        color: var(--ink);
-      }
-      .lux-menu-head small {
-        display: block;
-        color: var(--muted);
-        font-size: 10.5px;
-        margin-top: 2px;
-      }
+      .neo-menu-head strong { display: block; font-size: 12.5px; }
+      .neo-menu-head small { display: block; color: var(--muted); font-size: 10.5px; margin-top: 2px; }
 
-      .lux-profile-menu a,
-      .lux-profile-menu button {
+      .neo-profile-menu a,
+      .neo-profile-menu button {
         width: 100%;
         display: flex;
         align-items: center;
@@ -1144,81 +1051,68 @@ function PremiumStyles() {
         border: 0;
         background: transparent;
         padding: 10px 12px;
-        border-radius: 8px;
+        border-radius: 10px;
         color: var(--ink-soft);
         font: inherit;
         font-size: 12.5px;
-        font-weight: 500;
         cursor: pointer;
         text-align: left;
         transition: all .15s ease;
       }
-      .lux-profile-menu a:hover { background: var(--paper-2); color: var(--ink); }
-      .lux-menu-danger { color: var(--danger) !important; }
-      .lux-menu-danger:hover { background: #fbeeee; }
+      .neo-profile-menu a:hover { background: var(--surface-2); color: var(--ink); }
+      .neo-menu-danger { color: var(--danger) !important; }
+      .neo-menu-danger:hover { background: #fff1f2; }
 
-      /* ============ MASTHEAD ============ */
-      .lux-masthead {
+      /* ============ HERO ROW ============ */
+      .neo-hero-row {
         display: flex;
         align-items: flex-end;
         justify-content: space-between;
         gap: 24px;
-        padding: 22px 0 26px;
+        margin-bottom: 22px;
       }
 
-      .lux-eyebrow {
+      .neo-eyebrow {
         display: inline-flex;
         align-items: center;
-        gap: 9px;
+        gap: 8px;
         color: var(--muted);
-        font-size: 10px;
-        letter-spacing: 2px;
-        font-weight: 600;
+        font-size: 10.5px;
+        letter-spacing: 1.8px;
+        font-weight: 700;
         text-transform: uppercase;
       }
-      .lux-eyebrow i {
-        width: 14px;
-        height: 1.5px;
+      .neo-eyebrow i {
+        width: 16px;
+        height: 2px;
         border-radius: 4px;
-        background: var(--gold);
+        background: var(--violet);
       }
 
-      .lux-masthead-copy h1 {
-        font-family: 'Fraunces', Georgia, serif;
-        font-size: clamp(28px, 3.6vw, 44px);
-        line-height: 1.05;
+      .neo-hero-copy h1 {
+        font-family: 'Sora', sans-serif;
+        font-size: clamp(26px, 3.4vw, 40px);
+        line-height: 1.1;
         letter-spacing: -1.6px;
-        margin: 12px 0 0;
-        font-weight: 600;
-        color: var(--ink);
+        margin: 10px 0 8px;
+        font-weight: 700;
       }
-      .lux-accent {
-        font-style: italic;
-        color: var(--ink);
-        position: relative;
-        padding-bottom: 2px;
+      .neo-accent {
+        background: linear-gradient(120deg, var(--violet), #a78bff);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
       }
-      .lux-accent::after {
-        content: "";
-        position: absolute;
-        left: 2px;
-        right: 2px;
-        bottom: -2px;
-        height: 6px;
-        background: var(--gold);
-        opacity: .28;
-        border-radius: 3px;
-        z-index: -1;
-      }
+      .neo-hero-copy p { color: var(--ink-soft); font-size: 13.5px; margin: 0; }
 
-      .lux-masthead-actions { display: flex; gap: 10px; flex-shrink: 0; }
+      .neo-hero-actions { display: flex; gap: 10px; flex-shrink: 0; }
 
       /* Buttons */
-      .lux-btn-primary,
-      .lux-btn-ghost {
-        min-height: 42px;
+      .neo-btn-primary,
+      .neo-btn-ghost {
+        min-height: 44px;
         padding: 0 16px;
-        border-radius: 10px;
+        border-radius: 13px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -1228,433 +1122,409 @@ function PremiumStyles() {
         cursor: pointer;
         transition: all .2s ease;
         border: 1px solid transparent;
-        font-family: inherit;
+        text-decoration: none;
       }
 
-      .lux-btn-primary {
-        background: var(--ink);
-        color: var(--paper);
-        box-shadow: 0 8px 22px rgba(20,20,15,.20);
+      .neo-btn-primary {
+        background: var(--lime);
+        color: var(--lime-ink);
+        box-shadow: 0 14px 28px rgba(201,246,58,.28);
       }
-      .lux-btn-primary:hover {
-        background: var(--ink-2);
+      .neo-btn-primary:hover {
         transform: translateY(-2px);
-        box-shadow: 0 14px 28px rgba(20,20,15,.24);
+        box-shadow: 0 20px 32px rgba(201,246,58,.32);
       }
 
-      .lux-btn-ghost {
-        background: transparent;
+      .neo-btn-ghost {
+        background: var(--surface);
         color: var(--ink);
+        border-color: var(--line);
+      }
+      .neo-btn-ghost:hover {
         border-color: var(--line-strong);
+        transform: translateY(-1px);
       }
-      .lux-btn-ghost:hover {
-        border-color: var(--ink);
-        background: var(--paper);
-      }
-      .lux-btn-sm { min-height: 38px; font-size: 11.5px; }
+      .neo-btn-sm { min-height: 38px; font-size: 11.5px; }
 
-      /* ============ GRID HERO ============ */
-      .lux-grid-hero {
+      /* ============ BENTO ============ */
+      .neo-bento {
         display: grid;
-        grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
-        gap: 18px;
-        margin-bottom: 18px;
+        grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+        gap: 16px;
+        margin-bottom: 16px;
       }
 
-      /* Hero */
-      .lux-hero {
+      /* Hero card */
+      .neo-hero-card {
         position: relative;
         overflow: hidden;
-        padding: 36px 34px 30px;
-        border-radius: var(--radius-xl);
-        color: #fbf9f4;
-        background:
-          radial-gradient(700px 400px at 90% 10%, rgba(201,162,74,.18), transparent 60%),
-          linear-gradient(150deg, #14140f 0%, #1d1d17 60%, #14140f 100%);
-        box-shadow: 0 30px 60px rgba(20,20,15,.30);
-        min-height: 320px;
         display: flex;
-        flex-direction: column;
         justify-content: space-between;
-        border: 1px solid rgba(201,162,74,.14);
+        gap: 24px;
+        padding: 32px;
+        border-radius: var(--radius-lg);
+        color: #fff;
+        background:
+          radial-gradient(800px 400px at 100% 0%, rgba(123,91,255,.4), transparent 55%),
+          linear-gradient(135deg, #0e1014 0%, #1a1d29 100%);
+        box-shadow: var(--shadow-hero);
+        min-height: 280px;
       }
 
-      .lux-hero-grain {
-        position: absolute; inset: 0;
-        background-image:
-          radial-gradient(circle at 20% 30%, rgba(255,255,255,.015) 0, transparent 40%),
-          radial-gradient(circle at 80% 70%, rgba(255,255,255,.02) 0, transparent 40%);
-        pointer-events: none;
-      }
-
-      .lux-hero-ring {
+      .neo-orb {
         position: absolute;
         border-radius: 50%;
-        border: 1px solid rgba(201,162,74,.15);
+        filter: blur(2px);
         pointer-events: none;
       }
-      .lux-ring-a { width: 300px; height: 300px; right: -120px; top: -110px; }
-      .lux-ring-b { width: 440px; height: 440px; right: -190px; top: -170px; border-color: rgba(201,162,74,.08); }
+      .neo-orb-a {
+        width: 220px; height: 220px;
+        right: -60px; top: -80px;
+        background: radial-gradient(circle, rgba(123,91,255,.5), transparent 70%);
+      }
+      .neo-orb-b {
+        width: 180px; height: 180px;
+        right: 20%; bottom: -100px;
+        background: radial-gradient(circle, rgba(201,246,58,.28), transparent 70%);
+      }
+      .neo-orb-c {
+        width: 120px; height: 120px;
+        left: -40px; bottom: -40px;
+        background: radial-gradient(circle, rgba(47,141,255,.2), transparent 70%);
+      }
 
-      .lux-hero-inner { position: relative; z-index: 1; }
+      .neo-hero-card-body { position: relative; z-index: 1; max-width: 520px; }
 
-      .lux-hero-label {
+      .neo-hero-tag {
         display: inline-flex;
         align-items: center;
-        gap: 9px;
-        color: var(--gold-soft);
-        font-size: 10px;
-        letter-spacing: 2px;
-        font-weight: 600;
-        text-transform: uppercase;
-        padding: 6px 12px;
+        gap: 6px;
+        color: var(--lime);
+        font-size: 10.5px;
+        letter-spacing: 1.6px;
+        font-weight: 700;
+        padding: 6px 10px;
         border-radius: 999px;
-        background: rgba(201,162,74,.06);
-        border: 1px solid rgba(201,162,74,.18);
+        background: rgba(201,246,58,.08);
+        border: 1px solid rgba(201,246,58,.18);
       }
 
-      .lux-dot-pulse {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: var(--gold);
-        box-shadow: 0 0 0 4px rgba(201,162,74,.18);
-        animation: lux-pulse 2.4s ease-in-out infinite;
+      .neo-hero-card-body h2 {
+        font-family: 'Sora', sans-serif;
+        font-size: clamp(22px, 2.6vw, 30px);
+        font-weight: 700;
+        line-height: 1.18;
+        letter-spacing: -.9px;
+        margin: 16px 0 10px;
+        color: #fff;
+      }
+      .neo-hero-card-body p {
+        color: #c4c8d4;
+        font-size: 13px;
+        line-height: 1.65;
+        margin: 0 0 20px;
+        max-width: 460px;
       }
 
-      .lux-hero-value {
-        font-family: 'Fraunces', Georgia, serif;
-        font-size: clamp(42px, 5.2vw, 64px);
-        line-height: 1;
-        letter-spacing: -2.4px;
-        font-weight: 600;
-        margin: 22px 0 6px;
-        color: #fbf9f4;
-        font-variant-numeric: tabular-nums;
-      }
-      .lux-hero-suffix {
-        color: #8a8780;
-        font-size: 12px;
-        letter-spacing: .5px;
-        text-transform: lowercase;
-      }
-
-      .lux-hero-foot {
-        display: flex;
-        align-items: center;
-        gap: 28px;
-        margin-top: 32px;
-        padding-top: 22px;
-        border-top: 1px solid rgba(255,255,255,.07);
-        flex-wrap: wrap;
-      }
-      .lux-hero-foot-item {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        color: #b5b2a6;
-        font-size: 12px;
-      }
-      .lux-hero-foot-item svg {
-        color: var(--gold);
-        font-size: 15px;
-        flex-shrink: 0;
-      }
-      .lux-hero-foot-item strong {
-        display: block;
-        color: #fbf9f4;
-        font-size: 12.5px;
-        font-weight: 600;
-        font-variant-numeric: tabular-nums;
-      }
-      .lux-hero-foot-item small {
-        display: block;
-        color: #6b6961;
-        font-size: 10px;
-        margin-top: 2px;
-        letter-spacing: .2px;
-      }
-      .lux-hero-cta {
-        margin-left: auto;
+      .neo-hero-cta {
         display: inline-flex;
         align-items: center;
         gap: 8px;
         padding: 11px 18px;
-        border-radius: 10px;
-        background: var(--gold);
-        color: var(--ink);
-        font-size: 12px;
-        font-weight: 600;
+        border-radius: 12px;
+        background: var(--lime);
+        color: var(--lime-ink);
+        font-size: 12.5px;
+        font-weight: 700;
+        box-shadow: 0 14px 28px rgba(201,246,58,.24);
         transition: all .2s ease;
-        box-shadow: 0 12px 26px rgba(201,162,74,.28);
       }
-      .lux-hero-cta:hover {
-        background: var(--gold-soft);
+      .neo-hero-cta:hover {
         transform: translateY(-2px);
+        box-shadow: 0 20px 34px rgba(201,246,58,.30);
       }
 
-      /* Stats */
-      .lux-stat-grid {
+      .neo-hero-metric {
+        position: relative;
+        z-index: 1;
+        align-self: center;
+        min-width: 200px;
+        padding: 20px;
+        border-radius: 18px;
+        background: rgba(255,255,255,.05);
+        border: 1px solid rgba(255,255,255,.09);
+        backdrop-filter: blur(12px);
+      }
+      .neo-hero-metric-label {
+        color: #a8aebd;
+        font-size: 10.5px;
+        letter-spacing: 1.4px;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+      .neo-hero-metric strong {
+        display: block;
+        font-family: 'Sora', sans-serif;
+        font-size: 26px;
+        font-weight: 700;
+        margin: 8px 0 14px;
+        letter-spacing: -.5px;
+      }
+      .neo-hero-metric-foot {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        color: #c4c8d4;
+        font-size: 10.5px;
+        padding-top: 10px;
+        border-top: 1px solid rgba(255,255,255,.08);
+      }
+      .neo-hero-metric-foot span { display: flex; align-items: center; gap: 5px; }
+
+      /* Stat grid */
+      .neo-stat-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 14px;
+        align-content: stretch;
       }
 
-      .lux-stat {
+      .neo-stat {
         position: relative;
         overflow: hidden;
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        gap: 5px;
         padding: 20px;
-        background: var(--paper);
+        background: var(--surface);
         border: 1px solid var(--line);
-        border-radius: var(--radius-lg);
+        border-radius: var(--radius-md);
         transition: all .22s ease;
-        min-height: 150px;
+        min-height: 140px;
       }
-      .lux-stat:hover {
+      .neo-stat:hover {
         transform: translateY(-3px);
         border-color: var(--line-strong);
-        box-shadow: var(--shadow-1);
+        box-shadow: var(--shadow-soft);
       }
-      .lux-stat::after {
+      .neo-stat::after {
         content: "";
         position: absolute;
-        width: 100px;
-        height: 100px;
+        width: 110px;
+        height: 110px;
         border-radius: 50%;
         right: -60px;
         bottom: -60px;
         background: currentColor;
-        opacity: .04;
-        transition: opacity .25s ease;
+        opacity: .05;
       }
-      .lux-stat:hover::after { opacity: .07; }
 
-      .lux-stat-icon {
-        width: 36px;
-        height: 36px;
+      .neo-stat-icon {
+        width: 38px;
+        height: 38px;
         display: grid;
         place-items: center;
-        border-radius: 10px;
-        font-size: 16px;
-        margin-bottom: 10px;
+        border-radius: 12px;
+        font-size: 17px;
+        margin-bottom: 8px;
       }
-      .lux-stat-arrow {
+      .neo-stat-arrow {
         position: absolute;
         top: 18px;
         right: 18px;
         color: var(--muted);
-        font-size: 14px;
-        transition: all .25s ease;
+        font-size: 15px;
       }
-      .lux-stat:hover .lux-stat-arrow {
-        color: var(--ink);
-        transform: translate(2px,-2px);
-      }
-      .lux-stat-title {
+      .neo-stat-title {
         color: var(--muted);
-        font-size: 11px;
+        font-size: 11.5px;
         font-weight: 500;
-        letter-spacing: .2px;
       }
-      .lux-stat-value {
-        font-family: 'Fraunces', Georgia, serif;
-        font-size: 24px;
-        font-weight: 600;
+      .neo-stat-value {
+        font-family: 'Sora', sans-serif;
+        font-size: 22px;
+        font-weight: 700;
         color: var(--ink);
-        letter-spacing: -.7px;
+        letter-spacing: -.6px;
         line-height: 1.1;
-        font-variant-numeric: tabular-nums;
       }
-      .lux-stat-note {
-        color: var(--muted);
-        font-size: 10.5px;
-        margin-top: 3px;
-      }
+      .neo-stat-note { color: var(--muted); font-size: 10.5px; margin-top: 2px; }
 
-      .lux-tone-gold { color: #a8802a; }
-      .lux-tone-gold .lux-stat-icon { background: var(--gold-bg); color: #a8802a; }
+      .neo-tone-lime { color: #6b8b00; }
+      .neo-tone-lime .neo-stat-icon { background: #eef9c9; color: #6b8b00; }
+      .neo-tone-violet { color: var(--violet); }
+      .neo-tone-violet .neo-stat-icon { background: #ede9ff; color: var(--violet); }
+      .neo-tone-sky { color: var(--sky); }
+      .neo-tone-sky .neo-stat-icon { background: #e6f1ff; color: var(--sky); }
+      .neo-tone-peach { color: var(--peach); }
+      .neo-tone-peach .neo-stat-icon { background: #ffeedd; color: var(--peach); }
+      .neo-tone-pink { color: var(--pink); }
+      .neo-tone-pink .neo-stat-icon { background: #ffe6f1; color: var(--pink); }
+      .neo-tone-mint { color: var(--mint); }
+      .neo-tone-mint .neo-stat-icon { background: #ddfaf6; color: var(--mint); }
+      .neo-tone-indigo { color: var(--indigo); }
+      .neo-tone-indigo .neo-stat-icon { background: #e7e9ff; color: var(--indigo); }
 
-      .lux-tone-ink { color: var(--ink); }
-      .lux-tone-ink .lux-stat-icon { background: var(--ink); color: var(--paper); }
-
-      .lux-tone-slate { color: #4d545c; }
-      .lux-tone-slate .lux-stat-icon { background: #e2e5e6; color: #4d545c; }
-
-      .lux-tone-clay { color: #9e5b3c; }
-      .lux-tone-clay .lux-stat-icon { background: #f5e3d6; color: #9e5b3c; }
-
-      .lux-tone-sage { color: #4a7457; }
-      .lux-tone-sage .lux-stat-icon { background: #e0eae1; color: #4a7457; }
-
-      /* ============ TWO COLUMN ============ */
-      .lux-grid-two {
+      /* ============ TWO-COL ============ */
+      .neo-two-col {
         display: grid;
-        grid-template-columns: minmax(0, 1.6fr) minmax(300px, 1fr);
-        gap: 18px;
-        margin-bottom: 18px;
+        grid-template-columns: minmax(0, 1.55fr) minmax(300px, .8fr);
+        gap: 16px;
+        margin-bottom: 16px;
       }
 
-      .lux-card {
-        background: var(--paper);
+      .neo-card {
+        background: var(--surface);
         border: 1px solid var(--line);
         border-radius: var(--radius-lg);
         padding: 24px;
-        box-shadow: var(--shadow-1);
+        box-shadow: var(--shadow-soft);
         min-width: 0;
       }
 
-      .lux-card-head {
+      .neo-card-head {
         display: flex;
         align-items: flex-start;
         justify-content: space-between;
         gap: 14px;
         margin-bottom: 20px;
       }
-      .lux-card-head h3 {
-        font-family: 'Fraunces', Georgia, serif;
-        font-size: 19px;
-        font-weight: 600;
+      .neo-card-head h3 {
+        font-family: 'Sora', sans-serif;
+        font-size: 17px;
+        font-weight: 700;
         margin: 6px 0 0;
-        letter-spacing: -.5px;
-        color: var(--ink);
+        letter-spacing: -.4px;
       }
 
-      .lux-hint {
+      .neo-hint {
         color: var(--muted);
         font-size: 10.5px;
-        padding: 5px 10px;
+        padding: 6px 10px;
         border: 1px solid var(--line);
-        border-radius: 7px;
+        border-radius: 9px;
         white-space: nowrap;
-        background: var(--paper-2);
       }
 
-      .lux-text-link {
+      .neo-text-link {
         display: inline-flex;
         align-items: center;
         gap: 5px;
-        color: var(--ink);
+        color: var(--violet);
         font-size: 11.5px;
         font-weight: 600;
         white-space: nowrap;
-        border-bottom: 1px solid transparent;
-        padding-bottom: 1px;
-        transition: all .2s ease;
       }
-      .lux-text-link:hover {
-        border-bottom-color: var(--gold);
-        color: var(--ink);
-      }
+      .neo-text-link:hover { color: #5c3ce0; }
 
       /* Quick actions */
-      .lux-action-grid {
+      .neo-action-grid {
         display: grid;
-        grid-template-columns: repeat(5, minmax(0, 1fr));
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 10px;
       }
 
-      .lux-quick {
+      .neo-quick {
         position: relative;
-        min-height: 92px;
+        min-height: 86px;
         display: flex;
         flex-direction: column;
         justify-content: center;
         gap: 8px;
         padding: 14px;
         border: 1px solid var(--line);
-        border-radius: 12px;
-        background: var(--paper-2);
+        border-radius: 14px;
+        background: var(--surface-2);
         transition: all .2s ease;
       }
-      .lux-quick:hover {
+      .neo-quick:hover {
         transform: translateY(-3px);
-        background: var(--paper);
+        background: var(--surface);
         border-color: var(--line-strong);
-        box-shadow: 0 14px 28px rgba(30,28,20,.06);
+        box-shadow: 0 14px 28px rgba(20,20,40,.06);
       }
 
-      .lux-quick-icon {
+      .neo-quick-icon {
         width: 30px;
         height: 30px;
         display: grid;
         place-items: center;
-        border-radius: 8px;
-        font-size: 14px;
+        border-radius: 9px;
+        font-size: 15px;
+        background: currentColor;
+        color: inherit;
       }
-      .lux-quick-label {
+      .neo-quick-icon svg { color: currentColor; }
+      .neo-quick-label {
         color: var(--ink);
         font-size: 11.5px;
         font-weight: 600;
-        line-height: 1.3;
+        line-height: 1.25;
       }
-      .lux-quick-arrow {
+      .neo-quick-arrow {
         position: absolute;
         top: 12px;
         right: 12px;
         color: var(--muted);
-        font-size: 11px;
+        font-size: 12px;
         opacity: 0;
         transform: translate(-3px, 3px);
         transition: all .2s ease;
       }
-      .lux-quick:hover .lux-quick-arrow { opacity: 1; transform: translate(0,0); }
+      .neo-quick:hover .neo-quick-arrow { opacity: 1; transform: translate(0,0); }
 
-      .lux-quick.lux-tone-gold .lux-quick-icon { background: var(--gold-bg); color: #a8802a; }
-      .lux-quick.lux-tone-ink .lux-quick-icon { background: var(--ink); color: var(--paper); }
-      .lux-quick.lux-tone-slate .lux-quick-icon { background: #e2e5e6; color: #4d545c; }
-      .lux-quick.lux-tone-clay .lux-quick-icon { background: #f5e3d6; color: #9e5b3c; }
-      .lux-quick.lux-tone-sage .lux-quick-icon { background: #e0eae1; color: #4a7457; }
+      .neo-quick.neo-tone-lime .neo-quick-icon { background: #eef9c9; color: #6b8b00; }
+      .neo-quick.neo-tone-violet .neo-quick-icon { background: #ede9ff; color: var(--violet); }
+      .neo-quick.neo-tone-sky .neo-quick-icon { background: #e6f1ff; color: var(--sky); }
+      .neo-quick.neo-tone-peach .neo-quick-icon { background: #ffeedd; color: var(--peach); }
+      .neo-quick.neo-tone-pink .neo-quick-icon { background: #ffe6f1; color: var(--pink); }
+      .neo-quick.neo-tone-mint .neo-quick-icon { background: #ddfaf6; color: var(--mint); }
+      .neo-quick.neo-tone-indigo .neo-quick-icon { background: #e7e9ff; color: var(--indigo); }
 
       /* Health */
-      .lux-health-top {
+      .neo-health-top {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 14px;
       }
-      .lux-health-top strong {
+      .neo-health-top strong {
         display: block;
-        font-family: 'Fraunces', Georgia, serif;
-        font-size: 36px;
-        font-weight: 600;
-        letter-spacing: -1px;
-        color: var(--ink);
-        font-variant-numeric: tabular-nums;
+        font-family: 'Sora', sans-serif;
+        font-size: 32px;
+        font-weight: 700;
+        letter-spacing: -.8px;
       }
-      .lux-health-top span { color: var(--muted); font-size: 11.5px; }
+      .neo-health-top span { color: var(--muted); font-size: 11.5px; }
 
-      .lux-health-badge {
+      .neo-health-badge {
         display: inline-flex;
         align-items: center;
         gap: 5px;
-        padding: 6px 11px;
+        padding: 7px 11px;
         border-radius: 999px;
         font-size: 10.5px;
         font-weight: 600;
-        letter-spacing: .2px;
       }
-      .lux-health-badge.good { color: var(--ok); background: #e4efe4; }
-      .lux-health-badge.warn { color: #a8802a; background: var(--gold-bg); }
+      .neo-health-badge.good { color: var(--ok); background: #e9f9f1; }
+      .neo-health-badge.warn { color: #c47a10; background: #fff4dd; }
 
-      .lux-health-bar {
-        height: 6px;
-        background: var(--canvas-2);
+      .neo-health-bar {
+        height: 8px;
+        background: var(--bg-alt);
         border-radius: 99px;
         overflow: hidden;
         margin: 20px 0;
       }
-      .lux-health-bar span {
+      .neo-health-bar span {
         display: block;
         height: 100%;
         border-radius: inherit;
-        background: linear-gradient(90deg, var(--gold), var(--gold-soft));
-        transition: width .5s cubic-bezier(.4,0,.2,1);
+        background: linear-gradient(90deg, var(--lime), #7ed321);
+        transition: width .4s ease;
       }
 
-      .lux-health-row {
+      .neo-health-row {
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -1663,45 +1533,39 @@ function PremiumStyles() {
         color: var(--ink-soft);
         font-size: 11.5px;
       }
-      .lux-health-row span { display: flex; align-items: center; gap: 7px; }
-      .lux-health-row strong {
-        color: var(--ink);
-        font-weight: 600;
-        font-size: 12.5px;
-        font-variant-numeric: tabular-nums;
-      }
-      .lux-danger { color: var(--danger) !important; }
+      .neo-health-row span { display: flex; align-items: center; gap: 7px; }
+      .neo-health-row strong { color: var(--ink); font-weight: 600; font-size: 12.5px; }
+      .neo-danger { color: var(--danger) !important; }
 
-      .lux-dot {
-        width: 6px;
-        height: 6px;
+      .neo-dot {
+        width: 7px;
+        height: 7px;
         border-radius: 50%;
         display: inline-block;
       }
-      .lux-dot.ok { background: var(--ok); }
-      .lux-dot.bad { background: var(--danger); }
+      .neo-dot.ok { background: var(--ok); }
+      .neo-dot.bad { background: var(--danger); }
 
-      .lux-health-cta {
+      .neo-health-cta {
         display: flex;
         align-items: center;
         justify-content: space-between;
         margin-top: 14px;
         min-height: 40px;
         padding: 0 14px;
-        border-radius: 9px;
-        background: var(--paper-2);
+        border-radius: 11px;
+        background: var(--surface-2);
         color: var(--ink);
         font-size: 11.5px;
         font-weight: 600;
-        border: 1px solid var(--line);
         transition: all .18s ease;
       }
-      .lux-health-cta:hover { background: var(--canvas-2); }
+      .neo-health-cta:hover { background: var(--bg-alt); }
 
       /* ============ SALES TABLE ============ */
-      .lux-sales-card { margin-bottom: 18px; }
-      .lux-head-right { display: flex; align-items: center; gap: 16px; }
-      .lux-activity-chip {
+      .neo-sales-card { margin-bottom: 16px; }
+      .neo-head-right { display: flex; align-items: center; gap: 14px; }
+      .neo-activity-chip {
         display: inline-flex;
         align-items: center;
         gap: 5px;
@@ -1709,48 +1573,43 @@ function PremiumStyles() {
         font-size: 10.5px;
       }
 
-      .lux-table-wrap { width: 100%; overflow-x: auto; }
-      .lux-table { width: 100%; border-collapse: collapse; min-width: 760px; }
-      .lux-table th {
+      .neo-table-wrap { width: 100%; overflow-x: auto; }
+      .neo-table { width: 100%; border-collapse: collapse; min-width: 760px; }
+      .neo-table th {
         text-align: left;
-        padding: 10px 10px;
+        padding: 12px 10px;
         color: var(--muted);
-        font-size: 9.5px;
-        letter-spacing: 1.4px;
+        font-size: 10px;
+        letter-spacing: 1px;
         text-transform: uppercase;
         font-weight: 600;
         border-bottom: 1px solid var(--line);
       }
-      .lux-table td {
+      .neo-table td {
         padding: 14px 10px;
         border-bottom: 1px solid var(--line);
         font-size: 12px;
         color: var(--ink-soft);
       }
-      .lux-table tbody tr { transition: background .15s ease; }
-      .lux-table tbody tr:hover { background: var(--paper-2); }
-      .lux-table tbody tr:last-child td { border-bottom: 0; }
+      .neo-table tbody tr { transition: background .15s ease; }
+      .neo-table tbody tr:hover { background: var(--surface-2); }
+      .neo-table tbody tr:last-child td { border-bottom: 0; }
 
-      .lux-invoice {
-        color: var(--ink);
-        font-weight: 600;
-        font-variant-numeric: tabular-nums;
-        font-size: 12px;
-      }
-      .lux-customer { display: flex; align-items: center; gap: 9px; }
-      .lux-customer-avatar {
-        width: 28px;
-        height: 28px;
+      .neo-invoice { color: var(--ink); font-weight: 600; }
+      .neo-customer { display: flex; align-items: center; gap: 9px; }
+      .neo-customer-avatar {
+        width: 30px;
+        height: 30px;
         display: grid;
         place-items: center;
-        border-radius: 8px;
-        background: var(--canvas-2);
-        color: var(--ink-soft);
-        font-size: 12px;
+        border-radius: 9px;
+        background: #ede9ff;
+        color: var(--violet);
+        font-size: 13px;
         flex-shrink: 0;
       }
-      .lux-item-cell strong { display: block; color: var(--ink); font-weight: 500; font-size: 12px; }
-      .lux-item-cell small {
+      .neo-item-cell strong { display: block; color: var(--ink); font-weight: 500; }
+      .neo-item-cell small {
         display: block;
         color: var(--muted);
         font-size: 10.5px;
@@ -1760,19 +1619,10 @@ function PremiumStyles() {
         text-overflow: ellipsis;
         white-space: nowrap;
       }
-      .lux-amount {
-        color: var(--ink);
-        font-weight: 600;
-        font-variant-numeric: tabular-nums;
-      }
-      .lux-date {
-        color: var(--muted) !important;
-        white-space: nowrap;
-        font-size: 11.5px !important;
-        font-variant-numeric: tabular-nums;
-      }
+      .neo-amount { color: var(--ok); font-weight: 600; }
+      .neo-date { color: var(--muted) !important; white-space: nowrap; font-size: 11.5px !important; }
 
-      .lux-status {
+      .neo-status {
         display: inline-flex;
         align-items: center;
         gap: 5px;
@@ -1780,131 +1630,122 @@ function PremiumStyles() {
         border-radius: 999px;
         font-size: 10.5px;
         font-weight: 600;
-        letter-spacing: .2px;
       }
-      .lux-status.paid { color: var(--ok); background: #e4efe4; }
-      .lux-status.pending { color: #a8802a; background: var(--gold-bg); }
-      .lux-status.failed { color: var(--danger); background: #fbeeee; }
+      .neo-status.paid { color: var(--ok); background: #e9f9f1; }
+      .neo-status.pending { color: #c47a10; background: #fff4dd; }
+      .neo-status.failed { color: var(--danger); background: #ffeff0; }
 
-      .lux-row-menu {
-        width: 28px;
-        height: 28px;
+      .neo-row-menu {
+        width: 30px;
+        height: 30px;
         display: grid;
         place-items: center;
         border: 0;
-        border-radius: 7px;
+        border-radius: 8px;
         background: transparent;
         color: var(--muted);
         cursor: pointer;
         transition: all .15s ease;
       }
-      .lux-row-menu:hover { background: var(--canvas-2); color: var(--ink); }
+      .neo-row-menu:hover { background: var(--bg-alt); color: var(--ink); }
 
-      .lux-empty { text-align: center; padding: 44px 20px 30px; }
-      .lux-empty-icon {
+      .neo-empty {
+        text-align: center;
+        padding: 44px 20px 30px;
+      }
+      .neo-empty-icon {
         width: 52px;
         height: 52px;
         display: grid;
         place-items: center;
         margin: 0 auto 14px;
-        border-radius: 12px;
-        background: var(--gold-bg);
-        color: var(--gold);
+        border-radius: 15px;
+        background: #ede9ff;
+        color: var(--violet);
         font-size: 22px;
       }
-      .lux-empty h4 {
-        font-family: 'Fraunces', serif;
-        font-size: 16px;
+      .neo-empty h4 {
+        font-family: 'Sora', sans-serif;
+        font-size: 15px;
         color: var(--ink);
         margin: 0 0 6px;
-        font-weight: 600;
       }
-      .lux-empty p {
-        color: var(--muted);
-        font-size: 12px;
-        margin: 0 0 18px;
-      }
+      .neo-empty p { color: var(--muted); font-size: 12px; margin: 0 0 18px; }
 
       /* ============ BOTTOM GRID ============ */
-      .lux-grid-three {
+      .neo-bottom-grid {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 14px;
-        margin-bottom: 18px;
+        margin-bottom: 16px;
       }
 
-      .lux-mini {
+      .neo-mini {
         display: flex;
         align-items: center;
         gap: 12px;
-        padding: 20px;
-        background: var(--paper);
+        padding: 18px;
+        background: var(--surface);
         border: 1px solid var(--line);
-        border-radius: var(--radius-lg);
-        box-shadow: var(--shadow-1);
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-soft);
         position: relative;
         transition: all .22s ease;
       }
-      .lux-mini:hover {
+      .neo-mini:hover {
         transform: translateY(-3px);
         border-color: var(--line-strong);
-        box-shadow: var(--shadow-2);
+        box-shadow: 0 22px 44px rgba(20,20,40,.08);
       }
 
-      .lux-mini-icon {
-        width: 42px;
-        height: 42px;
+      .neo-mini-icon {
+        width: 40px;
+        height: 40px;
         display: grid;
         place-items: center;
-        border-radius: 11px;
+        border-radius: 12px;
         font-size: 17px;
         flex-shrink: 0;
       }
-      .lux-mini-icon.ink { background: var(--ink); color: var(--paper); }
-      .lux-mini-icon.sage { background: #e0eae1; color: #4a7457; }
-      .lux-mini-icon.gold { background: var(--gold-bg); color: #a8802a; }
+      .neo-mini-icon.violet { background: #ede9ff; color: var(--violet); }
+      .neo-mini-icon.mint { background: #ddfaf6; color: var(--mint); }
+      .neo-mini-icon.lime { background: #eef9c9; color: #6b8b00; }
 
-      .lux-mini span { color: var(--muted); font-size: 11px; }
-      .lux-mini strong {
+      .neo-mini span { color: var(--muted); font-size: 11px; }
+      .neo-mini strong {
         display: block;
-        font-family: 'Fraunces', serif;
-        font-size: 20px;
-        font-weight: 600;
+        font-family: 'Sora', sans-serif;
+        font-size: 18px;
+        font-weight: 700;
         color: var(--ink);
         margin: 2px 0;
         letter-spacing: -.4px;
-        font-variant-numeric: tabular-nums;
       }
-      .lux-mini small { color: var(--muted); font-size: 10.5px; }
+      .neo-mini small { color: var(--muted); font-size: 10.5px; }
 
-      .lux-mini-arrow {
+      .neo-mini-arrow {
         position: absolute;
-        top: 16px;
-        right: 16px;
+        top: 14px;
+        right: 14px;
         color: var(--muted);
         font-size: 14px;
         transition: all .2s ease;
       }
-      .lux-mini:hover .lux-mini-arrow {
-        color: var(--ink);
-        transform: translate(2px,-2px);
-      }
+      .neo-mini:hover .neo-mini-arrow { color: var(--violet); transform: translate(2px,-2px); }
 
       /* ============ FOOTER ============ */
-      .lux-footer {
+      .neo-footer {
         display: flex;
         justify-content: space-between;
         align-items: center;
         color: var(--muted);
         font-size: 11px;
-        padding: 18px 4px 0;
-        border-top: 1px solid var(--line);
-        letter-spacing: .2px;
+        padding: 16px 4px 0;
       }
-      .lux-footer span:last-child { display: flex; align-items: center; gap: 6px; }
+      .neo-footer span:last-child { display: flex; align-items: center; gap: 6px; }
 
-      /* ============ LOADING ============ */
-      .lux-loading {
+      /* ============ LOADING / ERROR ============ */
+      .neo-loading-screen {
         width: 100%;
         min-height: 100vh;
         display: grid;
@@ -1912,116 +1753,110 @@ function PremiumStyles() {
         padding: 24px;
       }
 
-      .lux-loading-card {
+      .neo-loading-card {
         width: min(440px, 100%);
-        padding: 42px 34px;
-        background: var(--paper);
+        padding: 40px 34px;
+        background: var(--surface);
         border: 1px solid var(--line);
-        border-radius: var(--radius-xl);
-        box-shadow: var(--shadow-2);
+        border-radius: 24px;
+        box-shadow: var(--shadow-soft);
         text-align: center;
       }
 
-      .lux-loading-card .lux-mark,
-      .lux-loading-card .lux-mark-danger {
-        width: 56px;
-        height: 56px;
+      .neo-loading-logo,
+      .neo-error-icon {
+        width: 58px;
+        height: 58px;
         margin: 0 auto 18px;
-        border-radius: 14px;
-        font-size: 24px;
+        border-radius: 17px;
+        display: grid;
+        place-items: center;
+        font-size: 25px;
       }
+      .neo-loading-logo { background: var(--lime); color: var(--lime-ink); box-shadow: 0 16px 32px rgba(201,246,58,.24); }
+      .neo-error-icon { background: #ffeff0; color: var(--danger); }
 
-      .lux-spin {
-        width: 24px;
-        height: 24px;
-        border: 2.5px solid var(--line);
-        border-top-color: var(--ink);
+      .neo-loader {
+        width: 26px;
+        height: 26px;
+        border: 3px solid var(--line);
+        border-top-color: var(--violet);
         border-radius: 50%;
-        animation: lux-spin .8s linear infinite;
+        animation: neo-spin .8s linear infinite;
         margin: 0 auto 18px;
       }
 
-      .lux-loading-card h3,
-      .lux-loading-card h2 {
-        font-family: 'Fraunces', serif;
-        font-size: 19px;
-        font-weight: 600;
+      .neo-loading-card h3,
+      .neo-loading-card h2 {
+        font-family: 'Sora', sans-serif;
+        font-size: 17px;
         margin: 0 0 8px;
-        color: var(--ink);
       }
-      .lux-loading-card p {
+      .neo-loading-card p {
         color: var(--muted);
         font-size: 12px;
         margin: 0;
         line-height: 1.6;
       }
-      .lux-loading-card .lux-btn-primary { margin-top: 22px; }
+      .neo-loading-card .neo-btn-primary { margin-top: 20px; }
 
       /* ============ RESPONSIVE ============ */
-      @media (max-width: 1300px) {
-        .lux-action-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-      }
-
-      @media (max-width: 1200px) {
-        .lux-grid-hero { grid-template-columns: 1fr; }
-        .lux-hero { min-height: 280px; }
-        .lux-stat-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      @media (max-width: 1280px) {
+        .neo-bento { grid-template-columns: 1fr; }
+        .neo-hero-card { min-height: 240px; }
+        .neo-stat-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
       }
 
       @media (max-width: 1080px) {
-        .lux-sidebar {
-          width: 76px;
-          min-width: 76px;
-          padding: 22px 9px;
+        .neo-sidebar {
+          width: 80px;
+          min-width: 80px;
+          padding: 22px 10px;
         }
-        .lux-brand { justify-content: center; padding: 4px 0 20px; }
-        .lux-brand-text,
-        .lux-nav-label,
-        .lux-nav-item span,
-        .lux-nav-item kbd,
-        .lux-status div { display: none; }
-        .lux-nav-item { justify-content: center; padding: 0; }
-        .lux-nav-item.is-active::before { left: -9px; }
-        .lux-status { justify-content: center; padding: 11px 0; }
-        .lux-masthead { align-items: flex-start; flex-direction: column; gap: 16px; }
-        .lux-masthead-actions { width: 100%; }
+        .neo-brand { justify-content: center; padding: 4px 0 20px; }
+        .neo-brand-text,
+        .neo-nav-label,
+        .neo-nav-item span,
+        .neo-nav-item kbd,
+        .neo-pulse-card div { display: none; }
+        .neo-nav-item { justify-content: center; padding: 0; }
+        .neo-pulse-card { justify-content: center; padding: 12px 0; }
+        .neo-hero-row { align-items: flex-start; flex-direction: column; }
       }
 
       @media (max-width: 900px) {
-        .lux-main { padding: 0 20px 24px; }
-        .lux-topbar { min-height: 72px; }
-        .lux-crumbs { display: none; }
-        .lux-mobile-brand { display: flex; }
-        .lux-profile-copy { display: none; }
-        .lux-profile-btn { min-width: auto; padding: 4px; }
-        .lux-live-chip { display: none; }
-        .lux-grid-two { grid-template-columns: 1fr; }
-        .lux-action-grid { grid-template-columns: repeat(3, 1fr); }
-        .lux-grid-three { grid-template-columns: 1fr 1fr; }
-        .lux-grid-three .lux-mini:last-child { grid-column: 1 / -1; }
-        .lux-masthead-actions { flex-wrap: wrap; }
-        .lux-masthead-actions > * { flex: 1; min-width: 140px; }
+        .neo-main { padding: 0 20px 22px; }
+        .neo-topbar { min-height: 72px; }
+        .neo-crumbs { display: none; }
+        .neo-mobile-brand { display: flex; }
+        .neo-profile-copy { display: none; }
+        .neo-profile-btn { min-width: auto; padding: 4px; }
+        .neo-live-chip { display: none; }
+        .neo-two-col { grid-template-columns: 1fr; }
+        .neo-action-grid { grid-template-columns: repeat(3, 1fr); }
+        .neo-bottom-grid { grid-template-columns: 1fr 1fr; }
+        .neo-bottom-grid .neo-mini:last-child { grid-column: 1 / -1; }
       }
 
       @media (max-width: 700px) {
-        .lux-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .lux-hero { padding: 26px 22px; }
-        .lux-hero-foot { gap: 16px; flex-direction: column; align-items: flex-start; }
-        .lux-hero-cta { margin-left: 0; }
+        .neo-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .neo-hero-card { padding: 24px; flex-direction: column; }
+        .neo-hero-metric { min-width: 0; width: 100%; }
       }
 
       @media (max-width: 620px) {
-        .lux-sidebar { display: none; }
-        .lux-main { padding: 0 14px 22px; }
-        .lux-masthead { padding: 18px 0 22px; }
-        .lux-masthead-copy h1 { font-size: 27px; letter-spacing: -1px; }
-        .lux-hero-value { font-size: 42px; letter-spacing: -1.6px; }
-        .lux-action-grid { grid-template-columns: repeat(2, 1fr); }
-        .lux-grid-three { grid-template-columns: 1fr; }
-        .lux-grid-three .lux-mini:last-child { grid-column: auto; }
-        .lux-card { padding: 18px; }
-        .lux-head-right .lux-activity-chip { display: none; }
-        .lux-footer { flex-direction: column; align-items: flex-start; gap: 8px; }
+        .neo-sidebar { display: none; }
+        .neo-main { padding: 0 14px 22px; }
+        .neo-hero-copy h1 { font-size: 26px; }
+        .neo-hero-actions { width: 100%; }
+        .neo-hero-actions > * { flex: 1; }
+        .neo-action-grid { grid-template-columns: repeat(2, 1fr); }
+        .neo-bottom-grid { grid-template-columns: 1fr; }
+        .neo-bottom-grid .neo-mini:last-child { grid-column: auto; }
+        .neo-card { padding: 18px; border-radius: 20px; }
+        .neo-hero-card { border-radius: 20px; }
+        .neo-head-right .neo-activity-chip { display: none; }
+        .neo-footer { flex-direction: column; align-items: flex-start; gap: 8px; }
       }
     `}</style>
   );
