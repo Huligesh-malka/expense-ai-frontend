@@ -26,7 +26,7 @@ const t = {
     back: "Back", print: "Print", pdf: "PDF", whatsapp: "WhatsApp", share: "Share",
     docTax: "TAX INVOICE", docCash: "CASH MEMO",
     totalAmount: "Total Amount", billNo: "Bill No.", date: "Date", time: "Time", payment: "Paid By",
-    billedTo: "Customer", items: "Items", units: "qty", subtotal: "Sub Total", discount: "Discount",
+    billedTo: "Customer", subtotal: "Sub Total", discount: "Discount",
     grandTotal: "Net Payable", note: "Note", terms: "Terms", thanks: "Thank you! Visit again",
     footer: "Computer generated bill, no signature required",
     saved: "You saved", scanToPay: "Scan to pay with any UPI app",
@@ -247,7 +247,6 @@ export default function Invoice() {
     /* ── Derived ── */
     const status = getStatus(invoice.payment_status);
     const isPaid = invoice.payment_status?.toLowerCase() === "paid";
-    const totalUnits = items.reduce((sum, it) => sum + Number(it.entered_quantity || it.quantity || 0), 0);
     const hasCustomerContact = invoice.customer_phone || invoice.customer_email;
     const discount = Number(invoice.discount) || 0;
     const docTitle = invoice.gst_number ? t.docTax : t.docCash;
@@ -438,10 +437,6 @@ export default function Invoice() {
                     <div className="rc-dash" />
 
                     {/* Items: clear product, quantity, unit price and amount columns */}
-                    <div className="rc-items-head">
-                        <span>{t.items} ({items.length}) · {totalUnits} {t.units}</span>
-                    </div>
-
                     <div className="rc-item-table">
                         <div className="rc-item-table-head">
                             <span className="rc-col-product">Product</span>
@@ -720,8 +715,6 @@ const baseCss = `
 .rc-billed-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; font-size: 12px; font-weight: 700; color: var(--ink); overflow-wrap: anywhere; }
 
 /* Items: four clear columns, quantity visible for every unit type */
-.rc-items-head { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 10px; font-weight: 800;
-    letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
 .rc-item-table { width: 100%; }
 .rc-item-table-head, .rc-item-row {
     display: grid;
