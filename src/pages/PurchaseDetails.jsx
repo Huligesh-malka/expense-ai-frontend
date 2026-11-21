@@ -587,7 +587,8 @@ function Styles() {
         color: #b8c3dd;
       }
 
-      .pd-banner h1 {
+      .pd-page .pd-banner h1 {
+        color: #ffffff !important;
         margin-top: 6px;
         font-size: clamp(26px, 4vw, 36px);
         font-weight: 800;
@@ -602,7 +603,7 @@ function Styles() {
         margin-top: 12px;
         font-size: 14px;
         font-weight: 600;
-        color: #fff;
+        color: #ffffff !important;
       }
 
       .pd-banner-due {
