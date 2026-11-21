@@ -2012,10 +2012,7 @@ function PremiumStyles() {
         .lux-head-right .lux-activity-chip { display: none; }
         .lux-footer { flex-direction: column; align-items: flex-start; gap: 8px; }
       }
-    `}</style>
-  );
-
-      
+      /* ===== MODERN 2026 BUSINESS DASHBOARD REDESIGN ===== */
       .lux-shell {
         --canvas: #f5f7fb;
         --canvas-2: #eef2f8;
@@ -2228,4 +2225,5 @@ function PremiumStyles() {
         .lux-table-wrap { overflow-x: auto; }
         .lux-table { min-width: 700px; }
       }
-}
+    `}</style>
+  );
