@@ -13,6 +13,7 @@ export default function SalesHistory() {
     const [lastUpdated, setLastUpdated] = useState(null);
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(20);
+    const [allRecordsMode, setAllRecordsMode] = useState(false);
     const [totalPages, setTotalPages] = useState(1);
     const [totalSalesCount, setTotalSalesCount] = useState(0);
     const [customStartDate, setCustomStartDate] = useState("");
@@ -46,10 +47,15 @@ export default function SalesHistory() {
     };
 
     const loadSales = async (requestedPage = page, requestedLimit = limit, period = selectedPeriod, customDates = {}) => {
+        setAllRecordsMode(false);
         setLoading(true);
         try {
             const res = await API.get("/sales", {
-                params: { page: requestedPage, limit: requestedLimit, ...getDateRange(period, customDates.startDate ?? customStartDate, customDates.endDate ?? customEndDate) }
+                params: {
+                    page: requestedPage,
+                    limit: requestedLimit,
+                    ...getDateRange(period, customDates.startDate ?? customStartDate, customDates.endDate ?? customEndDate)
+                }
             });
 
             const rows = Array.isArray(res.data?.data) ? res.data.data : [];
@@ -67,6 +73,57 @@ export default function SalesHistory() {
         }
     };
 
+    // Backend maximum is 100 per request. "All Records" fetches every page
+    // and combines them on the frontend without changing the backend.
+    const loadAllSales = async (period = selectedPeriod, customDates = {}) => {
+        setAllRecordsMode(true);
+        setLoading(true);
+        try {
+            const dateParams = getDateRange(
+                period,
+                customDates.startDate ?? customStartDate,
+                customDates.endDate ?? customEndDate
+            );
+            const firstResponse = await API.get("/sales", {
+                params: { page: 1, limit: 100, ...dateParams }
+            });
+
+            const firstRows = Array.isArray(firstResponse.data?.data) ? firstResponse.data.data : [];
+            const total = Number(firstResponse.data?.total) || firstRows.length;
+            const pages = Math.max(1, Number(firstResponse.data?.totalPages) || 1);
+
+            let allRows = [...firstRows];
+
+            if (pages > 1) {
+                const requests = [];
+                for (let currentPage = 2; currentPage <= pages; currentPage++) {
+                    requests.push(
+                        API.get("/sales", {
+                            params: { page: currentPage, limit: 100, ...dateParams }
+                        })
+                    );
+                }
+
+                const responses = await Promise.all(requests);
+                responses.forEach(response => {
+                    const rows = Array.isArray(response.data?.data) ? response.data.data : [];
+                    allRows.push(...rows);
+                });
+            }
+
+            setSales(allRows);
+            setPage(1);
+            setLimit(allRows.length || total);
+            setTotalPages(1);
+            setTotalSalesCount(total);
+            setLastUpdated(new Date());
+        } catch (err) {
+            console.error("Error loading all sales:", err);
+            alert(err.response?.data?.message || "Failed to load all sales data");
+        } finally {
+            setLoading(false);
+        }
+    };
 
 
     const handlePeriodChange = (period) => {
@@ -76,7 +133,11 @@ export default function SalesHistory() {
             setCustomStartDate("");
             setCustomEndDate("");
         }
-        loadSales(1, limit, period, { startDate: "", endDate: "" });
+        if (allRecordsMode) {
+            loadAllSales(period, { startDate: "", endDate: "" });
+        } else {
+            loadSales(1, limit, period, { startDate: "", endDate: "" });
+        }
     };
 
     const handleCustomDateChange = (startDate, endDate) => {
@@ -85,7 +146,11 @@ export default function SalesHistory() {
         if (startDate && endDate) {
             setSelectedPeriod("custom");
             setPage(1);
-            loadSales(1, limit, "custom", { startDate, endDate });
+            if (allRecordsMode) {
+                loadAllSales("custom", { startDate, endDate });
+            } else {
+                loadSales(1, limit, "custom", { startDate, endDate });
+            }
         }
     };
 
@@ -318,7 +383,7 @@ export default function SalesHistory() {
                              Updated {lastUpdated.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })}
                          </span>
                      )}
-                     <button style={styles.iconButton} onClick={() => loadSales(page, limit, selectedPeriod)} title="Refresh sales">
+                     <button style={styles.iconButton} onClick={() => allRecordsMode ? loadAllSales(selectedPeriod) : loadSales(page, limit, selectedPeriod)} title="Refresh sales">
                          <FiRefreshCw size={16} />
                      </button>
                  </div>
@@ -440,16 +505,23 @@ export default function SalesHistory() {
             {/* Pagination for the paginated /sales API */}
             <div style={styles.paginationBar}>
                 <div style={styles.paginationInfo}>
-                    Showing {sales.length ? ((page - 1) * limit + 1) : 0}
-                    {"–"}
-                    {Math.min(page * limit, totalSalesCount)} of {totalSalesCount} sales
+                    {allRecordsMode
+                        ? `Showing all ${sales.length} of ${totalSalesCount} sales`
+                        : `Showing ${sales.length ? ((page - 1) * limit + 1) : 0}–${Math.min(page * limit, totalSalesCount)} of ${totalSalesCount} sales`}
                 </div>
                 <div style={styles.paginationControls}>
                     <label style={styles.pageSizeLabel}>
                         Rows
                         <select
-                            value={limit}
-                            onChange={(e) => loadSales(1, Number(e.target.value), selectedPeriod)}
+                            value={allRecordsMode ? "all" : limit}
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                if (value === "all") {
+                                    loadAllSales(selectedPeriod);
+                                } else {
+                                    loadSales(1, Number(value), selectedPeriod);
+                                }
+                            }}
                             style={styles.pageSizeSelect}
                             disabled={loading}
                         >
@@ -457,25 +529,28 @@ export default function SalesHistory() {
                             <option value={20}>20</option>
                             <option value={50}>50</option>
                             <option value={100}>100</option>
+                            <option value="all">All Records</option>
                         </select>
                     </label>
-                    <button
-                        type="button"
-                        style={{ ...styles.pageButton, opacity: page <= 1 || loading ? 0.5 : 1 }}
-                        disabled={page <= 1 || loading}
-                        onClick={() => loadSales(page - 1, limit, selectedPeriod)}
-                    >
-                        Previous
-                    </button>
-                    <span style={styles.pageNumber}>Page {page} of {totalPages}</span>
-                    <button
-                        type="button"
-                        style={{ ...styles.pageButton, opacity: page >= totalPages || loading ? 0.5 : 1 }}
-                        disabled={page >= totalPages || loading}
-                        onClick={() => loadSales(page + 1, limit, selectedPeriod)}
-                    >
-                        Next
-                    </button>
+                    {!allRecordsMode && <>
+                        <button
+                            type="button"
+                            style={{ ...styles.pageButton, opacity: page <= 1 || loading ? 0.5 : 1 }}
+                            disabled={page <= 1 || loading}
+                            onClick={() => loadSales(page - 1, limit, selectedPeriod)}
+                        >
+                            Previous
+                        </button>
+                        <span style={styles.pageNumber}>Page {page} of {totalPages}</span>
+                        <button
+                            type="button"
+                            style={{ ...styles.pageButton, opacity: page >= totalPages || loading ? 0.5 : 1 }}
+                            disabled={page >= totalPages || loading}
+                            onClick={() => loadSales(page + 1, limit, selectedPeriod)}
+                        >
+                            Next
+                        </button>
+                    </>}
                 </div>
             </div>
         </div>
