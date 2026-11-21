@@ -199,7 +199,7 @@ export default function CustomerDetails() {
     [customer, sales]
   );
 
-  const displayName = contact.name || `Customer #${customer?.id || id}`;
+  const displayName = contact.name;
 
   const filtersActive = search.trim() !== "" || statusFilter !== "all";
 
@@ -229,7 +229,7 @@ export default function CustomerDetails() {
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    const safeName = String(displayName || "customer")
+    const safeName = String(displayName || contact.phone || "customer")
       .replace(/[^a-z0-9]+/gi, "-")
       .toLowerCase();
 
@@ -335,10 +335,12 @@ export default function CustomerDetails() {
           </div>
 
           <div className="cd-identity">
-            <h1>{displayName}</h1>
+            {displayName && <h1>{displayName}</h1>}
 
             {(contact.phone || contact.email || contact.address) && (
-              <ul className="cd-contact">
+              <ul
+                className={`cd-contact ${displayName ? "" : "cd-contact-solo"}`}
+              >
                 {contact.phone && (
                   <li>
                     <i className="fas fa-phone-alt"></i>
@@ -802,6 +804,13 @@ function Styles() {
         display: inline-flex;
         align-items: center;
         gap: 8px;
+      }
+
+      .cd-contact-solo {
+        margin-top: 0;
+        font-size: clamp(18px, 2.6vw, 24px);
+        font-weight: 800;
+        letter-spacing: -0.3px;
       }
 
       .cd-contact i {
