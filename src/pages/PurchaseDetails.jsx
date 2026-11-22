@@ -1942,7 +1942,7 @@ export default function PurchaseDetails() {
 
               <div className="pd-field-grid">
 
-                <label className="pd-field"><span>Payment method</span><select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}><option>Cash</option><option>UPI</option><option>Bank Transfer</option><option>Card</option><option>Cheque</option><option>Other</option></select></label>
+                <label className="pd-field"><span>Payment method</span><select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}><option value="Cash">Cash</option><option value="UPI">UPI</option><option value="Card">Card</option><option value="Bank">Bank</option><option value="Bank Transfer">Bank Transfer</option><option value="Credit">Credit</option></select></label>
 
                 <label className="pd-field"><span>Payment date</span><div className="pd-date-input"><FiCalendar /><input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} required /></div></label>
 
