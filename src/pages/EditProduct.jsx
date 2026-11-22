@@ -468,21 +468,6 @@ export default function EditProduct() {
                             </div>
 
                             <div className="ep-f">
-                                <label htmlFor="stock_unit">
-                                    Stock unit <b>*</b>
-                                </label>
-                                <select
-                                    id="stock_unit"
-                                    name="stock_unit"
-                                    value={form.stock_unit}
-                                    onChange={handleChange}
-                                    required
-                                >
-                                    {unitOptions}
-                                </select>
-                            </div>
-
-                            <div className="ep-f">
                                 <label htmlFor="min_stock">Reorder level</label>
                                 <input
                                     id="min_stock"
@@ -496,7 +481,7 @@ export default function EditProduct() {
                                 <small>You'll see a low-stock flag at or below this number.</small>
                             </div>
 
-                            <div className="ep-f">
+                            <div className="ep-f ep-f--full">
                                 <label htmlFor="expiry_date">Expiry date</label>
                                 <input
                                     id="expiry_date"
@@ -514,7 +499,7 @@ export default function EditProduct() {
                     <section className="ep-sec">
                         <div className="ep-sec-title">
                             <h2>Details</h2>
-                            <p>Optional notes and a photo.</p>
+                            <p>Optional notes about this product.</p>
                         </div>
                         <div className="ep-fields">
                             <div className="ep-f ep-f--full">
@@ -528,18 +513,6 @@ export default function EditProduct() {
                                     onChange={handleChange}
                                 />
                             </div>
-
-                            <div className="ep-f ep-f--full">
-                                <label htmlFor="image">Image URL</label>
-                                <input
-                                    id="image"
-                                    name="image"
-                                    type="text"
-                                    placeholder="https://…"
-                                    value={form.image}
-                                    onChange={handleChange}
-                                />
-                            </div>
                         </div>
                     </section>
                 </div>
@@ -548,13 +521,6 @@ export default function EditProduct() {
                 <aside className="ep-side">
                     <div className="ep-sum">
                         <div className="ep-thumb">
-                            {form.image ? (
-                                <img
-                                    src={form.image}
-                                    alt=""
-                                    onError={(e) => (e.currentTarget.style.display = "none")}
-                                />
-                            ) : null}
                             <span>{(form.product_name || "?").charAt(0).toUpperCase()}</span>
                         </div>
 
@@ -794,7 +760,6 @@ const css = `
     font-size: 56px;
     font-weight: 700;
 }
-.ep-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: var(--field); }
 
 .ep-status {
     display: grid;
