@@ -29,7 +29,10 @@ import {
   FiBriefcase,
 
   FiChevronRight,
-
+  FiCreditCard,
+  FiX,
+  FiCalendar,
+  FiCheck,
 } from "react-icons/fi";
 
 
@@ -129,9 +132,13 @@ const getDue = (purchase) => {
 
 
 const hasText = (value) =>
+
   value !== undefined &&
+
   value !== null &&
+
   String(value).trim() !== "" &&
+
   !/^(?:-+|n\/a|null|undefined|none)$/i.test(String(value).trim());
 
 
@@ -216,6 +223,56 @@ export default function PurchaseDetails() {
   };
 
 
+
+  const openPaymentModal = () => {
+    if (!purchase || due <= 0) return;
+    setPaymentAmount(String(due.toFixed(2)));
+    setPaymentMethod("Cash");
+    setPaymentReference("");
+    setPaymentDate(new Date().toISOString().slice(0, 10));
+    setPaymentNotes("");
+    setPaymentError("");
+    setPaymentOpen(true);
+  };
+
+  const closePaymentModal = () => {
+    if (savingPayment) return;
+    setPaymentOpen(false);
+    setPaymentError("");
+  };
+
+  const savePurchasePayment = async (event) => {
+    event.preventDefault();
+    const amount = Number(paymentAmount);
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setPaymentError("Enter a valid payment amount.");
+      return;
+    }
+    if (amount > due + 0.001) {
+      setPaymentError(`Payment cannot exceed the remaining balance of ${formatMoney(due)}.`);
+      return;
+    }
+
+    try {
+      setSavingPayment(true);
+      setPaymentError("");
+      await API.post(`/purchases/${id}/payments`, {
+        amount,
+        payment_method: paymentMethod,
+        reference_no: paymentReference.trim() || null,
+        payment_date: paymentDate,
+        notes: paymentNotes.trim() || null,
+      });
+      setPaymentOpen(false);
+      setPaymentSuccess("Payment recorded successfully.");
+      await loadPurchase();
+    } catch (err) {
+      setPaymentError(err.response?.data?.message || "Failed to record payment. Please try again.");
+    } finally {
+      setSavingPayment(false);
+    }
+  };
 
   const statusKey = purchase ? getStatusKey(purchase) : "unpaid";
 
