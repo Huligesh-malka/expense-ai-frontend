@@ -775,6 +775,53 @@ const GLOBAL_STYLES = `
     margin: 0 auto 16px;
   }
   @keyframes vs-spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }
+
+  /* ===== Supplier details modern responsive refinement ===== */
+  .vs-root { padding: 24px !important; background: linear-gradient(135deg, var(--paper) 0%, color-mix(in srgb, var(--paper) 88%, white) 100%); }
+  .vs-topbar { margin: 0 auto 24px; max-width: 1440px; }
+  .vs-heading { font-family: 'Inter', sans-serif; font-size: clamp(24px, 2.4vw, 32px); font-weight: 800; letter-spacing: -.04em; }
+  .vs-heading-eyebrow { font-weight: 700; letter-spacing: .12em; }
+  .vs-back-btn, .vs-edit-btn { border-radius: 12px; box-shadow: none; transition: all .2s ease; }
+  .vs-back-btn:hover, .vs-edit-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(20,30,50,.12); }
+  .vs-index-card { max-width: 1440px; margin: 0 auto 22px; border-radius: 20px; padding: 32px; box-shadow: 0 10px 30px rgba(30,40,60,.06); }
+  .vs-rolodex-tab { border-radius: 10px; width: 46px; height: 36px; top: -15px; font-size: 18px; }
+  .vs-vendor-row { align-items: center; gap: 18px; }
+  .vs-vendor-icon { width: 58px; height: 58px; border-radius: 16px; background: color-mix(in srgb, var(--brass) 10%, var(--card)); border: 1px solid var(--rule); }
+  .vs-vendor-name { font-family: 'Inter', sans-serif; font-size: clamp(22px, 2vw, 28px); font-weight: 800; letter-spacing: -.04em; }
+  .vs-vendor-company { font-size: 14px; margin-top: 5px; }
+  .vs-ref { background: var(--paper); border: 1px solid var(--rule); padding: 6px 10px; border-radius: 8px; }
+  .vs-grid-2 { max-width: 1440px; margin: 0 auto 22px; gap: 20px; }
+  .vs-card { border-radius: 18px; padding: 24px; box-shadow: 0 6px 20px rgba(30,40,60,.045); }
+  .vs-section-title { font-family: 'Inter', sans-serif; font-weight: 800; font-size: 16px; border-bottom: 1px solid var(--rule); letter-spacing: -.02em; }
+  .vs-leader { padding: 11px 0; gap: 10px; }
+  .vs-leader-label { font-size: 13px; font-weight: 500; }
+  .vs-leader-value { max-width: 60%; font-size: 13px; font-weight: 600; overflow-wrap: anywhere; white-space: normal; text-align: right; }
+  .vs-note { transform: none; border-radius: 10px; padding: 18px; }
+  .vs-note::before { display: none; }
+  .vs-meta-row { gap: 18px; }
+  .vs-meta-value { overflow-wrap: anywhere; }
+  .vs-ledger-head { margin-bottom: 14px; }
+  .vs-ledger-wrap { background: none; padding-left: 0; margin-top: 14px; }
+  .vs-ledger-wrap::before { display: none; }
+  .vs-ledger-table { min-width: 760px; }
+  .vs-ledger-table thead th { padding: 12px 14px; background: var(--paper); border-bottom: 1px solid var(--rule); }
+  .vs-ledger-table tbody td { padding: 15px 14px; border-bottom: 1px solid var(--rule); }
+  .vs-ledger-table tbody tr:last-child td { border-bottom: 0; }
+  .vs-ledger-table tbody tr:hover { background: color-mix(in srgb, var(--brass) 6%, var(--card)); }
+  .vs-btn-pay, .vs-btn-history, .vs-btn-download, .vs-btn-confirm, .vs-btn-cancel { border-radius: 9px; transition: all .18s ease; }
+  .vs-btn-pay:hover, .vs-btn-confirm:hover { filter: brightness(.96); transform: translateY(-1px); }
+  .vs-empty { background: var(--paper); border: 1px dashed var(--rule); background-image: none; border-radius: 12px; }
+  .vs-overlay { backdrop-filter: blur(5px); }
+  .vs-receipt, .vs-passbook { border-radius: 18px; }
+  .vs-theme-picker { border-radius: 12px; }
+  .vs-swatch { width: 22px; height: 22px; }
+  @media (max-width: 900px) { .vs-root { padding: 18px !important; } .vs-topbar { align-items: flex-start; } .vs-index-card { padding: 28px 22px 22px; } .vs-grid-2 { gap: 14px; } .vs-card { padding: 20px; } }
+  @media (max-width: 600px) {
+    .vs-root { padding: 12px !important; } .vs-topbar { gap: 12px; margin-bottom: 18px; } .vs-heading { font-size: 23px; } .vs-topbar > div:first-child { gap: 10px !important; } .vs-back-btn { padding: 9px 11px; font-size: 12px; } .vs-topbar > div:last-child { width: 100%; justify-content: space-between; } .vs-theme-picker { padding: 6px 8px; gap: 5px; } .vs-theme-label { display: none; } .vs-swatch { width: 19px; height: 19px; } .vs-edit-btn { padding: 10px 13px; font-size: 12px; }
+    .vs-index-card { margin-top: 18px; padding: 28px 16px 18px; border-radius: 16px; } .vs-vendor-row { gap: 12px; align-items: flex-start; } .vs-vendor-icon { width: 48px; height: 48px; border-radius: 13px; } .vs-vendor-name { font-size: 21px; } .vs-vendor-company { font-size: 13px; } .vs-grid-2 { grid-template-columns: 1fr; margin-top: 14px; } .vs-card { padding: 17px; border-radius: 14px; } .vs-section-title { font-size: 15px; }
+    .vs-leader { align-items: flex-start; flex-wrap: wrap; } .vs-leader-dots { display: none; } .vs-leader-label { width: 42%; white-space: normal; } .vs-leader-value { width: 55%; max-width: none; text-align: right; font-size: 12px; } .vs-meta-row { grid-template-columns: 1fr; } .vs-ledger-table { min-width: 720px; } .vs-ledger-table thead th, .vs-ledger-table tbody td { padding: 11px 10px; font-size: 12px; } .vs-overlay { padding: 10px; } .vs-receipt, .vs-passbook { padding: 18px; max-height: 90vh; overflow-y: auto; } .vs-modal-actions { flex-wrap: wrap; }
+  }
+
 `;
 
 export default function ViewSupplier() {
