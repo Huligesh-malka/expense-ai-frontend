@@ -204,7 +204,7 @@ export default function EditSupplier() {
     }
 
 
-    if (formData.supplier_email && !/^[^\s@]+@[^\s@]+**\\.**[^\s@]+$/.test(formData.supplier_email)) {
+    if (formData.supplier_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.supplier_email)) {
 
       newErrors.supplier_email = "Please enter a valid email address";
 
