@@ -818,7 +818,7 @@ const styles = `
 
 }
 
-\`;
+`;
 
 
 
@@ -886,7 +886,7 @@ export default function EditSupplier() {
 
         try {
 
-            const res = await API.get(\`/suppliers/${id}\`);
+            const res = await API.get(`/suppliers/${id}`);
 
             const data = res.data.data;
 
@@ -1080,7 +1080,7 @@ export default function EditSupplier() {
 
             // Opening balance removed
 
-            await API.put(\`/suppliers/${id}\`, formData);
+            await API.put(`/suppliers/${id}`, formData);
 
 
 
@@ -1136,17 +1136,17 @@ export default function EditSupplier() {
 
     ) => (
 
-        \<div
+        <div
 
-            className={\`supplier-edit-field ${
+            className={`supplier-edit-field ${
 
                 options.full ? "full" : ""
 
-            }\`}
+            }`}
 
         >
 
-            \<label htmlFor={name}>
+            <label htmlFor={name}>
 
                 {label}
 
@@ -1154,29 +1154,29 @@ export default function EditSupplier() {
 
                 {options.required && (
 
-                    \<span className="required">\*\</span>
+                    <span className="required">\*</span>
 
                 )}
 
-            \</label>
+            </label>
 
 
 
-            \<div className={icon ? "supplier-edit-input-wrap" : ""}>
+            <div className={icon ? "supplier-edit-input-wrap" : ""}>
 
                 {icon && (
 
-                    \<span className="field-icon">
+                    <span className="field-icon">
 
                         {icon}
 
-                    \</span>
+                    </span>
 
                 )}
 
 
 
-                \<input
+                <input
 
                     id={name}
 
@@ -1190,29 +1190,29 @@ export default function EditSupplier() {
 
                     placeholder={placeholder}
 
-                    className={\`
+                    className={`
 
                         ${icon ? "has-icon" : ""}
 
                         ${errors[name] ? "invalid" : ""}
 
-                    \`}
+                    `}
 
                     autoComplete={options.autoComplete || "off"}
 
                 />
 
-            \</div>
+            </div>
 
 
 
             {errors[name] && (
 
-                \<div className="supplier-edit-error-text">
+                <div className="supplier-edit-error-text">
 
                     {errors[name]}
 
-                \</div>
+                </div>
 
             )}
 
@@ -1220,15 +1220,15 @@ export default function EditSupplier() {
 
             {options.help && (
 
-                \<div className="supplier-edit-help">
+                <div className="supplier-edit-help">
 
                     {options.help}
 
-                \</div>
+                </div>
 
             )}
 
-        \</div>
+        </div>
 
     );
 
@@ -1242,19 +1242,19 @@ export default function EditSupplier() {
 
             <>
 
-                \<style>{styles}\</style>
+                <style>{styles}</style>
 
 
 
-                \<div className="supplier-edit-loading">
+                <div className="supplier-edit-loading">
 
-                    \<div style={{ textAlign: "center" }}>
+                    <div style={{ textAlign: "center" }}>
 
-                        \<div className="supplier-edit-spinner" />
+                        <div className="supplier-edit-spinner" />
 
 
 
-                        \<p
+                        <p
 
                             style={{
 
@@ -1268,13 +1268,13 @@ export default function EditSupplier() {
 
                             Loading supplier details...
 
-                        \</p>
+                        </p>
 
-                    \</div>
+                    </div>
 
-                \</div>
+                </div>
 
-            \</>
+            </>
 
         );
 
@@ -1286,25 +1286,25 @@ export default function EditSupplier() {
 
         <>
 
-            \<style>{styles}\</style>
+            <style>{styles}</style>
 
 
 
-            \<div className="supplier-edit-page">
+            <div className="supplier-edit-page">
 
-                \<div className="supplier-edit-wrap">
+                <div className="supplier-edit-wrap">
 
 
 
                     {/\* Header \*/}
 
-                    \<header className="supplier-edit-header">
+                    <header className="supplier-edit-header">
 
-                        \<div className="supplier-edit-title">
+                        <div className="supplier-edit-title">
 
 
 
-                            \<button
+                            <button
 
                                 className="supplier-edit-back"
 
@@ -1316,39 +1316,39 @@ export default function EditSupplier() {
 
                             >
 
-                                \<FiArrowLeft />
+                                <FiArrowLeft />
 
-                            \</button>
-
-
-
-                            \<div className="supplier-edit-heading">
-
-                                \<h1>Edit Supplier\</h1>
+                            </button>
 
 
 
-                                \<p>
+                            <div className="supplier-edit-heading">
+
+                                <h1>Edit Supplier</h1>
+
+
+
+                                <p>
 
                                     Update supplier profile and contact information
 
-                                \</p>
+                                </p>
 
-                            \</div>
+                            </div>
 
-                        \</div>
+                        </div>
 
 
 
-                        \<div className="supplier-edit-pill">
+                        <div className="supplier-edit-pill">
 
-                            \<FiShield />
+                            <FiShield />
 
                             Supplier profile management
 
-                        \</div>
+                        </div>
 
-                    \</header>
+                    </header>
 
 
 
@@ -1356,13 +1356,13 @@ export default function EditSupplier() {
 
                     {successMessage && (
 
-                        \<div className="supplier-edit-alert supplier-edit-success">
+                        <div className="supplier-edit-alert supplier-edit-success">
 
-                            \<FiCheckCircle />
+                            <FiCheckCircle />
 
                             {successMessage}
 
-                        \</div>
+                        </div>
 
                     )}
 
@@ -1370,19 +1370,19 @@ export default function EditSupplier() {
 
                     {errorMessage && (
 
-                        \<div className="supplier-edit-alert supplier-edit-error">
+                        <div className="supplier-edit-alert supplier-edit-error">
 
-                            \<FiAlertCircle />
+                            <FiAlertCircle />
 
                             {errorMessage}
 
-                        \</div>
+                        </div>
 
                     )}
 
 
 
-                    \<form
+                    <form
 
                         onSubmit={handleSubmit}
 
@@ -1394,39 +1394,39 @@ export default function EditSupplier() {
 
                         {/\* Supplier Information \*/}
 
-                        \<section className="supplier-edit-card">
+                        <section className="supplier-edit-card">
 
 
 
-                            \<div className="supplier-edit-card-head">
+                            <div className="supplier-edit-card-head">
 
-                                \<div className="supplier-edit-icon">
+                                <div className="supplier-edit-icon">
 
-                                    \<FiUser />
+                                    <FiUser />
 
-                                \</div>
+                                </div>
 
 
 
-                                \<div>
+                                <div>
 
-                                    \<h3>Supplier Information\</h3>
+                                    <h3>Supplier Information</h3>
 
-                                    \<p>
+                                    <p>
 
                                         Basic identity and company details
 
-                                    \</p>
+                                    </p>
 
-                                \</div>
+                                </div>
 
-                            \</div>
+                            </div>
 
 
 
-                            \<div className="supplier-edit-card-body">
+                            <div className="supplier-edit-card-body">
 
-                                \<div className="supplier-edit-fields">
+                                <div className="supplier-edit-fields">
 
 
 
@@ -1438,7 +1438,7 @@ export default function EditSupplier() {
 
                                         "Enter supplier name",
 
-                                        \<FiUser />,
+                                        <FiUser />,
 
                                         { required: true }
 
@@ -1454,55 +1454,55 @@ export default function EditSupplier() {
 
                                         "Enter company or business name",
 
-                                        \<FiBriefcase />
+                                        <FiBriefcase />
 
                                     )}
 
 
 
-                                \</div>
+                                </div>
 
-                            \</div>
+                            </div>
 
-                        \</section>
+                        </section>
 
 
 
                         {/\* Contact Details \*/}
 
-                        \<section className="supplier-edit-card">
+                        <section className="supplier-edit-card">
 
 
 
-                            \<div className="supplier-edit-card-head">
+                            <div className="supplier-edit-card-head">
 
-                                \<div className="supplier-edit-icon">
+                                <div className="supplier-edit-icon">
 
-                                    \<FiPhone />
+                                    <FiPhone />
 
-                                \</div>
+                                </div>
 
 
 
-                                \<div>
+                                <div>
 
-                                    \<h3>Contact Details\</h3>
+                                    <h3>Contact Details</h3>
 
-                                    \<p>
+                                    <p>
 
                                         Phone, email and GST information
 
-                                    \</p>
+                                    </p>
 
-                                \</div>
+                                </div>
 
-                            \</div>
+                            </div>
 
 
 
-                            \<div className="supplier-edit-card-body">
+                            <div className="supplier-edit-card-body">
 
-                                \<div className="supplier-edit-fields">
+                                <div className="supplier-edit-fields">
 
 
 
@@ -1514,7 +1514,7 @@ export default function EditSupplier() {
 
                                         "Enter phone number",
 
-                                        \<FiPhone />,
+                                        <FiPhone />,
 
                                         {
 
@@ -1536,7 +1536,7 @@ export default function EditSupplier() {
 
                                         "name\@example.com",
 
-                                        \<FiMail />,
+                                        <FiMail />,
 
                                         { type: "email" }
 
@@ -1552,7 +1552,7 @@ export default function EditSupplier() {
 
                                         "Enter GST number",
 
-                                        \<FiGlobe />,
+                                        <FiGlobe />,
 
                                         {
 
@@ -1564,49 +1564,49 @@ export default function EditSupplier() {
 
 
 
-                                \</div>
+                                </div>
 
-                            \</div>
+                            </div>
 
-                        \</section>
+                        </section>
 
 
 
                         {/\* Address \*/}
 
-                        \<section className="supplier-edit-card">
+                        <section className="supplier-edit-card">
 
 
 
-                            \<div className="supplier-edit-card-head">
+                            <div className="supplier-edit-card-head">
 
-                                \<div className="supplier-edit-icon">
+                                <div className="supplier-edit-icon">
 
-                                    \<FiMapPin />
+                                    <FiMapPin />
 
-                                \</div>
+                                </div>
 
 
 
-                                \<div>
+                                <div>
 
-                                    \<h3>Address Information\</h3>
+                                    <h3>Address Information</h3>
 
-                                    \<p>
+                                    <p>
 
                                         Supplier location and postal details
 
-                                    \</p>
+                                    </p>
 
-                                \</div>
+                                </div>
 
-                            \</div>
+                            </div>
 
 
 
-                            \<div className="supplier-edit-card-body">
+                            <div className="supplier-edit-card-body">
 
-                                \<div className="supplier-edit-fields">
+                                <div className="supplier-edit-fields">
 
 
 
@@ -1618,7 +1618,7 @@ export default function EditSupplier() {
 
                                         "Enter street address",
 
-                                        \<FiMapPin />,
+                                        <FiMapPin />,
 
                                         { full: true }
 
@@ -1634,7 +1634,7 @@ export default function EditSupplier() {
 
                                         "Enter city",
 
-                                        \<FiMapPin />
+                                        <FiMapPin />
 
                                     )}
 
@@ -1648,7 +1648,7 @@ export default function EditSupplier() {
 
                                         "Enter state",
 
-                                        \<FiGlobe />
+                                        <FiGlobe />
 
                                     )}
 
@@ -1662,69 +1662,69 @@ export default function EditSupplier() {
 
                                         "Enter pincode",
 
-                                        \<FiHash />
+                                        <FiHash />
 
                                     )}
 
 
 
-                                \</div>
+                                </div>
 
-                            \</div>
+                            </div>
 
-                        \</section>
+                        </section>
 
 
 
                         {/\* Status & Notes \*/}
 
-                        \<section className="supplier-edit-card">
+                        <section className="supplier-edit-card">
 
 
 
-                            \<div className="supplier-edit-card-head">
+                            <div className="supplier-edit-card-head">
 
-                                \<div className="supplier-edit-icon">
+                                <div className="supplier-edit-icon">
 
-                                    \<FiShield />
+                                    <FiShield />
 
-                                \</div>
+                                </div>
 
 
 
-                                \<div>
+                                <div>
 
-                                    \<h3>Supplier Status & Notes\</h3>
+                                    <h3>Supplier Status & Notes</h3>
 
-                                    \<p>
+                                    <p>
 
                                         Manage supplier availability and additional information
 
-                                    \</p>
+                                    </p>
 
-                                \</div>
+                                </div>
 
-                            \</div>
-
-
-
-                            \<div className="supplier-edit-card-body">
-
-                                \<div className="supplier-edit-fields">
+                            </div>
 
 
 
-                                    \<div className="supplier-edit-field">
+                            <div className="supplier-edit-card-body">
 
-                                        \<label htmlFor="status">
+                                <div className="supplier-edit-fields">
+
+
+
+                                    <div className="supplier-edit-field">
+
+                                        <label htmlFor="status">
 
                                             Supplier Status
 
-                                        \</label>
+                                        </label>
 
 
 
-                                        \<select
+                                        <select
 
                                             id="status"
 
@@ -1736,45 +1736,45 @@ export default function EditSupplier() {
 
                                         >
 
-                                            \<option value="active">
+                                            <option value="active">
 
                                                 Active
 
-                                            \</option>
+                                            </option>
 
 
 
-                                            \<option value="inactive">
+                                            <option value="inactive">
 
                                                 Inactive
 
-                                            \</option>
+                                            </option>
 
-                                        \</select>
+                                        </select>
 
 
 
-                                        \<div className="supplier-edit-help">
+                                        <div className="supplier-edit-help">
 
                                             Inactive suppliers can be retained in your records.
 
-                                        \</div>
+                                        </div>
 
-                                    \</div>
+                                    </div>
 
 
 
-                                    \<div className="supplier-edit-field full">
+                                    <div className="supplier-edit-field full">
 
-                                        \<label htmlFor="notes">
+                                        <label htmlFor="notes">
 
                                             Notes
 
-                                        \</label>
+                                        </label>
 
 
 
-                                        \<textarea
+                                        <textarea
 
                                             id="notes"
 
@@ -1788,39 +1788,39 @@ export default function EditSupplier() {
 
                                         />
 
-                                    \</div>
+                                    </div>
 
 
 
-                                \</div>
+                                </div>
 
-                            \</div>
+                            </div>
 
-                        \</section>
+                        </section>
 
 
 
                         {/\* Footer Actions \*/}
 
-                        \<div className="supplier-edit-footer">
+                        <div className="supplier-edit-footer">
 
 
 
-                            \<div className="supplier-edit-footer-note">
+                            <div className="supplier-edit-footer-note">
 
-                                \<FiEdit3 />
+                                <FiEdit3 />
 
                                 Changes will be saved to this supplier profile
 
-                            \</div>
+                            </div>
 
 
 
-                            \<div className="supplier-edit-actions">
+                            <div className="supplier-edit-actions">
 
 
 
-                                \<button
+                                <button
 
                                     type="button"
 
@@ -1830,15 +1830,15 @@ export default function EditSupplier() {
 
                                 >
 
-                                    \<FiX />
+                                    <FiX />
 
                                     Cancel
 
-                                \</button>
+                                </button>
 
 
 
-                                \<button
+                                <button
 
                                     type="submit"
 
@@ -1848,7 +1848,7 @@ export default function EditSupplier() {
 
                                 >
 
-                                    \<FiSave />
+                                    <FiSave />
 
 
 
@@ -1858,25 +1858,25 @@ export default function EditSupplier() {
 
                                         : "Save Changes"}
 
-                                \</button>
+                                </button>
 
 
 
-                            \</div>
+                            </div>
 
-                        \</div>
-
-
-
-                    \</form>
+                        </div>
 
 
 
-                \</div>
+                    </form>
 
-            \</div>
 
-        \</>
+
+                </div>
+
+            </div>
+
+        </>
 
     );
 
