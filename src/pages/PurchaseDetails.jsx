@@ -154,6 +154,16 @@ const formatDate = (value) => {
 
 };
 
+const formatDateTime = (value) => {
+  if (!value) return { date: "—", time: "—" };
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return { date: "—", time: "—" };
+  return {
+    date: date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }),
+    time: date.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true }),
+  };
+};
+
 
 
 
@@ -1791,9 +1801,16 @@ export default function PurchaseDetails() {
           ) : (
             <div className="pd-payment-history-table-wrap">
               <table className="pd-payment-history-table">
-                <thead><tr><th>#</th><th>Date</th><th>Method</th><th>Reference</th><th>Notes</th><th className="pd-right">Amount</th></tr></thead>
+                <thead><tr><th>#</th><th>Date &amp; Time</th><th>Method</th><th>Reference</th><th>Notes</th><th className="pd-right">Amount</th></tr></thead>
                 <tbody>{paymentHistory.map((payment, index) => (
-                  <tr key={payment.id || index}><td>{index + 1}</td><td>{formatDate(payment.payment_date || payment.created_at)}</td><td><span className="pd-payment-method-badge">{payment.payment_method || "Cash"}</span></td><td>{hasText(payment.reference_no) ? payment.reference_no : "—"}</td><td>{hasText(payment.notes) ? payment.notes : "—"}</td><td className="pd-right pd-history-amount">{formatMoney(payment.amount)}</td></tr>
+                  <tr key={payment.id || index}>
+                    <td>{index + 1}</td>
+                    <td><div className="pd-payment-date-time"><strong>{formatDateTime(payment.created_at || payment.payment_date).date}</strong><small>{formatDateTime(payment.created_at || payment.payment_date).time}</small></div></td>
+                    <td><span className="pd-payment-method-badge">{payment.payment_method || "Cash"}</span></td>
+                    <td>{hasText(payment.reference_no) ? payment.reference_no : "—"}</td>
+                    <td>{hasText(payment.notes) ? payment.notes : "—"}</td>
+                    <td className="pd-right pd-history-amount">{formatMoney(payment.amount)}</td>
+                  </tr>
                 ))}</tbody>
               </table>
             </div>
@@ -3534,7 +3551,7 @@ function Styles() {
       .pd-history-empty { display:flex; align-items:center; justify-content:center; gap:10px; padding:30px 20px; color:var(--muted,#64748b); font-size:14px; } .pd-history-empty.error { color:#b91c1c; }
       .pd-payment-history-table-wrap { overflow-x:auto; } .pd-payment-history-table { width:100%; border-collapse:collapse; min-width:720px; }
       .pd-payment-history-table th,.pd-payment-history-table td { padding:14px 16px; border-bottom:1px solid var(--border,#e5e7eb); text-align:left; font-size:13px; }
-      .pd-payment-history-table th { background:#f8fafc; color:#64748b; font-size:11px; text-transform:uppercase; letter-spacing:.04em; }
+      .pd-payment-history-table th { background:#f8fafc; color:#64748b; font-size:11px; text-transform:uppercase; letter-spacing:.04em; } .pd-payment-date-time { display:flex; flex-direction:column; gap:4px; white-space:nowrap; } .pd-payment-date-time strong { font-weight:700; color:#1e293b; } .pd-payment-date-time small { color:#64748b; font-size:11px; }
       .pd-payment-history-table .pd-right { text-align:right; } .pd-payment-method-badge { display:inline-flex; padding:5px 9px; border-radius:8px; background:#f1f5f9; color:#334155; font-weight:600; }
       .pd-history-amount { color:#047857; font-weight:750; } .pd-history-footer { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; padding:20px 24px; background:#f8fafc; }
       .pd-history-footer div { display:flex; flex-direction:column; gap:6px; } .pd-history-footer span { color:var(--muted,#64748b); font-size:12px; } .pd-history-footer strong { font-size:16px; }
