@@ -94,8 +94,6 @@ import Purchase from "./pages/Purchase";
 import AddPurchase from "./pages/AddPurchase";
 import PurchaseDetails from "./pages/PurchaseDetails";
 import EditPurchase from "./pages/EditPurchase";
-import PurchasePayment from "./pages/PurchasePayment";
-
 
 // ===============================
 // QR Ordering
@@ -458,12 +456,6 @@ function App() {
                     path="/purchase/:id"
                     element={<PurchaseDetails />}
                 />
-
-
-                <Route
-    path="/purchase/:id/pay"
-    element={<PurchasePayment />}
-/>
 
                 <Route
                     path="/edit-purchase/:id"
