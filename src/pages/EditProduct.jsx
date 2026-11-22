@@ -268,7 +268,7 @@ export default function EditProduct() {
                 <button
                     type="button"
                     className="ep-back"
-                    onClick={() => navigate("/products")}
+                    onClick={() => navigate(window.history.state?.idx > 0 ? -1 : "/products")}
                 >
                     ‹ Products
                 </button>
@@ -561,7 +561,7 @@ export default function EditProduct() {
                         <button
                             type="button"
                             className="ep-btn ep-btn--ghost"
-                            onClick={() => navigate("/products")}
+                            onClick={() => navigate(window.history.state?.idx > 0 ? -1 : "/products")}
                         >
                             Cancel
                         </button>
