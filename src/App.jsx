@@ -446,6 +446,12 @@ function App() {
                     element={<AddPurchase />}
                 />
 
+
+<Route
+    path="/purchases/add"
+    element={<AddPurchase />}
+/>
+
                 <Route
                     path="/purchase/:id"
                     element={<PurchaseDetails />}
