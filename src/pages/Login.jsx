@@ -537,14 +537,6 @@ export default function Login() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* Clicking a category chip in the categories section opens it in the demo counter */
-  const openCategoryInDemo = (name) => {
-    setDemoCat(name);
-    document
-      .getElementById("product-demo")
-      ?.scrollIntoView({ behavior: "smooth", block: "center" });
-  };
-
   const finishLogin = (data) => {
     const { user, business, token } = data;
     login(user, token);
@@ -669,7 +661,6 @@ export default function Login() {
   const navLinks = useMemo(
     () => [
       ["#product", "Try it"],
-      ["#categories", "Categories"],
       ["#businesses", "Businesses"],
       ["#features", "Features"],
       ["#workflow", "Getting started"],
@@ -756,30 +747,6 @@ export default function Login() {
               <LiveCounter category={demoCat} onCategory={setDemoCat} />
               <p className="fx-demo-note">Sample shop and sample prices. Nothing here is saved.</p>
             </div>
-          </div>
-        </section>
-
-        {/* CATEGORIES: every kind of counter */}
-        <section className="fx-cats" id="categories" aria-label="Product categories supported">
-          <div className="fx-wrap">
-            <p className="fx-cats-title">
-              One app for every kind of shop. Bill any of these 16 categories:
-            </p>
-            <ul className="fx-cats-grid">
-              {CATEGORIES.map(([icon, name]) => (
-                <li key={name}>
-                  <button
-                    type="button"
-                    onClick={() => openCategoryInDemo(name)}
-                    aria-label={`Try ${name} products in the demo counter`}
-                  >
-                    <span aria-hidden="true">{icon}</span>
-                    {name}
-                  </button>
-                </li>
-              ))}
-            </ul>
-            <p className="fx-cats-hint">Tap a category to try it on the counter above.</p>
           </div>
         </section>
 
@@ -1249,21 +1216,6 @@ a,button{-webkit-tap-highlight-color:transparent}
 .fx-ask-chips button.on{background:var(--blue);color:#fff}
 .fx-ask-answer{margin:12px 0 0;padding:12px;background:var(--paper);border-left:5px solid var(--blue);border-radius:4px;font-size:14px;line-height:1.5;min-height:48px}
 
-/* ── categories ── */
-.fx-cats{background:var(--yellow);border-bottom:var(--line);padding:30px 0 28px}
-.fx-cats-title{margin:0 0 18px;text-align:center;font:800 clamp(16px,2vw,21px) var(--display);letter-spacing:-.01em}
-.fx-cats-grid{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
-.fx-cats-grid button{
-  display:inline-flex;align-items:center;gap:8px;
-  background:#fff;border:2px solid var(--ink);border-radius:999px;color:var(--ink);
-  padding:8px 16px 8px 12px;font-weight:700;font-size:14px;
-  box-shadow:var(--hard-sm);transition:transform .12s ease, box-shadow .12s ease;
-}
-.fx-cats-grid button span{font-size:18px;line-height:1}
-.fx-cats-grid button:hover{transform:translate(-2px,-2px) rotate(-1deg);box-shadow:5px 5px 0 var(--ink)}
-.fx-cats-grid button:active{transform:translate(2px,2px);box-shadow:none}
-.fx-cats-hint{margin:16px 0 0;text-align:center;font-size:13px;font-weight:600}
-
 /* ── businesses ── */
 .fx-biz{padding:88px 0;background:#fff;border-bottom:var(--line)}
 .fx-biz-filter{display:flex;flex-wrap:wrap;gap:8px;margin:28px 0 24px}
@@ -1450,7 +1402,6 @@ a,button{-webkit-tap-highlight-color:transparent}
   .fx-step-body{flex:1 1 60%}
   .fx-ask-list li:nth-child(2),.fx-ask-list li:nth-child(3){margin-left:0}
   .fx-login-card{padding:22px}
-  .fx-cats-grid button{font-size:13px;padding:7px 12px 7px 10px}
   .fx-biz{padding:56px 0}
   .fx-biz-grid{grid-template-columns:1fr}
   .fx-counter,.fx-panel,.fx-chat,.fx-login-card{box-shadow:5px 5px 0 var(--ink)}
