@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import API from "../services/api";
 
 // ─── Static option data ─────────────────────────────────────
@@ -143,6 +143,8 @@ function CheckBadge({ check, newLabel, existsLabel }) {
 }
 
 export default function AddProduct() {
+    const navigate = useNavigate();
+
     // ─── State ───────────────────────────────────────────────
     const [step, setStep] = useState(0);
 
@@ -777,12 +779,16 @@ export default function AddProduct() {
 
                 {/* ─── Top: back + progress ─── */}
                 <div style={styles.topBar}>
-                    <Link
-                        to="/products"
+                    <button
+                        type="button"
+                        onClick={() =>
+                            navigate(window.history.state?.idx > 0 ? -1 : "/products")
+                        }
                         style={styles.exitLink}
+                        aria-label="Go back"
                     >
                         ✕
-                    </Link>
+                    </button>
 
                     <div style={styles.progressTrack}>
                         {STEPS.map((label, i) => (
