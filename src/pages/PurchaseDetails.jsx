@@ -129,14 +129,10 @@ const getDue = (purchase) => {
 
 
 const hasText = (value) =>
-
   value !== undefined &&
-
   value !== null &&
-
   String(value).trim() !== "" &&
-
-  !/^(-+|&#x6E;**\\/**?a|null|undefined|none)$/i.test(String(value).trim());
+  !/^(?:-+|n\/a|null|undefined|none)$/i.test(String(value).trim());
 
 
 
