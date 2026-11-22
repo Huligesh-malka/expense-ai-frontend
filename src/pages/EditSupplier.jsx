@@ -1,1905 +1,206 @@
 import { useEffect, useState } from "react";
-
 import { useParams, useNavigate, Link } from "react-router-dom";
-
 import API from "../services/api";
-
 import {
-
-  FiArrowLeft,
-
-  FiSave,
-
-  FiX,
-
-  FiUser,
-
-  FiPhone,
-
-  FiMail,
-
-  FiMapPin,
-
-  FiHash,
-
-  FiCreditCard,
-
-  FiFileText,
-
-  FiGlobe,
-
-  FiAlertCircle,
-
-  FiCheckCircle,
-
-  FiBriefcase
-
+  FiArrowLeft, FiSave, FiX, FiUser, FiPhone, FiMail, FiMapPin,
+  FiHash, FiCreditCard, FiFileText, FiGlobe, FiAlertCircle,
+  FiCheckCircle, FiBriefcase, FiEdit3, FiShield, FiDollarSign
 } from "react-icons/fi";
 
+const styles = `
+  .supplier-edit-page{min-height:100vh;background:#f5f7fb;padding:28px 24px 50px;color:#172033;font-family:inherit}
+  .supplier-edit-wrap{max-width:1120px;margin:0 auto}
+  .supplier-edit-header{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:24px;flex-wrap:wrap}
+  .supplier-edit-title{display:flex;align-items:center;gap:16px}
+  .supplier-edit-back{height:44px;width:44px;border:1px solid #e1e7f0;background:#fff;border-radius:13px;display:grid;place-items:center;color:#34445d;cursor:pointer;transition:.2s}
+  .supplier-edit-back:hover{background:#edf3ff;border-color:#c5d5ff;transform:translateY(-1px)}
+  .supplier-edit-heading h1{font-size:26px;font-weight:800;letter-spacing:-.5px;margin:0;color:#15223b}
+  .supplier-edit-heading p{margin:5px 0 0;color:#73819a;font-size:14px}
+  .supplier-edit-pill{display:flex;align-items:center;gap:8px;background:#eaf2ff;color:#315fbe;padding:9px 13px;border-radius:999px;font-size:12px;font-weight:700}
+  .supplier-edit-alert{display:flex;align-items:center;gap:10px;padding:14px 16px;border-radius:13px;margin-bottom:18px;font-size:14px;font-weight:600}
+  .supplier-edit-success{background:#e8f8ef;color:#137a43;border:1px solid #c7eed8}
+  .supplier-edit-error{background:#fff0f0;color:#b42318;border:1px solid #ffd4d4}
+  .supplier-edit-grid{display:grid;gap:18px}
+  .supplier-edit-card{background:#fff;border:1px solid #e5eaf2;border-radius:18px;box-shadow:0 5px 20px rgba(18,36,70,.045);overflow:hidden}
+  .supplier-edit-card-head{display:flex;align-items:center;gap:13px;padding:22px 24px 18px;border-bottom:1px solid #edf1f6}
+  .supplier-edit-icon{width:42px;height:42px;border-radius:13px;background:#edf3ff;color:#3268d8;display:grid;place-items:center;font-size:18px;flex-shrink:0}
+  .supplier-edit-card-head h3{font-size:16px;margin:0;font-weight:800;color:#1c2a43}
+  .supplier-edit-card-head p{font-size:12px;margin:4px 0 0;color:#8491a6}
+  .supplier-edit-card-body{padding:24px}
+  .supplier-edit-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+  .supplier-edit-field.full{grid-column:1/-1}
+  .supplier-edit-field label{display:block;margin-bottom:8px;color:#42516a;font-size:13px;font-weight:700}
+  .supplier-edit-field label .required{color:#ef4444;margin-left:3px}
+  .supplier-edit-input-wrap{position:relative}
+  .supplier-edit-input-wrap .field-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#9aa8bb;pointer-events:none}
+  .supplier-edit-field input,.supplier-edit-field select,.supplier-edit-field textarea{box-sizing:border-box;width:100%;border:1px solid #dce3ed;background:#fbfcfe;border-radius:11px;padding:12px 14px;color:#1e293b;font-size:14px;outline:none;transition:.2s;font-family:inherit}
+  .supplier-edit-field input.has-icon{padding-left:40px}
+  .supplier-edit-field textarea{resize:vertical;min-height:110px;line-height:1.6}
+  .supplier-edit-field input:focus,.supplier-edit-field select:focus,.supplier-edit-field textarea:focus{border-color:#5b8def;background:#fff;box-shadow:0 0 0 3px rgba(59,115,220,.11)}
+  .supplier-edit-field input.invalid{border-color:#ef4444;background:#fffafa}
+  .supplier-edit-help{font-size:12px;color:#8b98aa;margin-top:6px}
+  .supplier-edit-error-text{font-size:12px;color:#e33;margin-top:6px}
+  .supplier-edit-status-row{display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid #e2e8f0;border-radius:12px;background:#f8fafc}
+  .supplier-edit-status-row select{max-width:220px}
+  .supplier-edit-footer{position:sticky;bottom:12px;z-index:5;display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:22px;padding:14px 16px;background:rgba(255,255,255,.94);backdrop-filter:blur(12px);border:1px solid #e3e8f0;border-radius:16px;box-shadow:0 8px 30px rgba(18,36,70,.09)}
+  .supplier-edit-footer-note{font-size:12px;color:#8591a4;display:flex;align-items:center;gap:7px}
+  .supplier-edit-actions{display:flex;gap:10px}
+  .supplier-edit-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 17px;border-radius:11px;font-size:14px;font-weight:700;border:1px solid transparent;cursor:pointer;transition:.2s}
+  .supplier-edit-btn.cancel{background:#fff;border-color:#dce3ed;color:#526178}
+  .supplier-edit-btn.cancel:hover{background:#f7f9fc}
+  .supplier-edit-btn.save{background:#235bd5;color:#fff;box-shadow:0 4px 12px rgba(35,91,213,.2)}
+  .supplier-edit-btn.save:hover{background:#1849b5;transform:translateY(-1px)}
+  .supplier-edit-btn:disabled{opacity:.65;cursor:not-allowed;transform:none}
+  .supplier-edit-loading{min-height:60vh;display:grid;place-items:center;background:#f5f7fb}
+  .supplier-edit-spinner{width:42px;height:42px;border:4px solid #dce5f4;border-top-color:#3268d8;border-radius:50%;animation:supplier-spin .8s linear infinite}
+  @keyframes supplier-spin{to{transform:rotate(360deg)}}
+  @media(max-width:700px){.supplier-edit-page{padding:18px 12px 35px}.supplier-edit-heading h1{font-size:22px}.supplier-edit-card-head{padding:18px}.supplier-edit-card-body{padding:18px}.supplier-edit-fields{grid-template-columns:1fr;gap:16px}.supplier-edit-field.full{grid-column:auto}.supplier-edit-footer{align-items:stretch;flex-direction:column}.supplier-edit-footer-note{justify-content:center}.supplier-edit-actions{display:grid;grid-template-columns:1fr 1fr}.supplier-edit-btn{padding:12px 10px}.supplier-edit-pill{display:none}}
+`;
 
 export default function EditSupplier() {
-
   const { id } = useParams();
-
   const navigate = useNavigate();
-
   const [loading, setLoading] = useState(true);
-
   const [saving, setSaving] = useState(false);
-
   const [formData, setFormData] = useState({
-
-    supplier_name: "",
-
-    company_name: "",
-
-    supplier_phone: "",
-
-    supplier_email: "",
-
-    gst_number: "",
-
-    address: "",
-
-    city: "",
-
-    state: "",
-
-    pincode: "",
-
-    opening_balance: "",
-
-    notes: "",
-
-    status: "active"
-
+    supplier_name: "", company_name: "", supplier_phone: "", supplier_email: "",
+    gst_number: "", address: "", city: "", state: "", pincode: "",
+    opening_balance: "", notes: "", status: "active"
   });
-
   const [errors, setErrors] = useState({});
-
   const [successMessage, setSuccessMessage] = useState("");
-
   const [errorMessage, setErrorMessage] = useState("");
 
-
-  useEffect(() => {
-
-    loadSupplier();
-
-  }, [id]);
-
+  useEffect(() => { loadSupplier(); }, [id]);
 
   const loadSupplier = async () => {
-
     try {
-
-      const res = await API.get(
-
-        `/suppliers/${id}`
-
-      );
-
+      const res = await API.get(`/suppliers/${id}`);
       const data = res.data.data;
-
       setFormData({
-
         supplier_name: data.supplier_name || "",
-
         company_name: data.company_name || "",
-
         supplier_phone: data.supplier_phone || "",
-
         supplier_email: data.supplier_email || "",
-
         gst_number: data.gst_number || "",
-
         address: data.address || "",
-
         city: data.city || "",
-
         state: data.state || "",
-
         pincode: data.pincode || "",
-
-        opening_balance: data.opening_balance || "",
-
+        opening_balance: data.opening_balance ?? "",
         notes: data.notes || "",
-
         status: data.status || "active"
-
       });
-
     } catch (err) {
-
-      console.log(err);
-
+      console.error(err);
       alert("Failed to load supplier details");
-
       navigate("/suppliers");
-
-    } finally {
-
-      setLoading(false);
-
-    }
-
+    } finally { setLoading(false); }
   };
-
 
   const handleChange = (e) => {
-
     const { name, value } = e.target;
-
-    setFormData((prev) => ({
-
-      ...prev,
-
-      [name]: value
-
-    }));
-
-    // Clear error for this field
-
-    if (errors[name]) {
-
-      setErrors((prev) => ({
-
-        ...prev,
-
-        [name]: ""
-
-      }));
-
-    }
-
-    // Clear messages
-
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: "" }));
     setSuccessMessage("");
-
     setErrorMessage("");
-
   };
-
 
   const validateForm = () => {
-
     const newErrors = {};
-
-
-    if (!formData.supplier_name.trim()) {
-
-      newErrors.supplier_name = "Supplier name is required";
-
-    }
-
-
-    if (!formData.supplier_phone.trim()) {
-
-      newErrors.supplier_phone = "Phone number is required";
-
-    } else if (!/^[0-9]{10}$/.test(formData.supplier_phone.replace(/\s/g, ""))) {
-
-      newErrors.supplier_phone = "Please enter a valid 10-digit phone number";
-
-    }
-
-
-    if (formData.supplier_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.supplier_email)) {
-
-      newErrors.supplier_email = "Please enter a valid email address";
-
-    }
-if (formData.pincode && !/^[0-9]{6}$/.test(formData.pincode)) {
-
-      newErrors.pincode = "Please enter a valid 6-digit pincode";
-
-    }
-
-
+    if (!formData.supplier_name.trim()) newErrors.supplier_name = "Supplier name is required";
+    if (!formData.supplier_phone.trim()) newErrors.supplier_phone = "Phone number is required";
+    else if (!/^[0-9]{10}$/.test(formData.supplier_phone.replace(/\s/g, ""))) newErrors.supplier_phone = "Please enter a valid 10-digit phone number";
+    if (formData.supplier_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.supplier_email)) newErrors.supplier_email = "Please enter a valid email address";
+    if (formData.pincode && !/^[0-9]{6}$/.test(formData.pincode)) newErrors.pincode = "Please enter a valid 6-digit pincode";
     setErrors(newErrors);
-
     return Object.keys(newErrors).length === 0;
-
   };
-
 
   const handleSubmit = async (e) => {
-
     e.preventDefault();
-
-
-    if (!validateForm()) {
-
-      return;
-
-    }
-
-
-    setSaving(true);
-
-    setSuccessMessage("");
-
-    setErrorMessage("");
-
-
+    if (!validateForm()) return;
+    setSaving(true); setSuccessMessage(""); setErrorMessage("");
     try {
-
-      const dataToSend = {
-
-        ...formData,
-
-        opening_balance: parseFloat(formData.opening_balance) || 0
-
-      };
-
-
-      await API.put(
-
-        `/suppliers/${id}`,
-
-        dataToSend
-
-      );
-
-
+      const dataToSend = { ...formData, opening_balance: parseFloat(formData.opening_balance) || 0 };
+      await API.put(`/suppliers/${id}`, dataToSend);
       setSuccessMessage("Supplier updated successfully!");
-
-
-      // Redirect after short delay
-
-      setTimeout(() => {
-
-        navigate("/suppliers");
-
-      }, 1500);
-
+      setTimeout(() => navigate("/suppliers"), 1200);
     } catch (err) {
-
-      console.log(err);
-
-      setErrorMessage(
-
-        err.response?.data?.message || "Failed to update supplier"
-
-      );
-
-    } finally {
-
-      setSaving(false);
-
-    }
-
+      console.error(err);
+      setErrorMessage(err.response?.data?.message || "Failed to update supplier");
+    } finally { setSaving(false); }
   };
 
-
-  const handleCancel = () => {
-
-    navigate("/suppliers");
-
-  };
-
-
-  if (loading) {
-
-    return (
-
-      <div
-
-        style={{
-
-          padding: 40,
-
-          textAlign: "center",
-
-          fontSize: 18,
-
-          color: "#6b7280"
-
-        }}
-
-      >
-
-        <div style={{ display: "inline-block" }}>
-
-          <div
-
-            style={{
-
-              width: 40,
-
-              height: 40,
-
-              border: "4px solid #e5e7eb",
-
-              borderTop: "4px solid #2563eb",
-
-              borderRadius: "50%",
-
-              animation: "spin 1s linear infinite",
-
-              margin: "0 auto 16px"
-
-            }}
-
-          />
-
-          <p>Loading supplier data...</p>
-
-        </div>
-
-        <style>
-
-          {`
-
-            @keyframes spin {
-
-              0% { transform: rotate(0deg); }
-
-              100% { transform: rotate(360deg); }
-
-            }
-
-          `}
-
-        </style>
-
+  const input = (name, label, placeholder, icon, options = {}) => (
+    <div className={`supplier-edit-field ${options.full ? "full" : ""}`}>
+      <label htmlFor={name}>{label}{options.required && <span className="required">*</span>}</label>
+      <div className={icon ? "supplier-edit-input-wrap" : ""}>
+        {icon && <span className="field-icon">{icon}</span>}
+        <input
+          id={name} name={name} type={options.type || "text"} value={formData[name]}
+          onChange={handleChange} placeholder={placeholder} className={`${icon ? "has-icon" : ""} ${errors[name] ? "invalid" : ""}`}
+          autoComplete={options.autoComplete || "off"} />
       </div>
-
-    );
-
-  }
-
-
-  return (
-
-    <div
-
-      style={{
-
-        padding: 30,
-
-        background: "#f5f7fb",
-
-        minHeight: "100vh"
-
-      }}
-
-    >
-
-      {/* Header */}
-
-      <div
-
-        style={{
-
-          display: "flex",
-
-          justifyContent: "space-between",
-
-          alignItems: "center",
-
-          marginBottom: 25,
-
-          flexWrap: "wrap",
-
-          gap: 15
-
-        }}
-
-      >
-
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-
-          <Link to="/suppliers">
-
-            <button
-
-              style={{
-
-                background: "#fff",
-
-                color: "#1f2937",
-
-                border: "1px solid #e5e7eb",
-
-                padding: "10px 16px",
-
-                borderRadius: 10,
-
-                cursor: "pointer",
-
-                display: "flex",
-
-                alignItems: "center",
-
-                gap: 8,
-
-                transition: "all 0.2s"
-
-              }}
-
-              onMouseEnter={(e) => {
-
-                e.target.style.background = "#f3f4f6";
-
-                e.target.style.borderColor = "#d1d5db";
-
-              }}
-
-              onMouseLeave={(e) => {
-
-                e.target.style.background = "#fff";
-
-                e.target.style.borderColor = "#e5e7eb";
-
-              }}
-
-            >
-
-              <FiArrowLeft />
-
-              Back
-
-            </button>
-
-          </Link>
-
-          <div>
-
-            <h1 style={{ margin: 0, color: "#1f2937" }}>
-
-              Edit Supplier
-
-            </h1>
-
-            <p style={{ color: "#6b7280", margin: "4px 0 0" }}>
-
-              Update supplier information
-
-            </p>
-
-          </div>
-
-        </div>
-
-      </div>
-
-
-      {/* Messages */}
-
-      {successMessage && (
-
-        <div
-
-          style={{
-
-            background: "#dcfce7",
-
-            color: "#166534",
-
-            padding: "12px 20px",
-
-            borderRadius: 10,
-
-            marginBottom: 20,
-
-            display: "flex",
-
-            alignItems: "center",
-
-            gap: 8
-
-          }}
-
-        >
-
-          <FiCheckCircle />
-
-          {successMessage}
-
-        </div>
-
-      )}
-
-
-      {errorMessage && (
-
-        <div
-
-          style={{
-
-            background: "#fee2e2",
-
-            color: "#991b1b",
-
-            padding: "12px 20px",
-
-            borderRadius: 10,
-
-            marginBottom: 20,
-
-            display: "flex",
-
-            alignItems: "center",
-
-            gap: 8
-
-          }}
-
-        >
-
-          <FiAlertCircle />
-
-          {errorMessage}
-
-        </div>
-
-      )}
-
-
-      {/* Form */}
-
-      <form onSubmit={handleSubmit}>
-
-        <div
-
-          style={{
-
-            display: "grid",
-
-            gap: 24
-
-          }}
-
-        >
-
-          {/* Personal Info */}
-
-          <div
-
-            style={{
-
-              background: "#fff",
-
-              borderRadius: 12,
-
-              padding: 24,
-
-              boxShadow: "0 2px 8px rgba(0,0,0,.08)"
-
-            }}
-
-          >
-
-            <h3
-
-              style={{
-
-                margin: "0 0 20px",
-
-                color: "#1f2937",
-
-                fontSize: 16,
-
-                display: "flex",
-
-                alignItems: "center",
-
-                gap: 8
-
-              }}
-
-            >
-
-              <FiUser />
-
-              Personal Information
-
-            </h3>
-
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-
-              <div>
-
-                <label
-
-                  style={{
-
-                    display: "block",
-
-                    fontSize: 14,
-
-                    fontWeight: 500,
-
-                    color: "#374151",
-
-                    marginBottom: 6
-
-                  }}
-
-                >
-
-                  Supplier Name <span style={{ color: "#ef4444" }}>\*</span>
-
-                </label>
-
-                <input
-
-                  type="text"
-
-                  name="supplier_name"
-
-                  value={formData.supplier_name}
-
-                  onChange={handleChange}
-
-                  placeholder="Enter supplier name"
-
-                  style={{
-
-                    width: "100%",
-
-                    padding: "10px 14px",
-
-                    borderRadius: 8,
-
-                    border: `1px solid ${errors.supplier_name ? "#ef4444" : "#d1d5db"}`,
-
-                    outline: "none",
-
-                    fontSize: 14,
-
-                    transition: "border-color 0.2s"
-
-                  }}
-
-                  onFocus={(e) => {
-
-                    e.target.style.borderColor = "#2563eb";
-
-                  }}
-
-                  onBlur={(e) => {
-
-                    if (!errors.supplier_name) {
-
-                      e.target.style.borderColor = "#d1d5db";
-
-                    }
-
-                  }}
-
-                />
-
-                {errors.supplier_name && (
-
-                  <div style={{ color: "#ef4444", fontSize: 13, marginTop: 4 }}>
-
-                    {errors.supplier_name}
-
-                  </div>
-
-                )}
-
-              </div>
-
-
-              <div>
-
-                <label
-
-                  style={{
-
-                    display: "block",
-
-                    fontSize: 14,
-
-                    fontWeight: 500,
-
-                    color: "#374151",
-
-                    marginBottom: 6
-
-                  }}
-
-                >
-
-                  Company Name
-
-                </label>
-
-                <input
-
-                  type="text"
-
-                  name="company_name"
-
-                  value={formData.company_name}
-
-                  onChange={handleChange}
-
-                  placeholder="Enter company name"
-
-                  style={{
-
-                    width: "100%",
-
-                    padding: "10px 14px",
-
-                    borderRadius: 8,
-
-                    border: "1px solid #d1d5db",
-
-                    outline: "none",
-
-                    fontSize: 14,
-
-                    transition: "border-color 0.2s"
-
-                  }}
-
-                  onFocus={(e) => {
-
-                    e.target.style.borderColor = "#2563eb";
-
-                  }}
-
-                  onBlur={(e) => {
-
-                    e.target.style.borderColor = "#d1d5db";
-
-                  }}
-
-                />
-
-              </div>
-
-            </div>
-
-          </div>
-
-
-          {/* Contact Info */}
-
-          <div
-
-            style={{
-
-              background: "#fff",
-
-              borderRadius: 12,
-
-              padding: 24,
-
-              boxShadow: "0 2px 8px rgba(0,0,0,.08)"
-
-            }}
-
-          >
-
-            <h3
-
-              style={{
-
-                margin: "0 0 20px",
-
-                color: "#1f2937",
-
-                fontSize: 16,
-
-                display: "flex",
-
-                alignItems: "center",
-
-                gap: 8
-
-              }}
-
-            >
-
-              <FiPhone />
-
-              Contact Details
-
-            </h3>
-
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-
-              <div>
-
-                <label
-
-                  style={{
-
-                    display: "block",
-
-                    fontSize: 14,
-
-                    fontWeight: 500,
-
-                    color: "#374151",
-
-                    marginBottom: 6
-
-                  }}
-
-                >
-
-                  Phone Number <span style={{ color: "#ef4444" }}>\*</span>
-
-                </label>
-
-                <input
-
-                  type="text"
-
-                  name="supplier_phone"
-
-                  value={formData.supplier_phone}
-
-                  onChange={handleChange}
-
-                  placeholder="Enter 10-digit phone number"
-
-                  style={{
-
-                    width: "100%",
-
-                    padding: "10px 14px",
-
-                    borderRadius: 8,
-
-                    border: `1px solid ${errors.supplier_phone ? "#ef4444" : "#d1d5db"}`,
-
-                    outline: "none",
-
-                    fontSize: 14,
-
-                    transition: "border-color 0.2s"
-
-                  }}
-
-                  onFocus={(e) => {
-
-                    e.target.style.borderColor = "#2563eb";
-
-                  }}
-
-                  onBlur={(e) => {
-
-                    if (!errors.supplier_phone) {
-
-                      e.target.style.borderColor = "#d1d5db";
-
-                    }
-
-                  }}
-
-                />
-
-                {errors.supplier_phone && (
-
-                  <div style={{ color: "#ef4444", fontSize: 13, marginTop: 4 }}>
-
-                    {errors.supplier_phone}
-
-                  </div>
-
-                )}
-
-              </div>
-
-
-              <div>
-
-                <label
-
-                  style={{
-
-                    display: "block",
-
-                    fontSize: 14,
-
-                    fontWeight: 500,
-
-                    color: "#374151",
-
-                    marginBottom: 6
-
-                  }}
-
-                >
-
-                  Email Address
-
-                </label>
-
-                <input
-
-                  type="email"
-
-                  name="supplier_email"
-
-                  value={formData.supplier_email}
-
-                  onChange={handleChange}
-
-                  placeholder="Enter email address"
-
-                  style={{
-
-                    width: "100%",
-
-                    padding: "10px 14px",
-
-                    borderRadius: 8,
-
-                    border: `1px solid ${errors.supplier_email ? "#ef4444" : "#d1d5db"}`,
-
-                    outline: "none",
-
-                    fontSize: 14,
-
-                    transition: "border-color 0.2s"
-
-                  }}
-
-                  onFocus={(e) => {
-
-                    e.target.style.borderColor = "#2563eb";
-
-                  }}
-
-                  onBlur={(e) => {
-
-                    if (!errors.supplier_email) {
-
-                      e.target.style.borderColor = "#d1d5db";
-
-                    }
-
-                  }}
-
-                />
-
-                {errors.supplier_email && (
-
-                  <div style={{ color: "#ef4444", fontSize: 13, marginTop: 4 }}>
-
-                    {errors.supplier_email}
-
-                  </div>
-
-                )}
-
-              </div>
-
-
-              <div>
-
-                <label
-
-                  style={{
-
-                    display: "block",
-
-                    fontSize: 14,
-
-                    fontWeight: 500,
-
-                    color: "#374151",
-
-                    marginBottom: 6
-
-                  }}
-
-                >
-
-                  <FiGlobe style={{ marginRight: 6 }} />
-
-                  GST Number
-
-                </label>
-
-                <input
-
-                  type="text"
-
-                  name="gst_number"
-
-                  value={formData.gst_number}
-
-                  onChange={handleChange}
-
-                  placeholder="Enter GST number"
-
-                  style={{
-
-                    width: "100%",
-
-                    padding: "10px 14px",
-
-                    borderRadius: 8,
-
-                    border: `1px solid ${errors.gst_number ? "#ef4444" : "#d1d5db"}`,
-
-                    outline: "none",
-
-                    fontSize: 14,
-
-                    transition: "border-color 0.2s"
-
-                  }}
-
-                  onFocus={(e) => {
-
-                    e.target.style.borderColor = "#2563eb";
-
-                  }}
-
-                  onBlur={(e) => {
-
-                    if (!errors.gst_number) {
-
-                      e.target.style.borderColor = "#d1d5db";
-
-                    }
-
-                  }}
-
-                />
-</div>
-
-            </div>
-
-          </div>
-
-
-          {/* Address Info */}
-
-          <div
-
-            style={{
-
-              background: "#fff",
-
-              borderRadius: 12,
-
-              padding: 24,
-
-              boxShadow: "0 2px 8px rgba(0,0,0,.08)"
-
-            }}
-
-          >
-
-            <h3
-
-              style={{
-
-                margin: "0 0 20px",
-
-                color: "#1f2937",
-
-                fontSize: 16,
-
-                display: "flex",
-
-                alignItems: "center",
-
-                gap: 8
-
-              }}
-
-            >
-
-              <FiMapPin />
-
-              Address Information
-
-            </h3>
-
-
-            <div style={{ display: "grid", gap: 20 }}>
-
-              <div>
-
-                <label
-
-                  style={{
-
-                    display: "block",
-
-                    fontSize: 14,
-
-                    fontWeight: 500,
-
-                    color: "#374151",
-
-                    marginBottom: 6
-
-                  }}
-
-                >
-
-                  Address
-
-                </label>
-
-                <input
-
-                  type="text"
-
-                  name="address"
-
-                  value={formData.address}
-
-                  onChange={handleChange}
-
-                  placeholder="Enter street address"
-
-                  style={{
-
-                    width: "100%",
-
-                    padding: "10px 14px",
-
-                    borderRadius: 8,
-
-                    border: "1px solid #d1d5db",
-
-                    outline: "none",
-
-                    fontSize: 14,
-
-                    transition: "border-color 0.2s"
-
-                  }}
-
-                  onFocus={(e) => {
-
-                    e.target.style.borderColor = "#2563eb";
-
-                  }}
-
-                  onBlur={(e) => {
-
-                    e.target.style.borderColor = "#d1d5db";
-
-                  }}
-
-                />
-
-              </div>
-
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 20 }}>
-
-                <div>
-
-                  <label
-
-                    style={{
-
-                      display: "block",
-
-                      fontSize: 14,
-
-                      fontWeight: 500,
-
-                      color: "#374151",
-
-                      marginBottom: 6
-
-                    }}
-
-                  >
-
-                    City
-
-                  </label>
-
-                  <input
-
-                    type="text"
-
-                    name="city"
-
-                    value={formData.city}
-
-                    onChange={handleChange}
-
-                    placeholder="Enter city"
-
-                    style={{
-
-                      width: "100%",
-
-                      padding: "10px 14px",
-
-                      borderRadius: 8,
-
-                      border: "1px solid #d1d5db",
-
-                      outline: "none",
-
-                      fontSize: 14,
-
-                      transition: "border-color 0.2s"
-
-                    }}
-
-                    onFocus={(e) => {
-
-                      e.target.style.borderColor = "#2563eb";
-
-                    }}
-
-                    onBlur={(e) => {
-
-                      e.target.style.borderColor = "#d1d5db";
-
-                    }}
-
-                  />
-
-                </div>
-
-
-                <div>
-
-                  <label
-
-                    style={{
-
-                      display: "block",
-
-                      fontSize: 14,
-
-                      fontWeight: 500,
-
-                      color: "#374151",
-
-                      marginBottom: 6
-
-                    }}
-
-                  >
-
-                    State
-
-                  </label>
-
-                  <input
-
-                    type="text"
-
-                    name="state"
-
-                    value={formData.state}
-
-                    onChange={handleChange}
-
-                    placeholder="Enter state"
-
-                    style={{
-
-                      width: "100%",
-
-                      padding: "10px 14px",
-
-                      borderRadius: 8,
-
-                      border: "1px solid #d1d5db",
-
-                      outline: "none",
-
-                      fontSize: 14,
-
-                      transition: "border-color 0.2s"
-
-                    }}
-
-                    onFocus={(e) => {
-
-                      e.target.style.borderColor = "#2563eb";
-
-                    }}
-
-                    onBlur={(e) => {
-
-                      e.target.style.borderColor = "#d1d5db";
-
-                    }}
-
-                  />
-
-                </div>
-
-
-                <div>
-
-                  <label
-
-                    style={{
-
-                      display: "block",
-
-                      fontSize: 14,
-
-                      fontWeight: 500,
-
-                      color: "#374151",
-
-                      marginBottom: 6
-
-                    }}
-
-                  >
-
-                    <FiHash style={{ marginRight: 6 }} />
-
-                    Pincode
-
-                  </label>
-
-                  <input
-
-                    type="text"
-
-                    name="pincode"
-
-                    value={formData.pincode}
-
-                    onChange={handleChange}
-
-                    placeholder="Enter 6-digit pincode"
-
-                    style={{
-
-                      width: "100%",
-
-                      padding: "10px 14px",
-
-                      borderRadius: 8,
-
-                      border: `1px solid ${errors.pincode ? "#ef4444" : "#d1d5db"}`,
-
-                      outline: "none",
-
-                      fontSize: 14,
-
-                      transition: "border-color 0.2s"
-
-                    }}
-
-                    onFocus={(e) => {
-
-                      e.target.style.borderColor = "#2563eb";
-
-                    }}
-
-                    onBlur={(e) => {
-
-                      if (!errors.pincode) {
-
-                        e.target.style.borderColor = "#d1d5db";
-
-                      }
-
-                    }}
-
-                  />
-
-                  {errors.pincode && (
-
-                    <div style={{ color: "#ef4444", fontSize: 13, marginTop: 4 }}>
-
-                      {errors.pincode}
-
-                    </div>
-
-                  )}
-
-                </div>
-
-              </div>
-
-            </div>
-
-          </div>
-
-
-          {/* Financial & Status */}
-
-          <div
-
-            style={{
-
-              background: "#fff",
-
-              borderRadius: 12,
-
-              padding: 24,
-
-              boxShadow: "0 2px 8px rgba(0,0,0,.08)"
-
-            }}
-
-          >
-
-            <h3
-
-              style={{
-
-                margin: "0 0 20px",
-
-                color: "#1f2937",
-
-                fontSize: 16,
-
-                display: "flex",
-
-                alignItems: "center",
-
-                gap: 8
-
-              }}
-
-            >
-
-              <FiCreditCard />
-
-              Financial & Status
-
-            </h3>
-
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-
-              <div>
-
-                <label
-
-                  style={{
-
-                    display: "block",
-
-                    fontSize: 14,
-
-                    fontWeight: 500,
-
-                    color: "#374151",
-
-                    marginBottom: 6
-
-                  }}
-
-                >
-
-                  Opening Balance
-
-                </label>
-
-                <div style={{ position: "relative" }}>
-
-                  <span
-
-                    style={{
-
-                      position: "absolute",
-
-                      left: 14,
-
-                      top: "50%",
-
-                      transform: "translateY(-50%)",
-
-                      color: "#6b7280",
-
-                      fontWeight: 500
-
-                    }}
-
-                  >
-
-                    ₹
-
-                  </span>
-
-                  <input
-
-                    type="number"
-
-                    name="opening_balance"
-
-                    value={formData.opening_balance}
-
-                    onChange={handleChange}
-
-                    placeholder="0.00"
-
-                    step="0.01"
-
-                    style={{
-
-                      width: "100%",
-
-                      padding: "10px 14px 10px 32px",
-
-                      borderRadius: 8,
-
-                      border: "1px solid #d1d5db",
-
-                      outline: "none",
-
-                      fontSize: 14,
-
-                      transition: "border-color 0.2s"
-
-                    }}
-
-                    onFocus={(e) => {
-
-                      e.target.style.borderColor = "#2563eb";
-
-                    }}
-
-                    onBlur={(e) => {
-
-                      e.target.style.borderColor = "#d1d5db";
-
-                    }}
-
-                  />
-
-                </div>
-
-              </div>
-
-
-              <div>
-
-                <label
-
-                  style={{
-
-                    display: "block",
-
-                    fontSize: 14,
-
-                    fontWeight: 500,
-
-                    color: "#374151",
-
-                    marginBottom: 6
-
-                  }}
-
-                >
-
-                  Status
-
-                </label>
-
-                <select
-
-                  name="status"
-
-                  value={formData.status}
-
-                  onChange={handleChange}
-
-                  style={{
-
-                    width: "100%",
-
-                    padding: "10px 14px",
-
-                    borderRadius: 8,
-
-                    border: "1px solid #d1d5db",
-
-                    outline: "none",
-
-                    fontSize: 14,
-
-                    background: "#fff",
-
-                    transition: "border-color 0.2s"
-
-                  }}
-
-                  onFocus={(e) => {
-
-                    e.target.style.borderColor = "#2563eb";
-
-                  }}
-
-                  onBlur={(e) => {
-
-                    e.target.style.borderColor = "#d1d5db";
-
-                  }}
-
-                >
-
-                  <option value="active">Active</option>
-
-                  <option value="inactive">Inactive</option>
-
-                  <option value="pending">Pending</option>
-
-                </select>
-
-              </div>
-
-            </div>
-
-          </div>
-
-
-          {/* Notes */}
-
-          <div
-
-            style={{
-
-              background: "#fff",
-
-              borderRadius: 12,
-
-              padding: 24,
-
-              boxShadow: "0 2px 8px rgba(0,0,0,.08)"
-
-            }}
-
-          >
-
-            <h3
-
-              style={{
-
-                margin: "0 0 20px",
-
-                color: "#1f2937",
-
-                fontSize: 16,
-
-                display: "flex",
-
-                alignItems: "center",
-
-                gap: 8
-
-              }}
-
-            >
-
-              <FiFileText />
-
-              Notes
-
-            </h3>
-
-
-            <textarea
-
-              name="notes"
-
-              value={formData.notes}
-
-              onChange={handleChange}
-
-              placeholder="Add any additional notes about the supplier..."
-
-              rows="4"
-
-              style={{
-
-                width: "100%",
-
-                padding: "10px 14px",
-
-                borderRadius: 8,
-
-                border: "1px solid #d1d5db",
-
-                outline: "none",
-
-                fontSize: 14,
-
-                fontFamily: "inherit",
-
-                resize: "vertical",
-
-                transition: "border-color 0.2s"
-
-              }}
-
-              onFocus={(e) => {
-
-                e.target.style.borderColor = "#2563eb";
-
-              }}
-
-              onBlur={(e) => {
-
-                e.target.style.borderColor = "#d1d5db";
-
-              }}
-
-            />
-
-          </div>
-
-
-          {/* Action Buttons */}
-
-          <div
-
-            style={{
-
-              display: "flex",
-
-              gap: 12,
-
-              justifyContent: "flex-end",
-
-              paddingTop: 8
-
-            }}
-
-          >
-
-            <button
-
-              type="button"
-
-              onClick={handleCancel}
-
-              style={{
-
-                padding: "12px 24px",
-
-                borderRadius: 10,
-
-                border: "1px solid #d1d5db",
-
-                background: "#fff",
-
-                color: "#374151",
-
-                cursor: "pointer",
-
-                fontWeight: 500,
-
-                transition: "all 0.2s",
-
-                display: "flex",
-
-                alignItems: "center",
-
-                gap: 8
-
-              }}
-
-              onMouseEnter={(e) => {
-
-                e.target.style.background = "#f3f4f6";
-
-                e.target.style.borderColor = "#9ca3af";
-
-              }}
-
-              onMouseLeave={(e) => {
-
-                e.target.style.background = "#fff";
-
-                e.target.style.borderColor = "#d1d5db";
-
-              }}
-
-            >
-
-              <FiX />
-
-              Cancel
-
-            </button>
-
-
-            <button
-
-              type="submit"
-
-              disabled={saving}
-
-              style={{
-
-                padding: "12px 32px",
-
-                borderRadius: 10,
-
-                border: "none",
-
-                background: saving ? "#93c5fd" : "#2563eb",
-
-                color: "#fff",
-
-                cursor: saving ? "not-allowed" : "pointer",
-
-                fontWeight: 500,
-
-                transition: "all 0.2s",
-
-                display: "flex",
-
-                alignItems: "center",
-
-                gap: 8
-
-              }}
-
-              onMouseEnter={(e) => {
-
-                if (!saving) {
-
-                  e.target.style.background = "#1d4ed8";
-
-                }
-
-              }}
-
-              onMouseLeave={(e) => {
-
-                if (!saving) {
-
-                  e.target.style.background = "#2563eb";
-
-                }
-
-              }}
-
-            >
-
-              <FiSave />
-
-              {saving ? "Saving..." : "Update Supplier"}
-
-            </button>
-
-          </div>
-
-        </div>
-
-      </form>
-
+      {errors[name] && <div className="supplier-edit-error-text">{errors[name]}</div>}
+      {options.help && <div className="supplier-edit-help">{options.help}</div>}
     </div>
-
   );
 
+  if (loading) return <><style>{styles}</style><div className="supplier-edit-loading"><div style={{textAlign:"center"}}><div className="supplier-edit-spinner"/><p style={{color:"#718096",marginTop:14}}>Loading supplier details...</p></div></div></>;
+
+  return (
+    <><style>{styles}</style><div className="supplier-edit-page"><div className="supplier-edit-wrap">
+      <header className="supplier-edit-header">
+        <div className="supplier-edit-title">
+          <button className="supplier-edit-back" type="button" onClick={() => navigate("/suppliers")} aria-label="Back to suppliers"><FiArrowLeft /></button>
+          <div className="supplier-edit-heading"><h1>Edit Supplier</h1><p>Update supplier profile and account information</p></div>
+        </div>
+        <div className="supplier-edit-pill"><FiShield /> Supplier profile management</div>
+      </header>
+
+      {successMessage && <div className="supplier-edit-alert supplier-edit-success"><FiCheckCircle />{successMessage}</div>}
+      {errorMessage && <div className="supplier-edit-alert supplier-edit-error"><FiAlertCircle />{errorMessage}</div>}
+
+      <form onSubmit={handleSubmit} className="supplier-edit-grid">
+        <section className="supplier-edit-card">
+          <div className="supplier-edit-card-head"><div className="supplier-edit-icon"><FiUser /></div><div><h3>Supplier Information</h3><p>Basic identity and company details</p></div></div>
+          <div className="supplier-edit-card-body"><div className="supplier-edit-fields">
+            {input("supplier_name","Supplier Name","Enter supplier name",<FiUser />,{required:true})}
+            {input("company_name","Company Name","Enter company or business name",<FiBriefcase />)}
+          </div></div>
+        </section>
+
+        <section className="supplier-edit-card">
+          <div className="supplier-edit-card-head"><div className="supplier-edit-icon"><FiPhone /></div><div><h3>Contact Details</h3><p>Phone, email and GST information</p></div></div>
+          <div className="supplier-edit-card-body"><div className="supplier-edit-fields">
+            {input("supplier_phone","Phone Number","Enter phone number",<FiPhone />,{required:true,type:"tel"})}
+            {input("supplier_email","Email Address","name@example.com",<FiMail />,{type:"email"})}
+            {input("gst_number","GST Number","Enter GST number",<FiGlobe />,{help:"GST field accepts any value; no GST format restriction."})}
+          </div></div>
+        </section>
+
+        <section className="supplier-edit-card">
+          <div className="supplier-edit-card-head"><div className="supplier-edit-icon"><FiMapPin /></div><div><h3>Address Information</h3><p>Supplier location and postal details</p></div></div>
+          <div className="supplier-edit-card-body"><div className="supplier-edit-fields">
+            {input("address","Street Address","Enter street address",<FiMapPin />,{full:true})}
+            {input("city","City","Enter city",<FiMapPin />)}
+            {input("state","State","Enter state",<FiGlobe />)}
+            {input("pincode","Pincode","Enter pincode",<FiHash />)}
+          </div></div>
+        </section>
+
+        <section className="supplier-edit-card">
+          <div className="supplier-edit-card-head"><div className="supplier-edit-icon"><FiCreditCard /></div><div><h3>Financial & Status</h3><p>Opening balance and supplier account status</p></div></div>
+          <div className="supplier-edit-card-body"><div className="supplier-edit-fields">
+            {input("opening_balance","Opening Balance (₹)","0.00",<FiDollarSign />,{type:"number"})}
+            <div className="supplier-edit-field"><label htmlFor="status">Supplier Status</label><select id="status" name="status" value={formData.status} onChange={handleChange}><option value="active">Active</option><option value="inactive">Inactive</option></select><div className="supplier-edit-help">Inactive suppliers can be retained in your records.</div></div>
+            <div className="supplier-edit-field full"><label htmlFor="notes">Notes</label><textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} placeholder="Add any notes about this supplier..." /></div>
+          </div></div>
+        </section>
+
+        <div className="supplier-edit-footer"><div className="supplier-edit-footer-note"><FiEdit3 /> Changes will be saved to this supplier profile</div><div className="supplier-edit-actions"><button type="button" className="supplier-edit-btn cancel" onClick={() => navigate("/suppliers")}><FiX /> Cancel</button><button type="submit" className="supplier-edit-btn save" disabled={saving}><FiSave /> {saving ? "Saving..." : "Save Changes"}</button></div></div>
+      </form>
+    </div></div></>
+  );
 }
