@@ -1802,7 +1802,11 @@ export default function PurchaseDetails() {
             <div className="pd-payment-history-table-wrap">
               <table className="pd-payment-history-table">
                 <thead><tr><th>#</th><th>Date &amp; Time</th><th>Method</th><th>Reference</th><th>Notes</th><th className="pd-right">Amount</th></tr></thead>
-                <tbody>{paymentHistory.map((payment, index) => (
+                <tbody>{[...paymentHistory].sort((a, b) => {
+                  const dateA = new Date(a.created_at || a.payment_date || 0).getTime();
+                  const dateB = new Date(b.created_at || b.payment_date || 0).getTime();
+                  return (Number.isFinite(dateA) ? dateA : 0) - (Number.isFinite(dateB) ? dateB : 0);
+                }).map((payment, index) => (
                   <tr key={payment.id || index}>
                     <td>{index + 1}</td>
                     <td><div className="pd-payment-date-time"><strong>{formatDateTime(payment.created_at || payment.payment_date).date}</strong><small>{formatDateTime(payment.created_at || payment.payment_date).time}</small></div></td>
