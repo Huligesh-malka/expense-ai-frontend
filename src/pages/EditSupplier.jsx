@@ -1018,7 +1018,7 @@ export default function EditSupplier() {
 
             formData.supplier_email &&
 
-            !/^[^\s@]+@[^\s@]+**\\.**[^\s@]+$/.test(formData.supplier_email)
+            !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.supplier_email)
 
         ) {
 
