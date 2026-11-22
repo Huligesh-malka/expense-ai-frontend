@@ -362,7 +362,7 @@ export default function EditProduct() {
                     <section className="ep-sec">
                         <div className="ep-sec-title">
                             <h2>Pricing</h2>
-                            <p>Both prices apply to the quantity set in “Priced per”.</p>
+                            <p>What you pay and what you charge, per unit.</p>
                         </div>
                         <div className="ep-fields">
                             <div className="ep-f">
@@ -407,25 +407,7 @@ export default function EditProduct() {
                                 </div>
                             </div>
 
-                            <div className="ep-f">
-                                <label htmlFor="price_per">
-                                    Priced per <b>*</b>
-                                </label>
-                                <input
-                                    id="price_per"
-                                    name="price_per"
-                                    type="number"
-                                    placeholder="1"
-                                    min="1"
-                                    step="1"
-                                    value={form.price_per}
-                                    onChange={handleChange}
-                                    required
-                                />
-                                <small>Example: 250 with a unit of g means the price is for 250 g.</small>
-                            </div>
-
-                            <div className="ep-f">
+                            <div className="ep-f ep-f--full">
                                 <label htmlFor="price_unit">
                                     Price unit <b>*</b>
                                 </label>
