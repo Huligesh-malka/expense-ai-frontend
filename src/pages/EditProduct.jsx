@@ -1,18 +1,54 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import API from "../services/api";
+
+const UNITS = [
+    { value: "pcs", label: "Pieces" },
+    { value: "kg", label: "Kilogram" },
+    { value: "g", label: "Gram" },
+    { value: "ml", label: "Milliliter" },
+    { value: "l", label: "Liter" },
+    { value: "pack", label: "Pack" },
+    { value: "box", label: "Box" },
+    { value: "bottle", label: "Bottle" },
+    { value: "dozen", label: "Dozen" },
+    { value: "meter", label: "Meter" },
+    { value: "feet", label: "Feet" }
+];
+
+const FALLBACK_CATEGORIES = [
+    { id: "electronics", name: "Electronics" },
+    { id: "clothing", name: "Clothing" },
+    { id: "food", name: "Food" },
+    { id: "medicine", name: "Medicine" },
+    { id: "grocery", name: "Grocery" },
+    { id: "restaurant", name: "Restaurant" },
+    { id: "medical", name: "Medical" },
+    { id: "other", name: "Other" }
+];
+
+const inr = (n) =>
+    "₹" +
+    Number(n).toLocaleString("en-IN", {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2
+    });
+
+const isBlank = (v) => v === "" || v === null || v === undefined;
 
 export default function EditProduct() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const redirectTimer = useRef(null);
 
-    const [loading, setLoading] = useState(false);
+    const [pageLoading, setPageLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState("");
     const [messageType, setMessageType] = useState("");
-
+    const [errors, setErrors] = useState({});
     const [categories, setCategories] = useState([]);
     const [loadingCategories, setLoadingCategories] = useState(false);
+    const [imageFailed, setImageFailed] = useState(false);
 
     const [form, setForm] = useState({
         category: "",
@@ -29,53 +65,44 @@ export default function EditProduct() {
         image: "",
         description: "",
         expiry_date: "",
-        status: "active",
+        status: "active"
     });
 
     useEffect(() => {
         loadProduct();
         loadCategories();
+        return () => clearTimeout(redirectTimer.current);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id]);
+
+    useEffect(() => {
+        setImageFailed(false);
+    }, [form.image]);
 
     const loadCategories = async () => {
         setLoadingCategories(true);
-
         try {
             const res = await API.get("/categories");
             setCategories(res.data.data || []);
         } catch (err) {
             console.error("Error loading categories:", err);
-
-            setCategories([
-                { id: "electronics", name: "Electronics" },
-                { id: "clothing", name: "Clothing" },
-                { id: "food", name: "Food" },
-                { id: "medicine", name: "Medicine" },
-                { id: "grocery", name: "Grocery" },
-                { id: "restaurant", name: "Restaurant" },
-                { id: "medical", name: "Medical" },
-                { id: "other", name: "Other" },
-            ]);
+            setCategories(FALLBACK_CATEGORIES);
         } finally {
             setLoadingCategories(false);
         }
     };
 
     const loadProduct = async () => {
-        setLoading(true);
-
+        setPageLoading(true);
         try {
             const res = await API.get(`/products/${id}`);
             const product = res.data.data;
 
             let expiryDate = "";
-
             if (product.expiry_date) {
-                const date = new Date(product.expiry_date);
-
-                if (!isNaN(date.getTime())) {
-                    expiryDate = date.toISOString().split("T")[0];
-                }
+                expiryDate = new Date(product.expiry_date)
+                    .toISOString()
+                    .split("T")[0];
             }
 
             setForm({
@@ -93,67 +120,59 @@ export default function EditProduct() {
                 image: product.image || "",
                 description: product.description || "",
                 expiry_date: expiryDate,
-                status: product.status || "active",
+                status: product.status || "active"
             });
-
             setMessage("");
         } catch (err) {
             console.error("Error loading product:", err);
-
-            setMessage("Product not found or failed to load");
+            setMessage("Couldn't load this product. Taking you back to your products.");
             setMessageType("error");
-
-            setTimeout(() => {
-                navigate("/products");
-            }, 2000);
+            redirectTimer.current = setTimeout(() => navigate("/products"), 2000);
         } finally {
-            setLoading(false);
+            setPageLoading(false);
         }
     };
 
     const handleChange = (e) => {
         const { name, value } = e.target;
+        setForm((prev) => ({ ...prev, [name]: value }));
+        if (errors[name]) {
+            setErrors((prev) => {
+                const next = { ...prev };
+                delete next[name];
+                return next;
+            });
+        }
+    };
 
-        setForm((prev) => ({
-            ...prev,
-            [name]: value,
-        }));
+    const validate = () => {
+        const next = {};
+        if (!form.product_name.trim()) next.product_name = "Enter a product name";
+        if (!form.category) next.category = "Choose a category";
+        if (isBlank(form.purchase_price)) next.purchase_price = "Enter the purchase price";
+        if (isBlank(form.selling_price)) next.selling_price = "Enter the selling price";
+        if (isBlank(form.stock)) next.stock = "Enter the stock quantity";
+        if (isBlank(form.price_per) || Number(form.price_per) <= 0)
+            next.price_per = "Must be greater than 0";
+        if (!form.price_unit) next.price_unit = "Choose a unit";
+        return next;
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-
-        setSaving(true);
         setMessage("");
         setMessageType("");
 
-        if (
-            !form.product_name ||
-            !form.category ||
-            !form.purchase_price ||
-            !form.selling_price ||
-            !form.stock
-        ) {
-            setMessage("Please fill in all required fields");
+        const found = validate();
+        setErrors(found);
+        if (Object.keys(found).length > 0) {
+            setMessage("Some fields need your attention before you can save.");
             setMessageType("error");
-            setSaving(false);
+            window.scrollTo({ top: 0, behavior: "smooth" });
             return;
         }
 
-        if (form.price_per <= 0) {
-            setMessage("Price Per must be greater than 0");
-            setMessageType("error");
-            setSaving(false);
-            return;
-        }
-
-        if (!form.price_unit) {
-            setMessage("Please select a price unit");
-            setMessageType("error");
-            setSaving(false);
-            return;
-        }
-
+        setSaving(true);
         try {
             const submitData = {
                 category: form.category,
@@ -166,1036 +185,554 @@ export default function EditProduct() {
                 price_unit: form.price_unit,
                 stock: parseFloat(form.stock),
                 unit: form.stock_unit,
-                min_stock: parseInt(form.min_stock),
+                min_stock: parseInt(form.min_stock) || 0,
                 image: form.image,
                 description: form.description,
                 expiry_date: form.expiry_date || null,
-                status: form.status,
+                status: form.status
             };
 
             await API.put(`/products/${id}`, submitData);
 
-            setMessage("Product updated successfully!");
+            setMessage("Product updated. Taking you back to your products.");
             setMessageType("success");
-
-            setTimeout(() => {
-                navigate("/products");
-            }, 1500);
+            redirectTimer.current = setTimeout(() => navigate("/products"), 1800);
         } catch (err) {
             console.error("Error updating product:", err);
-
-            const errorMessage =
+            setMessage(
                 err.response?.data?.message ||
-                "Failed to update product. Please try again.";
-
-            setMessage(errorMessage);
+                    "Couldn't update the product. Check your connection and try again."
+            );
             setMessageType("error");
+            window.scrollTo({ top: 0, behavior: "smooth" });
         } finally {
             setSaving(false);
         }
     };
 
-    const inputStyle = {
-        width: "100%",
-        padding: "12px 14px",
-        border: "1px solid #e2e8f0",
-        borderRadius: "10px",
-        background: "#ffffff",
-        fontSize: "14px",
-        color: "#1e293b",
-        outline: "none",
-        boxSizing: "border-box",
-        transition: "all 0.2s ease",
-    };
+    /* ---------- Derived values for the live summary ---------- */
 
-    const labelStyle = {
-        display: "block",
-        fontSize: "13px",
-        fontWeight: "600",
-        color: "#475569",
-        marginBottom: "8px",
-    };
+    const margin = useMemo(() => {
+        const p = parseFloat(form.purchase_price);
+        const s = parseFloat(form.selling_price);
+        if (!isFinite(p) || !isFinite(s) || s <= 0) return null;
+        const profit = s - p;
+        return { profit, percent: (profit / s) * 100 };
+    }, [form.purchase_price, form.selling_price]);
 
-    const fieldStyle = {
-        marginBottom: "22px",
-    };
+    const stockState = useMemo(() => {
+        if (isBlank(form.stock)) return null;
+        const stock = parseFloat(form.stock);
+        const min = parseFloat(form.min_stock) || 0;
+        if (stock <= 0) return { tone: "bad", text: "Out of stock" };
+        if (stock <= min) return { tone: "warn", text: "Low stock" };
+        return { tone: "good", text: "In stock" };
+    }, [form.stock, form.min_stock]);
 
-    const requiredStyle = {
-        color: "#ef4444",
-        marginLeft: "3px",
-    };
+    const expiryState = useMemo(() => {
+        if (!form.expiry_date) return null;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const days = Math.round(
+            (new Date(form.expiry_date) - today) / (1000 * 60 * 60 * 24)
+        );
+        if (days < 0) return { tone: "bad", text: `Expired ${Math.abs(days)} day${Math.abs(days) === 1 ? "" : "s"} ago` };
+        if (days === 0) return { tone: "bad", text: "Expires today" };
+        if (days <= 30) return { tone: "warn", text: `Expires in ${days} day${days === 1 ? "" : "s"}` };
+        return { tone: "good", text: `Expires in ${days} days` };
+    }, [form.expiry_date]);
 
-    const helperStyle = {
-        color: "#94a3b8",
-        fontSize: "12px",
-        marginTop: "6px",
-        display: "block",
-    };
+    const unitLabel = (v) => UNITS.find((u) => u.value === v)?.label || v;
+    const marginTone = margin ? (margin.profit < 0 ? "bad" : margin.percent < 10 ? "warn" : "good") : "idle";
 
-    const sectionStyle = {
-        background: "#ffffff",
-        border: "1px solid #e5e7eb",
-        borderRadius: "16px",
-        padding: "26px",
-        marginBottom: "22px",
-    };
+    /* ---------- Loading state ---------- */
 
-    const sectionHeaderStyle = {
-        display: "flex",
-        alignItems: "center",
-        gap: "12px",
-        marginBottom: "24px",
-        paddingBottom: "18px",
-        borderBottom: "1px solid #f1f5f9",
-    };
-
-    const sectionIconStyle = {
-        width: "42px",
-        height: "42px",
-        borderRadius: "12px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#eff6ff",
-        color: "#2563eb",
-        fontSize: "20px",
-        flexShrink: 0,
-    };
-
-    const sectionTitleStyle = {
-        margin: 0,
-        fontSize: "16px",
-        fontWeight: "700",
-        color: "#0f172a",
-    };
-
-    const sectionSubtitleStyle = {
-        margin: "5px 0 0",
-        color: "#94a3b8",
-        fontSize: "12px",
-    };
-
-    if (loading && !form.product_name) {
+    if (pageLoading) {
         return (
-            <div style={styles.page}>
-                <div style={styles.loadingContainer}>
-                    <div style={styles.spinner}></div>
-                    <h3 style={{ color: "#334155", margin: "16px 0 8px" }}>
-                        Loading product
-                    </h3>
-                    <p style={{ color: "#94a3b8", margin: 0 }}>
-                        Please wait while we load product details...
-                    </p>
+            <div className="ep-root">
+                <style>{css}</style>
+                <div className="ep-wrap">
+                    <div className="ep-skel ep-skel-title" />
+                    <div className="ep-layout">
+                        <div className="ep-skel ep-skel-main" />
+                        <div className="ep-skel ep-skel-side" />
+                    </div>
+                    {message && (
+                        <div className={`ep-banner ep-banner-${messageType}`} role="alert">
+                            {message}
+                        </div>
+                    )}
                 </div>
             </div>
         );
     }
 
-    return (
-        <div style={styles.page}>
-            <style>{`
-                * {
-                    box-sizing: border-box;
-                }
+    /* ---------- Small field helpers ---------- */
 
-                .edit-product-input:focus {
-                    border-color: #3b82f6 !important;
-                    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12) !important;
-                    background: #ffffff !important;
-                }
-
-                .edit-product-button {
-                    transition: all 0.2s ease;
-                }
-
-                .edit-product-button:hover {
-                    transform: translateY(-1px);
-                }
-
-                .edit-product-cancel:hover {
-                    background: #f1f5f9 !important;
-                }
-
-                .edit-product-save:hover {
-                    background: #1d4ed8 !important;
-                    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.25);
-                }
-
-                @keyframes editProductSpin {
-                    to {
-                        transform: rotate(360deg);
-                    }
-                }
-
-                .edit-product-spinner {
-                    animation: editProductSpin 0.8s linear infinite;
-                }
-
-                @media (max-width: 768px) {
-                    .edit-product-grid {
-                        grid-template-columns: 1fr !important;
-                    }
-
-                    .edit-product-page {
-                        padding: 15px !important;
-                    }
-
-                    .edit-product-section {
-                        padding: 20px !important;
-                    }
-
-                    .edit-product-header {
-                        flex-direction: column !important;
-                        align-items: flex-start !important;
-                    }
-
-                    .edit-product-actions {
-                        flex-direction: column-reverse !important;
-                    }
-
-                    .edit-product-actions button {
-                        width: 100% !important;
-                    }
-                }
-            `}</style>
-
-            {/* Page Header */}
-            <div
-                className="edit-product-header"
-                style={styles.header}
-            >
-                <div>
-                    <div style={styles.breadcrumb}>
-                        <span
-                            onClick={() => navigate("/products")}
-                            style={styles.breadcrumbLink}
-                        >
-                            Products
-                        </span>
-
-                        <span style={{ color: "#cbd5e1" }}> / </span>
-
-                        <span style={{ color: "#64748b" }}>
-                            Edit Product
-                        </span>
-                    </div>
-
-                    <h1 style={styles.pageTitle}>
-                        Edit Product
-                    </h1>
-
-                    <p style={styles.pageSubtitle}>
-                        Update product information, pricing and inventory details.
-                    </p>
-                </div>
-
-                <div style={styles.headerBadge}>
-                    <span style={styles.headerBadgeIcon}>✏️</span>
-                    <div>
-                        <div style={styles.headerBadgeTitle}>
-                            Product Editing
-                        </div>
-                        <div style={styles.headerBadgeSubtitle}>
-                            ID: #{id}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Message */}
-            {message && (
-                <div
-                    style={{
-                        ...styles.message,
-                        ...(messageType === "success"
-                            ? styles.successMessage
-                            : styles.errorMessage),
-                    }}
-                >
-                    <span style={{ fontSize: "18px" }}>
-                        {messageType === "success" ? "✓" : "⚠"}
-                    </span>
-
-                    <span>{message}</span>
-                </div>
+    const Field = ({ label, name, required, hint, children }) => (
+        <div className="ep-field">
+            <label className="ep-label" htmlFor={name}>
+                {label}
+                {required && <span className="ep-req" aria-hidden="true"> *</span>}
+            </label>
+            {children}
+            {errors[name] ? (
+                <span className="ep-error" id={`${name}-error`}>{errors[name]}</span>
+            ) : (
+                hint && <span className="ep-hint">{hint}</span>
             )}
+        </div>
+    );
 
-            <form onSubmit={handleSubmit}>
-                {/* Basic Information */}
-                <div
-                    className="edit-product-section"
-                    style={sectionStyle}
-                >
-                    <div style={sectionHeaderStyle}>
-                        <div style={sectionIconStyle}>
-                            📦
-                        </div>
+    const inputProps = (name) => ({
+        id: name,
+        name,
+        value: form[name] ?? "",
+        onChange: handleChange,
+        className: `ep-input${errors[name] ? " ep-input-error" : ""}`,
+        "aria-invalid": errors[name] ? "true" : undefined,
+        "aria-describedby": errors[name] ? `${name}-error` : undefined
+    });
 
-                        <div>
-                            <h3 style={sectionTitleStyle}>
-                                Basic Information
-                            </h3>
+    const unitOptions = UNITS.map((u) => (
+        <option key={u.value} value={u.value}>
+            {u.label}
+        </option>
+    ));
 
-                            <p style={sectionSubtitleStyle}>
-                                Product name, category and identification
-                            </p>
-                        </div>
-                    </div>
+    return (
+        <div className="ep-root">
+            <style>{css}</style>
 
-                    <div
-                        className="edit-product-grid"
-                        style={{
-                            display: "grid",
-                            gridTemplateColumns: "1fr 1fr",
-                            gap: "20px",
-                        }}
-                    >
-                        {/* Product Name */}
-                        <div style={{ ...fieldStyle, gridColumn: "1 / -1" }}>
-                            <label style={labelStyle}>
-                                Product Name
-                                <span style={requiredStyle}>*</span>
-                            </label>
-
-                            <input
-                                className="edit-product-input"
-                                type="text"
-                                name="product_name"
-                                placeholder="Enter product name"
-                                value={form.product_name || ""}
-                                onChange={handleChange}
-                                required
-                                style={inputStyle}
-                            />
-                        </div>
-
-                        {/* Category */}
-                        <div style={fieldStyle}>
-                            <label style={labelStyle}>
-                                Category
-                                <span style={requiredStyle}>*</span>
-                            </label>
-
-                            <select
-                                className="edit-product-input"
-                                name="category"
-                                value={form.category || ""}
-                                onChange={handleChange}
-                                required
-                                disabled={loadingCategories}
-                                style={inputStyle}
-                            >
-                                <option value="">
-                                    {loadingCategories
-                                        ? "Loading categories..."
-                                        : "Select Category"}
-                                </option>
-
-                                {categories.map((cat) => (
-                                    <option
-                                        key={cat.id || cat}
-                                        value={cat.id || cat}
-                                    >
-                                        {cat.name || cat}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* Product Code */}
-                        <div style={fieldStyle}>
-                            <label style={labelStyle}>
-                                Product Code
-                            </label>
-
-                            <input
-                                className="edit-product-input"
-                                type="text"
-                                name="product_code"
-                                placeholder="e.g. PRD-001"
-                                value={form.product_code || ""}
-                                onChange={handleChange}
-                                style={inputStyle}
-                            />
-                        </div>
-
-                        {/* Barcode */}
-                        <div style={fieldStyle}>
-                            <label style={labelStyle}>
-                                Barcode
-                            </label>
-
-                            <input
-                                className="edit-product-input"
-                                type="text"
-                                name="barcode"
-                                placeholder="Enter barcode number"
-                                value={form.barcode || ""}
-                                onChange={handleChange}
-                                style={inputStyle}
-                            />
-                        </div>
-
-                        {/* Status */}
-                        <div style={fieldStyle}>
-                            <label style={labelStyle}>
-                                Product Status
-                            </label>
-
-                            <select
-                                className="edit-product-input"
-                                name="status"
-                                value={form.status || "active"}
-                                onChange={handleChange}
-                                style={inputStyle}
-                            >
-                                <option value="active">
-                                    Active
-                                </option>
-
-                                <option value="inactive">
-                                    Inactive
-                                </option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Pricing */}
-                <div
-                    className="edit-product-section"
-                    style={sectionStyle}
-                >
-                    <div style={sectionHeaderStyle}>
-                        <div
-                            style={{
-                                ...sectionIconStyle,
-                                background: "#f0fdf4",
-                                color: "#16a34a",
-                            }}
-                        >
-                            💰
-                        </div>
-
-                        <div>
-                            <h3 style={sectionTitleStyle}>
-                                Pricing Information
-                            </h3>
-
-                            <p style={sectionSubtitleStyle}>
-                                Purchase price, selling price and unit pricing
-                            </p>
-                        </div>
-                    </div>
-
-                    <div
-                        className="edit-product-grid"
-                        style={{
-                            display: "grid",
-                            gridTemplateColumns: "1fr 1fr",
-                            gap: "20px",
-                        }}
-                    >
-                        {/* Purchase Price */}
-                        <div style={fieldStyle}>
-                            <label style={labelStyle}>
-                                Purchase Price
-                                <span style={requiredStyle}>*</span>
-                            </label>
-
-                            <div style={styles.priceInputWrapper}>
-                                <span style={styles.currencySymbol}>
-                                    ₹
-                                </span>
-
-                                <input
-                                    className="edit-product-input"
-                                    type="number"
-                                    name="purchase_price"
-                                    placeholder="0.00"
-                                    value={form.purchase_price || ""}
-                                    onChange={handleChange}
-                                    required
-                                    min="0"
-                                    step="0.01"
-                                    style={{
-                                        ...inputStyle,
-                                        paddingLeft: "38px",
-                                    }}
-                                />
-                            </div>
-                        </div>
-
-                        {/* Selling Price */}
-                        <div style={fieldStyle}>
-                            <label style={labelStyle}>
-                                Selling Price
-                                <span style={requiredStyle}>*</span>
-                            </label>
-
-                            <div style={styles.priceInputWrapper}>
-                                <span style={styles.currencySymbol}>
-                                    ₹
-                                </span>
-
-                                <input
-                                    className="edit-product-input"
-                                    type="number"
-                                    name="selling_price"
-                                    placeholder="0.00"
-                                    value={form.selling_price || ""}
-                                    onChange={handleChange}
-                                    required
-                                    min="0"
-                                    step="0.01"
-                                    style={{
-                                        ...inputStyle,
-                                        paddingLeft: "38px",
-                                    }}
-                                />
-                            </div>
-                        </div>
-
-                        {/* Price Per */}
-                        <div style={fieldStyle}>
-                            <label style={labelStyle}>
-                                Price Per
-                                <span style={requiredStyle}>*</span>
-                            </label>
-
-                            <input
-                                className="edit-product-input"
-                                type="number"
-                                name="price_per"
-                                placeholder="1"
-                                value={form.price_per || ""}
-                                onChange={handleChange}
-                                required
-                                min="1"
-                                step="1"
-                                style={inputStyle}
-                            />
-
-                            <small style={helperStyle}>
-                                Quantity per unit price
-                            </small>
-                        </div>
-
-                        {/* Price Unit */}
-                        <div style={fieldStyle}>
-                            <label style={labelStyle}>
-                                Price Unit
-                                <span style={requiredStyle}>*</span>
-                            </label>
-
-                            <select
-                                className="edit-product-input"
-                                name="price_unit"
-                                value={form.price_unit || "pcs"}
-                                onChange={handleChange}
-                                required
-                                style={inputStyle}
-                            >
-                                <option value="pcs">Pieces</option>
-                                <option value="kg">Kilogram</option>
-                                <option value="g">Gram</option>
-                                <option value="ml">Milliliter</option>
-                                <option value="l">Liter</option>
-                                <option value="pack">Pack</option>
-                                <option value="box">Box</option>
-                                <option value="bottle">Bottle</option>
-                                <option value="dozen">Dozen</option>
-                                <option value="meter">Meter</option>
-                                <option value="feet">Feet</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Inventory */}
-                <div
-                    className="edit-product-section"
-                    style={sectionStyle}
-                >
-                    <div style={sectionHeaderStyle}>
-                        <div
-                            style={{
-                                ...sectionIconStyle,
-                                background: "#fff7ed",
-                                color: "#ea580c",
-                            }}
-                        >
-                            📊
-                        </div>
-
-                        <div>
-                            <h3 style={sectionTitleStyle}>
-                                Inventory Information
-                            </h3>
-
-                            <p style={sectionSubtitleStyle}>
-                                Stock quantity and inventory control
-                            </p>
-                        </div>
-                    </div>
-
-                    <div
-                        className="edit-product-grid"
-                        style={{
-                            display: "grid",
-                            gridTemplateColumns: "1fr 1fr",
-                            gap: "20px",
-                        }}
-                    >
-                        {/* Stock */}
-                        <div style={fieldStyle}>
-                            <label style={labelStyle}>
-                                Stock Quantity
-                                <span style={requiredStyle}>*</span>
-                            </label>
-
-                            <input
-                                className="edit-product-input"
-                                type="number"
-                                name="stock"
-                                placeholder="0"
-                                value={form.stock || ""}
-                                onChange={handleChange}
-                                required
-                                min="0"
-                                step="0.01"
-                                style={inputStyle}
-                            />
-                        </div>
-
-                        {/* Stock Unit */}
-                        <div style={fieldStyle}>
-                            <label style={labelStyle}>
-                                Stock Unit
-                                <span style={requiredStyle}>*</span>
-                            </label>
-
-                            <select
-                                className="edit-product-input"
-                                name="stock_unit"
-                                value={form.stock_unit || "pcs"}
-                                onChange={handleChange}
-                                required
-                                style={inputStyle}
-                            >
-                                <option value="pcs">Pieces</option>
-                                <option value="kg">Kilogram</option>
-                                <option value="g">Gram</option>
-                                <option value="ml">Milliliter</option>
-                                <option value="l">Liter</option>
-                                <option value="pack">Pack</option>
-                                <option value="box">Box</option>
-                                <option value="bottle">Bottle</option>
-                                <option value="dozen">Dozen</option>
-                                <option value="meter">Meter</option>
-                                <option value="feet">Feet</option>
-                            </select>
-                        </div>
-
-                        {/* Minimum Stock */}
-                        <div style={fieldStyle}>
-                            <label style={labelStyle}>
-                                Minimum Stock
-                            </label>
-
-                            <input
-                                className="edit-product-input"
-                                type="number"
-                                name="min_stock"
-                                placeholder="5"
-                                value={form.min_stock || ""}
-                                onChange={handleChange}
-                                min="0"
-                                step="1"
-                                style={inputStyle}
-                            />
-
-                            <small style={helperStyle}>
-                                Alert when stock reaches this quantity
-                            </small>
-                        </div>
-
-                        {/* Expiry */}
-                        <div style={fieldStyle}>
-                            <label style={labelStyle}>
-                                Expiry Date
-                            </label>
-
-                            <input
-                                className="edit-product-input"
-                                type="date"
-                                name="expiry_date"
-                                value={form.expiry_date || ""}
-                                onChange={handleChange}
-                                style={inputStyle}
-                            />
-
-                            <small style={helperStyle}>
-                                Leave empty if product doesn't have an expiry date
-                            </small>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Additional Details */}
-                <div
-                    className="edit-product-section"
-                    style={sectionStyle}
-                >
-                    <div style={sectionHeaderStyle}>
-                        <div
-                            style={{
-                                ...sectionIconStyle,
-                                background: "#f5f3ff",
-                                color: "#7c3aed",
-                            }}
-                        >
-                            📝
-                        </div>
-
-                        <div>
-                            <h3 style={sectionTitleStyle}>
-                                Additional Details
-                            </h3>
-
-                            <p style={sectionSubtitleStyle}>
-                                Product description and image
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Description */}
-                    <div style={fieldStyle}>
-                        <label style={labelStyle}>
-                            Description
-                        </label>
-
-                        <textarea
-                            className="edit-product-input"
-                            name="description"
-                            placeholder="Enter product description..."
-                            rows="4"
-                            value={form.description || ""}
-                            onChange={handleChange}
-                            style={{
-                                ...inputStyle,
-                                resize: "vertical",
-                                minHeight: "110px",
-                                fontFamily: "inherit",
-                            }}
-                        />
-                    </div>
-
-                    {/* Image */}
-                    <div style={fieldStyle}>
-                        <label style={labelStyle}>
-                            Product Image URL
-                        </label>
-
-                        <input
-                            className="edit-product-input"
-                            type="text"
-                            name="image"
-                            placeholder="https://example.com/product-image.jpg"
-                            value={form.image || ""}
-                            onChange={handleChange}
-                            style={inputStyle}
-                        />
-
-                        {form.image && (
-                            <div style={styles.imagePreview}>
-                                <img
-                                    src={form.image}
-                                    alt="Product preview"
-                                    style={styles.previewImage}
-                                    onError={(e) => {
-                                        e.target.style.display = "none";
-                                    }}
-                                />
-
-                                <div>
-                                    <div style={styles.previewTitle}>
-                                        Image Preview
-                                    </div>
-
-                                    <div style={styles.previewSubtitle}>
-                                        Product image URL
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Bottom Actions */}
-                <div
-                    className="edit-product-actions"
-                    style={styles.actions}
-                >
+            <form className="ep-wrap" onSubmit={handleSubmit} noValidate>
+                {/* Header */}
+                <header className="ep-header">
                     <button
                         type="button"
-                        className="edit-product-button edit-product-cancel"
+                        className="ep-back"
                         onClick={() => navigate("/products")}
-                        style={styles.cancelButton}
                     >
-                        ← Cancel
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                            <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        Products
                     </button>
+                    <h1 className="ep-title">Edit product</h1>
+                    <p className="ep-subtitle">
+                        {form.product_name || "Untitled product"}
+                        {form.product_code && <span className="ep-code">{form.product_code}</span>}
+                    </p>
+                </header>
 
-                    <button
-                        type="submit"
-                        disabled={saving}
-                        className="edit-product-button edit-product-save"
-                        style={{
-                            ...styles.saveButton,
-                            ...(saving ? styles.disabledButton : {}),
-                        }}
-                    >
-                        {saving ? (
-                            <>
-                                <span
-                                    className="edit-product-spinner"
-                                    style={styles.buttonSpinner}
-                                ></span>
+                {message && (
+                    <div className={`ep-banner ep-banner-${messageType}`} role="alert">
+                        {message}
+                    </div>
+                )}
 
-                                Saving Changes...
-                            </>
-                        ) : (
-                            <>
-                                <span>✓</span>
-                                Update Product
-                            </>
-                        )}
-                    </button>
+                <div className="ep-layout">
+                    {/* ---------------- Main column ---------------- */}
+                    <div className="ep-main">
+                        <section className="ep-section">
+                            <h2 className="ep-section-title">Basic details</h2>
+
+                            <Field label="Product name" name="product_name" required>
+                                <input {...inputProps("product_name")} type="text" placeholder="e.g. Toor dal 1 kg" />
+                            </Field>
+
+                            <Field
+                                label="Category"
+                                name="category"
+                                required
+                                hint={loadingCategories ? "Loading categories…" : undefined}
+                            >
+                                <select {...inputProps("category")} disabled={loadingCategories}>
+                                    <option value="">Select a category</option>
+                                    {categories.map((cat) => (
+                                        <option key={cat.id || cat} value={cat.id || cat}>
+                                            {cat.name || cat}
+                                        </option>
+                                    ))}
+                                </select>
+                            </Field>
+
+                            <div className="ep-row">
+                                <Field label="Product code" name="product_code">
+                                    <input {...inputProps("product_code")} type="text" placeholder="e.g. PRD-001" />
+                                </Field>
+                                <Field label="Barcode" name="barcode">
+                                    <input {...inputProps("barcode")} type="text" placeholder="Scan or type barcode" inputMode="numeric" />
+                                </Field>
+                            </div>
+
+                            <Field label="Description" name="description">
+                                <textarea
+                                    {...inputProps("description")}
+                                    rows={3}
+                                    placeholder="Brand, size, anything your staff should know"
+                                    className="ep-input ep-textarea"
+                                />
+                            </Field>
+                        </section>
+
+                        <section className="ep-section">
+                            <h2 className="ep-section-title">Pricing</h2>
+
+                            <div className="ep-row">
+                                <Field label="Purchase price (₹)" name="purchase_price" required>
+                                    <input {...inputProps("purchase_price")} type="number" min="0" step="0.01" placeholder="0.00" inputMode="decimal" />
+                                </Field>
+                                <Field label="Selling price (₹)" name="selling_price" required>
+                                    <input {...inputProps("selling_price")} type="number" min="0" step="0.01" placeholder="0.00" inputMode="decimal" />
+                                </Field>
+                            </div>
+
+                            <div className="ep-row">
+                                <Field label="Prices are for" name="price_per" required hint="How many units one price covers">
+                                    <input {...inputProps("price_per")} type="number" min="1" step="1" placeholder="1" inputMode="numeric" />
+                                </Field>
+                                <Field label="Price unit" name="price_unit" required>
+                                    <select {...inputProps("price_unit")}>{unitOptions}</select>
+                                </Field>
+                            </div>
+                        </section>
+
+                        <section className="ep-section">
+                            <h2 className="ep-section-title">Stock</h2>
+
+                            <div className="ep-row">
+                                <Field label="Stock quantity" name="stock" required>
+                                    <input {...inputProps("stock")} type="number" min="0" step="0.01" placeholder="0" inputMode="decimal" />
+                                </Field>
+                                <Field label="Stock unit" name="stock_unit" required>
+                                    <select {...inputProps("stock_unit")}>{unitOptions}</select>
+                                </Field>
+                            </div>
+
+                            <div className="ep-row">
+                                <Field label="Low-stock alert at" name="min_stock" hint="You'll be warned when stock falls to this level">
+                                    <input {...inputProps("min_stock")} type="number" min="0" placeholder="5" inputMode="numeric" />
+                                </Field>
+                                <Field
+                                    label="Expiry date"
+                                    name="expiry_date"
+                                    hint={expiryState ? undefined : "Leave empty if this product doesn't expire"}
+                                >
+                                    <input {...inputProps("expiry_date")} type="date" />
+                                    {expiryState && (
+                                        <span className={`ep-chip ep-chip-${expiryState.tone}`}>{expiryState.text}</span>
+                                    )}
+                                </Field>
+                            </div>
+                        </section>
+
+                        {/* Sticky action bar */}
+                        <div className="ep-actions">
+                            <button type="button" className="ep-btn ep-btn-ghost" onClick={() => navigate("/products")}>
+                                Cancel
+                            </button>
+                            <button type="submit" className="ep-btn ep-btn-primary" disabled={saving}>
+                                {saving ? (
+                                    <>
+                                        <span className="ep-spinner" aria-hidden="true" />
+                                        Saving…
+                                    </>
+                                ) : (
+                                    "Save changes"
+                                )}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* ---------------- Side column ---------------- */}
+                    <aside className="ep-side">
+                        {/* Margin: the focal element */}
+                        <div className={`ep-margin ep-margin-${marginTone}`} aria-live="polite">
+                            <span className="ep-margin-label">Profit per sale</span>
+                            {margin ? (
+                                <>
+                                    <span className="ep-margin-value">
+                                        {margin.profit < 0 ? "−" : ""}
+                                        {inr(Math.abs(margin.profit))}
+                                    </span>
+                                    <span className="ep-margin-sub">
+                                        {margin.percent.toFixed(1)}% margin on {form.price_per || 1} {unitLabel(form.price_unit).toLowerCase()}
+                                    </span>
+                                    {margin.profit < 0 && (
+                                        <span className="ep-margin-note">You're selling below purchase price.</span>
+                                    )}
+                                </>
+                            ) : (
+                                <span className="ep-margin-sub">Enter both prices to see your margin.</span>
+                            )}
+                        </div>
+
+                        {/* Image */}
+                        <div className="ep-panel">
+                            <div className="ep-image">
+                                {form.image && !imageFailed ? (
+                                    <img
+                                        src={form.image}
+                                        alt={form.product_name || "Product"}
+                                        onError={() => setImageFailed(true)}
+                                    />
+                                ) : (
+                                    <div className="ep-image-empty">
+                                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                            <rect x="3" y="4" width="18" height="16" rx="3" stroke="currentColor" strokeWidth="1.6" />
+                                            <circle cx="9" cy="10" r="1.8" stroke="currentColor" strokeWidth="1.6" />
+                                            <path d="M4 17l5-4.5 4 3 3-2.5 4 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                                        </svg>
+                                        <span>{imageFailed ? "Image couldn't load" : "No image yet"}</span>
+                                    </div>
+                                )}
+                            </div>
+                            <Field label="Image URL" name="image">
+                                <input {...inputProps("image")} type="url" placeholder="https://…" />
+                            </Field>
+                        </div>
+
+                        {/* Status + stock summary */}
+                        <div className="ep-panel">
+                            <span className="ep-label" id="status-label">Status</span>
+                            <div className="ep-segment" role="radiogroup" aria-labelledby="status-label">
+                                {["active", "inactive"].map((s) => (
+                                    <button
+                                        key={s}
+                                        type="button"
+                                        role="radio"
+                                        aria-checked={form.status === s}
+                                        className={`ep-segment-btn${form.status === s ? " is-on" : ""}${s === "inactive" && form.status === s ? " is-off" : ""}`}
+                                        onClick={() => setForm((prev) => ({ ...prev, status: s }))}
+                                    >
+                                        {s === "active" ? "Active" : "Inactive"}
+                                    </button>
+                                ))}
+                            </div>
+                            <p className="ep-hint">
+                                {form.status === "active"
+                                    ? "Shows up in billing and your product list."
+                                    : "Hidden from billing until you make it active again."}
+                            </p>
+
+                            {stockState && (
+                                <div className="ep-stockline">
+                                    <span className={`ep-dot ep-dot-${stockState.tone}`} />
+                                    <span>
+                                        {stockState.text}
+                                        {!isBlank(form.stock) && (
+                                            <strong> · {form.stock} {form.stock_unit}</strong>
+                                        )}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </aside>
                 </div>
             </form>
         </div>
     );
 }
 
-const styles = {
-    page: {
-        minHeight: "100vh",
-        background: "#f8fafc",
-        padding: "30px",
-        fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-    },
+/* ====================================================================
+   Styles
+   ==================================================================== */
 
-    header: {
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: "28px",
-        gap: "20px",
-    },
+const css = `
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
-    breadcrumb: {
-        display: "flex",
-        alignItems: "center",
-        gap: "8px",
-        fontSize: "13px",
-        marginBottom: "12px",
-    },
+.ep-root {
+    --ink: #13233a;
+    --ink-soft: #52627a;
+    --ink-faint: #8593a8;
+    --paper: #eef1f6;
+    --surface: #ffffff;
+    --line: #dde3ec;
+    --line-strong: #c3ccd9;
+    --brand: #0e7c7b;
+    --brand-dark: #0a5f5e;
+    --brand-tint: #e3f3f2;
+    --good: #15803d;
+    --good-tint: #e6f5ec;
+    --warn: #b45309;
+    --warn-tint: #fdf1de;
+    --bad: #b91c1c;
+    --bad-tint: #fcebeb;
 
-    breadcrumbLink: {
-        color: "#2563eb",
-        cursor: "pointer",
-        fontWeight: "500",
-    },
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    color: var(--ink);
+    background: var(--paper);
+    min-height: 100vh;
+    padding: 32px 20px 0;
+    box-sizing: border-box;
+}
+.ep-root *, .ep-root *::before, .ep-root *::after { box-sizing: border-box; }
 
-    pageTitle: {
-        fontSize: "28px",
-        fontWeight: "800",
-        color: "#0f172a",
-        margin: "0 0 8px",
-        letterSpacing: "-0.5px",
-    },
+.ep-wrap { max-width: 1040px; margin: 0 auto; }
 
-    pageSubtitle: {
-        fontSize: "14px",
-        color: "#64748b",
-        margin: 0,
-    },
+/* Header */
+.ep-header { margin-bottom: 24px; }
+.ep-back {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 6px 10px 6px 6px; margin-left: -6px;
+    background: none; border: 0; border-radius: 8px;
+    font: inherit; font-size: 14px; font-weight: 600; color: var(--ink-soft);
+    cursor: pointer;
+}
+.ep-back:hover { color: var(--brand-dark); background: var(--brand-tint); }
+.ep-title { margin: 10px 0 4px; font-size: 30px; line-height: 1.15; font-weight: 800; letter-spacing: -0.02em; }
+.ep-subtitle { margin: 0; font-size: 15px; color: var(--ink-soft); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ep-code {
+    font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 6px;
+    background: var(--surface); border: 1px solid var(--line); color: var(--ink-soft);
+}
 
-    headerBadge: {
-        display: "flex",
-        alignItems: "center",
-        gap: "12px",
-        padding: "14px 18px",
-        background: "#ffffff",
-        border: "1px solid #e5e7eb",
-        borderRadius: "14px",
-        boxShadow: "0 2px 8px rgba(15, 23, 42, 0.03)",
-    },
+/* Banner */
+.ep-banner {
+    padding: 12px 16px; margin-bottom: 20px; border-radius: 10px;
+    font-size: 14px; font-weight: 600; border: 1px solid transparent;
+}
+.ep-banner-success { background: var(--good-tint); color: var(--good); border-color: #bfe3cc; }
+.ep-banner-error { background: var(--bad-tint); color: var(--bad); border-color: #f2c4c4; }
 
-    headerBadgeIcon: {
-        width: "42px",
-        height: "42px",
-        background: "#eff6ff",
-        borderRadius: "12px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontSize: "20px",
-    },
+/* Layout */
+.ep-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 24px; align-items: start; }
+.ep-main {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: clip;
+}
+.ep-side { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 20px; }
 
-    headerBadgeTitle: {
-        fontSize: "13px",
-        fontWeight: "700",
-        color: "#334155",
-    },
+/* Sections */
+.ep-section { padding: 26px 28px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 18px; }
+.ep-section-title { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+.ep-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 
-    headerBadgeSubtitle: {
-        fontSize: "12px",
-        color: "#94a3b8",
-        marginTop: "4px",
-    },
+/* Fields */
+.ep-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.ep-label { font-size: 13px; font-weight: 600; color: var(--ink); }
+.ep-req { color: var(--bad); }
+.ep-hint { font-size: 12px; color: var(--ink-faint); line-height: 1.4; }
+.ep-error { font-size: 12px; font-weight: 600; color: var(--bad); }
 
-    message: {
-        display: "flex",
-        alignItems: "center",
-        gap: "12px",
-        padding: "15px 18px",
-        borderRadius: "12px",
-        marginBottom: "22px",
-        fontSize: "14px",
-        fontWeight: "500",
-    },
+.ep-input {
+    width: 100%; padding: 11px 13px; font: inherit; font-size: 15px; color: var(--ink);
+    background: var(--surface); border: 1.5px solid var(--line-strong); border-radius: 10px;
+    font-variant-numeric: tabular-nums;
+    transition: border-color .15s, box-shadow .15s;
+}
+.ep-input::placeholder { color: var(--ink-faint); }
+.ep-input:hover { border-color: var(--ink-faint); }
+.ep-input:focus-visible { outline: none; border-color: var(--brand); box-shadow: 0 0 0 4px var(--brand-tint); }
+.ep-input:disabled { background: var(--paper); cursor: wait; }
+.ep-input-error { border-color: var(--bad); }
+.ep-input-error:focus-visible { box-shadow: 0 0 0 4px var(--bad-tint); border-color: var(--bad); }
+.ep-textarea { resize: vertical; min-height: 84px; line-height: 1.5; }
 
-    successMessage: {
-        background: "#f0fdf4",
-        border: "1px solid #bbf7d0",
-        color: "#166534",
-    },
+/* Chips and dots */
+.ep-chip { align-self: flex-start; font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; }
+.ep-chip-good { background: var(--good-tint); color: var(--good); }
+.ep-chip-warn { background: var(--warn-tint); color: var(--warn); }
+.ep-chip-bad  { background: var(--bad-tint);  color: var(--bad); }
 
-    errorMessage: {
-        background: "#fef2f2",
-        border: "1px solid #fecaca",
-        color: "#991b1b",
-    },
+.ep-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.ep-dot-good { background: var(--good); }
+.ep-dot-warn { background: var(--warn); }
+.ep-dot-bad  { background: var(--bad); }
 
-    priceInputWrapper: {
-        position: "relative",
-    },
+/* Action bar */
+.ep-actions {
+    position: sticky; bottom: 0; z-index: 5;
+    display: flex; justify-content: flex-end; gap: 12px;
+    padding: 16px 28px; background: rgba(255,255,255,.94);
+    backdrop-filter: blur(8px); border-top: 1px solid var(--line);
+}
+.ep-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    padding: 12px 22px; font: inherit; font-size: 15px; font-weight: 700;
+    border-radius: 10px; border: 1.5px solid transparent; cursor: pointer;
+    transition: background .15s, border-color .15s;
+}
+.ep-btn:focus-visible { outline: 3px solid var(--brand-tint); outline-offset: 2px; box-shadow: 0 0 0 2px var(--brand); }
+.ep-btn-ghost { background: var(--surface); color: var(--ink-soft); border-color: var(--line-strong); }
+.ep-btn-ghost:hover { background: var(--paper); color: var(--ink); }
+.ep-btn-primary { background: var(--brand); color: #fff; min-width: 160px; }
+.ep-btn-primary:hover:not(:disabled) { background: var(--brand-dark); }
+.ep-btn-primary:disabled { opacity: .7; cursor: not-allowed; }
 
-    currencySymbol: {
-        position: "absolute",
-        left: "14px",
-        top: "50%",
-        transform: "translateY(-50%)",
-        fontSize: "14px",
-        fontWeight: "600",
-        color: "#64748b",
-        zIndex: 1,
-    },
+.ep-spinner {
+    width: 16px; height: 16px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,.4); border-top-color: #fff;
+    animation: ep-spin .8s linear infinite;
+}
+@keyframes ep-spin { to { transform: rotate(360deg); } }
 
-    imagePreview: {
-        display: "flex",
-        alignItems: "center",
-        gap: "14px",
-        marginTop: "14px",
-        padding: "14px",
-        background: "#f8fafc",
-        border: "1px solid #e5e7eb",
-        borderRadius: "12px",
-    },
+/* Side panels */
+.ep-panel {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
+    padding: 18px; display: flex; flex-direction: column; gap: 12px;
+}
 
-    previewImage: {
-        width: "60px",
-        height: "60px",
-        objectFit: "cover",
-        borderRadius: "10px",
-        border: "1px solid #e2e8f0",
-        background: "#ffffff",
-    },
+/* Margin card (the focal element) */
+.ep-margin {
+    border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 4px;
+    border: 1px solid var(--line); background: var(--surface);
+    transition: background .25s, border-color .25s;
+}
+.ep-margin-label { font-size: 13px; font-weight: 600; color: var(--ink-soft); }
+.ep-margin-value { font-size: 38px; line-height: 1.1; font-weight: 800; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.ep-margin-sub { font-size: 13px; color: var(--ink-soft); line-height: 1.4; }
+.ep-margin-note { margin-top: 6px; font-size: 13px; font-weight: 700; }
+.ep-margin-good { background: var(--good-tint); border-color: #bfe3cc; }
+.ep-margin-good .ep-margin-value { color: var(--good); }
+.ep-margin-warn { background: var(--warn-tint); border-color: #f1d9ae; }
+.ep-margin-warn .ep-margin-value { color: var(--warn); }
+.ep-margin-bad { background: var(--bad-tint); border-color: #f2c4c4; }
+.ep-margin-bad .ep-margin-value, .ep-margin-bad .ep-margin-note { color: var(--bad); }
 
-    previewTitle: {
-        fontSize: "13px",
-        fontWeight: "600",
-        color: "#334155",
-    },
+/* Image */
+.ep-image {
+    aspect-ratio: 4 / 3; border-radius: 12px; overflow: hidden;
+    background: var(--paper); border: 1px dashed var(--line-strong);
+    display: flex; align-items: center; justify-content: center;
+}
+.ep-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ep-image-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; color: var(--ink-faint); font-size: 13px; font-weight: 600; }
 
-    previewSubtitle: {
-        fontSize: "12px",
-        color: "#94a3b8",
-        marginTop: "5px",
-    },
+/* Status segmented control */
+.ep-segment { display: grid; grid-template-columns: 1fr 1fr; padding: 4px; gap: 4px; background: var(--paper); border-radius: 10px; }
+.ep-segment-btn {
+    padding: 9px 10px; font: inherit; font-size: 14px; font-weight: 700; color: var(--ink-soft);
+    background: transparent; border: 0; border-radius: 7px; cursor: pointer;
+    transition: background .15s, color .15s;
+}
+.ep-segment-btn.is-on { background: var(--brand); color: #fff; }
+.ep-segment-btn.is-on.is-off { background: var(--ink-soft); }
+.ep-segment-btn:focus-visible { outline: 3px solid var(--brand-tint); box-shadow: 0 0 0 2px var(--brand); }
+.ep-stockline { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; padding-top: 12px; border-top: 1px solid var(--line); }
+.ep-stockline strong { font-weight: 500; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
 
-    actions: {
-        display: "flex",
-        justifyContent: "flex-end",
-        gap: "12px",
-        padding: "20px",
-        background: "#ffffff",
-        border: "1px solid #e5e7eb",
-        borderRadius: "16px",
-        marginBottom: "30px",
-    },
+/* Loading skeleton */
+.ep-skel { background: linear-gradient(90deg, #e3e8f0 25%, #edf0f6 50%, #e3e8f0 75%); background-size: 200% 100%; animation: ep-shimmer 1.4s ease-in-out infinite; border-radius: 16px; }
+.ep-skel-title { height: 64px; width: 260px; margin-bottom: 24px; }
+.ep-skel-main { height: 560px; }
+.ep-skel-side { height: 360px; }
+@keyframes ep-shimmer { to { background-position: -200% 0; } }
 
-    cancelButton: {
-        padding: "13px 24px",
-        background: "#ffffff",
-        color: "#475569",
-        border: "1px solid #e2e8f0",
-        borderRadius: "10px",
-        fontSize: "14px",
-        fontWeight: "600",
-        cursor: "pointer",
-        minWidth: "120px",
-    },
-
-    saveButton: {
-        padding: "13px 28px",
-        background: "#2563eb",
-        color: "#ffffff",
-        border: "none",
-        borderRadius: "10px",
-        fontSize: "14px",
-        fontWeight: "700",
-        cursor: "pointer",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: "10px",
-        minWidth: "180px",
-        boxShadow: "0 4px 12px rgba(37, 99, 235, 0.15)",
-    },
-
-    disabledButton: {
-        opacity: 0.7,
-        cursor: "not-allowed",
-    },
-
-    buttonSpinner: {
-        width: "16px",
-        height: "16px",
-        border: "2px solid rgba(255,255,255,0.4)",
-        borderTop: "2px solid #ffffff",
-        borderRadius: "50%",
-        display: "inline-block",
-    },
-
-    loadingContainer: {
-        minHeight: "70vh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "#ffffff",
-        borderRadius: "16px",
-        border: "1px solid #e5e7eb",
-    },
-
-    spinner: {
-        width: "42px",
-        height: "42px",
-        border: "4px solid #e2e8f0",
-        borderTop: "4px solid #2563eb",
-        borderRadius: "50%",
-        animation: "editProductSpin 0.8s linear infinite",
-    },
-};
+/* Responsive */
+@media (max-width: 900px) {
+    .ep-layout { grid-template-columns: 1fr; }
+    .ep-side { position: static; order: -1; }
+}
+@media (max-width: 560px) {
+    .ep-root { padding: 20px 12px 0; }
+    .ep-row { grid-template-columns: 1fr; }
+    .ep-section { padding: 22px 18px; }
+    .ep-actions { padding: 14px 18px; }
+    .ep-actions .ep-btn { flex: 1; }
+    .ep-title { font-size: 26px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .ep-spinner, .ep-skel { animation: none; }
+    .ep-root * { transition: none !important; }
+}
+`;
