@@ -1200,7 +1200,7 @@ export default function ViewSupplier() {
       {/* Top bar */}
       <div className="vs-topbar">
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <button className="vs-back-btn" onClick={() => navigate(location.state?.from || "/suppliers")} type="button">
+          <button className="vs-back-btn" onClick={() => location.state?.from ? navigate(-1) : navigate("/suppliers")} type="button">
               <FiArrowLeft />
               Back
             </button>
