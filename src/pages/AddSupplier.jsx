@@ -2,8 +2,6 @@ import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import API from "../services/api";
 
-const GST_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
-
 const EMPTY_FORM = {
     supplier_name: "",
     company_name: "",
@@ -169,7 +167,6 @@ export default function AddSupplier() {
     const handleChange = (e) => {
         let { name, value } = e.target;
 
-        if (name === "gst_number") value = value.toUpperCase().replace(/\s/g, "");
         if (name === "supplier_phone") value = value.replace(/[^\d+\s-]/g, "");
         if (name === "pincode") value = value.replace(/\D/g, "").slice(0, 6);
 
@@ -212,9 +209,6 @@ export default function AddSupplier() {
 
         if (form.supplier_email && !/^\S+@\S+\.\S+$/.test(form.supplier_email))
             e.supplier_email = "Enter a valid email, like name@example.com.";
-
-        if (form.gst_number && !GST_REGEX.test(form.gst_number))
-            e.gst_number = "GST number must be 15 characters, like 29ABCDE1234F1Z5.";
 
         if (form.pincode && form.pincode.length !== 6) e.pincode = "Pincode must be 6 digits.";
 
@@ -427,16 +421,14 @@ export default function AddSupplier() {
                             <p className="hint">Needed for GST bills and to track what you owe.</p>
 
                             <div className="as-fields">
-                                <Field label="GST number" optional error={show("gst_number")}>
+                                <Field label="GST number" optional>
                                     <input
-                                        className={cls("gst_number")}
+                                        className="as-input"
                                         type="text"
                                         name="gst_number"
                                         value={form.gst_number}
                                         onChange={handleChange}
-                                        onBlur={handleBlur}
-                                        placeholder="29ABCDE1234F1Z5"
-                                        maxLength={15}
+                                        placeholder="Enter GST number"
                                         autoComplete="off"
                                     />
                                 </Field>
