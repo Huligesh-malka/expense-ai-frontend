@@ -1,51 +1,35 @@
-
+// src/pages/PurchaseDetails.jsx
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import API from "../services/api";
 
 import {
-  FiSearch,
-  FiRefreshCw,
-  FiPlus,
   FiArrowLeft,
-  FiArrowRight,
-  FiEye,
+  FiPrinter,
+  FiRefreshCw,
+  FiAlertCircle,
   FiFileText,
-  FiUsers,
-  FiTrendingUp,
-  FiDollarSign,
-  FiCalendar,
+  FiUser,
   FiPhone,
   FiMapPin,
   FiBriefcase,
-  FiClock,
-  FiCheckCircle,
-  FiAlertCircle,
   FiChevronRight,
-  FiPackage,
-  FiX,
-  FiFilter,
 } from "react-icons/fi";
 
-/* =========================================================
-   HELPERS
-========================================================= */
+/* ---------- helpers ---------- */
 
-const number = (value) => Number(value || 0);
+const toNumber = (value) => Number(value) || 0;
 
-const money = (value) =>
-  `₹${number(value).toLocaleString("en-IN", {
+const formatMoney = (value) =>
+  `₹${toNumber(value).toLocaleString("en-IN", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
 
 const formatDate = (value) => {
   if (!value) return "—";
-
   const date = new Date(value);
-
   if (Number.isNaN(date.getTime())) return "—";
-
   return date.toLocaleDateString("en-IN", {
     day: "2-digit",
     month: "short",
@@ -53,2849 +37,1067 @@ const formatDate = (value) => {
   });
 };
 
-const getBillStatus = (purchase) => {
-  const total = number(purchase.total_amount);
-  const paid = number(purchase.paid_amount);
+/* Same status rule as the Purchases list page */
+const getStatusKey = (purchase) => {
+  const total = toNumber(purchase.total_amount);
+  const paid = toNumber(purchase.paid_amount);
+  const backendStatus = String(purchase.payment_status || "").toLowerCase();
 
-  if (paid >= total && total > 0) return "paid";
-  if (paid > 0) return "partial";
-
+  if (backendStatus === "paid" || (total > 0 && paid >= total)) return "paid";
+  if (backendStatus === "partial" || (paid > 0 && paid < total)) return "partial";
   return "unpaid";
 };
 
-const getDue = (purchase) =>
-  Math.max(
-    0,
-    Number((number(purchase.total_amount) - number(purchase.paid_amount)).toFixed(2))
-  );
+const STATUS_LABELS = {
+  paid: "Fully paid",
+  partial: "Partially paid",
+  unpaid: "Not paid",
+};
 
-const getSupplierName = (purchase) =>
-  purchase.supplier_name || "Unknown Supplier";
+const getDue = (purchase) => {
+  const fallback = toNumber(purchase.total_amount) - toNumber(purchase.paid_amount);
+  const due =
+    purchase.due_amount !== undefined && purchase.due_amount !== null
+      ? toNumber(purchase.due_amount)
+      : fallback;
+  return Math.max(0, due);
+};
 
-const getSupplierId = (purchase) =>
-  purchase.supplier_id;
+const hasText = (value) =>
+  value !== undefined &&
+  value !== null &&
+  String(value).trim() !== "" &&
+  !/^(-+|n\/?a|null|undefined|none)$/i.test(String(value).trim());
 
-const getBillNumber = (purchase) =>
-  purchase.invoice_no || `PUR-${purchase.id}`;
+/* ---------- component ---------- */
 
-/* =========================================================
-   MAIN COMPONENT
-========================================================= */
+export default function PurchaseDetails() {
+  const { id } = useParams();
+  const navigate = useNavigate();
 
-export default function Purchases() {
-  const [purchases, setPurchases] = useState([]);
-  const [supplierProfiles, setSupplierProfiles] = useState([]);
+  const [purchase, setPurchase] = useState(null);
+  const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  const [search, setSearch] = useState("");
-  const [selectedSupplier, setSelectedSupplier] = useState(null);
-  const [view, setView] = useState("suppliers");
-  const [paymentPurchase, setPaymentPurchase] = useState(null);
-  const [paymentAmount, setPaymentAmount] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("Cash");
-  const [paymentReference, setPaymentReference] = useState("");
-  const [paymentNotes, setPaymentNotes] = useState("");
-  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().slice(0, 10));
-  const [savingPayment, setSavingPayment] = useState(false);
-  const [paymentError, setPaymentError] = useState("");
-
-  /* =========================================================
-     LOAD PURCHASES
-  ========================================================= */
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    loadPurchases();
-  }, []);
+    loadPurchase();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
-  const openPaymentModal = (purchase) => {
-    const due = Math.max(0, number(purchase.total_amount) - number(purchase.paid_amount));
-    setPaymentPurchase(purchase);
-    setPaymentAmount(due.toFixed(2));
-    setPaymentMethod(purchase.payment_method || "Cash");
-    setPaymentReference("");
-    setPaymentNotes("");
-    setPaymentDate(new Date().toISOString().slice(0, 10));
-    setPaymentError("");
-  };
-
-  const closePaymentModal = () => {
-    if (savingPayment) return;
-    setPaymentPurchase(null);
-    setPaymentError("");
-  };
-
-  const saveSupplierPayment = async (event) => {
-    event.preventDefault();
-    if (!paymentPurchase) return;
-
-    const amount = Number(paymentAmount);
-    const remaining = Math.max(
-      0,
-      number(paymentPurchase.total_amount) - number(paymentPurchase.paid_amount)
-    );
-
-    if (!Number.isFinite(amount) || amount <= 0) {
-      setPaymentError("Enter a valid payment amount greater than zero.");
-      return;
-    }
-    if (amount > remaining + 0.001) {
-      setPaymentError(`Payment cannot exceed the remaining balance ${money(remaining)}.`);
-      return;
-    }
-
+  const loadPurchase = async () => {
     try {
-      setSavingPayment(true);
-      setPaymentError("");
-      await API.post(`/purchases/${paymentPurchase.id}/payments`, {
-        amount,
-        payment_method: paymentMethod,
-        reference_no: paymentReference.trim() || null,
-        payment_date: paymentDate,
-        notes: paymentNotes.trim() || null,
-      });
-
-      // Close modal and reload purchase data so history and supplier ledger
-      // immediately reflect the newly recorded payment.
-      setPaymentPurchase(null);
-      await loadPurchases();
-    } catch (err) {
-      setPaymentError(
-        err.response?.data?.message || "Unable to save payment. Please try again."
-      );
-    } finally {
-      setSavingPayment(false);
-    }
-  };
-
-  const loadPurchases = async () => {
-    try {
+      setError(null);
       setLoading(true);
-      setError("");
 
-      // Load purchase bills and the supplier directory separately.
-      // Purchase rows contain financial data; /suppliers contains
-      // the supplier profile data (phone, company, email, etc.).
-      const [purchaseResponse, supplierResponse] = await Promise.all([
-        API.get("/purchases"),
-        API.get("/suppliers").catch((supplierError) => {
-          console.warn("Supplier directory could not be loaded:", supplierError);
-          return { data: { data: [] } };
-        }),
-      ]);
-
-      const extractRows = (responseData) => {
-        if (Array.isArray(responseData)) return responseData;
-        if (Array.isArray(responseData?.data)) return responseData.data;
-        if (Array.isArray(responseData?.suppliers)) return responseData.suppliers;
-        if (Array.isArray(responseData?.purchases)) return responseData.purchases;
-        if (Array.isArray(responseData?.rows)) return responseData.rows;
-        return [];
-      };
-
-      const purchaseData = extractRows(purchaseResponse.data);
-      const supplierData = extractRows(supplierResponse.data);
-
-      // Normalize supplier profile field names because different backend
-      // versions may use phone/email/company/address aliases.
-      const normalizeSupplier = (supplier) => ({
-        ...supplier,
-        id: supplier.id ?? supplier.supplier_id ?? supplier.supplierId,
-        supplier_name:
-          supplier.supplier_name ?? supplier.name ?? supplier.supplierName ?? "",
-        company_name:
-          supplier.company_name ?? supplier.company ?? supplier.business_name ?? supplier.supplier_company ?? "",
-        supplier_phone:
-          supplier.supplier_phone ?? supplier.phone ?? supplier.mobile ?? supplier.contact_number ?? supplier.phone_number ?? "",
-        supplier_email:
-          supplier.supplier_email ?? supplier.email ?? supplier.email_address ?? "",
-        address:
-          supplier.address ?? supplier.supplier_address ?? supplier.billing_address ?? supplier.address_line ??
-          [supplier.address_line1, supplier.address_line2, supplier.city, supplier.state, supplier.pincode]
-            .filter(Boolean).join(", "),
-        gst_number:
-          supplier.gst_number ?? supplier.gst_no ?? supplier.gstin ?? supplier.tax_number ?? "",
-      });
-
-      const normalizedSupplierData = (Array.isArray(supplierData) ? supplierData : [])
-        .map(normalizeSupplier);
-
-      setSupplierProfiles(normalizedSupplierData);
-
-      const supplierMap = new Map(
-        normalizedSupplierData.map((supplier) => [String(supplier.id), supplier])
-      );
-
-      // Merge supplier profile details into purchase rows by supplier ID.
-      const enrichedPurchases = (Array.isArray(purchaseData) ? purchaseData : []).map((purchase) => {
-        const supplier = supplierMap.get(String(purchase.supplier_id ?? purchase.supplierId));
-        return {
-          ...purchase,
-          supplier_id: purchase.supplier_id ?? purchase.supplierId ?? supplier?.id,
-          supplier_name:
-            purchase.supplier_name || purchase.supplierName || supplier?.supplier_name || "Unknown Supplier",
-          company_name:
-            purchase.company_name || purchase.supplier_company || supplier?.company_name || "",
-          supplier_phone:
-            purchase.supplier_phone || purchase.phone || supplier?.supplier_phone || "",
-          supplier_email:
-            purchase.supplier_email || purchase.email || supplier?.supplier_email || "",
-          address:
-            purchase.address || purchase.supplier_address || supplier?.address || "",
-          gst_number:
-            purchase.gst_number || purchase.gstin || supplier?.gst_number || "",
-        };
-      });
-
-      setPurchases(enrichedPurchases);
+      const res = await API.get(`/purchases/details/${id}`);
+      setPurchase(res.data.purchase);
+      setItems(res.data.items || []);
     } catch (err) {
-      console.error("Purchase loading error:", err);
-
+      console.error("Failed to load purchase:", err);
       setError(
         err.response?.data?.message ||
-          "Unable to load supplier accounts."
+          "Failed to load purchase. Please try again."
       );
     } finally {
       setLoading(false);
     }
   };
 
-  /* =========================================================
-     GROUP BY SUPPLIER ID
-  ========================================================= */
+  const statusKey = purchase ? getStatusKey(purchase) : "unpaid";
+  const due = purchase ? getDue(purchase) : 0;
 
-  const suppliers = useMemo(() => {
-    const supplierMap = new Map();
-
-    // First seed every supplier from the supplier directory. This ensures
-    // profile details are available even if purchase rows omit them.
-    supplierProfiles.forEach((profile) => {
-      const supplierId = profile.id ?? profile.supplier_id;
-      if (supplierId == null) return;
-
-      supplierMap.set(String(supplierId), {
-        supplier_id: supplierId,
-        supplier_name: profile.supplier_name || "Unknown Supplier",
-        company_name: profile.company_name || "",
-        supplier_phone: profile.supplier_phone || "",
-        supplier_email: profile.supplier_email || "",
-        address: profile.address || "",
-        gst_number: profile.gst_number || "",
-        purchases: [],
-        total_purchases: 0,
-        total_paid: 0,
-        total_due: 0,
-        bill_count: 0,
-        last_purchase: null,
-      });
-    });
-
-    // Then aggregate purchase and payment data by supplier ID.
-    purchases.forEach((purchase) => {
-      const supplierId = getSupplierId(purchase);
-      if (supplierId == null) return;
-
-      const supplierKey = String(supplierId);
-      if (!supplierMap.has(supplierKey)) {
-        supplierMap.set(supplierKey, {
-          supplier_id: supplierId,
-          supplier_name: getSupplierName(purchase),
-          company_name: purchase.company_name || purchase.supplier_company || "",
-          supplier_phone: purchase.supplier_phone || purchase.phone || "",
-          supplier_email: purchase.supplier_email || purchase.email || "",
-          address: purchase.address || purchase.supplier_address || "",
-          gst_number: purchase.gst_number || purchase.gstin || "",
-          purchases: [],
-          total_purchases: 0,
-          total_paid: 0,
-          total_due: 0,
-          bill_count: 0,
-          last_purchase: null,
-        });
-      }
-
-      const supplier = supplierMap.get(supplierKey);
-      supplier.purchases.push(purchase);
-      supplier.total_purchases += number(purchase.total_amount);
-      supplier.total_paid += number(purchase.paid_amount);
-      supplier.total_due += getDue(purchase);
-      supplier.bill_count += 1;
-
-      const purchaseDate = purchase.created_at ? new Date(purchase.created_at) : null;
-      if (purchaseDate && !Number.isNaN(purchaseDate.getTime()) &&
-          (!supplier.last_purchase || purchaseDate > supplier.last_purchase)) {
-        supplier.last_purchase = purchaseDate;
-      }
-
-      // Fill missing profile data from the purchase row as a fallback.
-      supplier.supplier_name = supplier.supplier_name === "Unknown Supplier"
-        ? (purchase.supplier_name || supplier.supplier_name)
-        : supplier.supplier_name;
-      supplier.company_name ||= purchase.company_name || purchase.supplier_company || "";
-      supplier.supplier_phone ||= purchase.supplier_phone || purchase.phone || "";
-      supplier.supplier_email ||= purchase.supplier_email || purchase.email || "";
-      supplier.address ||= purchase.address || purchase.supplier_address || "";
-      supplier.gst_number ||= purchase.gst_number || purchase.gstin || "";
-    });
-
-    return Array.from(supplierMap.values()).sort(
-      (a, b) => b.total_purchases - a.total_purchases
-    );
-  }, [purchases, supplierProfiles]);
-
-  /* =========================================================
-     SEARCH
-  ========================================================= */
-
-  const filteredSuppliers = useMemo(() => {
-    if (!search.trim()) return suppliers;
-
-    const term = search.toLowerCase();
-
-    return suppliers.filter((supplier) => {
-      return (
-        String(supplier.supplier_name || "")
-          .toLowerCase()
-          .includes(term) ||
-        String(supplier.supplier_id)
-          .includes(term) ||
-        String(supplier.company_name || "")
-          .toLowerCase()
-          .includes(term) ||
-        String(supplier.supplier_phone || "")
-          .toLowerCase()
-          .includes(term) ||
-        String(supplier.supplier_email || "")
-          .toLowerCase()
-          .includes(term)
-      );
-    });
-  }, [suppliers, search]);
-
-  /* =========================================================
-     TOTALS
-  ========================================================= */
-
-  const totalPurchaseAmount = suppliers.reduce(
-    (sum, supplier) =>
-      sum + supplier.total_purchases,
-    0
+  const itemCount = useMemo(
+    () => items.reduce((sum, item) => sum + toNumber(item.quantity), 0),
+    [items]
   );
 
-  const totalPaidAmount = suppliers.reduce(
-    (sum, supplier) =>
-      sum + supplier.total_paid,
-    0
-  );
-
-  const totalDueAmount = suppliers.reduce(
-    (sum, supplier) =>
-      sum + supplier.total_due,
-    0
-  );
-
-  const totalBills = purchases.length;
-
-  const suppliersWithDue = suppliers.filter(
-    (supplier) => supplier.total_due > 0
-  ).length;
-
-  /* =========================================================
-     SUPPLIER ACCOUNT
-  ========================================================= */
-
-  const openSupplierAccount = (supplier) => {
-    setSelectedSupplier(supplier);
-    setView("account");
-  };
-
-  const backToSupplierList = () => {
-    setSelectedSupplier(null);
-    setView("suppliers");
-  };
-
-  /* =========================================================
-     LOADING
-  ========================================================= */
+  /* ---------- states ---------- */
 
   if (loading) {
     return (
-      <>
-        <div className="purchase-page">
-          <div className="purchase-loading">
-            <div className="purchase-spinner" />
-            <span>Loading supplier accounts...</span>
-          </div>
+      <div className="pd-page">
+        <div className="pd-center" role="status" aria-live="polite">
+          <div className="pd-spinner" />
+          <span>Loading purchase…</span>
         </div>
-
-        <PurchaseStyles />
-      </>
+        <Styles />
+      </div>
     );
   }
-
-  /* =========================================================
-     ERROR
-  ========================================================= */
 
   if (error) {
     return (
-      <>
-        <div className="purchase-page">
-          <div className="purchase-state">
-            <div className="purchase-state-icon">
-              <FiAlertCircle />
-            </div>
+      <div className="pd-page">
+        <div className="pd-center" role="alert">
+          <div className="pd-state-icon pd-state-icon-error">
+            <FiAlertCircle size={26} />
+          </div>
 
-            <h2>Something went wrong</h2>
+          <h2>Couldn’t load this purchase</h2>
+          <p>{error}</p>
 
-            <p>{error}</p>
-
-            <button
-              className="purchase-button primary"
-              onClick={loadPurchases}
-            >
+          <div className="pd-state-actions">
+            <button className="pd-btn pd-btn-primary" onClick={loadPurchase}>
               <FiRefreshCw />
-              Retry
+              Try again
             </button>
+
+            <Link to="/purchases" className="pd-btn pd-btn-ghost">
+              <FiArrowLeft />
+              Back to purchases
+            </Link>
           </div>
         </div>
-
-        <PurchaseStyles />
-      </>
+        <Styles />
+      </div>
     );
   }
 
-  /* =========================================================
-     SUPPLIER ACCOUNT VIEW
-  ========================================================= */
-
-  if (
-    view === "account" &&
-    selectedSupplier
-  ) {
-    const supplier = selectedSupplier;
-
-    const supplierPurchases = [
-      ...supplier.purchases,
-    ].sort(
-      (a, b) =>
-        new Date(b.created_at) -
-        new Date(a.created_at)
-    );
-
+  if (!purchase) {
     return (
-      <>
-        <div className="purchase-page">
-          <main className="purchase-container">
-
-            {/* BACK */}
-
-            <div className="account-topbar">
-              <button
-                className="back-button"
-                onClick={backToSupplierList}
-              >
-                <FiArrowLeft />
-                Back to suppliers
-              </button>
-
-              <button
-                className="purchase-button secondary"
-                onClick={loadPurchases}
-              >
-                <FiRefreshCw />
-                Refresh
-              </button>
-            </div>
-
-            {/* SUPPLIER PROFILE */}
-
-            <section className="supplier-profile">
-              <div className="supplier-profile-left">
-
-                <div className="supplier-avatar large">
-                  {String(supplier.supplier_name || "S")
-                    .charAt(0)
-                    .toUpperCase()}
-                </div>
-
-                <div className="supplier-profile-details">
-                  <span className="profile-label">
-                    SUPPLIER ACCOUNT
-                  </span>
-
-                  <h1>
-                    {supplier.supplier_name}
-                  </h1>
-
-                  <div className="supplier-id">
-                    Supplier ID:{" "}
-                    <strong>
-                      #{supplier.supplier_id}
-                    </strong>
-                  </div>
-
-                  {supplier.company_name && (
-                    <div className="supplier-detail-line">
-                      <FiBriefcase />
-                      {supplier.company_name}
-                    </div>
-                  )}
-
-                  {supplier.supplier_phone && (
-                    <div className="supplier-detail-line">
-                      <FiPhone />
-                      {supplier.supplier_phone}
-                    </div>
-                  )}
-
-                  {supplier.address && (
-                    <div className="supplier-detail-line">
-                      <FiMapPin />
-                      {supplier.address}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="supplier-balance-card">
-                <span>Outstanding balance</span>
-
-                <strong
-                  className={
-                    supplier.total_due > 0
-                      ? "balance-red"
-                      : "balance-green"
-                  }
-                >
-                  {money(supplier.total_due)}
-                </strong>
-
-                <div className="balance-status">
-                  {supplier.total_due > 0 ? (
-                    <>
-                      <FiClock />
-                      Payment pending
-                    </>
-                  ) : (
-                    <>
-                      <FiCheckCircle />
-                      Account settled
-                    </>
-                  )}
-                </div>
-              </div>
-            </section>
-
-            {/* SUPPLIER STATISTICS */}
-
-            <section className="purchase-stat-grid">
-              <StatCard
-                icon={<FiTrendingUp />}
-                label="Total purchases"
-                value={money(
-                  supplier.total_purchases
-                )}
-                color="blue"
-              />
-
-              <StatCard
-                icon={<FiDollarSign />}
-                label="Total paid"
-                value={money(
-                  supplier.total_paid
-                )}
-                color="green"
-              />
-
-              <StatCard
-                icon={<FiClock />}
-                label="Outstanding"
-                value={money(
-                  supplier.total_due
-                )}
-                color="orange"
-              />
-
-              <StatCard
-                icon={<FiFileText />}
-                label="Purchase bills"
-                value={supplier.bill_count}
-                color="purple"
-              />
-            </section>
-
-            {/* ACCOUNT INFORMATION */}
-
-            <section className="account-information-card">
-              <div className="section-heading">
-                <div className="heading-icon">
-                  <FiUsers />
-                </div>
-
-                <div>
-                  <h2>Supplier information</h2>
-                  <p>
-                    Supplier account details
-                  </p>
-                </div>
-              </div>
-
-              <div className="information-grid">
-                <InfoItem
-                  label="Supplier ID"
-                  value={`#${supplier.supplier_id}`}
-                />
-
-                <InfoItem
-                  label="Supplier name"
-                  value={supplier.supplier_name}
-                />
-
-                <InfoItem
-                  label="Company"
-                  value={
-                    supplier.company_name ||
-                    "Not provided"
-                  }
-                />
-
-                <InfoItem
-                  label="Phone"
-                  value={
-                    supplier.supplier_phone ||
-                    "Not provided"
-                  }
-                />
-
-                <InfoItem
-                  label="Email"
-                  value={
-                    supplier.supplier_email ||
-                    "Not provided"
-                  }
-                />
-
-                <InfoItem
-                  label="Address"
-                  value={
-                    supplier.address ||
-                    "Not provided"
-                  }
-                />
-
-                <InfoItem
-                  label="Total purchase bills"
-                  value={supplier.bill_count}
-                />
-
-                <InfoItem
-                  label="Last purchase"
-                  value={
-                    supplier.last_purchase
-                      ? formatDate(
-                          supplier.last_purchase
-                        )
-                      : "—"
-                  }
-                />
-              </div>
-            </section>
-
-            {/* PURCHASE HISTORY */}
-
-            <section className="purchase-history-card">
-              <div className="history-header">
-                <div>
-                  <h2>Purchase history</h2>
-
-                  <p>
-                    All bills for supplier ID{" "}
-                    <strong>
-                      #{supplier.supplier_id}
-                    </strong>
-                  </p>
-                </div>
-
-                <span className="bill-count-badge">
-                  {supplierPurchases.length} bills
-                </span>
-              </div>
-
-              {/* DESKTOP TABLE */}
-
-              <div className="history-table-wrapper">
-                <table className="history-table">
-                  <thead>
-                    <tr>
-                      <th>Bill number</th>
-                      <th>Date</th>
-                      <th>Total</th>
-                      <th>Paid</th>
-                      <th>Balance</th>
-                      <th>Status</th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {supplierPurchases.map(
-                      (purchase) => {
-                        const due = getDue(
-                          purchase
-                        );
-
-                        const status =
-                          getBillStatus(
-                            purchase
-                          );
-
-                        return (
-                          <tr key={purchase.id}>
-                            <td>
-                              <div className="bill-cell">
-                                <div className="bill-icon">
-                                  <FiFileText />
-                                </div>
-
-                                <strong>
-                                  {getBillNumber(
-                                    purchase
-                                  )}
-                                </strong>
-                              </div>
-                            </td>
-
-                            <td>
-                              {formatDate(
-                                purchase.created_at
-                              )}
-                            </td>
-
-                            <td>
-                              <strong>
-                                {money(
-                                  purchase.total_amount
-                                )}
-                              </strong>
-                            </td>
-
-                            <td className="green-text">
-                              {money(
-                                purchase.paid_amount
-                              )}
-                            </td>
-
-                            <td
-                              className={
-                                due > 0
-                                  ? "red-text"
-                                  : "green-text"
-                              }
-                            >
-                              <strong>
-                                {money(due)}
-                              </strong>
-                            </td>
-
-                            <td>
-                              <StatusBadge
-                                status={status}
-                              />
-                            </td>
-
-                            <td>
-                              <div className="table-actions">
-                                <Link
-                                  to={`/purchase/${purchase.id}`}
-                                  className="view-button"
-                                >
-                                  <FiEye />
-                                  View
-                                </Link>
-
-                                {due > 0 && (
-                                  <button
-                                    type="button"
-                                    className="pay-button"
-                                    onClick={() => openPaymentModal(purchase)}
-                                  >
-                                    Pay
-                                    <FiArrowRight />
-                                  </button>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      }
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* MOBILE */}
-
-              <div className="mobile-bill-list">
-                {supplierPurchases.map(
-                  (purchase) => {
-                    const due = getDue(
-                      purchase
-                    );
-
-                    return (
-                      <div
-                        className="mobile-bill-card"
-                        key={purchase.id}
-                      >
-                        <div className="mobile-bill-header">
-                          <div>
-                            <span>
-                              BILL NUMBER
-                            </span>
-
-                            <strong>
-                              {getBillNumber(
-                                purchase
-                              )}
-                            </strong>
-                          </div>
-
-                          <StatusBadge
-                            status={getBillStatus(
-                              purchase
-                            )}
-                          />
-                        </div>
-
-                        <div className="mobile-date">
-                          <FiCalendar />
-                          {formatDate(
-                            purchase.created_at
-                          )}
-                        </div>
-
-                        <div className="mobile-amount-grid">
-                          <div>
-                            <span>Total</span>
-                            <strong>
-                              {money(
-                                purchase.total_amount
-                              )}
-                            </strong>
-                          </div>
-
-                          <div>
-                            <span>Paid</span>
-                            <strong className="green-text">
-                              {money(
-                                purchase.paid_amount
-                              )}
-                            </strong>
-                          </div>
-
-                          <div>
-                            <span>Balance</span>
-                            <strong
-                              className={
-                                due > 0
-                                  ? "red-text"
-                                  : "green-text"
-                              }
-                            >
-                              {money(due)}
-                            </strong>
-                          </div>
-                        </div>
-
-                        <div className="mobile-actions">
-                          <Link
-                            to={`/purchase/${purchase.id}`}
-                            className="purchase-button secondary"
-                          >
-                            <FiEye />
-                            View bill
-                          </Link>
-
-                          {due > 0 && (
-                            <button
-                              type="button"
-                              className="purchase-button primary"
-                              onClick={() => openPaymentModal(purchase)}
-                            >
-                              Pay now
-                              <FiArrowRight />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  }
-                )}
-              </div>
-            </section>
-
-            {/* LEDGER */}
-
-            <section className="supplier-ledger-card">
-              <div className="section-heading">
-                <div className="heading-icon green">
-                  <FiTrendingUp />
-                </div>
-
-                <div>
-                  <h2>Supplier ledger</h2>
-                  <p>
-                    Financial summary of this supplier
-                  </p>
-                </div>
-              </div>
-
-              <div className="ledger-grid">
-                <div>
-                  <span>Total purchases</span>
-                  <strong>
-                    {money(
-                      supplier.total_purchases
-                    )}
-                  </strong>
-                </div>
-
-                <div>
-                  <span>Total payments</span>
-                  <strong className="green-text">
-                    {money(
-                      supplier.total_paid
-                    )}
-                  </strong>
-                </div>
-
-                <div>
-                  <span>Current outstanding</span>
-                  <strong className="red-text">
-                    {money(
-                      supplier.total_due
-                    )}
-                  </strong>
-                </div>
-              </div>
-            </section>
-
-          </main>
+      <div className="pd-page">
+        <div className="pd-center">
+          <div className="pd-state-icon">
+            <FiFileText size={26} />
+          </div>
+
+          <h2>Purchase not found</h2>
+          <p>This bill may have been deleted or the link is incorrect.</p>
+
+          <Link to="/purchases" className="pd-btn pd-btn-primary">
+            <FiArrowLeft />
+            Back to purchases
+          </Link>
         </div>
-
-            {/* PAYMENT MODAL */}
-            {paymentPurchase && (
-              <div className="supplier-payment-overlay" onMouseDown={(e) => {
-                if (e.target === e.currentTarget) closePaymentModal();
-              }}>
-                <form className="supplier-payment-modal" onSubmit={saveSupplierPayment}>
-                  <div className="payment-modal-header">
-                    <div>
-                      <span className="payment-eyebrow">SUPPLIER PAYMENT</span>
-                      <h2>Record payment</h2>
-                      <p>{getBillNumber(paymentPurchase)}</p>
-                    </div>
-                    <button type="button" className="payment-close" onClick={closePaymentModal} disabled={savingPayment} aria-label="Close">
-                      <FiX />
-                    </button>
-                  </div>
-
-                  <div className="payment-summary-grid">
-                    <div><span>Bill total</span><strong>{money(paymentPurchase.total_amount)}</strong></div>
-                    <div><span>Already paid</span><strong className="green-text">{money(paymentPurchase.paid_amount)}</strong></div>
-                    <div className="payment-due"><span>Remaining balance</span><strong>{money(Math.max(0, number(paymentPurchase.total_amount) - number(paymentPurchase.paid_amount)))}</strong></div>
-                  </div>
-
-                  <label className="payment-field">
-                    <span>Amount paid now *</span>
-                    <div className="payment-amount-input"><span>₹</span><input type="number" min="0.01" step="0.01" max={Math.max(0, number(paymentPurchase.total_amount) - number(paymentPurchase.paid_amount))} value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} required /></div>
-                  </label>
-
-                  <div className="payment-form-grid">
-                    <label className="payment-field"><span>Payment method *</span><select value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} required><option>Cash</option><option>UPI</option><option>Bank Transfer</option><option>Card</option><option>Cheque</option><option>Other</option></select></label>
-                    <label className="payment-field"><span>Payment date *</span><input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} required /></label>
-                  </div>
-
-                  <label className="payment-field"><span>Reference / Transaction ID</span><input value={paymentReference} onChange={(e) => setPaymentReference(e.target.value)} placeholder="UPI transaction ID or reference" /></label>
-                  <label className="payment-field"><span>Notes</span><textarea rows="2" value={paymentNotes} onChange={(e) => setPaymentNotes(e.target.value)} placeholder="Optional payment notes" /></label>
-
-                  {paymentError && <div className="payment-error"><FiAlertCircle /> {paymentError}</div>}
-
-                  <div className="payment-modal-actions"><button type="button" className="payment-cancel" onClick={closePaymentModal} disabled={savingPayment}>Cancel</button><button type="submit" className="payment-submit" disabled={savingPayment}>{savingPayment ? "Saving payment…" : "Save payment"}<FiCheckCircle /></button></div>
-                </form>
-              </div>
-            )}
-
-        <PurchaseStyles />
-      </>
+        <Styles />
+      </div>
     );
   }
 
-  /* =========================================================
-     SUPPLIER LIST VIEW
-  ========================================================= */
+  /* ---------- main ---------- */
+
+  const supplierRows = [
+    { icon: <FiUser />, label: "Name", value: purchase.supplier_name },
+    { icon: <FiBriefcase />, label: "Company", value: purchase.company_name },
+    { icon: <FiPhone />, label: "Phone", value: purchase.supplier_phone },
+    { icon: <FiMapPin />, label: "Address", value: purchase.address },
+  ].filter((row) => hasText(row.value));
+
+  const discount = toNumber(purchase.discount);
 
   return (
-    <>
-      <div className="purchase-page">
-        <main className="purchase-container">
+    <div className="pd-page">
+      <main className="pd-shell">
+        {/* TOP BAR */}
+        <nav className="pd-topbar pd-noprint" aria-label="Breadcrumb">
+          <button
+            type="button"
+            className="pd-crumb"
+            onClick={() => navigate("/purchases")}
+          >
+            <FiArrowLeft />
+            Purchases
+          </button>
 
-          {/* HEADER */}
+          <div className="pd-topbar-actions">
+            <button
+              type="button"
+              className="pd-btn pd-btn-ghost"
+              onClick={() => window.print()}
+            >
+              <FiPrinter />
+              Print invoice
+            </button>
 
-          <header className="purchase-header">
-            <div>
-              <span className="page-eyebrow">
-                INVENTORY MANAGEMENT
-              </span>
-
-              <h1>Supplier accounts</h1>
-
-              <p>
-                Manage supplier relationships,
-                purchase history and payments.
-              </p>
-            </div>
-
-            <div className="header-actions">
-              <button
-                className="purchase-button secondary"
-                onClick={loadPurchases}
-              >
-                <FiRefreshCw />
-                Refresh
-              </button>
-
-              <Link
-                to="/purchases/add"
-                className="purchase-button primary"
-              >
-                <FiPlus />
-                New purchase
+            {statusKey !== "paid" && (
+              <Link to={`/purchase/${id}/pay`} className="pd-btn pd-btn-primary">
+                Pay now
+                <FiChevronRight />
               </Link>
+            )}
+          </div>
+        </nav>
+
+        {/* BANNER */}
+        <section className="pd-banner">
+          <div className="pd-banner-main">
+            <span className="pd-banner-label">Purchase invoice</span>
+            <h1>#{purchase.invoice_no || id}</h1>
+
+            <div className="pd-banner-meta">
+              {hasText(purchase.supplier_name) && (
+                <span>{purchase.supplier_name}</span>
+              )}
+              <span>{formatDate(purchase.created_at)}</span>
+              {hasText(purchase.payment_method) && (
+                <span className="pd-cap">{purchase.payment_method}</span>
+              )}
+            </div>
+          </div>
+
+          <div className="pd-banner-due">
+            <span className={`pd-status pd-status-${statusKey}`}>
+              <span />
+              {STATUS_LABELS[statusKey]}
+            </span>
+
+            <span className="pd-banner-due-label">
+              {due > 0 ? "Amount due" : "Total paid"}
+            </span>
+
+            <strong
+              className={`pd-banner-due-amount ${due > 0 ? "" : "pd-amount-clear"}`}
+            >
+              {formatMoney(due > 0 ? due : purchase.paid_amount)}
+            </strong>
+          </div>
+        </section>
+
+        {/* SUPPLIER + INVOICE */}
+        <section className="pd-info">
+          <div className="pd-panel">
+            <h2>Supplier</h2>
+
+            {supplierRows.length === 0 ? (
+              <p className="pd-muted">No supplier details recorded.</p>
+            ) : (
+              <dl className="pd-list">
+                {supplierRows.map((row) => (
+                  <div key={row.label}>
+                    <dt>
+                      {row.icon}
+                      {row.label}
+                    </dt>
+                    <dd>{row.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+          </div>
+
+          <div className="pd-panel">
+            <h2>Invoice</h2>
+
+            <dl className="pd-list">
+              <div>
+                <dt>Bill number</dt>
+                <dd>#{purchase.invoice_no || id}</dd>
+              </div>
+              <div>
+                <dt>Date</dt>
+                <dd>{formatDate(purchase.created_at)}</dd>
+              </div>
+              <div>
+                <dt>Payment method</dt>
+                <dd className="pd-cap">
+                  {hasText(purchase.payment_method)
+                    ? purchase.payment_method
+                    : "—"}
+                </dd>
+              </div>
+              <div>
+                <dt>Status</dt>
+                <dd>
+                  <span className={`pd-status pd-status-${statusKey}`}>
+                    <span />
+                    {STATUS_LABELS[statusKey]}
+                  </span>
+                </dd>
+              </div>
+            </dl>
+          </div>
+        </section>
+
+        {/* ITEMS + SUMMARY */}
+        <section className="pd-card">
+          <header className="pd-card-head">
+            <div>
+              <h2>Items</h2>
+              <p>
+                {items.length} {items.length === 1 ? "product" : "products"} ·{" "}
+                {itemCount.toLocaleString("en-IN")} units
+              </p>
             </div>
           </header>
 
-          {/* SUMMARY */}
-
-          <section className="purchase-stat-grid">
-            <StatCard
-              icon={<FiUsers />}
-              label="Suppliers"
-              value={suppliers.length}
-              color="blue"
-            />
-
-            <StatCard
-              icon={<FiTrendingUp />}
-              label="Total purchases"
-              value={money(
-                totalPurchaseAmount
-              )}
-              color="purple"
-              description={`${totalBills} bills recorded`}
-            />
-
-            <StatCard
-              icon={<FiCheckCircle />}
-              label="Total paid"
-              value={money(
-                totalPaidAmount
-              )}
-              color="green"
-            />
-
-            <StatCard
-              icon={<FiClock />}
-              label="Outstanding"
-              value={money(
-                totalDueAmount
-              )}
-              color="orange"
-              description={`${suppliersWithDue} suppliers pending`}
-            />
-          </section>
-
-          {/* MAIN CARD */}
-
-          <section className="supplier-list-card">
-
-            <div className="list-card-header">
-              <div>
-                <h2>All suppliers</h2>
-                <p>
-                  Click a supplier to open their account
-                </p>
-              </div>
-
-              <span className="supplier-count">
-                {suppliers.length} suppliers
-              </span>
+          {items.length === 0 ? (
+            <div className="pd-empty">
+              <p>No items were recorded on this bill.</p>
             </div>
+          ) : (
+            <div className="pd-table-wrap">
+              <table className="pd-table">
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th className="pd-center-text">Qty</th>
+                    <th className="pd-right">Price</th>
+                    <th className="pd-right">Tax</th>
+                    <th className="pd-right">Total</th>
+                  </tr>
+                </thead>
 
-            {/* SEARCH */}
-
-            <div className="supplier-search-toolbar">
-              <div className="search-box">
-                <FiSearch />
-
-                <input
-                  type="text"
-                  placeholder="Search supplier name, ID, phone or company..."
-                  value={search}
-                  onChange={(e) =>
-                    setSearch(e.target.value)
-                  }
-                />
-
-                {search && (
-                  <button
-                    onClick={() => setSearch("")}
-                    className="clear-search"
-                  >
-                    <FiX />
-                  </button>
-                )}
-              </div>
-
-              <button
-                className="filter-button"
-                onClick={() => setSearch("")}
-              >
-                <FiFilter />
-                Clear
-              </button>
+                <tbody>
+                  {items.map((item, index) => (
+                    <tr key={item.id || index}>
+                      <td data-label="Product">
+                        <span className="pd-product">
+                          <span className="pd-index">{index + 1}</span>
+                          {item.product_name}
+                        </span>
+                      </td>
+                      <td className="pd-center-text" data-label="Qty">
+                        {item.quantity}
+                      </td>
+                      <td className="pd-right" data-label="Price">
+                        {formatMoney(item.purchase_price)}
+                      </td>
+                      <td className="pd-right" data-label="Tax">
+                        {formatMoney(item.tax)}
+                      </td>
+                      <td className="pd-right" data-label="Total">
+                        <strong>{formatMoney(item.total)}</strong>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
+          )}
 
-            {/* EMPTY */}
-
-            {filteredSuppliers.length === 0 ? (
-              <div className="empty-state">
-                <div className="empty-icon">
-                  <FiUsers />
-                </div>
-
-                <h3>No suppliers found</h3>
-
-                <p>
-                  {search
-                    ? "Try another supplier name or ID."
-                    : "Supplier accounts will appear after purchases are recorded."}
-                </p>
-
-                {search && (
-                  <button
-                    className="purchase-button secondary"
-                    onClick={() => setSearch("")}
-                  >
-                    Clear search
-                  </button>
-                )}
+          <div className="pd-summary-wrap">
+            <div className="pd-summary">
+              <div className="pd-row">
+                <span>Subtotal</span>
+                <strong>{formatMoney(purchase.subtotal)}</strong>
               </div>
-            ) : (
-              <>
-                {/* DESKTOP TABLE */}
 
-                <div className="supplier-table-wrapper">
-                  <table className="supplier-table">
-                    <thead>
-                      <tr>
-                        <th>Supplier ID</th>
-                        <th>Supplier</th>
-                        <th>Bills</th>
-                        <th>Purchases</th>
-                        <th>Paid</th>
-                        <th>Outstanding</th>
-                        <th>Last purchase</th>
-                        <th></th>
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {filteredSuppliers.map(
-                        (supplier) => (
-                          <tr
-                            key={supplier.supplier_id}
-                            onClick={() =>
-                              openSupplierAccount(
-                                supplier
-                              )
-                            }
-                          >
-                            <td>
-                              <span className="supplier-id-badge supplier-id-left">
-                                #{supplier.supplier_id}
-                              </span>
-                            </td>
-
-                            <td>
-                              <div className="supplier-cell">
-                                <div className="supplier-avatar">
-                                  {supplier.supplier_name
-                                    .charAt(0)
-                                    .toUpperCase()}
-                                </div>
-
-                                <div className="supplier-name-block">
-                                  <strong>
-                                    {supplier.supplier_name}
-                                  </strong>
-
-                                  {supplier.company_name && (
-                                    <span>
-                                      {supplier.company_name}
-                                    </span>
-                                  )}
-
-                                  {supplier.supplier_phone && (
-                                    <small>
-                                      <FiPhone />
-                                      {supplier.supplier_phone}
-                                    </small>
-                                  )}
-                                </div>
-                              </div>
-                            </td>
-
-                            <td>
-                              <span className="bill-count">
-                                <FiFileText />
-                                {supplier.bill_count}
-                              </span>
-                            </td>
-
-                            <td>
-                              <strong className="dark-money">
-                                {money(
-                                  supplier.total_purchases
-                                )}
-                              </strong>
-                            </td>
-
-                            <td>
-                              <strong className="green-text">
-                                {money(
-                                  supplier.total_paid
-                                )}
-                              </strong>
-                            </td>
-
-                            <td>
-                              <strong
-                                className={
-                                  supplier.total_due > 0
-                                    ? "red-text"
-                                    : "green-text"
-                                }
-                              >
-                                {money(
-                                  supplier.total_due
-                                )}
-                              </strong>
-                            </td>
-
-                            <td>
-                              <span className="date-cell">
-                                <FiCalendar />
-
-                                {supplier.last_purchase
-                                  ? formatDate(
-                                      supplier.last_purchase
-                                    )
-                                  : "—"}
-                              </span>
-                            </td>
-
-                            <td>
-                              <button className="account-button">
-                                Account
-                                <FiChevronRight />
-                              </button>
-                            </td>
-                          </tr>
-                        )
-                      )}
-                    </tbody>
-                  </table>
+              {discount > 0 && (
+                <div className="pd-row">
+                  <span>Discount</span>
+                  <strong>-{formatMoney(discount)}</strong>
                 </div>
+              )}
 
-                {/* MOBILE CARDS */}
+              <div className="pd-row">
+                <span>Tax</span>
+                <strong>{formatMoney(purchase.tax)}</strong>
+              </div>
 
-                <div className="supplier-mobile-list">
-                  {filteredSuppliers.map(
-                    (supplier) => (
-                      <div
-                        className="supplier-mobile-card"
-                        key={supplier.supplier_id}
-                        onClick={() =>
-                          openSupplierAccount(
-                            supplier
-                          )
-                        }
-                      >
-                        <div className="mobile-supplier-top">
-                          <span className="supplier-id-badge supplier-id-left mobile-id-badge">
-                            #{supplier.supplier_id}
-                          </span>
-                          <div className="supplier-cell">
-                            <div className="supplier-avatar">
-                              {supplier.supplier_name
-                                .charAt(0)
-                                .toUpperCase()}
-                            </div>
+              <div className="pd-total">
+                <span>Total</span>
+                <span>{formatMoney(purchase.total_amount)}</span>
+              </div>
 
-                            <div className="supplier-name-block">
-                              <strong>
-                                {supplier.supplier_name}
-                              </strong>
+              <div className="pd-row pd-row-paid">
+                <span>Paid</span>
+                <strong>{formatMoney(purchase.paid_amount)}</strong>
+              </div>
 
-                              {supplier.company_name && (
-                                <span>
-                                  {supplier.company_name}
-                                </span>
-                              )}
-
-
-                            </div>
-                          </div>
-
-                          <FiChevronRight className="mobile-chevron" />
-                        </div>
-
-                        <div className="mobile-supplier-stats">
-                          <div>
-                            <span>Purchases</span>
-                            <strong>
-                              {money(
-                                supplier.total_purchases
-                              )}
-                            </strong>
-                          </div>
-
-                          <div>
-                            <span>Paid</span>
-                            <strong className="green-text">
-                              {money(
-                                supplier.total_paid
-                              )}
-                            </strong>
-                          </div>
-
-                          <div>
-                            <span>Outstanding</span>
-                            <strong
-                              className={
-                                supplier.total_due > 0
-                                  ? "red-text"
-                                  : "green-text"
-                              }
-                            >
-                              {money(
-                                supplier.total_due
-                              )}
-                            </strong>
-                          </div>
-                        </div>
-
-                        <div className="mobile-supplier-footer">
-                          <span>
-                            <FiFileText />
-                            {supplier.bill_count} bills
-                          </span>
-
-                          <span>
-                            <FiCalendar />
-                            {supplier.last_purchase
-                              ? formatDate(
-                                  supplier.last_purchase
-                                )
-                              : "No purchases"}
-                          </span>
-                        </div>
-                      </div>
-                    )
-                  )}
-                </div>
-              </>
-            )}
-
-            {/* FOOTER */}
-
-            <div className="list-footer">
-              <span>
-                Showing {filteredSuppliers.length} of{" "}
-                {suppliers.length} suppliers
-              </span>
-
-              <span>
-                Total outstanding:{" "}
-                <strong className="red-text">
-                  {money(totalDueAmount)}
+              <div className="pd-row pd-row-due">
+                <span>Due</span>
+                <strong className={due > 0 ? "pd-owed" : "pd-settled"}>
+                  {formatMoney(due)}
                 </strong>
-              </span>
+              </div>
             </div>
-          </section>
-
-          {/* FOOTER INFO */}
-
-          <div className="purchase-info-note">
-            <FiPackage />
-
-            <span>
-              Supplier accounts are grouped using
-              their unique Supplier ID. Purchase
-              bills and payments automatically
-              update each account.
-            </span>
           </div>
+        </section>
 
-        </main>
-      </div>
+        {/* BOTTOM ACTIONS */}
+        <div className="pd-bottom pd-noprint">
+          <button
+            type="button"
+            className="pd-btn pd-btn-ghost"
+            onClick={() => navigate("/purchases")}
+          >
+            <FiArrowLeft />
+            Back to purchases
+          </button>
 
-      <PurchaseStyles />
-    </>
-  );
-}
-
-/* =========================================================
-   STAT CARD
-========================================================= */
-
-function StatCard({
-  icon,
-  label,
-  value,
-  color,
-  description,
-}) {
-  return (
-    <div className={`purchase-stat-card ${color}`}>
-      <div className="stat-top">
-        <div className="stat-icon">
-          {icon}
+          <button
+            type="button"
+            className="pd-btn pd-btn-primary"
+            onClick={() => window.print()}
+          >
+            <FiPrinter />
+            Print invoice
+          </button>
         </div>
+      </main>
 
-        <span>{label}</span>
-      </div>
-
-      <strong className="stat-value">
-        {value}
-      </strong>
-
-      {description && (
-        <small>{description}</small>
-      )}
+      <Styles />
     </div>
   );
 }
 
-/* =========================================================
-   STATUS
-========================================================= */
+/* ====================================================== */
+/* Styles — scoped under .pd- so nothing leaks globally    */
+/* ====================================================== */
 
-function StatusBadge({ status }) {
-  const statuses = {
-    paid: {
-      label: "Fully paid",
-      className: "paid",
-      icon: <FiCheckCircle />,
-    },
-
-    partial: {
-      label: "Partially paid",
-      className: "partial",
-      icon: <FiClock />,
-    },
-
-    unpaid: {
-      label: "Unpaid",
-      className: "unpaid",
-      icon: <FiAlertCircle />,
-    },
-  };
-
-  const current =
-    statuses[status] || statuses.unpaid;
-
-  return (
-    <span
-      className={`status-badge ${current.className}`}
-    >
-      {current.icon}
-      {current.label}
-    </span>
-  );
-}
-
-/* =========================================================
-   INFO ITEM
-========================================================= */
-
-function InfoItem({ label, value }) {
-  return (
-    <div className="info-item">
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  );
-}
-
-/* =========================================================
-   STYLES
-========================================================= */
-
-function PurchaseStyles() {
+function Styles() {
   return (
     <style>{`
-      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+      @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
 
-      .purchase-page {
+      .pd-page {
+        --ink: #14213d;
+        --ink-soft: #3b4a68;
+        --muted: #6b7794;
+        --line: #e1e6ef;
+        --bg: #eef1f6;
+        --surface: #ffffff;
+        --brand: #1d4ed8;
+        --brand-soft: #e8eefc;
+        --green: #157347;
+        --green-soft: #dff4e8;
+        --amber: #9a5b00;
+        --amber-soft: #fdf0d2;
+        --red: #b3261e;
+        --red-soft: #fbe3e1;
+        --gold: #f6c453;
+
         min-height: 100vh;
-        background: #f4f6fb;
-        color: #17233b;
-        font-family: Inter, sans-serif;
-        padding: 1px 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: Manrope, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-variant-numeric: tabular-nums;
+        -webkit-font-smoothing: antialiased;
       }
 
-      .purchase-page * {
+      .pd-page *,
+      .pd-page *::before,
+      .pd-page *::after {
         box-sizing: border-box;
       }
 
-      .purchase-container {
-        width: min(1450px, calc(100% - 40px));
-        margin: auto;
-        padding: 30px 0 50px;
-      }
-
-      /* HEADER */
-
-      .purchase-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 25px;
-        margin-bottom: 26px;
-      }
-
-      .page-eyebrow {
-        color: #64748b;
-        font-size: 11px;
-        font-weight: 800;
-        letter-spacing: 1.3px;
-      }
-
-      .purchase-header h1 {
-        margin: 9px 0 0;
-        font-size: 32px;
-        font-weight: 900;
-        letter-spacing: -1px;
-      }
-
-      .purchase-header p {
-        margin: 8px 0 0;
-        color: #7b879d;
-        font-size: 14px;
-      }
-
-      .header-actions {
-        display: flex;
-        gap: 10px;
-      }
-
-      .purchase-button {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        min-height: 43px;
-        padding: 0 16px;
-        border-radius: 11px;
-        border: 1px solid transparent;
-        font-size: 13px;
-        font-weight: 700;
-        text-decoration: none;
-        cursor: pointer;
-        white-space: nowrap;
-        transition: .2s;
-      }
-
-      .purchase-button.primary {
-        color: white;
-        background: #17233b;
-      }
-
-      .purchase-button.primary:hover {
-        background: #0c172c;
-        transform: translateY(-1px);
-      }
-
-      .purchase-button.secondary {
-        color: #475569;
-        background: white;
-        border-color: #e2e8f0;
-      }
-
-      .purchase-button.secondary:hover {
-        background: #f8fafc;
-        border-color: #cbd5e1;
-      }
-
-      /* STAT GRID */
-
-      .purchase-stat-grid {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 16px;
-        margin-bottom: 23px;
-      }
-
-      .purchase-stat-card {
-        padding: 21px;
-        border: 1px solid #e5eaf2;
-        border-radius: 17px;
-        background: white;
-      }
-
-      .stat-top {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        margin-bottom: 17px;
-      }
-
-      .stat-icon {
-        width: 36px;
-        height: 36px;
-        display: grid;
-        place-items: center;
-        border-radius: 11px;
-        font-size: 17px;
-      }
-
-      .purchase-stat-card.blue .stat-icon {
-        background: #eaf1ff;
-        color: #2563eb;
-      }
-
-      .purchase-stat-card.green .stat-icon {
-        background: #e8f7ee;
-        color: #15803d;
-      }
-
-      .purchase-stat-card.orange .stat-icon {
-        background: #fff4df;
-        color: #c46a09;
-      }
-
-      .purchase-stat-card.purple .stat-icon {
-        background: #f0eaff;
-        color: #7c3aed;
-      }
-
-      .stat-top span {
-        color: #68758d;
-        font-size: 12px;
-        font-weight: 700;
-      }
-
-      .stat-value {
-        display: block;
-        font-size: clamp(19px, 2vw, 25px);
-        font-weight: 900;
-        letter-spacing: -.6px;
-        overflow-wrap: anywhere;
-      }
-
-      .purchase-stat-card small {
-        display: block;
-        margin-top: 8px;
-        color: #8b98aa;
-        font-size: 11px;
-      }
-
-      /* SUPPLIER LIST */
-
-      .supplier-list-card,
-      .account-information-card,
-      .purchase-history-card,
-      .supplier-ledger-card {
-        background: white;
-        border: 1px solid #e5eaf2;
-        border-radius: 19px;
-        overflow: hidden;
-      }
-
-      .list-card-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 15px;
-        padding: 24px 25px 19px;
-      }
-
-      .list-card-header h2 {
+      .pd-page h1,
+      .pd-page h2,
+      .pd-page p,
+      .pd-page dl,
+      .pd-page dd {
         margin: 0;
-        font-size: 20px;
-        font-weight: 900;
       }
 
-      .list-card-header p {
-        margin: 6px 0 0;
-        color: #8b98aa;
-        font-size: 12px;
+      .pd-page :focus-visible {
+        outline: 3px solid #93b4ff;
+        outline-offset: 2px;
       }
 
-      .supplier-count,
-      .bill-count-badge {
-        padding: 8px 12px;
-        background: #f1f5f9;
-        border-radius: 10px;
-        color: #475569;
-        font-size: 12px;
-        font-weight: 800;
+      .pd-shell {
+        width: min(1080px, calc(100% - 40px));
+        margin: 0 auto;
+        padding: 28px 0 64px;
       }
 
-      /* SEARCH */
-
-      .supplier-search-toolbar {
-        display: flex;
-        gap: 10px;
-        padding: 0 25px 20px;
+      .pd-cap {
+        text-transform: capitalize;
       }
 
-      .search-box {
+      .pd-muted {
+        font-size: 14px;
+        color: var(--muted);
+      }
+
+      /* ---------- buttons / top bar ---------- */
+
+      .pd-topbar {
         display: flex;
         align-items: center;
-        gap: 10px;
-        flex: 1;
-        max-width: 700px;
-        min-height: 46px;
-        padding: 0 14px;
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        background: #f8fafc;
-        color: #94a3b8;
-      }
-
-      .search-box:focus-within {
-        background: white;
-        border-color: #93b4ff;
-        box-shadow: 0 0 0 3px rgba(37, 99, 235, .08);
-      }
-
-      .search-box input {
-        width: 100%;
-        outline: none;
-        border: none;
-        background: transparent;
-        color: #17233b;
-        font-size: 13px;
-      }
-
-      .search-box input::placeholder {
-        color: #94a3b8;
-      }
-
-      .clear-search {
-        border: none;
-        background: transparent;
-        color: #64748b;
-        cursor: pointer;
-      }
-
-      .filter-button {
-        min-height: 46px;
-        padding: 0 15px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        border: 1px solid #e2e8f0;
-        border-radius: 11px;
-        background: white;
-        color: #475569;
-        font-size: 12px;
-        font-weight: 700;
-        cursor: pointer;
-      }
-
-      /* TABLE */
-
-      .supplier-table-wrapper {
-        overflow-x: auto;
-        border-top: 1px solid #e5eaf2;
-        scrollbar-width: thin;
-        scrollbar-color: #cbd5e1 transparent;
-      }
-
-      .supplier-table {
-        width: 100%;
-        min-width: 0;
-        table-layout: fixed;
-        border-collapse: collapse;
-      }
-
-      .supplier-table th {
-        padding: 14px 12px;
-        background: #f8fafc;
-        text-align: left;
-        white-space: nowrap;
-        color: #7b879d;
-        font-size: 9px;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: .45px;
-      }
-
-      .supplier-table td {
-        padding: 14px 12px;
-        border-bottom: 1px solid #edf0f5;
-        color: #475569;
-        font-size: 11px;
-        white-space: normal;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-
-      .supplier-table th:nth-child(1),
-      .supplier-table td:nth-child(1) { width: 112px; }
-      .supplier-table th:nth-child(2),
-      .supplier-table td:nth-child(2) { width: 26%; }
-      .supplier-table th:nth-child(3),
-      .supplier-table td:nth-child(3) { width: 72px; }
-      .supplier-table th:nth-child(4),
-      .supplier-table td:nth-child(4),
-      .supplier-table th:nth-child(5),
-      .supplier-table td:nth-child(5),
-      .supplier-table th:nth-child(6),
-      .supplier-table td:nth-child(6) { width: 13%; }
-      .supplier-table th:nth-child(7),
-      .supplier-table td:nth-child(7) { width: 130px; }
-      .supplier-table th:nth-child(8),
-      .supplier-table td:nth-child(8) { width: 105px; }
-
-      .supplier-table tbody tr {
-        cursor: pointer;
-        transition: background .15s;
-      }
-
-      .supplier-table tbody tr:hover {
-        background: #f8fbff;
-      }
-
-      .supplier-table tbody tr:last-child td {
-        border-bottom: none;
-      }
-
-      .supplier-cell {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        min-width: 0;
-      }
-
-      .supplier-name-block {
-        min-width: 0;
-        overflow: hidden;
-      }
-
-      .supplier-name-block strong,
-      .supplier-name-block span,
-      .supplier-name-block small {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      .supplier-avatar {
-        width: 41px;
-        height: 41px;
-        display: grid;
-        place-items: center;
-        flex-shrink: 0;
-        border-radius: 12px;
-        background: #eaf1ff;
-        color: #2563eb;
-        font-size: 16px;
-        font-weight: 900;
-      }
-
-      .supplier-avatar.large {
-        width: 64px;
-        height: 64px;
-        border-radius: 18px;
-        font-size: 24px;
-      }
-
-      .supplier-name-block {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-      }
-
-      .supplier-name-block strong {
-        color: #17233b;
-        font-size: 13px;
-        font-weight: 800;
-      }
-
-      .supplier-name-block span {
-        color: #718096;
-        font-size: 11px;
-      }
-
-      .supplier-name-block small {
-        display: flex;
-        align-items: center;
-        gap: 5px;
-        color: #8b98aa;
-        font-size: 10px;
-      }
-
-      .supplier-id-badge {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 8px 11px;
-        background: #eef4ff;
-        border: 1px solid #dbe7ff;
-        border-radius: 9px;
-        color: #315fba;
-        font-weight: 900;
-        letter-spacing: .2px;
-      }
-
-      .supplier-id-left {
-        min-width: 76px;
-        padding: 8px 9px;
-        font-size: 11px;
-        background: #eef4ff;
-        border-color: #d8e5ff;
-      }
-
-      .bill-count {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 7px 9px;
-        background: #f1f5f9;
-        border-radius: 8px;
-        font-weight: 700;
-      }
-
-      .dark-money {
-        color: #17233b;
-        font-weight: 800;
-      }
-
-      .green-text {
-        color: #15803d !important;
-      }
-
-      .red-text {
-        color: #dc2626 !important;
-      }
-
-      .date-cell {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        color: #64748b;
-      }
-
-      .account-button {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        width: 100%;
-        padding: 9px 8px;
-        border: 1px solid #dbe4f0;
-        border-radius: 9px;
-        background: white;
-        color: #475569;
-        font-size: 10px;
-        font-weight: 800;
-        cursor: pointer;
-        white-space: nowrap;
-        transition: .18s ease;
-      }
-
-      .account-button:hover {
-        background: #17233b;
-        color: white;
-        border-color: #17233b;
-      }
-
-      /* MOBILE SUPPLIERS */
-
-      .supplier-mobile-list {
-        display: none;
-      }
-
-      .supplier-mobile-card {
-        padding: 17px;
-        border-bottom: 1px solid #e5eaf2;
-        cursor: pointer;
-      }
-
-      .supplier-mobile-card:hover {
-        background: #f8fbff;
-      }
-
-      .mobile-supplier-top {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        justify-content: flex-start;
-      }
-
-      .mobile-supplier-top .supplier-cell {
-        flex: 1;
-      }
-
-      .mobile-id-badge {
-        flex-shrink: 0;
-      }
-
-      .mobile-chevron {
-        color: #94a3b8;
-        font-size: 20px;
-      }
-
-      .mobile-supplier-stats {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 8px;
-        margin-top: 16px;
-        padding: 13px 0;
-        border-top: 1px solid #edf0f5;
-        border-bottom: 1px solid #edf0f5;
-      }
-
-      .mobile-supplier-stats div {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-      }
-
-      .mobile-supplier-stats span {
-        color: #8b98aa;
-        font-size: 10px;
-      }
-
-      .mobile-supplier-stats strong {
-        font-size: 12px;
-        font-weight: 800;
-        overflow-wrap: anywhere;
-      }
-
-      .mobile-supplier-footer {
-        display: flex;
-        justify-content: space-between;
-        gap: 10px;
-        margin-top: 12px;
-        color: #7b879d;
-        font-size: 10px;
-      }
-
-      .mobile-supplier-footer span {
-        display: flex;
-        align-items: center;
-        gap: 5px;
-      }
-
-      /* FOOTER */
-
-      .list-footer {
-        display: flex;
         justify-content: space-between;
         gap: 12px;
-        padding: 15px 24px;
-        background: #f8fafc;
-        border-top: 1px solid #e5eaf2;
-        color: #7b879d;
-        font-size: 11px;
-      }
-
-      .list-footer strong {
-        font-size: 12px;
-      }
-
-      .purchase-info-note {
-        display: flex;
-        align-items: flex-start;
-        gap: 9px;
-        margin-top: 17px;
-        padding: 12px 15px;
-        background: #eaf1ff;
-        border-radius: 11px;
-        color: #49658f;
-        font-size: 11px;
-        line-height: 1.5;
-      }
-
-      .purchase-info-note svg {
-        flex-shrink: 0;
-        font-size: 16px;
-      }
-
-      /* EMPTY */
-
-      .empty-state {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: 65px 20px;
-        text-align: center;
-      }
-
-      .empty-icon {
-        width: 65px;
-        height: 65px;
-        display: grid;
-        place-items: center;
-        margin-bottom: 15px;
-        background: #f1f5f9;
-        border-radius: 19px;
-        color: #94a3b8;
-        font-size: 25px;
-      }
-
-      .empty-state h3 {
-        margin: 0;
-        font-size: 18px;
-        font-weight: 900;
-      }
-
-      .empty-state p {
-        margin: 8px 0 18px;
-        color: #8b98aa;
-        font-size: 12px;
-      }
-
-      /* ACCOUNT */
-
-      .account-topbar {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
         margin-bottom: 20px;
       }
 
-      .back-button {
+      .pd-topbar-actions {
         display: flex;
-        align-items: center;
-        gap: 8px;
-        border: none;
-        background: transparent;
-        color: #475569;
-        font-size: 13px;
-        font-weight: 800;
-        cursor: pointer;
-      }
-
-      .back-button:hover {
-        color: #2563eb;
-      }
-
-      .supplier-profile {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 25px;
-        padding: 27px;
-        background: #17233b;
-        border-radius: 20px;
-        color: white;
-      }
-
-      .supplier-profile-left {
-        display: flex;
-        align-items: flex-start;
-        gap: 18px;
-        min-width: 0;
-      }
-
-      .supplier-profile .supplier-avatar {
-        background: rgba(255,255,255,.12);
-        color: white;
-      }
-
-      .profile-label {
-        display: block;
-        margin-bottom: 7px;
-        color: #9eb0cf;
-        font-size: 10px;
-        font-weight: 800;
-        letter-spacing: 1px;
-      }
-
-      .supplier-profile h1 {
-        margin: 0;
-        color: white;
-        font-size: clamp(22px, 3vw, 30px);
-        font-weight: 900;
-        overflow-wrap: anywhere;
-      }
-
-      .supplier-id {
-        margin-top: 7px;
-        color: #a9bad5;
-        font-size: 12px;
-      }
-
-      .supplier-detail-line {
-        display: flex;
-        align-items: center;
-        gap: 7px;
-        margin-top: 9px;
-        color: #d1dbed;
-        font-size: 12px;
-        overflow-wrap: anywhere;
-      }
-
-      .supplier-detail-line svg {
-        color: #94a9cb;
-        flex-shrink: 0;
-      }
-
-      .supplier-balance-card {
-        min-width: 215px;
-        padding: 18px 20px;
-        border: 1px solid rgba(255,255,255,.12);
-        border-radius: 15px;
-        background: rgba(255,255,255,.05);
-      }
-
-      .supplier-balance-card > span {
-        color: #a9bad5;
-        font-size: 11px;
-        font-weight: 700;
-      }
-
-      .supplier-balance-card > strong {
-        display: block;
-        margin-top: 8px;
-        font-size: 27px;
-        font-weight: 900;
-      }
-
-      .balance-red {
-        color: #ffbd6b;
-      }
-
-      .balance-green {
-        color: #75e2a3;
-      }
-
-      .balance-status {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        margin-top: 7px;
-        color: #a9bad5;
-        font-size: 10px;
-      }
-
-      /* INFORMATION */
-
-      .account-information-card {
-        padding: 23px;
-        margin-bottom: 18px;
-      }
-
-      .section-heading {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding-bottom: 18px;
-        border-bottom: 1px solid #edf0f5;
-      }
-
-      .heading-icon {
-        width: 40px;
-        height: 40px;
-        display: grid;
-        place-items: center;
-        border-radius: 12px;
-        background: #eaf1ff;
-        color: #2563eb;
-        font-size: 17px;
-      }
-
-      .heading-icon.green {
-        background: #e8f7ee;
-        color: #15803d;
-      }
-
-      .section-heading h2 {
-        margin: 0;
-        font-size: 16px;
-        font-weight: 900;
-      }
-
-      .section-heading p {
-        margin: 4px 0 0;
-        color: #8b98aa;
-        font-size: 11px;
-      }
-
-      .information-grid {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 20px;
-        padding-top: 20px;
-      }
-
-      .info-item {
-        display: flex;
-        flex-direction: column;
-        gap: 7px;
-        min-width: 0;
-      }
-
-      .info-item span {
-        color: #8b98aa;
-        font-size: 10px;
-        font-weight: 700;
-      }
-
-      .info-item strong {
-        color: #17233b;
-        font-size: 12px;
-        font-weight: 800;
-        overflow-wrap: anywhere;
-      }
-
-      /* HISTORY */
-
-      .purchase-history-card {
-        margin-bottom: 18px;
-      }
-
-      .history-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 15px;
-        padding: 23px;
-      }
-
-      .history-header h2 {
-        margin: 0;
-        font-size: 19px;
-        font-weight: 900;
-      }
-
-      .history-header p {
-        margin: 6px 0 0;
-        color: #8b98aa;
-        font-size: 11px;
-      }
-
-      .history-table-wrapper {
-        overflow-x: auto;
-        border-top: 1px solid #e5eaf2;
-      }
-
-      .history-table {
-        width: 100%;
-        min-width: 850px;
-        border-collapse: collapse;
-      }
-
-      .history-table th {
-        padding: 14px 17px;
-        background: #f8fafc;
-        text-align: left;
-        color: #7b879d;
-        font-size: 10px;
-        font-weight: 800;
-        text-transform: uppercase;
-      }
-
-      .history-table td {
-        padding: 16px 17px;
-        border-bottom: 1px solid #edf0f5;
-        color: #475569;
-        font-size: 11px;
-        white-space: nowrap;
-      }
-
-      .history-table tbody tr:last-child td {
-        border-bottom: none;
-      }
-
-      .bill-cell {
-        display: flex;
-        align-items: center;
-        gap: 9px;
-      }
-
-      .bill-icon {
-        width: 33px;
-        height: 33px;
-        display: grid;
-        place-items: center;
-        border-radius: 9px;
-        background: #eaf1ff;
-        color: #2563eb;
-      }
-
-      .bill-cell strong {
-        color: #17233b;
-        font-weight: 800;
-      }
-
-      .status-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        padding: 6px 9px;
-        border-radius: 20px;
-        font-size: 9px;
-        font-weight: 800;
-      }
-
-      .status-badge.paid {
-        background: #e8f7ee;
-        color: #15803d;
-      }
-
-      .status-badge.partial {
-        background: #fff4df;
-        color: #c46a09;
-      }
-
-      .status-badge.unpaid {
-        background: #fee2e2;
-        color: #dc2626;
-      }
-
-      .table-actions {
-        display: flex;
-        align-items: center;
-        gap: 7px;
-      }
-
-      .view-button {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 8px 10px;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        background: white;
-        color: #475569;
-        text-decoration: none;
-        font-size: 10px;
-        font-weight: 800;
-      }
-
-      .pay-button {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        padding: 8px 10px;
-        border-radius: 8px;
-        background: #17233b;
-        color: white;
-        text-decoration: none;
-        font-size: 10px;
-        font-weight: 800;
-      }
-
-      /* MOBILE BILL */
-
-      .mobile-bill-list {
-        display: none;
-      }
-
-      .mobile-bill-card {
-        padding: 17px;
-        border-bottom: 1px solid #e5eaf2;
-      }
-
-      .mobile-bill-header {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
         gap: 10px;
       }
 
-      .mobile-bill-header > div {
+      .pd-crumb {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0;
+        border: 0;
+        background: none;
+        color: var(--ink-soft);
+        font: 700 14px Manrope, inherit;
+        cursor: pointer;
+      }
+
+      .pd-crumb:hover {
+        color: var(--brand);
+      }
+
+      .pd-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 42px;
+        padding: 0 16px;
+        border-radius: 11px;
+        border: 1px solid transparent;
+        font: 700 13px/1 Manrope, inherit;
+        text-decoration: none;
+        white-space: nowrap;
+        cursor: pointer;
+        transition: background 0.15s, border-color 0.15s, color 0.15s;
+      }
+
+      .pd-btn-primary {
+        background: var(--ink);
+        color: #fff;
+      }
+
+      .pd-btn-primary:hover {
+        background: #0c1529;
+      }
+
+      .pd-btn-ghost {
+        background: var(--surface);
+        color: var(--ink-soft);
+        border-color: var(--line);
+      }
+
+      .pd-btn-ghost:hover {
+        border-color: #c5cddd;
+        color: var(--ink);
+      }
+
+      /* ---------- banner ---------- */
+
+      .pd-banner {
         display: flex;
-        flex-direction: column;
-        gap: 5px;
+        align-items: stretch;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 24px;
+        padding: 28px;
+        border-radius: 20px;
+        background: var(--ink);
+        color: #fff;
       }
 
-      .mobile-bill-header span {
-        color: #8b98aa;
-        font-size: 9px;
+      .pd-banner-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #b8c3dd;
+      }
+
+      .pd-page .pd-banner h1 {
+        color: #ffffff !important;
+        margin-top: 6px;
+        font-size: clamp(26px, 4vw, 36px);
         font-weight: 800;
-      }
-
-      .mobile-bill-header strong {
-        color: #17233b;
-        font-size: 12px;
+        letter-spacing: -0.8px;
         overflow-wrap: anywhere;
       }
 
-      .mobile-date {
+      .pd-banner-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 18px;
+        margin-top: 12px;
+        font-size: 14px;
+        font-weight: 600;
+        color: #ffffff !important;
+      }
+
+      .pd-banner-due {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        justify-content: center;
+        gap: 6px;
+        min-width: 220px;
+        padding: 16px 20px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.06);
+        text-align: right;
+      }
+
+      .pd-banner-due-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #b8c3dd;
+      }
+
+      .pd-banner-due-amount {
+        font-size: clamp(26px, 4vw, 34px);
+        font-weight: 800;
+        letter-spacing: -0.8px;
+        color: var(--gold);
+      }
+
+      .pd-amount-clear {
+        color: #8be0b0;
+      }
+
+      /* ---------- status pill ---------- */
+
+      .pd-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 5px 11px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      .pd-status > span {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+      }
+
+      .pd-status-paid { background: var(--green-soft); color: var(--green); }
+      .pd-status-partial { background: var(--amber-soft); color: var(--amber); }
+      .pd-status-unpaid { background: var(--red-soft); color: var(--red); }
+
+      /* ---------- info panels ---------- */
+
+      .pd-info {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin-top: 16px;
+      }
+
+      .pd-panel {
+        padding: 22px 24px;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: var(--surface);
+      }
+
+      .pd-panel h2,
+      .pd-card-head h2 {
+        font-size: 18px;
+        font-weight: 800;
+        letter-spacing: -0.3px;
+      }
+
+      .pd-list {
+        margin-top: 14px;
+      }
+
+      .pd-list > div {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 11px 0;
+        border-bottom: 1px solid #eef1f6;
+      }
+
+      .pd-list > div:last-child {
+        border-bottom: 0;
+        padding-bottom: 0;
+      }
+
+      .pd-list dt {
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        flex: none;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--muted);
+      }
+
+      .pd-list dt svg {
+        color: #8c97b0;
+      }
+
+      .pd-list dd {
+        font-size: 14px;
+        font-weight: 700;
+        text-align: right;
+        overflow-wrap: anywhere;
+        color: var(--ink);
+      }
+
+      /* ---------- items card ---------- */
+
+      .pd-card {
+        margin-top: 16px;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: var(--surface);
+        overflow: hidden;
+      }
+
+      .pd-card-head {
+        padding: 22px 24px 16px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .pd-card-head p {
+        margin-top: 4px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .pd-table-wrap {
+        overflow-x: auto;
+      }
+
+      .pd-table {
+        width: 100%;
+        min-width: 560px;
+        border-collapse: collapse;
+      }
+
+      .pd-table th {
+        padding: 0 24px;
+        height: 44px;
+        text-align: left;
+        background: #f8f9fc;
+        border-bottom: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      .pd-table td {
+        padding: 15px 24px;
+        border-bottom: 1px solid #eef1f6;
+        font-size: 14px;
+        color: var(--ink-soft);
+        vertical-align: middle;
+      }
+
+      .pd-table tbody tr:last-child td {
+        border-bottom: 0;
+      }
+
+      .pd-right {
+        text-align: right !important;
+        white-space: nowrap;
+      }
+
+      .pd-center-text {
+        text-align: center !important;
+      }
+
+      .pd-table td strong {
+        font-weight: 800;
+        color: var(--ink);
+      }
+
+      .pd-product {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        font-weight: 700;
+        color: var(--ink);
+      }
+
+      .pd-index {
+        width: 26px;
+        height: 26px;
+        display: grid;
+        place-items: center;
+        border-radius: 8px;
+        background: var(--brand-soft);
+        color: var(--brand);
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      .pd-empty {
+        padding: 36px 24px;
+        text-align: center;
+        font-size: 14px;
+        color: var(--muted);
+      }
+
+      /* ---------- summary ---------- */
+
+      .pd-summary-wrap {
+        display: flex;
+        justify-content: flex-end;
+        padding: 20px 24px 24px;
+        border-top: 1px solid var(--line);
+        background: #f8f9fc;
+      }
+
+      .pd-summary {
+        width: 100%;
+        max-width: 360px;
+      }
+
+      .pd-row {
         display: flex;
         align-items: center;
-        gap: 6px;
-        margin-top: 10px;
-        color: #8b98aa;
-        font-size: 10px;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 8px 0;
+        font-size: 14px;
+        color: var(--muted);
       }
 
-      .mobile-amount-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 8px;
-        margin-top: 15px;
-        padding: 13px 0;
-        border-top: 1px solid #edf0f5;
-        border-bottom: 1px solid #edf0f5;
+      .pd-row strong {
+        font-weight: 800;
+        color: var(--ink);
       }
 
-      .mobile-amount-grid div {
+      .pd-total {
         display: flex;
-        flex-direction: column;
-        gap: 6px;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin: 10px 0;
+        padding: 14px 16px;
+        border-radius: 12px;
+        background: var(--ink);
+        color: #fff;
+        font-size: 17px;
+        font-weight: 800;
       }
 
-      .mobile-amount-grid span {
-        color: #8b98aa;
-        font-size: 10px;
+      .pd-row-paid strong,
+      .pd-row .pd-settled {
+        color: var(--green);
       }
 
-      .mobile-amount-grid strong {
-        font-size: 11px;
+      .pd-row .pd-owed {
+        color: var(--red);
       }
 
-      .mobile-actions {
+      .pd-bottom {
         display: flex;
-        gap: 9px;
-        margin-top: 13px;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 20px;
       }
 
-      .mobile-actions .purchase-button {
-        flex: 1;
-      }
+      /* ---------- states ---------- */
 
-      /* LEDGER */
-
-      .supplier-ledger-card {
-        padding: 23px;
-      }
-
-      .ledger-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 20px;
-        padding-top: 20px;
-      }
-
-      .ledger-grid div {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
-
-      .ledger-grid span {
-        color: #8b98aa;
-        font-size: 11px;
-      }
-
-      .ledger-grid strong {
-        font-size: 20px;
-        font-weight: 900;
-      }
-
-      /* LOADING */
-
-      .purchase-loading,
-      .purchase-state {
+      .pd-center {
         min-height: 70vh;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 12px;
+        gap: 6px;
+        padding: 24px;
         text-align: center;
-        color: #64748b;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--muted);
       }
 
-      .purchase-spinner {
-        width: 40px;
-        height: 40px;
-        border: 4px solid #e2e8f0;
-        border-top-color: #2563eb;
-        border-radius: 50%;
-        animation: purchase-spin .8s linear infinite;
-      }
-
-      @keyframes purchase-spin {
-        to {
-          transform: rotate(360deg);
-        }
-      }
-
-      .purchase-state h2 {
-        margin: 0;
-        color: #17233b;
+      .pd-center h2 {
         font-size: 21px;
+        font-weight: 800;
+        color: var(--ink);
       }
 
-      .purchase-state p {
-        max-width: 400px;
-        color: #8b98aa;
-        font-size: 12px;
+      .pd-center p {
+        max-width: 380px;
+        font-size: 14px;
+        font-weight: 500;
+        line-height: 1.5;
       }
 
-      .purchase-state-icon {
-        width: 60px;
-        height: 60px;
+      .pd-center > .pd-btn {
+        margin-top: 18px;
+      }
+
+      .pd-state-actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px;
+        margin-top: 18px;
+      }
+
+      .pd-state-icon {
+        width: 62px;
+        height: 62px;
         display: grid;
         place-items: center;
-        border-radius: 18px;
-        background: #fee2e2;
-        color: #dc2626;
-        font-size: 25px;
+        margin-bottom: 12px;
+        border-radius: 20px;
+        background: #e6eaf3;
+        color: var(--muted);
       }
 
-      /* RESPONSIVE */
-
-      @media (max-width: 1100px) {
-        .purchase-stat-grid {
-          grid-template-columns: repeat(2, 1fr);
-        }
-
-        .information-grid {
-          grid-template-columns: repeat(2, 1fr);
-        }
+      .pd-state-icon-error {
+        background: var(--red-soft);
+        color: var(--red);
       }
 
-      @media (max-width: 1050px) and (min-width: 761px) {
-        .supplier-table th,
-        .supplier-table td {
-          padding: 11px 8px;
-          font-size: 10px;
-        }
-
-        .supplier-table th:nth-child(1),
-        .supplier-table td:nth-child(1) { width: 100px; }
-        .supplier-table th:nth-child(2),
-        .supplier-table td:nth-child(2) { width: 22%; }
-        .supplier-table th:nth-child(7),
-        .supplier-table td:nth-child(7) { width: 112px; }
-        .supplier-table th:nth-child(8),
-        .supplier-table td:nth-child(8) { width: 90px; }
-        .supplier-id-left { min-width: 68px; font-size: 10px; }
-        .supplier-avatar { width: 34px; height: 34px; }
-        .supplier-cell { gap: 7px; }
+      .pd-spinner {
+        width: 40px;
+        height: 40px;
+        margin-bottom: 8px;
+        border: 4px solid #dbe1ee;
+        border-top-color: var(--brand);
+        border-radius: 50%;
+        animation: pd-rotate 0.8s linear infinite;
       }
+
+      @keyframes pd-rotate {
+        to { transform: rotate(360deg); }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .pd-spinner { animation-duration: 2s; }
+        .pd-page * { transition: none !important; }
+      }
+
+      /* ---------- responsive ---------- */
 
       @media (max-width: 760px) {
-        .purchase-container {
+        .pd-shell {
           width: calc(100% - 24px);
-          padding-top: 20px;
+          padding-top: 18px;
         }
 
-        .purchase-header {
-          flex-direction: column;
-          align-items: flex-start;
+        .pd-topbar {
+          flex-wrap: wrap;
         }
 
-        .header-actions {
-          width: 100%;
-        }
-
-        .header-actions .purchase-button {
-          flex: 1;
-        }
-
-        .purchase-stat-grid {
-          grid-template-columns: repeat(2, 1fr);
-          gap: 10px;
-        }
-
-        .purchase-stat-card {
-          padding: 15px;
-        }
-
-        .stat-value {
-          font-size: 18px;
-        }
-
-        .list-card-header {
-          padding: 19px;
-        }
-
-        .supplier-search-toolbar {
-          padding: 0 19px 17px;
-          flex-direction: column;
-        }
-
-        .search-box {
-          max-width: none;
-        }
-
-        .filter-button {
-          justify-content: center;
-        }
-
-        .supplier-table-wrapper {
-          display: none;
-        }
-
-        .supplier-mobile-list {
-          display: block;
-          border-top: 1px solid #e5eaf2;
-        }
-
-        .list-footer {
-          flex-direction: column;
-          padding: 15px 19px;
-        }
-
-        .purchase-info-note {
-          line-height: 1.5;
-        }
-
-        .supplier-profile {
-          flex-direction: column;
-          align-items: stretch;
+        .pd-banner {
           padding: 20px;
-          gap: 20px;
         }
 
-        .supplier-profile-left {
-          gap: 13px;
+        .pd-banner-due {
+          width: 100%;
+          align-items: flex-start;
+          text-align: left;
         }
 
-        .supplier-avatar.large {
-          width: 52px;
-          height: 52px;
-          border-radius: 15px;
-          font-size: 21px;
+        .pd-info {
+          grid-template-columns: 1fr;
         }
 
-        .supplier-profile h1 {
-          font-size: 23px;
+        .pd-panel {
+          padding: 18px 20px;
         }
 
-        .supplier-balance-card {
+        .pd-card-head {
+          padding: 18px 16px 14px;
+        }
+
+        /* Item rows become small cards */
+        .pd-table {
           min-width: 0;
         }
 
-        .information-grid {
-          grid-template-columns: 1fr;
-          gap: 15px;
+        .pd-table thead {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          overflow: hidden;
+          clip: rect(0 0 0 0);
         }
 
-        .account-information-card,
-        .supplier-ledger-card {
-          padding: 19px;
-        }
-
-        .history-header {
-          padding: 19px;
-        }
-
-        .history-table-wrapper {
-          display: none;
-        }
-
-        .mobile-bill-list {
+        .pd-table,
+        .pd-table tbody,
+        .pd-table tr,
+        .pd-table td {
           display: block;
-          border-top: 1px solid #e5eaf2;
-        }
-
-        .ledger-grid {
-          grid-template-columns: 1fr;
-          gap: 16px;
-        }
-
-        .ledger-grid div {
-          padding-bottom: 14px;
-          border-bottom: 1px solid #edf0f5;
-        }
-
-        .ledger-grid div:last-child {
-          border-bottom: none;
-        }
-
-        .ledger-grid strong {
-          font-size: 18px;
-        }
-      }
-
-      @media (max-width: 420px) {
-        .purchase-stat-grid {
-          grid-template-columns: repeat(2, 1fr);
-        }
-
-        .stat-value {
-          font-size: 16px;
-        }
-
-        .header-actions {
-          flex-direction: column;
-        }
-
-        .header-actions .purchase-button {
           width: 100%;
         }
 
-        .mobile-supplier-stats strong {
-          font-size: 10px;
+        .pd-table tbody tr {
+          padding: 14px 16px;
+          border-bottom: 1px solid var(--line);
         }
 
-        .mobile-supplier-footer {
-          flex-direction: column;
-          gap: 8px;
+        .pd-table tbody tr:last-child {
+          border-bottom: 0;
         }
 
-        .mobile-amount-grid {
-          gap: 5px;
+        .pd-table td {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          padding: 6px 0;
+          border: 0;
+          text-align: right;
         }
 
-        .mobile-amount-grid strong {
-          font-size: 10px;
+        .pd-table td::before {
+          content: attr(data-label);
+          flex: none;
+          font-size: 12px;
+          font-weight: 700;
+          color: var(--muted);
+        }
+
+        .pd-table td[data-label="Product"] {
+          padding-top: 0;
+          padding-bottom: 8px;
+        }
+
+        .pd-table td[data-label="Product"]::before {
+          content: none;
+        }
+
+        .pd-summary-wrap {
+          padding: 16px;
+        }
+
+        .pd-summary {
+          max-width: none;
+        }
+
+        .pd-bottom {
+          flex-direction: column-reverse;
+        }
+
+        .pd-bottom .pd-btn {
+          width: 100%;
         }
       }
 
-      .supplier-payment-overlay { position: fixed; inset: 0; z-index: 10000; background: rgba(15,23,42,.55); backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; padding: 18px; }
-      .supplier-payment-modal { width: min(560px, 100%); max-height: calc(100vh - 36px); overflow-y: auto; background: #fff; border-radius: 22px; padding: 26px; box-shadow: 0 24px 80px rgba(15,23,42,.25); color: #17233b; }
-      .payment-modal-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
-      .payment-eyebrow { color: #64748b; font-size: 11px; font-weight: 800; letter-spacing: .12em; }
-      .payment-modal-header h2 { margin: 7px 0 4px; font-size: 23px; font-weight: 850; }
-      .payment-modal-header p { margin: 0; color: #64748b; font-size: 13px; }
-      .payment-close { border: 1px solid #e2e8f0; background: #f8fafc; color: #64748b; width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; cursor: pointer; }
-      .payment-summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 22px; }
-      .payment-summary-grid > div { background: #f8fafc; border: 1px solid #e8edf5; padding: 14px; border-radius: 13px; display: flex; flex-direction: column; gap: 7px; }
-      .payment-summary-grid span { color: #64748b; font-size: 12px; }
-      .payment-summary-grid strong { font-size: 17px; font-weight: 800; }
-      .payment-summary-grid .payment-due { grid-column: 1 / -1; background: #fff7ed; border-color: #fed7aa; }
-      .payment-due strong { color: #ea580c; font-size: 23px; }
-      .payment-field { display: flex; flex-direction: column; gap: 7px; margin-bottom: 15px; }
-      .payment-field > span { font-size: 12px; color: #475569; font-weight: 700; }
-      .payment-field input, .payment-field select, .payment-field textarea { width: 100%; border: 1px solid #dbe3ee; border-radius: 11px; background: #fff; padding: 12px 13px; outline: none; color: #17233b; font: inherit; font-size: 14px; }
-      .payment-field input:focus, .payment-field select:focus, .payment-field textarea:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.12); }
-      .payment-amount-input { display: flex; align-items: center; border: 1px solid #dbe3ee; border-radius: 12px; overflow: hidden; }
-      .payment-amount-input > span { padding: 0 14px; color: #64748b; font-weight: 700; background: #f8fafc; }
-      .payment-amount-input input { border: 0; border-radius: 0; font-size: 20px; font-weight: 800; }
-      .payment-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-      .payment-error { display: flex; gap: 8px; align-items: center; color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; padding: 11px 12px; border-radius: 10px; font-size: 13px; margin-bottom: 15px; }
-      .payment-modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; }
-      .payment-cancel, .payment-submit { border: 0; border-radius: 11px; padding: 12px 16px; font-weight: 750; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
-      .payment-cancel { background: #f1f5f9; color: #475569; }
-      .payment-submit { background: #17233b; color: #fff; }
-      .payment-submit:disabled, .payment-cancel:disabled { opacity: .6; cursor: not-allowed; }
-      @media(max-width: 600px) { .supplier-payment-modal { padding: 20px; border-radius: 18px; } .payment-form-grid { grid-template-columns: 1fr; gap: 0; } }
+      /* ---------- print ---------- */
+
+      @media print {
+        @page {
+          size: A4;
+          margin: 10mm;
+        }
+
+        html,
+        body {
+          background: #fff !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+
+        .pd-noprint {
+          display: none !important;
+        }
+
+        .pd-page {
+          min-height: 0;
+          background: #fff;
+        }
+
+        .pd-shell {
+          width: 100%;
+          padding: 0;
+        }
+
+        .pd-panel,
+        .pd-card {
+          break-inside: avoid;
+        }
+      }
     `}</style>
   );
 }
