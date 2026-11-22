@@ -1,4 +1,4 @@
-import { useState, useContext, useEffect, useRef, useMemo } from "react";
+import { useState, useContext, useEffect, useRef, useMemo, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from "../firebase";
@@ -38,7 +38,7 @@ const CATEGORIES = [
   ["📦", "Other"],
 ];
 
-/* Business types supported. status: "full" | "extra" | "soon" (use "soon" for modules not built yet) */
+/* status: "full" | "extra" | "soon" (use "soon" for modules not built yet) */
 const BUSINESSES = [
   ["🛒", "Grocery Stores", "full", ""],
   ["🏬", "Supermarkets", "full", ""],
@@ -149,6 +149,30 @@ const JOURNEY = [
   ["Start selling", "Make bills and record payments.", "Day 1"],
   ["Stay in control", "Check stock, purchases, expenses and customers.", "Daily"],
   ["Ask AI", "Question the data already in your workspace.", "Anytime"],
+];
+
+/* Edit these answers to match your real product */
+const FAQ = [
+  [
+    "How long does setup take?",
+    "About 2 minutes to create your business. After that you add products at your own pace.",
+  ],
+  [
+    "Does it work for my kind of shop?",
+    "Yes for most retail and wholesale shops. Restaurants, meat shops, small manufacturers and online sellers have extra features, marked on their cards above.",
+  ],
+  [
+    "What can AI Business see?",
+    "Only the sales, expenses and stock your account is allowed to access. It answers in plain language and does not need a report to be built first.",
+  ],
+  [
+    "Can I try it before I sign up?",
+    "Yes. Use Try the demo business in the login card to open a sample workspace.",
+  ],
+  [
+    "Can my customers order from their phone?",
+    "Yes. Put the QR code at your counter. Customers pick products on their phone and send the order to your workspace.",
+  ],
 ];
 
 /* ───────────────────────── HELPERS ───────────────────────── */
@@ -374,6 +398,7 @@ function LiveCounter({ category, onCategory }) {
               type="button"
               key={key}
               className={question === key ? "on" : ""}
+              aria-pressed={question === key}
               onClick={() => setQuestion(key)}
             >
               {label}
@@ -477,6 +502,36 @@ function FeatureVisual({ id }) {
   );
 }
 
+/* Accordion that opens and closes smoothly */
+function FaqItem({ q, a, open, onToggle, id }) {
+  return (
+    <div className={"fx-faq-item" + (open ? " open" : "")}>
+      <h3>
+        <button
+          type="button"
+          id={`${id}-btn`}
+          aria-expanded={open}
+          aria-controls={`${id}-panel`}
+          onClick={onToggle}
+        >
+          <span>{q}</span>
+          <i aria-hidden="true" className="fx-faq-icon" />
+        </button>
+      </h3>
+      <div
+        className="fx-faq-a"
+        id={`${id}-panel`}
+        role="region"
+        aria-labelledby={`${id}-btn`}
+      >
+        <div>
+          <p>{a}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ───────────────────────── PAGE ───────────────────────── */
 
 export default function Login() {
@@ -497,14 +552,21 @@ export default function Login() {
   const [active, setActive] = useState(0);
   const [demoCat, setDemoCat] = useState("All");
   const [bizFilter, setBizFilter] = useState("all");
+  const [faqOpen, setFaqOpen] = useState(0);
   const [pending, setPending] = useState("");
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [capsOn, setCapsOn] = useState(false);
   const [emailTouched, setEmailTouched] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
+
+  /* floating login card */
+  const [loginOpen, setLoginOpen] = useState(false);
   const emailRef = useRef(null);
   const passwordRef = useRef(null);
+  const cardRef = useRef(null);
+  const fabRef = useRef(null);
+  const wasOpen = useRef(false);
 
   const feature = FEATURES[active];
   const bizFull = BUSINESSES.filter((b) => b[2] === "full").length;
@@ -516,26 +578,71 @@ export default function Login() {
   const emailInvalid =
     emailTouched && formData.email.length > 0 && !EMAIL_RE.test(formData.email);
 
-  /* Focus the right field only when the person reaches the login section */
-  const loginSectionRef = useRef(null);
-  const focusedOnce = useRef(false);
-  useEffect(() => {
-    const node = loginSectionRef.current;
-    if (!node || typeof IntersectionObserver === "undefined") return;
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && !focusedOnce.current) {
-          focusedOnce.current = true;
-          if (formData.email) passwordRef.current?.focus({ preventScroll: true });
-          else emailRef.current?.focus({ preventScroll: true });
-        }
-      },
-      { threshold: 0.6 }
-    );
-    io.observe(node);
-    return () => io.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  const openLogin = useCallback((e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    setMobileMenu(false);
+    setLoginOpen(true);
   }, []);
+  const closeLogin = useCallback(() => setLoginOpen(false), []);
+
+  /* open from a #login link in the address bar */
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.hash === "#login") {
+      setLoginOpen(true);
+    }
+  }, []);
+
+  /* focus the right field when the card opens, give focus back when it closes */
+  useEffect(() => {
+    if (loginOpen) {
+      wasOpen.current = true;
+      const t = setTimeout(() => {
+        if (formData.email) passwordRef.current?.focus({ preventScroll: true });
+        else emailRef.current?.focus({ preventScroll: true });
+      }, 120);
+      return () => clearTimeout(t);
+    }
+    if (wasOpen.current) {
+      wasOpen.current = false;
+      fabRef.current?.focus({ preventScroll: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loginOpen]);
+
+  /* Escape closes, Tab stays inside the card, page behind does not scroll on phones */
+  useEffect(() => {
+    if (!loginOpen) return;
+
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        setLoginOpen(false);
+        return;
+      }
+      if (e.key !== "Tab" || !cardRef.current) return;
+      const focusable = cardRef.current.querySelectorAll(
+        'a[href], button:not([disabled]), input:not([disabled])'
+      );
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    if (window.innerWidth < 700) document.body.style.overflow = "hidden";
+
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [loginOpen]);
 
   const finishLogin = (data) => {
     const { user, business, token } = data;
@@ -665,6 +772,7 @@ export default function Login() {
       ["#features", "Features"],
       ["#workflow", "Getting started"],
       ["#ai", "AI Business"],
+      ["#faq", "Questions"],
     ],
     []
   );
@@ -677,7 +785,7 @@ export default function Login() {
     <div className="fx-page">
       <style>{CSS}</style>
 
-      <a href="#login" className="fx-skip">Skip to login</a>
+      <a href="#login" className="fx-skip" onClick={openLogin}>Skip to login</a>
 
       {/* NAV */}
       <header className="fx-nav">
@@ -690,7 +798,11 @@ export default function Login() {
           </nav>
         )}
         <div className="fx-nav-actions">
-          {!mobile && <a href="#login" className="fx-nav-login">Login</a>}
+          {!mobile && (
+            <button type="button" className="fx-nav-login" onClick={openLogin}>
+              Login
+            </button>
+          )}
           <Link to="/register" className="fx-btn fx-btn-blue fx-btn-sm">Create business</Link>
           {mobile && (
             <button
@@ -709,7 +821,7 @@ export default function Login() {
             {navLinks.map(([href, label]) => (
               <a key={href} href={href} onClick={() => setMobileMenu(false)}>{label}</a>
             ))}
-            <a href="#login" onClick={() => setMobileMenu(false)}>Login</a>
+            <button type="button" onClick={openLogin}>Login</button>
           </div>
         )}
       </header>
@@ -734,7 +846,9 @@ export default function Login() {
               </p>
               <div className="fx-hero-actions">
                 <Link to="/register" className="fx-btn fx-btn-blue">Create your business</Link>
-                <a href="#login" className="fx-btn fx-btn-white">Login</a>
+                <button type="button" className="fx-btn fx-btn-white" onClick={openLogin}>
+                  Login
+                </button>
               </div>
               <ul className="fx-trust">
                 {CONFIG.trust.map((t) => (
@@ -750,7 +864,7 @@ export default function Login() {
           </div>
         </section>
 
-        {/* BUSINESSES: every kind of shop we support */}
+        {/* BUSINESSES */}
         <section className="fx-biz" id="businesses">
           <div className="fx-wrap">
             <div className="fx-head">
@@ -848,7 +962,7 @@ export default function Login() {
           </div>
         </section>
 
-        {/* WORKFLOW as a printed bill of steps */}
+        {/* WORKFLOW */}
         <section className="fx-section fx-dark" id="workflow">
           <div className="fx-wrap fx-flow-grid">
             <div className="fx-head">
@@ -905,105 +1019,54 @@ export default function Login() {
           </div>
         </section>
 
-        {/* LOGIN */}
-        <section className="fx-login" id="login" ref={loginSectionRef}>
-          <div className="fx-wrap fx-login-grid">
-            <div className="fx-login-copy">
-              <h2>{returning.name ? title : "Your workspace is waiting."}</h2>
-              <p>
-                Sign in to keep billing, managing stock and reviewing your numbers.
-              </p>
-              <ul>
-                <li>Billing and sales</li>
-                <li>Inventory and purchases</li>
-                <li>Customers and suppliers</li>
-                <li>AI business insights</li>
-              </ul>
+        {/* FAQ: open and close */}
+        <section className="fx-faq" id="faq">
+          <div className="fx-wrap fx-faq-grid">
+            <div className="fx-head">
+              <h2>Questions shop owners ask first.</h2>
+              <p>Tap a question to open the answer.</p>
+              <div className="fx-faq-tools">
+                <button
+                  type="button"
+                  className="fx-link-btn"
+                  onClick={() => setFaqOpen(-1)}
+                >
+                  Close all
+                </button>
+              </div>
             </div>
 
-            <div className="fx-login-card">
-              <h3>{title}</h3>
-              <p className="fx-login-sub">{subtitle}</p>
+            <div className="fx-faq-list">
+              {FAQ.map(([q, a], i) => (
+                <FaqItem
+                  key={q}
+                  id={`faq-${i}`}
+                  q={q}
+                  a={a}
+                  open={faqOpen === i}
+                  onToggle={() => setFaqOpen(faqOpen === i ? -1 : i)}
+                />
+              ))}
+            </div>
+          </div>
+        </section>
 
-              {returning.name && (
-                <button type="button" className="fx-not-you" onClick={forgetReturning}>
-                  Not {returning.name}? Use a different account
-                </button>
-              )}
-
-              <form onSubmit={handleSubmit} noValidate>
-                <label>
-                  Email address
-                  <input
-                    ref={emailRef}
-                    type="email"
-                    name="email"
-                    placeholder="you@business.in"
-                    value={formData.email}
-                    onChange={(e) => {
-                      setFormData((prev) => ({ ...prev, email: e.target.value }));
-                      if (error) setError("");
-                    }}
-                    onBlur={() => setEmailTouched(true)}
-                    autoComplete="email"
-                    aria-invalid={emailInvalid || !!error}
-                    required
-                  />
-                </label>
-                {emailInvalid && <small className="fx-field-error">Try name@business.in</small>}
-
-                <label>
-                  <span className="fx-pw-label">
-                    Password
-                    <Link to="/forgot-password">Forgot password?</Link>
-                  </span>
-                  <span className="fx-pw-wrap">
-                    <input
-                      ref={passwordRef}
-                      type={showPassword ? "text" : "password"}
-                      name="password"
-                      placeholder="Enter your password"
-                      value={formData.password}
-                      onChange={(e) => {
-                        setFormData((prev) => ({ ...prev, password: e.target.value }));
-                        if (error) setError("");
-                      }}
-                      onKeyUp={onCaps}
-                      onKeyDown={onCaps}
-                      autoComplete="current-password"
-                      minLength={6}
-                      required
-                    />
-                    <button type="button" onClick={() => setShowPassword((v) => !v)}>
-                      {showPassword ? "Hide" : "Show"}
-                    </button>
-                  </span>
-                </label>
-                {capsOn && <small className="fx-field-error">Caps Lock is on.</small>}
-
-                {error && <div className="fx-error" role="alert">{error}</div>}
-
-                <button className="fx-submit" type="submit" disabled={isLoading}>
-                  {pending === "email" ? "Signing in…" : "Sign in"}
-                </button>
-
-                <div className="fx-or"><span />or<span /></div>
-
-                <button className="fx-google" type="button" onClick={handleGoogleLogin} disabled={isLoading}>
-                  {pending === "google" ? "Opening Google…" : "Continue with Google"}
-                </button>
-
-                {CONFIG.demo.enabled && (
-                  <button className="fx-demo-btn" type="button" onClick={handleDemo} disabled={isLoading}>
-                    {pending === "demo" ? "Opening demo…" : "Try the demo business"}
-                  </button>
-                )}
-              </form>
-
-              <div className="fx-login-foot">
-                <span>New here?</span>
-                <Link to="/register">Create your business</Link>
-              </div>
+        {/* CLOSING CTA (login lives in the floating card) */}
+        <section className="fx-cta" id="start">
+          <div className="fx-wrap fx-cta-in">
+            <div>
+              <h2>{returning.name ? title : "Your workspace is waiting."}</h2>
+              <p>
+                {returning.business
+                  ? `${returning.business} is ready when you are.`
+                  : "Sign in to keep billing, managing stock and reviewing your numbers."}
+              </p>
+            </div>
+            <div className="fx-cta-actions">
+              <button type="button" className="fx-btn fx-btn-yellow" onClick={openLogin}>
+                Open login
+              </button>
+              <Link to="/register" className="fx-btn fx-btn-white">Create your business</Link>
             </div>
           </div>
         </section>
@@ -1020,6 +1083,132 @@ export default function Login() {
           </nav>
         </div>
       </footer>
+
+      {/* ───────── FLOATING LOGIN ───────── */}
+      <button
+        ref={fabRef}
+        type="button"
+        className={"fx-fab" + (loginOpen ? " hide" : "")}
+        onClick={openLogin}
+        aria-haspopup="dialog"
+        aria-expanded={loginOpen}
+        aria-controls="login"
+        tabIndex={loginOpen ? -1 : 0}
+      >
+        <span className="fx-fab-key" aria-hidden="true">🔑</span>
+        {returning.name ? `Hi, ${returning.name}` : "Login"}
+      </button>
+
+      <div
+        className={"fx-scrim" + (loginOpen ? " open" : "")}
+        onClick={closeLogin}
+        aria-hidden="true"
+      />
+
+      <aside
+        id="login"
+        ref={cardRef}
+        className={"fx-float" + (loginOpen ? " open" : "")}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="login-title"
+        aria-hidden={!loginOpen}
+      >
+        <div className="fx-float-top">
+          <span className="fx-float-grip" aria-hidden="true" />
+          <button
+            type="button"
+            className="fx-float-close"
+            onClick={closeLogin}
+            aria-label="Close login"
+          >
+            ✕
+          </button>
+        </div>
+
+        <h3 id="login-title">{title}</h3>
+        <p className="fx-login-sub">{subtitle}</p>
+
+        {returning.name && (
+          <button type="button" className="fx-not-you" onClick={forgetReturning}>
+            Not {returning.name}? Use a different account
+          </button>
+        )}
+
+        <form onSubmit={handleSubmit} noValidate>
+          <label>
+            Email address
+            <input
+              ref={emailRef}
+              type="email"
+              name="email"
+              placeholder="you@business.in"
+              value={formData.email}
+              onChange={(e) => {
+                setFormData((prev) => ({ ...prev, email: e.target.value }));
+                if (error) setError("");
+              }}
+              onBlur={() => setEmailTouched(true)}
+              autoComplete="email"
+              aria-invalid={emailInvalid || !!error}
+              required
+            />
+          </label>
+          {emailInvalid && <small className="fx-field-error">Try name@business.in</small>}
+
+          <label>
+            <span className="fx-pw-label">
+              Password
+              <Link to="/forgot-password">Forgot password?</Link>
+            </span>
+            <span className="fx-pw-wrap">
+              <input
+                ref={passwordRef}
+                type={showPassword ? "text" : "password"}
+                name="password"
+                placeholder="Enter your password"
+                value={formData.password}
+                onChange={(e) => {
+                  setFormData((prev) => ({ ...prev, password: e.target.value }));
+                  if (error) setError("");
+                }}
+                onKeyUp={onCaps}
+                onKeyDown={onCaps}
+                autoComplete="current-password"
+                minLength={6}
+                required
+              />
+              <button type="button" onClick={() => setShowPassword((v) => !v)}>
+                {showPassword ? "Hide" : "Show"}
+              </button>
+            </span>
+          </label>
+          {capsOn && <small className="fx-field-error">Caps Lock is on.</small>}
+
+          {error && <div className="fx-error" role="alert">{error}</div>}
+
+          <button className="fx-submit" type="submit" disabled={isLoading}>
+            {pending === "email" ? "Signing in…" : "Sign in"}
+          </button>
+
+          <div className="fx-or"><span />or<span /></div>
+
+          <button className="fx-google" type="button" onClick={handleGoogleLogin} disabled={isLoading}>
+            {pending === "google" ? "Opening Google…" : "Continue with Google"}
+          </button>
+
+          {CONFIG.demo.enabled && (
+            <button className="fx-demo-btn" type="button" onClick={handleDemo} disabled={isLoading}>
+              {pending === "demo" ? "Opening demo…" : "Try the demo business"}
+            </button>
+          )}
+        </form>
+
+        <div className="fx-login-foot">
+          <span>New here?</span>
+          <Link to="/register">Create your business</Link>
+        </div>
+      </aside>
     </div>
   );
 }
@@ -1063,7 +1252,7 @@ a,button{-webkit-tap-highlight-color:transparent}
   background:var(--paper);overflow-x:hidden;
 }
 .fx-wrap{width:min(1180px,92vw);margin:0 auto}
-.fx-skip{position:absolute;left:-999px;top:8px;background:var(--yellow);border:var(--line);padding:8px 12px;z-index:200;font-weight:700;color:var(--ink)}
+.fx-skip{position:absolute;left:-999px;top:8px;background:var(--yellow);border:var(--line);padding:8px 12px;z-index:300;font-weight:700;color:var(--ink)}
 .fx-skip:focus{left:8px}
 
 /* ── buttons ── */
@@ -1079,6 +1268,7 @@ a,button{-webkit-tap-highlight-color:transparent}
 .fx-btn-white{background:#fff}
 .fx-btn-yellow{background:var(--yellow)}
 .fx-btn-sm{min-height:42px;padding:8px 16px;font-size:14px}
+.fx-link-btn{border:0;background:none;padding:4px 0;color:var(--blue);font-weight:700;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:4px}
 
 /* ── nav ── */
 .fx-nav{
@@ -1098,10 +1288,10 @@ a,button{-webkit-tap-highlight-color:transparent}
 .fx-brand.light{color:#fff}
 .fx-brand.light small{color:#B9B6E6}
 .fx-brand.light .fx-brand-mark{box-shadow:none}
-.fx-nav-links{display:flex;gap:4px}
+.fx-nav-links{display:flex;gap:2px}
 .fx-nav-links a,.fx-nav-login{
   color:var(--ink);text-decoration:none;font-weight:600;font-size:14px;
-  padding:8px 12px;border-radius:999px;
+  padding:8px 11px;border-radius:999px;border:0;background:none;
 }
 .fx-nav-links a:hover,.fx-nav-login:hover{background:var(--yellow)}
 .fx-nav-actions{display:flex;align-items:center;gap:8px}
@@ -1110,7 +1300,10 @@ a,button{-webkit-tap-highlight-color:transparent}
   position:absolute;left:0;right:0;top:100%;background:#fff;border-bottom:var(--line);
   display:flex;flex-direction:column;padding:8px 4vw 14px;
 }
-.fx-mobile-menu a{padding:13px 4px;text-decoration:none;color:var(--ink);font-weight:700;border-bottom:1.5px dashed #CFCDEB}
+.fx-mobile-menu a,.fx-mobile-menu button{
+  padding:13px 4px;text-decoration:none;color:var(--ink);font-weight:700;
+  border:0;border-bottom:1.5px dashed #CFCDEB;background:none;text-align:left;font-size:16px;
+}
 
 /* ── hero ── */
 .fx-hero{
@@ -1151,7 +1344,6 @@ a,button{-webkit-tap-highlight-color:transparent}
 .fx-dots i:nth-child(3){background:#5CE0A8}
 .fx-sold{color:var(--yellow)}
 
-/* category filter inside the counter */
 .fx-catbar{
   display:flex;gap:8px;overflow-x:auto;padding:12px 14px;background:#F7F6FD;
   border-bottom:2px dashed #BDBAE3;scrollbar-width:thin;
@@ -1204,10 +1396,11 @@ a,button{-webkit-tap-highlight-color:transparent}
 .fx-bill-total{display:flex;justify-content:space-between;align-items:baseline;border-top:2px dashed var(--ink);margin-top:10px;padding-top:10px;font-size:15px}
 .fx-bill-total strong{font-size:22px}
 .fx-bill-actions{display:flex;gap:8px;margin-top:12px;font-family:var(--body)}
-.fx-btn-yellow,.fx-btn-ghost{border:2px solid var(--ink);border-radius:999px;padding:9px 14px;font-weight:700;font-size:13px;color:var(--ink)}
-.fx-bill-actions .fx-btn-yellow{background:var(--yellow);flex:1}
+.fx-btn-ghost{border:2px solid var(--ink);border-radius:999px;padding:9px 14px;font-weight:700;font-size:13px;color:var(--ink)}
+.fx-bill-actions .fx-btn-yellow{background:var(--yellow);flex:1;border:2px solid var(--ink);border-radius:999px;padding:9px 14px;font-weight:700;font-size:13px;color:var(--ink);min-height:0;box-shadow:none}
 .fx-bill-actions .fx-btn-ghost{background:#fff}
 .fx-bill-actions button:disabled{opacity:.4}
+.fx-bill-actions button:hover:not(:disabled){transform:none;box-shadow:none;filter:brightness(.97)}
 .fx-ask{border-top:var(--line);padding:14px 16px;background:#fff}
 .fx-ask-chips{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .fx-ask-chips span{margin:0 4px 0 0;color:var(--ink)}
@@ -1238,7 +1431,7 @@ a,button{-webkit-tap-highlight-color:transparent}
 /* ── sections ── */
 .fx-section{padding:96px 0}
 .fx-head{max-width:640px}
-.fx-head h2,.fx-login-copy h2{font:800 clamp(32px,4.2vw,54px)/1.05 var(--display);letter-spacing:-.02em;margin:0 0 16px}
+.fx-head h2,.fx-cta h2{font:800 clamp(32px,4.2vw,54px)/1.05 var(--display);letter-spacing:-.02em;margin:0 0 16px}
 .fx-head p{font-size:17px;line-height:1.6;color:var(--muted);margin:0 0 20px}
 .fx-link{color:var(--blue);font-weight:700;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:4px}
 .fx-link:hover{color:var(--blue-d)}
@@ -1331,27 +1524,87 @@ a,button{-webkit-tap-highlight-color:transparent}
 .fx-chat-body{padding:22px;min-height:290px;display:flex;flex-direction:column;justify-content:flex-end;gap:14px;background:var(--paper)}
 .fx-chat-input{background:#fff;border:2px solid var(--ink);border-radius:999px;padding:12px 16px;font-size:14px;color:#77749D}
 
-/* login */
-.fx-login{background:var(--blue);border-top:var(--line);padding:96px 0;
-  background-image:radial-gradient(rgba(255,255,255,.16) 1.4px,transparent 1.4px);background-size:22px 22px}
-.fx-login-grid{display:grid;grid-template-columns:minmax(0,1fr) 450px;gap:72px;align-items:center}
-.fx-login-grid>*{min-width:0}
-.fx-login-copy{color:#fff}
-.fx-login-copy p{font-size:18px;line-height:1.6;color:#DAD9FA;max-width:480px;margin:0 0 24px}
-.fx-login-copy ul{list-style:none;padding:0;margin:0;display:flex;flex-wrap:wrap;gap:8px}
-.fx-login-copy li{background:rgba(255,255,255,.14);border:2px solid #fff;border-radius:999px;padding:7px 14px;font-weight:600;font-size:14px}
-.fx-login-card{background:#fff;border:var(--line);border-radius:20px;padding:30px;box-shadow:8px 8px 0 var(--ink);color:var(--ink)}
-.fx-login-card h3{font:800 30px/1.1 var(--display);letter-spacing:-.03em;margin:0 0 6px}
+/* faq accordion */
+.fx-faq{padding:96px 0;background:#fff;border-top:var(--line)}
+.fx-faq-grid{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:64px;align-items:start}
+.fx-faq-grid>*{min-width:0}
+.fx-faq-list{display:flex;flex-direction:column;gap:12px}
+.fx-faq-item{background:var(--paper);border:var(--line);border-radius:16px;overflow:hidden;transition:background .2s, box-shadow .2s, transform .2s}
+.fx-faq-item.open{background:#fff;box-shadow:var(--hard-sm);transform:translate(-1px,-1px)}
+.fx-faq-item h3{margin:0}
+.fx-faq-item button{
+  width:100%;display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding:16px 18px;border:0;background:none;color:var(--ink);text-align:left;
+  font:700 17px/1.3 var(--display);letter-spacing:-.01em;
+}
+.fx-faq-icon{
+  flex:none;position:relative;width:30px;height:30px;border:2px solid var(--ink);border-radius:50%;background:var(--yellow);
+}
+.fx-faq-icon::before,.fx-faq-icon::after{content:"";position:absolute;left:50%;top:50%;width:12px;height:2.5px;background:var(--ink);transform:translate(-50%,-50%);transition:transform .25s}
+.fx-faq-icon::after{transform:translate(-50%,-50%) rotate(90deg)}
+.fx-faq-item.open .fx-faq-icon::after{transform:translate(-50%,-50%) rotate(0deg)}
+.fx-faq-a{display:grid;grid-template-rows:0fr;transition:grid-template-rows .25s ease}
+.fx-faq-a>div{overflow:hidden}
+.fx-faq-item.open .fx-faq-a{grid-template-rows:1fr}
+.fx-faq-a p{margin:0;padding:0 18px 18px;font-size:15px;line-height:1.65;color:var(--muted);max-width:60ch}
+.fx-faq-item:not(.open) .fx-faq-a{visibility:hidden}
+
+/* closing cta */
+.fx-cta{background:var(--blue);border-top:var(--line);padding:72px 0;
+  background-image:radial-gradient(rgba(255,255,255,.16) 1.4px,transparent 1.4px);background-size:22px 22px;color:#fff}
+.fx-cta-in{display:flex;align-items:center;justify-content:space-between;gap:32px;flex-wrap:wrap}
+.fx-cta h2{margin-bottom:10px}
+.fx-cta p{margin:0;font-size:18px;line-height:1.6;color:#DAD9FA;max-width:480px}
+.fx-cta-actions{display:flex;flex-wrap:wrap;gap:12px}
+
+/* ── floating login ── */
+.fx-fab{
+  position:fixed;right:22px;bottom:22px;z-index:150;
+  display:inline-flex;align-items:center;gap:10px;min-height:54px;padding:0 22px 0 14px;
+  background:var(--yellow);color:var(--ink);border:var(--line);border-radius:999px;
+  font:800 16px var(--body);box-shadow:var(--hard);
+  transition:transform .15s ease, box-shadow .15s ease, opacity .2s ease, visibility .2s;
+}
+.fx-fab:hover{transform:translate(-2px,-2px);box-shadow:7px 7px 0 var(--ink)}
+.fx-fab:active{transform:translate(2px,2px);box-shadow:0 0 0 var(--ink)}
+.fx-fab-key{width:32px;height:32px;display:grid;place-items:center;background:#fff;border:2px solid var(--ink);border-radius:50%;font-size:15px}
+.fx-fab.hide{opacity:0;visibility:hidden;transform:scale(.85);pointer-events:none}
+
+.fx-scrim{
+  position:fixed;inset:0;z-index:155;background:rgba(20,18,58,.35);
+  opacity:0;visibility:hidden;transition:opacity .22s ease, visibility .22s;
+}
+.fx-scrim.open{opacity:1;visibility:visible}
+
+.fx-float{
+  position:fixed;right:22px;bottom:22px;z-index:160;
+  width:min(420px,calc(100vw - 32px));max-height:calc(100dvh - 44px);overflow-y:auto;
+  background:#fff;border:var(--line);border-radius:22px;padding:18px 26px 24px;
+  box-shadow:10px 10px 0 var(--ink);color:var(--ink);
+  transform-origin:bottom right;
+  opacity:0;visibility:hidden;transform:translateY(18px) scale(.94);
+  transition:opacity .2s ease, transform .25s cubic-bezier(.2,.9,.3,1.2), visibility .25s;
+}
+.fx-float.open{opacity:1;visibility:visible;transform:none}
+.fx-float-top{display:flex;align-items:center;justify-content:space-between;margin:0 0 6px}
+.fx-float-grip{display:none;width:44px;height:5px;border-radius:99px;background:#CFCDEB;margin:0 auto}
+.fx-float-close{
+  margin-left:auto;width:36px;height:36px;border:2px solid var(--ink);border-radius:50%;
+  background:var(--paper);color:var(--ink);font-size:14px;font-weight:800;line-height:1;
+  transition:background .12s, transform .12s;
+}
+.fx-float-close:hover{background:var(--yellow);transform:rotate(90deg)}
+.fx-float h3{font:800 30px/1.1 var(--display);letter-spacing:-.03em;margin:0 0 6px}
 .fx-login-sub{margin:0 0 16px;color:var(--muted);font-size:15px}
 .fx-not-you{border:0;background:none;color:var(--blue);font-weight:700;font-size:14px;padding:0;margin:0 0 16px;text-decoration:underline;text-underline-offset:3px}
-.fx-login-card form{display:flex;flex-direction:column;gap:14px}
-.fx-login-card label{display:flex;flex-direction:column;gap:6px;font-weight:700;font-size:14px}
-.fx-login-card input{
-  width:100%;height:48px;border:2px solid var(--ink);border-radius:12px;padding:0 14px;font-size:15px;
+.fx-float form{display:flex;flex-direction:column;gap:14px}
+.fx-float label{display:flex;flex-direction:column;gap:6px;font-weight:700;font-size:14px}
+.fx-float input{
+  width:100%;height:48px;border:2px solid var(--ink);border-radius:12px;padding:0 14px;font-size:16px;
   background:var(--paper);color:var(--ink);
 }
-.fx-login-card input:focus{outline:3px solid var(--blue);outline-offset:2px;background:#fff}
-.fx-login-card input[aria-invalid="true"]{border-color:var(--red)}
+.fx-float input:focus{outline:3px solid var(--blue);outline-offset:2px;background:#fff}
+.fx-float input[aria-invalid="true"]{border-color:var(--red)}
 .fx-pw-label{display:flex;justify-content:space-between;align-items:center}
 .fx-pw-label a{color:var(--blue);font-size:13px;font-weight:700}
 .fx-pw-wrap{position:relative;display:block}
@@ -1380,13 +1633,12 @@ a,button{-webkit-tap-highlight-color:transparent}
 
 /* ── responsive ── */
 @media(max-width:1000px){
-  .fx-hero-grid,.fx-flow-grid,.fx-ai-grid,.fx-login-grid{grid-template-columns:1fr;gap:40px}
+  .fx-hero-grid,.fx-flow-grid,.fx-ai-grid,.fx-faq-grid{grid-template-columns:1fr;gap:40px}
   .fx-panel{grid-template-columns:1fr;padding:28px}
-  .fx-login-grid{gap:40px}
 }
 @media(max-width:700px){
   .fx-hero{padding:44px 0 56px}
-  .fx-section,.fx-login{padding:64px 0}
+  .fx-section,.fx-faq{padding:64px 0}
   .fx-counter-grid{grid-template-columns:1fr}
   .fx-shelf{border-right:0;border-bottom:2px dashed #BDBAE3}
   .fx-shelf ul{max-height:280px}
@@ -1401,10 +1653,25 @@ a,button{-webkit-tap-highlight-color:transparent}
   .fx-step-time{margin-left:46px;font-size:13px}
   .fx-step-body{flex:1 1 60%}
   .fx-ask-list li:nth-child(2),.fx-ask-list li:nth-child(3){margin-left:0}
-  .fx-login-card{padding:22px}
   .fx-biz{padding:56px 0}
   .fx-biz-grid{grid-template-columns:1fr}
-  .fx-counter,.fx-panel,.fx-chat,.fx-login-card{box-shadow:5px 5px 0 var(--ink)}
+  .fx-counter,.fx-panel,.fx-chat{box-shadow:5px 5px 0 var(--ink)}
+  .fx-cta{padding:56px 0}
+
+  /* floating login becomes a bottom sheet on phones */
+  .fx-fab{right:14px;bottom:14px}
+  .fx-scrim{background:rgba(20,18,58,.5)}
+  .fx-float{
+    right:0;left:0;bottom:0;width:100%;max-height:92dvh;
+    border-radius:22px 22px 0 0;border-bottom:0;padding:10px 20px 28px;
+    box-shadow:0 -6px 0 var(--ink);
+    transform-origin:bottom center;transform:translateY(100%);
+  }
+  .fx-float.open{transform:none}
+  .fx-float-top{position:relative}
+  .fx-float-grip{display:block;position:absolute;left:50%;top:6px;transform:translateX(-50%);margin:0}
+  .fx-float-close{margin-top:10px}
+  .fx-float h3{font-size:26px}
 }
 @media(prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
