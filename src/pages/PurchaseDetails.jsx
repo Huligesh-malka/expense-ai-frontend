@@ -953,7 +953,13 @@ export default function PurchaseDetails() {
 
 
 
-            onClick={() => navigate("/purchases")}
+            onClick={() => {
+  if (window.history.length > 1) {
+    navigate(-1);
+  } else {
+    navigate("/purchases");
+  }
+}}
 
 
 
