@@ -428,10 +428,10 @@ export default function EditProduct() {
                     <section className="ep-sec">
                         <div className="ep-sec-title">
                             <h2>Inventory</h2>
-                            <p>What's on the shelf and when to reorder.</p>
+                            <p>What's on the shelf and when it expires.</p>
                         </div>
                         <div className="ep-fields">
-                            <div className="ep-f">
+                            <div className="ep-f ep-f--full">
                                 <label htmlFor="stock">
                                     Stock quantity <b>*</b>
                                 </label>
@@ -447,20 +447,6 @@ export default function EditProduct() {
                                     onChange={handleChange}
                                     required
                                 />
-                            </div>
-
-                            <div className="ep-f">
-                                <label htmlFor="min_stock">Reorder level</label>
-                                <input
-                                    id="min_stock"
-                                    name="min_stock"
-                                    type="number"
-                                    placeholder="5"
-                                    min="0"
-                                    value={form.min_stock}
-                                    onChange={handleChange}
-                                />
-                                <small>You'll see a low-stock flag at or below this number.</small>
                             </div>
 
                             <div className="ep-f ep-f--full">
