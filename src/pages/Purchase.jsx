@@ -1055,8 +1055,8 @@ export default function Purchases() {
                   <table className="supplier-table">
                     <thead>
                       <tr>
-                        <th>Supplier</th>
                         <th>Supplier ID</th>
+                        <th>Supplier</th>
                         <th>Bills</th>
                         <th>Purchases</th>
                         <th>Paid</th>
@@ -1077,6 +1077,12 @@ export default function Purchases() {
                               )
                             }
                           >
+                            <td>
+                              <span className="supplier-id-badge supplier-id-left">
+                                #{supplier.supplier_id}
+                              </span>
+                            </td>
+
                             <td>
                               <div className="supplier-cell">
                                 <div className="supplier-avatar">
@@ -1104,12 +1110,6 @@ export default function Purchases() {
                                   )}
                                 </div>
                               </div>
-                            </td>
-
-                            <td>
-                              <span className="supplier-id-badge">
-                                #{supplier.supplier_id}
-                              </span>
                             </td>
 
                             <td>
@@ -1189,6 +1189,9 @@ export default function Purchases() {
                         }
                       >
                         <div className="mobile-supplier-top">
+                          <span className="supplier-id-badge supplier-id-left mobile-id-badge">
+                            #{supplier.supplier_id}
+                          </span>
                           <div className="supplier-cell">
                             <div className="supplier-avatar">
                               {supplier.supplier_name
@@ -1207,10 +1210,7 @@ export default function Purchases() {
                                 </span>
                               )}
 
-                              <small>
-                                Supplier ID: #
-                                {supplier.supplier_id}
-                              </small>
+
                             </div>
                           </div>
 
@@ -1772,11 +1772,21 @@ function PurchaseStyles() {
       }
 
       .supplier-id-badge {
-        padding: 7px 9px;
-        background: #f1f5f9;
-        border-radius: 8px;
-        color: #475569;
-        font-weight: 800;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 8px 11px;
+        background: #eef4ff;
+        border: 1px solid #dbe7ff;
+        border-radius: 9px;
+        color: #315fba;
+        font-weight: 900;
+        letter-spacing: .2px;
+      }
+
+      .supplier-id-left {
+        min-width: 76px;
+        font-size: 12px;
       }
 
       .bill-count {
