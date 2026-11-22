@@ -38,44 +38,85 @@ const CATEGORIES = [
   ["📦", "Other"],
 ];
 
-/* Business types supported. status: "full" | "extra" | "soon" (use "soon" for modules not built yet) */
-const BUSINESSES = [
-  ["🛒", "Grocery Stores", "full", ""],
-  ["🏬", "Supermarkets", "full", ""],
-  ["💊", "Medical Stores / Pharmacies", "full", ""],
-  ["📱", "Electronics Shops", "full", ""],
-  ["📲", "Mobile Shops", "full", ""],
-  ["🎧", "Mobile Accessories", "full", ""],
-  ["🔧", "Hardware Stores", "full", ""],
-  ["👕", "Clothing Stores", "full", ""],
-  ["👟", "Footwear Stores", "full", ""],
-  ["💄", "Cosmetics Shops", "full", ""],
-  ["🧴", "Beauty Product Stores", "full", ""],
-  ["✏️", "Stationery Shops", "full", ""],
-  ["📚", "Book Shops", "full", ""],
-  ["🧸", "Toys Shops", "full", ""],
-  ["🔌", "Home Appliances", "full", ""],
-  ["🛋️", "Furniture Shops", "full", ""],
-  ["🍽️", "Restaurants", "extra", "Restaurant-specific features"],
-  ["☕", "Cafes", "extra", "Restaurant-specific features"],
-  ["🍞", "Bakeries", "full", ""],
-  ["🍬", "Sweet Shops", "full", ""],
-  ["🍎", "Fruit Shops", "full", ""],
-  ["🥬", "Vegetable Shops", "full", ""],
-  ["🥩", "Meat Shops", "extra", "Weight-based billing"],
-  ["🥛", "Dairy Shops", "full", ""],
-  ["🐾", "Pet Shops", "full", ""],
-  ["🚗", "Automobile Spare Parts", "full", ""],
-  ["🎨", "Paint Shops", "full", ""],
-  ["💡", "Electrical Shops", "full", ""],
-  ["🚿", "Plumbing Stores", "full", ""],
-  ["🎁", "Gift Shops", "full", ""],
-  ["📦", "Wholesale Businesses", "full", ""],
-  ["🚚", "Distributor Businesses", "full", ""],
-  ["🏭", "Small Manufacturing Businesses", "extra", "With production module"],
-  ["🌐", "Online Sellers", "extra", "With e-commerce integration"],
-  ["🏪", "General Retail Stores", "full", ""],
+/*
+  Business types, grouped. Each item: [name, status, note]
+  status: "full" | "extra" | "soon"
+  Use "soon" for any module that is not built yet.
+*/
+const BUSINESS_GROUPS = [
+  {
+    title: "Everyday and fresh",
+    items: [
+      ["Grocery Stores", "full", ""],
+      ["Supermarkets", "full", ""],
+      ["General Retail Stores", "full", ""],
+      ["Fruit Shops", "full", ""],
+      ["Vegetable Shops", "full", ""],
+      ["Dairy Shops", "full", ""],
+      ["Bakeries", "full", ""],
+      ["Sweet Shops", "full", ""],
+      ["Meat Shops", "extra", "Weight-based billing"],
+    ],
+  },
+  {
+    title: "Health and beauty",
+    items: [
+      ["Medical Stores / Pharmacies", "full", ""],
+      ["Cosmetics Shops", "full", ""],
+      ["Beauty Product Stores", "full", ""],
+    ],
+  },
+  {
+    title: "Fashion and lifestyle",
+    items: [
+      ["Clothing Stores", "full", ""],
+      ["Footwear Stores", "full", ""],
+      ["Gift Shops", "full", ""],
+      ["Toys Shops", "full", ""],
+      ["Book Shops", "full", ""],
+      ["Stationery Shops", "full", ""],
+      ["Pet Shops", "full", ""],
+    ],
+  },
+  {
+    title: "Electronics and home",
+    items: [
+      ["Electronics Shops", "full", ""],
+      ["Mobile Shops", "full", ""],
+      ["Mobile Accessories", "full", ""],
+      ["Home Appliances", "full", ""],
+      ["Furniture Shops", "full", ""],
+      ["Electrical Shops", "full", ""],
+    ],
+  },
+  {
+    title: "Hardware and auto",
+    items: [
+      ["Hardware Stores", "full", ""],
+      ["Plumbing Stores", "full", ""],
+      ["Paint Shops", "full", ""],
+      ["Automobile Spare Parts", "full", ""],
+    ],
+  },
+  {
+    title: "Food service",
+    items: [
+      ["Restaurants", "extra", "Restaurant-specific features"],
+      ["Cafes", "extra", "Restaurant-specific features"],
+    ],
+  },
+  {
+    title: "Trade and online",
+    items: [
+      ["Wholesale Businesses", "full", ""],
+      ["Distributor Businesses", "full", ""],
+      ["Small Manufacturing Businesses", "extra", "With production module"],
+      ["Online Sellers", "extra", "With e-commerce integration"],
+    ],
+  },
 ];
+
+const ALL_BUSINESSES = BUSINESS_GROUPS.flatMap((g) => g.items);
 
 /* Sample data for the live counter demo (illustrative only) */
 const PRODUCTS = [
@@ -208,11 +249,31 @@ function Brand({ light }) {
   );
 }
 
-/* The one memorable thing: a counter you can actually use */
+/* The memorable thing: a counter you can use. Its first bill prints itself once. */
 function LiveCounter({ category, onCategory }) {
   const [cart, setCart] = useState({});
   const [question, setQuestion] = useState("");
   const [sold, setSold] = useState(0);
+  const touched = useRef(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      return undefined;
+    }
+    const script = ["rice", "para", "notebook", "notebook", "bulb"];
+    const timers = script.map((id, i) =>
+      setTimeout(() => {
+        if (touched.current) return;
+        setCart((c) => ({ ...c, [id]: (c[id] || 0) + 1 }));
+      }, 1100 + i * 800)
+    );
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  const take = () => {
+    touched.current = true;
+  };
 
   const shown =
     category === "All" ? PRODUCTS : PRODUCTS.filter((p) => p.cat === category);
@@ -274,11 +335,13 @@ function LiveCounter({ category, onCategory }) {
   ];
 
   return (
-    <div className="fx-counter" id="product-demo">
+    <div className="fx-counter" id="product-demo" onPointerDown={take} onKeyDown={take}>
       <div className="fx-counter-bar">
-        <span className="fx-dots"><i /><i /><i /></span>
-        <span>Counter · sample shop</span>
-        <span className="fx-sold">Sold today {inr(sold)}</span>
+        <span className="fx-live"><i />Sample shop</span>
+        <span className="fx-sold">
+          <small>Sold today</small>
+          <b>{inr(sold)}</b>
+        </span>
       </div>
 
       <div className="fx-catbar" role="group" aria-label="Filter products by category">
@@ -298,9 +361,7 @@ function LiveCounter({ category, onCategory }) {
 
       <div className="fx-counter-grid">
         <div className="fx-shelf">
-          <h3>
-            Tap to add · {category === "All" ? "all categories" : category}
-          </h3>
+          <h3>{category === "All" ? "All categories" : category}</h3>
           <ul>
             {shown.map((p) => {
               const remaining = left(p);
@@ -313,13 +374,15 @@ function LiveCounter({ category, onCategory }) {
                     disabled={remaining <= 0}
                     aria-label={`Add ${p.name}, ${p.cat}, ${inr(p.price)}, ${remaining} left`}
                   >
-                    <span className="fx-p-name">
-                      <span aria-hidden="true">{catIcon(p.cat)}</span> {p.name}
+                    <span className="fx-p-icon" aria-hidden="true">{catIcon(p.cat)}</span>
+                    <span className="fx-p-main">
+                      <span className="fx-p-name">{p.name}</span>
+                      <span className={"fx-p-stock" + (isLow ? " low" : "")}>
+                        {p.cat}
+                        <b>{remaining <= 0 ? "Out of stock" : `${remaining} left`}</b>
+                      </span>
                     </span>
                     <span className="fx-p-price">{inr(p.price)}</span>
-                    <span className={"fx-p-stock" + (isLow ? " low" : "")}>
-                      {p.cat} · {remaining <= 0 ? "Out of stock" : `${remaining} left`}
-                    </span>
                   </button>
                 </li>
               );
@@ -355,10 +418,10 @@ function LiveCounter({ category, onCategory }) {
               <strong>{inr(total)}</strong>
             </div>
             <div className="fx-bill-actions">
-              <button type="button" className="fx-btn-yellow" onClick={finish} disabled={!total}>
+              <button type="button" className="fx-bill-btn primary" onClick={finish} disabled={!total}>
                 Complete sale
               </button>
-              <button type="button" className="fx-btn-ghost" onClick={clear} disabled={!total}>
+              <button type="button" className="fx-bill-btn" onClick={clear} disabled={!total}>
                 Clear
               </button>
             </div>
@@ -388,7 +451,7 @@ function LiveCounter({ category, onCategory }) {
   );
 }
 
-/* Mini visuals for the feature explorer */
+/* Mini visuals for the feature stage */
 function FeatureVisual({ id }) {
   if (id === "billing") {
     return (
@@ -507,11 +570,12 @@ export default function Login() {
   const passwordRef = useRef(null);
 
   const feature = FEATURES[active];
-  const bizFull = BUSINESSES.filter((b) => b[2] === "full").length;
-  const bizExtra = BUSINESSES.length - bizFull;
-  const bizShown = BUSINESSES.filter(
-    (b) => bizFilter === "all" || (bizFilter === "full" ? b[2] === "full" : b[2] !== "full")
-  );
+  const bizTotal = ALL_BUSINESSES.length;
+  const bizFull = ALL_BUSINESSES.filter((b) => b[1] === "full").length;
+  const bizExtra = bizTotal - bizFull;
+  const isDim = (status) =>
+    bizFilter === "full" ? status !== "full" : bizFilter === "extra" ? status === "full" : false;
+
   const isLoading = Boolean(pending);
   const emailInvalid =
     emailTouched && formData.email.length > 0 && !EMAIL_RE.test(formData.email);
@@ -691,7 +755,7 @@ export default function Login() {
         )}
         <div className="fx-nav-actions">
           {!mobile && <a href="#login" className="fx-nav-login">Login</a>}
-          <Link to="/register" className="fx-btn fx-btn-blue fx-btn-sm">Create business</Link>
+          <Link to="/register" className="fx-btn fx-btn-ink fx-btn-sm">Create business</Link>
           {mobile && (
             <button
               type="button"
@@ -715,11 +779,10 @@ export default function Login() {
       </header>
 
       <main>
-        {/* HERO */}
+        {/* HERO: ledger paper, with the counter printing its first bill */}
         <section className="fx-hero" id="product">
           <div className="fx-wrap fx-hero-grid">
             <div className="fx-hero-copy">
-              <p className="fx-sticker">Billing · Stock · Expenses · AI</p>
               <h1>
                 Your shop,
                 <br />
@@ -733,8 +796,8 @@ export default function Login() {
                 questions about all of it.
               </p>
               <div className="fx-hero-actions">
-                <Link to="/register" className="fx-btn fx-btn-blue">Create your business</Link>
-                <a href="#login" className="fx-btn fx-btn-white">Login</a>
+                <Link to="/register" className="fx-btn fx-btn-ink">Create your business</Link>
+                <a href="#login" className="fx-btn fx-btn-line">Login</a>
               </div>
               <ul className="fx-trust">
                 {CONFIG.trust.map((t) => (
@@ -750,97 +813,116 @@ export default function Login() {
           </div>
         </section>
 
-        {/* BUSINESSES: every kind of shop we support */}
+        {/* BUSINESSES: a directory, grouped by how people shop */}
         <section className="fx-biz" id="businesses">
           <div className="fx-wrap">
-            <div className="fx-head">
-              <h2>Built for {BUSINESSES.length} kinds of business.</h2>
-              <p>
-                From a corner grocery to a distributor. {bizFull} work fully out of the box;
-                {" "}{bizExtra} need extra features, marked on the card.
-              </p>
+            <div className="fx-biz-top">
+              <div className="fx-head">
+                <h2>Built for {bizTotal} kinds of business.</h2>
+                <p>
+                  From a corner grocery to a distributor. {bizFull} work fully out of the box;
+                  {" "}{bizExtra} need extra features, marked beside the name.
+                </p>
+              </div>
+
+              <div className="fx-biz-filter" role="group" aria-label="Highlight business types">
+                {[
+                  ["all", `All ${bizTotal}`],
+                  ["full", `Full support ${bizFull}`],
+                  ["extra", `Extra features ${bizExtra}`],
+                ].map(([key, label]) => (
+                  <button
+                    type="button"
+                    key={key}
+                    className={bizFilter === key ? "on" : ""}
+                    aria-pressed={bizFilter === key}
+                    onClick={() => setBizFilter(key)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            <div className="fx-biz-filter" role="group" aria-label="Filter business types">
-              {[
-                ["all", `All ${BUSINESSES.length}`],
-                ["full", `Full support (${bizFull})`],
-                ["extra", `With extra features (${bizExtra})`],
-              ].map(([key, label]) => (
-                <button
-                  type="button"
-                  key={key}
-                  className={bizFilter === key ? "on" : ""}
-                  aria-pressed={bizFilter === key}
-                  onClick={() => setBizFilter(key)}
-                >
-                  {label}
-                </button>
+            <div className="fx-biz-cols">
+              {BUSINESS_GROUPS.map((g) => (
+                <div className="fx-biz-group" key={g.title}>
+                  <h3>
+                    {g.title}
+                    <span>{g.items.length}</span>
+                  </h3>
+                  <ul>
+                    {g.items.map(([name, status, note]) => (
+                      <li key={name} className={isDim(status) ? "dim" : ""}>
+                        <span className="fx-biz-name">{name}</span>
+                        {status !== "full" && (
+                          <span className={"fx-biz-tag" + (status === "soon" ? " soon" : "")}>
+                            {status === "soon" ? "Coming soon" : note}
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               ))}
             </div>
-
-            <ul className="fx-biz-grid">
-              {bizShown.map(([icon, name, status, note]) => (
-                <li key={name} className={"fx-biz-card " + status}>
-                  <span className="fx-biz-icon" aria-hidden="true">{icon}</span>
-                  <span className="fx-biz-name">{name}</span>
-                  <span className="fx-biz-tag">
-                    {status === "full"
-                      ? "Full support"
-                      : status === "soon"
-                      ? "Coming soon"
-                      : note}
-                  </span>
-                </li>
-              ))}
-            </ul>
           </div>
         </section>
 
         {/* FEATURES */}
-        <section className="fx-section" id="features">
+        <section className="fx-section fx-mist" id="features">
           <div className="fx-wrap">
             <div className="fx-head">
               <h2>One workspace for everything the counter touches.</h2>
-              <p>Choose a part of the business to see how it works.</p>
+              <p>Open a part of the business to see how it works.</p>
             </div>
 
-            <div className="fx-explorer">
-              <div className="fx-tabs" role="tablist" aria-label="Features">
-                {FEATURES.map((f, i) => (
-                  <button
-                    key={f.id}
-                    type="button"
-                    role="tab"
-                    id={`tab-${f.id}`}
-                    aria-selected={i === active}
-                    aria-controls="feature-panel"
-                    className={i === active ? "on" : ""}
-                    onClick={() => setActive(i)}
-                  >
-                    {f.label}
-                  </button>
-                ))}
+            <div className="fx-feat">
+              <div className="fx-feat-list">
+                {FEATURES.map((f, i) => {
+                  const open = i === active;
+                  return (
+                    <div className={"fx-feat-item" + (open ? " on" : "")} key={f.id}>
+                      <button
+                        type="button"
+                        className="fx-feat-head"
+                        id={`feat-${f.id}`}
+                        aria-expanded={open}
+                        aria-controls={`feat-panel-${f.id}`}
+                        onClick={() => setActive(i)}
+                      >
+                        {f.label}
+                        <span className="fx-plus" aria-hidden="true" />
+                      </button>
+                      <div
+                        className="fx-feat-more"
+                        id={`feat-panel-${f.id}`}
+                        role="region"
+                        aria-labelledby={`feat-${f.id}`}
+                      >
+                        <div>
+                          <p className="fx-feat-headline">{f.headline}</p>
+                          <p className="fx-feat-desc">{f.description}</p>
+                          <ul className="fx-feat-points">
+                            {f.points.map((p) => (
+                              <li key={p}>{p}</li>
+                            ))}
+                          </ul>
+                          <div className="fx-feat-inline">
+                            {open && <FeatureVisual id={f.id} />}
+                          </div>
+                          <Link to="/register" className="fx-link">
+                            Start with {f.label.toLowerCase()}
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
-              <div
-                className="fx-panel"
-                id="feature-panel"
-                role="tabpanel"
-                aria-labelledby={`tab-${feature.id}`}
-                key={feature.id}
-              >
-                <div className="fx-panel-copy">
-                  <h3>{feature.headline}</h3>
-                  <p>{feature.description}</p>
-                  <ul>
-                    {feature.points.map((p) => (
-                      <li key={p}>{p}</li>
-                    ))}
-                  </ul>
-                  <Link to="/register" className="fx-link">Start with {feature.label.toLowerCase()}</Link>
-                </div>
-                <div className="fx-panel-visual">
+              <div className="fx-feat-stage" aria-hidden="true">
+                <div className="fx-stage-inner" key={feature.id}>
                   <FeatureVisual id={feature.id} />
                 </div>
               </div>
@@ -848,29 +930,40 @@ export default function Login() {
           </div>
         </section>
 
-        {/* WORKFLOW as a printed bill of steps */}
+        {/* WORKFLOW: the steps, printed as a receipt */}
         <section className="fx-section fx-dark" id="workflow">
           <div className="fx-wrap fx-flow-grid">
             <div className="fx-head">
               <h2>From empty shop to daily control.</h2>
               <p>Five steps, in the order a shop owner actually does them.</p>
-              <Link to="/register" className="fx-btn fx-btn-yellow">Create your business</Link>
+              <Link to="/register" className="fx-btn fx-btn-gold">Create your business</Link>
               <p className="fx-note">{CONFIG.signupNote}</p>
             </div>
 
-            <ol className="fx-steps">
-              {JOURNEY.map(([name, text, time], i) => (
-                <li key={name}>
-                  <span className="fx-step-n">{i + 1}</span>
-                  <div className="fx-step-body">
-                    <h3>{name}</h3>
-                    <p>{text}</p>
-                  </div>
-                  <span className="fx-leader" aria-hidden="true" />
-                  <span className="fx-step-time">{time}</span>
-                </li>
-              ))}
-            </ol>
+            <div className="fx-receipt-wrap">
+              <div className="fx-receipt">
+                <div className="fx-receipt-head">
+                  <strong>{CONFIG.brand}</strong>
+                  <span>Your setup bill</span>
+                </div>
+                <ol className="fx-steps">
+                  {JOURNEY.map(([name, text, time], i) => (
+                    <li key={name}>
+                      <span className="fx-step-n">{i + 1}</span>
+                      <div className="fx-step-body">
+                        <h3>{name}</h3>
+                        <p>{text}</p>
+                      </div>
+                      <span className="fx-leader" aria-hidden="true" />
+                      <span className="fx-step-time">{time}</span>
+                    </li>
+                  ))}
+                </ol>
+                <div className="fx-receipt-foot">
+                  <span>Thank you for choosing {CONFIG.brand}</span>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -892,12 +985,20 @@ export default function Login() {
             </div>
 
             <div className="fx-chat" aria-hidden="true">
-              <div className="fx-chat-bar">AI Business</div>
+              <div className="fx-chat-bar">
+                <span>AI Business</span>
+                <small>Sample answer</small>
+              </div>
               <div className="fx-chat-body">
-                <div className="u">What can you help me understand?</div>
+                <div className="u">Which category earned the most this week?</div>
                 <div className="b">
                   <b>FinancePro AI</b>
-                  Sales, inventory, expenses and activity across all your categories. Ask in your own words.
+                  Grocery led the week, ahead of Medicine and Stationery.
+                  <div className="fx-chat-bars">
+                    <div><span>Grocery</span><i style={{ width: "100%" }} /><em>₹18,420</em></div>
+                    <div><span>Medicine</span><i style={{ width: "51%" }} /><em>₹9,310</em></div>
+                    <div><span>Stationery</span><i style={{ width: "27%" }} /><em>₹4,880</em></div>
+                  </div>
                 </div>
                 <div className="fx-chat-input">Ask about your business…</div>
               </div>
@@ -1027,384 +1128,442 @@ export default function Login() {
 /* ───────────────────────── STYLES ───────────────────────── */
 
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=Courier+Prime:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600;700&family=Courier+Prime:wght@400;700&display=swap');
 
 :root{
-  --ink:#14123A;
-  --blue:#2B3BE0;
-  --blue-d:#1E2BB5;
-  --yellow:#FFC61A;
-  --paper:#F3F2FB;
-  --white:#FFFFFF;
-  --red:#E8412C;
-  --green:#12875E;
-  --muted:#55527A;
-  --line:2.5px solid var(--ink);
-  --hard:5px 5px 0 var(--ink);
-  --hard-sm:3px 3px 0 var(--ink);
-  --display:'Bricolage Grotesque','Figtree',system-ui,sans-serif;
-  --body:'Figtree',system-ui,sans-serif;
+  --ink:#15133A;
+  --ink-2:#2B2963;
+  --mist:#F3F4FA;
+  --paper:#FFFFFF;
+  --rule:#E3E5F2;
+  --rule-2:#CCD0E6;
+  --cobalt:#3D4BF2;
+  --cobalt-d:#2B37C9;
+  --gold:#FFB81C;
+  --mint:#0F9D6E;
+  --coral:#E8452F;
+  --muted:#5A5D82;
+  --shadow-s:0 1px 2px rgba(21,19,58,.06),0 6px 14px -6px rgba(21,19,58,.14);
+  --shadow-m:0 2px 4px rgba(21,19,58,.05),0 20px 44px -18px rgba(21,19,58,.28);
+  --shadow-l:0 4px 10px rgba(21,19,58,.06),0 44px 84px -34px rgba(21,19,58,.42);
+  --display:'Bricolage Grotesque','Instrument Sans',system-ui,sans-serif;
+  --body:'Instrument Sans',system-ui,sans-serif;
   --receipt:'Courier Prime','Courier New',monospace;
 }
 
 *{box-sizing:border-box}
 html{scroll-behavior:smooth;scroll-padding-top:84px}
-body{margin:0 !important;background:var(--paper);display:block !important;place-items:initial !important;overflow-x:hidden}
+body{margin:0 !important;background:var(--mist);display:block !important;place-items:initial !important;overflow-x:hidden}
 /* Undo Vite/CRA starter styles (narrow, centered #root) while this page is mounted */
 #root{max-width:none !important;width:100% !important;margin:0 !important;padding:0 !important;text-align:left !important;display:block !important}
 button,input{font:inherit}
 button{cursor:pointer}
 button:disabled{cursor:not-allowed}
 a,button{-webkit-tap-highlight-color:transparent}
-:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+:focus-visible{outline:3px solid var(--cobalt);outline-offset:3px}
 
 .fx-page{
   min-height:100vh;width:100%;text-align:left;color:var(--ink);font-family:var(--body);
-  background:var(--paper);overflow-x:hidden;
+  background:var(--paper);overflow-x:hidden;font-size:16px;line-height:1.55;
 }
 .fx-wrap{width:min(1180px,92vw);margin:0 auto}
-.fx-skip{position:absolute;left:-999px;top:8px;background:var(--yellow);border:var(--line);padding:8px 12px;z-index:200;font-weight:700;color:var(--ink)}
+.fx-skip{position:absolute;left:-999px;top:8px;background:var(--gold);border-radius:8px;padding:8px 12px;z-index:200;font-weight:700;color:var(--ink)}
 .fx-skip:focus{left:8px}
 
 /* ── buttons ── */
 .fx-btn{
   display:inline-flex;align-items:center;justify-content:center;gap:8px;
-  min-height:48px;padding:12px 22px;border-radius:999px;border:var(--line);
-  font:700 15px var(--body);text-decoration:none;color:var(--ink);
-  box-shadow:var(--hard-sm);transition:transform .12s ease, box-shadow .12s ease;
+  min-height:52px;padding:0 28px;border-radius:999px;border:1px solid transparent;
+  font:600 15px var(--body);text-decoration:none;
+  transition:transform .15s ease, box-shadow .15s ease, background .15s ease, border-color .15s ease;
 }
-.fx-btn:hover{transform:translate(-2px,-2px);box-shadow:5px 5px 0 var(--ink)}
-.fx-btn:active{transform:translate(2px,2px);box-shadow:0 0 0 var(--ink)}
-.fx-btn-blue{background:var(--blue);color:#fff}
-.fx-btn-white{background:#fff}
-.fx-btn-yellow{background:var(--yellow)}
-.fx-btn-sm{min-height:42px;padding:8px 16px;font-size:14px}
+.fx-btn:hover{transform:translateY(-1px)}
+.fx-btn:active{transform:translateY(0)}
+.fx-btn-ink{background:var(--ink);color:#fff;box-shadow:0 12px 26px -12px rgba(21,19,58,.75)}
+.fx-btn-ink:hover{background:var(--ink-2)}
+.fx-btn-line{background:#fff;color:var(--ink);border-color:var(--rule-2)}
+.fx-btn-line:hover{border-color:var(--ink)}
+.fx-btn-gold{background:var(--gold);color:var(--ink);box-shadow:0 12px 26px -14px rgba(255,184,28,.95)}
+.fx-btn-sm{min-height:42px;padding:0 20px;font-size:14px}
 
 /* ── nav ── */
 .fx-nav{
   position:sticky;top:0;z-index:100;
   display:flex;align-items:center;justify-content:space-between;gap:18px;
-  padding:10px 4vw;background:var(--white);border-bottom:var(--line);
+  padding:12px 4vw;background:rgba(255,255,255,.86);
+  -webkit-backdrop-filter:saturate(1.4) blur(14px);backdrop-filter:saturate(1.4) blur(14px);
+  border-bottom:1px solid var(--rule);
 }
-.fx-brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink)}
+.fx-brand{display:flex;align-items:center;gap:11px;text-decoration:none;color:var(--ink)}
 .fx-brand-mark{
-  width:40px;height:40px;display:grid;place-items:center;background:var(--yellow);
-  border:var(--line);border-radius:10px;transform:rotate(-6deg);
-  font:800 22px var(--display);box-shadow:var(--hard-sm);
+  width:40px;height:40px;display:grid;place-items:center;background:var(--ink);color:var(--gold);
+  border-radius:12px;font:800 22px var(--display);
 }
 .fx-brand-text{display:flex;flex-direction:column;line-height:1.1}
-.fx-brand strong{font:800 20px var(--display);letter-spacing:-.3px}
-.fx-brand small{font-size:11px;color:var(--muted);margin-top:2px}
+.fx-brand strong{font:800 20px var(--display);letter-spacing:-.02em}
+.fx-brand small{font-size:11px;color:var(--muted);margin-top:3px}
 .fx-brand.light{color:#fff}
-.fx-brand.light small{color:#B9B6E6}
-.fx-brand.light .fx-brand-mark{box-shadow:none}
-.fx-nav-links{display:flex;gap:4px}
+.fx-brand.light small{color:#A9ABD9}
+.fx-brand.light .fx-brand-mark{background:var(--gold);color:var(--ink)}
+.fx-nav-links{display:flex;gap:2px}
 .fx-nav-links a,.fx-nav-login{
-  color:var(--ink);text-decoration:none;font-weight:600;font-size:14px;
-  padding:8px 12px;border-radius:999px;
+  color:var(--muted);text-decoration:none;font-weight:600;font-size:14px;
+  padding:8px 13px;border-radius:999px;transition:color .15s, background .15s;
 }
-.fx-nav-links a:hover,.fx-nav-login:hover{background:var(--yellow)}
+.fx-nav-links a:hover,.fx-nav-login:hover{background:var(--mist);color:var(--ink)}
 .fx-nav-actions{display:flex;align-items:center;gap:8px}
-.fx-menu-btn{width:42px;height:42px;border:var(--line);border-radius:10px;background:#fff;font-size:18px}
+.fx-menu-btn{width:42px;height:42px;border:1px solid var(--rule-2);border-radius:12px;background:#fff;font-size:18px;color:var(--ink)}
 .fx-mobile-menu{
-  position:absolute;left:0;right:0;top:100%;background:#fff;border-bottom:var(--line);
-  display:flex;flex-direction:column;padding:8px 4vw 14px;
+  position:absolute;left:0;right:0;top:100%;background:#fff;border-bottom:1px solid var(--rule);
+  display:flex;flex-direction:column;padding:8px 4vw 14px;box-shadow:var(--shadow-m);
 }
-.fx-mobile-menu a{padding:13px 4px;text-decoration:none;color:var(--ink);font-weight:700;border-bottom:1.5px dashed #CFCDEB}
+.fx-mobile-menu a{padding:14px 4px;text-decoration:none;color:var(--ink);font-weight:600;border-bottom:1px solid var(--rule)}
 
-/* ── hero ── */
+/* ── hero: ledger paper ── */
 .fx-hero{
-  padding:64px 0 72px;
-  background-color:var(--paper);
-  background-image:radial-gradient(#C9C6EE 1.4px,transparent 1.4px);
-  background-size:22px 22px;
-  border-bottom:var(--line);
+  position:relative;padding:76px 0 104px;overflow:hidden;
+  background-color:var(--mist);
+  background-image:repeating-linear-gradient(to bottom,transparent 0 31px,rgba(61,75,242,.08) 31px 32px);
+  border-bottom:1px solid var(--rule-2);
 }
-.fx-hero-grid{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:56px;align-items:start}
+.fx-hero-grid{position:relative;display:grid;grid-template-columns:minmax(0,.88fr) minmax(0,1.12fr);gap:60px;align-items:start}
 .fx-hero-grid>*{min-width:0}
-.fx-sticker{
-  display:inline-block;margin:0 0 22px;padding:7px 14px;background:var(--yellow);
-  border:var(--line);border-radius:8px;font-weight:700;font-size:13px;
-  transform:rotate(-2deg);box-shadow:var(--hard-sm);
+.fx-hero-grid::before{
+  content:"";position:absolute;top:-76px;bottom:-104px;left:-30px;width:4px;
+  border-left:1px solid rgba(232,69,47,.42);border-right:1px solid rgba(232,69,47,.42);pointer-events:none;
 }
 .fx-hero h1{
-  font:800 clamp(44px,5.6vw,84px)/1 var(--display);letter-spacing:-.025em;margin:0 0 24px;
+  font:800 clamp(46px,5.8vw,90px)/.97 var(--display);letter-spacing:-.035em;margin:6px 0 26px;
 }
-.fx-lead{font-size:18px;line-height:1.6;color:var(--muted);max-width:520px;margin:0}
-.fx-hero-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:30px}
-.fx-trust{list-style:none;padding:0;margin:28px 0 0;display:flex;flex-wrap:wrap;gap:8px}
-.fx-trust li{
-  background:#fff;border:2px solid var(--ink);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600;
-}
-.fx-trust li::before{content:"✓";color:var(--green);font-weight:800;margin-right:6px}
-.fx-demo-note{margin:12px 4px 0;font-size:13px;color:var(--muted)}
+.fx-lead{font-size:18px;line-height:1.65;color:var(--muted);max-width:500px;margin:0}
+.fx-hero-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:34px}
+.fx-trust{list-style:none;padding:0;margin:30px 0 0;display:flex;flex-wrap:wrap;gap:8px 22px}
+.fx-trust li{font-size:14px;font-weight:600;color:var(--ink)}
+.fx-trust li::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--mint);margin-right:9px;vertical-align:middle}
+.fx-demo-note{margin:14px 6px 0;font-size:13px;color:var(--muted)}
 
 /* ── live counter ── */
-.fx-counter{background:#fff;border:var(--line);border-radius:20px;box-shadow:8px 8px 0 var(--ink);overflow:hidden}
+.fx-counter{background:var(--paper);border:1px solid var(--rule-2);border-radius:24px;box-shadow:var(--shadow-l);overflow:hidden}
 .fx-counter-bar{
   display:flex;align-items:center;justify-content:space-between;gap:12px;
-  padding:10px 14px;background:var(--ink);color:#fff;font-size:13px;font-weight:600;
+  padding:14px 18px;border-bottom:1px solid var(--rule);font-size:13px;font-weight:600;
 }
-.fx-dots{display:flex;gap:5px}
-.fx-dots i{width:10px;height:10px;border-radius:50%;background:var(--yellow);display:block}
-.fx-dots i:nth-child(2){background:var(--red)}
-.fx-dots i:nth-child(3){background:#5CE0A8}
-.fx-sold{color:var(--yellow)}
+.fx-live{display:inline-flex;align-items:center;gap:9px;color:var(--muted)}
+.fx-live i{width:8px;height:8px;border-radius:50%;background:var(--mint);box-shadow:0 0 0 4px rgba(15,157,110,.16)}
+.fx-sold{display:inline-flex;align-items:baseline;gap:8px;font-variant-numeric:tabular-nums}
+.fx-sold small{font-size:12px;color:var(--muted);font-weight:500}
+.fx-sold b{font:800 18px var(--display);letter-spacing:-.01em}
 
-/* category filter inside the counter */
 .fx-catbar{
-  display:flex;gap:8px;overflow-x:auto;padding:12px 14px;background:#F7F6FD;
-  border-bottom:2px dashed #BDBAE3;scrollbar-width:thin;
+  display:flex;gap:6px;overflow-x:auto;padding:12px 16px;background:var(--mist);
+  border-bottom:1px solid var(--rule);scrollbar-width:thin;
 }
 .fx-catbar button{
   flex:none;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;
-  border:2px solid var(--ink);background:#fff;color:var(--ink);border-radius:999px;
-  padding:6px 12px;font-size:13px;font-weight:700;
+  border:1px solid var(--rule-2);background:#fff;color:var(--ink);border-radius:999px;
+  padding:6px 13px;font-size:13px;font-weight:600;transition:background .15s,color .15s,border-color .15s;
 }
-.fx-catbar button:hover{background:var(--yellow)}
-.fx-catbar button.on{background:var(--ink);color:#fff}
+.fx-catbar button:hover{border-color:var(--ink)}
+.fx-catbar button.on{background:var(--ink);border-color:var(--ink);color:#fff}
 
 .fx-counter-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}
 .fx-counter-grid>*{min-width:0}
-.fx-shelf{padding:16px;border-right:2px dashed #BDBAE3}
-.fx-shelf h3,.fx-ask-chips span{margin:0 0 10px;font:700 13px var(--body);color:var(--muted)}
+.fx-shelf{padding:16px;border-right:1px solid var(--rule)}
+.fx-shelf h3{margin:0 0 12px;font:700 13px var(--body);color:var(--muted)}
 .fx-shelf ul{
-  list-style:none;margin:0;padding:0 4px 0 0;display:flex;flex-direction:column;gap:8px;
+  list-style:none;margin:0;padding:0 4px 0 0;display:flex;flex-direction:column;gap:6px;
   max-height:340px;overflow-y:auto;
 }
 .fx-shelf button{
-  width:100%;display:grid;grid-template-columns:1fr auto;gap:2px 10px;text-align:left;
-  padding:10px 12px;background:var(--paper);border:2px solid var(--ink);border-radius:12px;color:var(--ink);
-  transition:transform .1s, background .1s;
+  width:100%;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;text-align:left;
+  padding:9px 12px 9px 9px;background:#fff;border:1px solid var(--rule);border-radius:14px;color:var(--ink);
+  transition:border-color .15s, background .15s, transform .15s;
 }
-.fx-shelf button:hover:not(:disabled){background:var(--yellow);transform:translateX(3px)}
+.fx-shelf button:hover:not(:disabled){border-color:var(--ink);background:var(--mist)}
+.fx-shelf button:active:not(:disabled){transform:scale(.99)}
 .fx-shelf button:disabled{opacity:.45}
-.fx-p-name{font-weight:700;font-size:14px}
-.fx-p-price{font-weight:800;font-size:14px;text-align:right}
-.fx-p-stock{grid-column:1/-1;font-size:12px;color:var(--green);font-weight:600}
-.fx-p-stock.low{color:var(--red)}
-.fx-bill-wrap{padding:16px;background:#F7F6FD}
+.fx-p-icon{width:38px;height:38px;display:grid;place-items:center;background:var(--mist);border-radius:10px;font-size:19px}
+.fx-p-main{display:flex;flex-direction:column;min-width:0}
+.fx-p-name{font-weight:600;font-size:14px;line-height:1.25}
+.fx-p-stock{display:flex;gap:8px;font-size:12px;color:var(--muted)}
+.fx-p-stock b{font-weight:600;color:var(--mint)}
+.fx-p-stock.low b{color:var(--coral)}
+.fx-p-price{font:700 14px var(--display);font-variant-numeric:tabular-nums}
+
+.fx-bill-wrap{padding:16px;background:var(--mist)}
 .fx-bill{
-  position:relative;background:#fff;border:2px solid var(--ink);padding:14px 14px 22px;
+  position:relative;background:#fff;padding:16px 16px 26px;
   font-family:var(--receipt);font-size:13px;min-height:100%;
+  filter:drop-shadow(0 6px 10px rgba(21,19,58,.12));
   -webkit-mask:linear-gradient(#000 0 0) top/100% calc(100% - 8px) no-repeat,
     conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) bottom/12px 8px repeat-x;
   mask:linear-gradient(#000 0 0) top/100% calc(100% - 8px) no-repeat,
     conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) bottom/12px 8px repeat-x;
 }
-.fx-bill-head{display:flex;justify-content:space-between;border-bottom:2px dashed var(--ink);padding-bottom:8px;margin-bottom:8px}
+.fx-bill-head{display:flex;justify-content:space-between;border-bottom:1px dashed var(--ink);padding-bottom:9px;margin-bottom:8px}
 .fx-bill-empty{color:var(--muted);margin:18px 0;line-height:1.5}
 .fx-bill-lines{list-style:none;margin:0;padding:0}
-.fx-bill-lines li{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:5px 0;animation:fxPrint .25s ease both}
-@keyframes fxPrint{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.fx-bill-lines li{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:5px 0;animation:fxPrint .3s ease both}
+@keyframes fxPrint{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
 .fx-bill-name{min-width:0;overflow-wrap:anywhere}
 .fx-bill-qty{display:inline-flex;align-items:center;gap:6px;font-weight:700}
-.fx-bill-qty button{width:22px;height:22px;border:1.5px solid var(--ink);background:var(--yellow);border-radius:6px;line-height:1;padding:0;font-weight:700}
-.fx-bill-amt{min-width:56px;text-align:right;font-weight:700}
-.fx-bill-total{display:flex;justify-content:space-between;align-items:baseline;border-top:2px dashed var(--ink);margin-top:10px;padding-top:10px;font-size:15px}
+.fx-bill-qty button{width:22px;height:22px;border:1px solid var(--ink);background:#fff;border-radius:6px;line-height:1;padding:0;font-weight:700;color:var(--ink)}
+.fx-bill-qty button:hover{background:var(--gold)}
+.fx-bill-amt{min-width:58px;text-align:right;font-weight:700}
+.fx-bill-total{display:flex;justify-content:space-between;align-items:baseline;border-top:1px dashed var(--ink);margin-top:10px;padding-top:10px;font-size:15px}
 .fx-bill-total strong{font-size:22px}
-.fx-bill-actions{display:flex;gap:8px;margin-top:12px;font-family:var(--body)}
-.fx-btn-yellow,.fx-btn-ghost{border:2px solid var(--ink);border-radius:999px;padding:9px 14px;font-weight:700;font-size:13px;color:var(--ink)}
-.fx-bill-actions .fx-btn-yellow{background:var(--yellow);flex:1}
-.fx-bill-actions .fx-btn-ghost{background:#fff}
-.fx-bill-actions button:disabled{opacity:.4}
-.fx-ask{border-top:var(--line);padding:14px 16px;background:#fff}
-.fx-ask-chips{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.fx-ask-chips span{margin:0 4px 0 0;color:var(--ink)}
-.fx-ask-chips button{border:2px solid var(--ink);background:#fff;border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600;color:var(--ink)}
-.fx-ask-chips button:hover{background:var(--paper)}
-.fx-ask-chips button.on{background:var(--blue);color:#fff}
-.fx-ask-answer{margin:12px 0 0;padding:12px;background:var(--paper);border-left:5px solid var(--blue);border-radius:4px;font-size:14px;line-height:1.5;min-height:48px}
+.fx-bill-actions{display:flex;gap:8px;margin-top:14px;font-family:var(--body)}
+.fx-bill-btn{border:1px solid var(--rule-2);background:#fff;border-radius:999px;padding:9px 16px;font-weight:600;font-size:13px;color:var(--ink);transition:background .15s,border-color .15s}
+.fx-bill-btn:hover:not(:disabled){border-color:var(--ink)}
+.fx-bill-btn.primary{flex:1;background:var(--ink);border-color:var(--ink);color:#fff}
+.fx-bill-btn.primary:hover:not(:disabled){background:var(--ink-2)}
+.fx-bill-btn:disabled{opacity:.4}
 
-/* ── businesses ── */
-.fx-biz{padding:88px 0;background:#fff;border-bottom:var(--line)}
-.fx-biz-filter{display:flex;flex-wrap:wrap;gap:8px;margin:28px 0 24px}
-.fx-biz-filter button{border:2px solid var(--ink);background:#fff;color:var(--ink);border-radius:999px;padding:8px 16px;font-weight:700;font-size:14px}
-.fx-biz-filter button:hover{background:var(--yellow)}
+.fx-ask{border-top:1px solid var(--rule);padding:14px 16px 16px;background:#fff}
+.fx-ask-chips{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.fx-ask-chips span{margin:0 4px 0 0;font:700 13px var(--body);color:var(--ink)}
+.fx-ask-chips button{border:1px solid var(--rule-2);background:#fff;border-radius:999px;padding:6px 13px;font-size:13px;font-weight:600;color:var(--ink);transition:background .15s,border-color .15s}
+.fx-ask-chips button:hover{border-color:var(--ink)}
+.fx-ask-chips button.on{background:var(--cobalt);border-color:var(--cobalt);color:#fff}
+.fx-ask-answer{margin:12px 0 0;padding:12px 14px;background:var(--mist);border-left:3px solid var(--cobalt);border-radius:4px 10px 10px 4px;font-size:14px;line-height:1.5;min-height:48px}
+
+/* ── businesses directory ── */
+.fx-biz{padding:108px 0 80px;background:var(--paper);border-bottom:1px solid var(--rule-2)}
+.fx-biz-top{display:flex;justify-content:space-between;align-items:flex-end;gap:32px;flex-wrap:wrap;margin-bottom:60px}
+.fx-biz-top .fx-head{flex:1 1 440px}
+.fx-biz-top .fx-head p{margin-bottom:0}
+.fx-biz-filter{display:inline-flex;padding:4px;border:1px solid var(--rule-2);border-radius:999px;background:var(--mist);gap:2px}
+.fx-biz-filter button{border:0;background:transparent;padding:9px 16px;border-radius:999px;font-weight:600;font-size:14px;color:var(--muted);transition:background .15s,color .15s}
+.fx-biz-filter button:hover{color:var(--ink)}
 .fx-biz-filter button.on{background:var(--ink);color:#fff}
-.fx-biz-grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
-.fx-biz-card{
-  display:grid;grid-template-columns:auto 1fr;grid-template-areas:"i n" "i t";column-gap:12px;row-gap:3px;align-items:center;
-  padding:12px 14px;background:var(--paper);border:2px solid var(--ink);border-radius:14px;
+.fx-biz-cols{columns:3;column-gap:60px}
+.fx-biz-group{break-inside:avoid;margin:0 0 44px}
+.fx-biz-group h3{
+  display:flex;justify-content:space-between;align-items:baseline;
+  font:700 22px/1.1 var(--display);letter-spacing:-.02em;margin:0;padding-bottom:12px;border-bottom:2px solid var(--ink);
 }
-.fx-biz-icon{grid-area:i;font-size:26px;line-height:1;width:42px;height:42px;display:grid;place-items:center;background:#fff;border:2px solid var(--ink);border-radius:10px}
-.fx-biz-name{grid-area:n;font-weight:700;font-size:15px;line-height:1.2}
-.fx-biz-tag{grid-area:t;font-size:12px;font-weight:700;color:var(--green)}
-.fx-biz-card.extra{background:#FFF6D6}
-.fx-biz-card.extra .fx-biz-tag{color:#8A5A00}
-.fx-biz-card.soon{background:#EFEFF6;border-style:dashed}
-.fx-biz-card.soon .fx-biz-tag{color:var(--muted)}
+.fx-biz-group h3 span{font:600 13px var(--body);color:var(--muted);letter-spacing:0}
+.fx-biz-group ul{list-style:none;margin:0;padding:0}
+.fx-biz-group li{
+  display:flex;justify-content:space-between;align-items:center;gap:12px;
+  padding:12px 0;border-bottom:1px solid var(--rule);font-weight:500;font-size:16px;transition:opacity .25s ease;
+}
+.fx-biz-group li.dim{opacity:.22}
+.fx-biz-name{min-width:0}
+.fx-biz-tag{flex:none;max-width:52%;text-align:right;font-size:12px;font-weight:600;line-height:1.3;padding:4px 10px;border-radius:999px;background:#FFF0C7;color:#7A5200}
+.fx-biz-tag.soon{background:var(--mist);color:var(--muted)}
 
 /* ── sections ── */
-.fx-section{padding:96px 0}
+.fx-section{padding:108px 0}
+.fx-mist{background:var(--mist);border-bottom:1px solid var(--rule-2)}
 .fx-head{max-width:640px}
-.fx-head h2,.fx-login-copy h2{font:800 clamp(32px,4.2vw,54px)/1.05 var(--display);letter-spacing:-.02em;margin:0 0 16px}
-.fx-head p{font-size:17px;line-height:1.6;color:var(--muted);margin:0 0 20px}
-.fx-link{color:var(--blue);font-weight:700;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:4px}
-.fx-link:hover{color:var(--blue-d)}
+.fx-head h2,.fx-login-copy h2{font:800 clamp(34px,4.4vw,58px)/1 var(--display);letter-spacing:-.032em;margin:0 0 18px}
+.fx-head p{font-size:17px;line-height:1.65;color:var(--muted);margin:0 0 22px}
+.fx-link{color:var(--cobalt);font-weight:600;text-decoration:underline;text-decoration-thickness:1.5px;text-underline-offset:5px}
+.fx-link:hover{color:var(--cobalt-d)}
 
-/* feature explorer */
-.fx-explorer{margin-top:44px}
-.fx-tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:-2.5px;position:relative;z-index:2}
-.fx-tabs button{
-  padding:12px 20px;border:var(--line);border-bottom:0;border-radius:14px 14px 0 0;background:#E4E2F7;
-  font-weight:700;font-size:15px;color:var(--ink);
+/* feature list + stage */
+.fx-feat{display:grid;grid-template-columns:minmax(0,.95fr) minmax(0,1.05fr);gap:64px;margin-top:56px;align-items:start}
+.fx-feat>*{min-width:0}
+.fx-feat-list{border-top:1px solid var(--rule-2)}
+.fx-feat-item{border-bottom:1px solid var(--rule-2)}
+.fx-feat-head{
+  width:100%;display:flex;justify-content:space-between;align-items:center;gap:16px;
+  background:none;border:0;padding:24px 2px;text-align:left;color:var(--muted);
+  font:700 clamp(24px,2.6vw,34px)/1.1 var(--display);letter-spacing:-.025em;transition:color .2s;
 }
-.fx-tabs button:hover{background:#fff}
-.fx-tabs button.on{background:#fff}
-.fx-panel{
-  display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:40px;align-items:center;
-  background:#fff;border:var(--line);border-radius:0 18px 18px 18px;padding:40px;box-shadow:8px 8px 0 var(--ink);
-  animation:fxSwap .3s ease both;
+.fx-feat-head:hover{color:var(--ink)}
+.fx-feat-item.on .fx-feat-head{color:var(--ink)}
+.fx-plus{position:relative;flex:none;width:34px;height:34px;border:1px solid var(--rule-2);border-radius:50%;transition:transform .3s ease,background .2s,border-color .2s}
+.fx-plus::before,.fx-plus::after{content:"";position:absolute;left:50%;top:50%;width:12px;height:1.5px;background:currentColor;transform:translate(-50%,-50%)}
+.fx-plus::after{transform:translate(-50%,-50%) rotate(90deg)}
+.fx-feat-item.on .fx-plus{transform:rotate(45deg);background:var(--ink);border-color:var(--ink);color:#fff}
+.fx-feat-more{display:grid;grid-template-rows:0fr;transition:grid-template-rows .35s ease}
+.fx-feat-more>div{overflow:hidden;visibility:hidden;transition:visibility 0s linear .35s}
+.fx-feat-item.on .fx-feat-more{grid-template-rows:1fr}
+.fx-feat-item.on .fx-feat-more>div{visibility:visible;transition-delay:0s}
+.fx-feat-headline{font:700 19px/1.3 var(--body);margin:0 0 10px;color:var(--ink)}
+.fx-feat-desc{margin:0 0 16px;color:var(--muted);max-width:520px}
+.fx-feat-points{list-style:none;padding:0;margin:0 0 22px;display:flex;flex-wrap:wrap;gap:6px 20px}
+.fx-feat-points li{font-size:14px;font-weight:600}
+.fx-feat-points li::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--cobalt);margin-right:8px;vertical-align:middle}
+.fx-feat-more .fx-link{display:inline-block;margin-bottom:28px}
+.fx-feat-inline{display:none}
+.fx-feat-stage{
+  position:sticky;top:100px;min-height:440px;display:grid;place-items:center;padding:32px;
+  background-color:#fff;border:1px solid var(--rule-2);border-radius:26px;box-shadow:var(--shadow-m);
+  background-image:linear-gradient(var(--rule) 1px,transparent 1px),linear-gradient(90deg,var(--rule) 1px,transparent 1px);
+  background-size:30px 30px;background-position:-1px -1px;
 }
-@keyframes fxSwap{from{opacity:.4;transform:translateY(6px)}to{opacity:1;transform:none}}
-.fx-panel>*{min-width:0}
-.fx-panel-copy h3{font:800 clamp(26px,3vw,38px)/1.1 var(--display);letter-spacing:-.03em;margin:0 0 14px}
-.fx-panel-copy p{font-size:16px;line-height:1.65;color:var(--muted);margin:0 0 18px}
-.fx-panel-copy ul{list-style:none;padding:0;margin:0 0 22px;display:flex;flex-wrap:wrap;gap:8px}
-.fx-panel-copy li{background:var(--paper);border:2px solid var(--ink);border-radius:8px;padding:6px 10px;font-size:13px;font-weight:600}
-.fx-panel-visual{background:var(--paper);border:2px solid var(--ink);border-radius:14px;padding:22px;min-height:290px;display:grid;place-items:center;
-  background-image:radial-gradient(#D3D0F1 1.2px,transparent 1.2px);background-size:16px 16px}
+.fx-stage-inner{width:100%;animation:fxSwap .35s ease both}
+@keyframes fxSwap{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 
 .fx-vis{width:100%}
-.fx-vis-bill{display:flex;flex-direction:column;gap:14px;align-items:center}
-.fx-mini-receipt{width:min(280px,100%);background:#fff;border:2px solid var(--ink);padding:14px;font:13px var(--receipt);box-shadow:var(--hard-sm);transform:rotate(-1.5deg)}
-.fx-mini-receipt b{display:block;border-bottom:2px dashed var(--ink);padding-bottom:6px;margin-bottom:6px}
+.fx-vis-bill{display:flex;flex-direction:column;gap:16px;align-items:center}
+.fx-mini-receipt{width:min(290px,100%);background:#fff;border:1px solid var(--rule-2);padding:16px;font:13px var(--receipt);box-shadow:var(--shadow-m);transform:rotate(-1.5deg)}
+.fx-mini-receipt b{display:block;border-bottom:1px dashed var(--ink);padding-bottom:7px;margin-bottom:7px}
 .fx-mini-receipt div{display:flex;justify-content:space-between;padding:3px 0}
-.fx-mini-receipt .t{border-top:2px dashed var(--ink);margin-top:6px;padding-top:7px;font-weight:700}
-.fx-pay{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600}
-.fx-pay i{font-style:normal;border:2px solid var(--ink);border-radius:999px;padding:4px 12px;background:#fff}
-.fx-pay i.on{background:var(--green);color:#fff}
-.fx-vis-stock{display:flex;flex-direction:column;gap:14px}
-.fx-stock-row{display:grid;grid-template-columns:120px 1fr 64px;gap:12px;align-items:center;font-size:13px;font-weight:600}
-.fx-meter{height:14px;border:2px solid var(--ink);border-radius:999px;background:#fff;overflow:hidden}
-.fx-meter i{display:block;height:100%;background:var(--green)}
-.fx-meter i.low{background:var(--red)}
-.fx-stock-row em{font-style:normal;color:var(--green);text-align:right}
-.fx-stock-row em.low{color:var(--red)}
-.fx-vis-qr{display:flex;align-items:center;justify-content:center;gap:22px;flex-wrap:wrap}
-.fx-qr-code{display:grid;grid-template-columns:repeat(7,1fr);width:120px;height:120px;padding:8px;background:#fff;border:2px solid var(--ink);gap:2px}
-.fx-qr-code i{background:#EEEDFA}
+.fx-mini-receipt .t{border-top:1px dashed var(--ink);margin-top:7px;padding-top:8px;font-weight:700}
+.fx-pay{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;background:#fff;padding:6px 8px 6px 14px;border:1px solid var(--rule-2);border-radius:999px}
+.fx-pay i{font-style:normal;border-radius:999px;padding:4px 12px;color:var(--muted)}
+.fx-pay i.on{background:var(--mint);color:#fff}
+.fx-vis-stock{display:flex;flex-direction:column;gap:16px;background:#fff;border:1px solid var(--rule-2);border-radius:18px;padding:22px;box-shadow:var(--shadow-s)}
+.fx-stock-row{display:grid;grid-template-columns:116px 1fr 66px;gap:12px;align-items:center;font-size:13px;font-weight:600}
+.fx-meter{height:10px;border-radius:999px;background:var(--mist);overflow:hidden}
+.fx-meter i{display:block;height:100%;border-radius:999px;background:var(--mint)}
+.fx-meter i.low{background:var(--coral)}
+.fx-stock-row em{font-style:normal;color:var(--mint);text-align:right}
+.fx-stock-row em.low{color:var(--coral)}
+.fx-vis-qr{display:flex;align-items:center;justify-content:center;gap:26px;flex-wrap:wrap}
+.fx-qr-code{display:grid;grid-template-columns:repeat(7,1fr);width:128px;height:128px;padding:10px;background:#fff;border:1px solid var(--rule-2);border-radius:14px;gap:2px;box-shadow:var(--shadow-s)}
+.fx-qr-code i{background:#EEF0FA;border-radius:1px}
 .fx-qr-code i.k{background:var(--ink)}
-.fx-phone{width:170px;background:var(--ink);color:#fff;border-radius:22px;padding:16px 14px;border:3px solid var(--ink);box-shadow:var(--hard-sm)}
+.fx-phone{width:176px;background:var(--ink);color:#fff;border-radius:26px;padding:18px 15px;box-shadow:var(--shadow-m)}
 .fx-phone b{display:block;font-size:13px;margin-bottom:10px}
-.fx-phone div{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-top:1px solid #3A3870;font-size:12px}
-.fx-phone i{font-style:normal;background:var(--yellow);color:var(--ink);border-radius:6px;padding:2px 8px;font-weight:700}
-.fx-phone u{display:block;text-decoration:none;text-align:center;background:var(--blue);border-radius:8px;padding:8px;margin-top:10px;font-size:12px;font-weight:700}
-.fx-vis-exp p{margin:0 0 14px;font-size:13px;color:var(--muted);font-weight:600}
-.fx-exp-row{margin-bottom:14px;font-size:13px;font-weight:600}
-.fx-exp-row span{display:block;margin-bottom:5px}
-.fx-exp-row i{display:block;height:20px;background:var(--blue);border:2px solid var(--ink);border-radius:6px}
-.fx-exp-row:nth-child(3) i{background:var(--yellow)}
+.fx-phone div{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-top:1px solid #3A3870;font-size:12px}
+.fx-phone i{font-style:normal;background:var(--gold);color:var(--ink);border-radius:6px;padding:2px 9px;font-weight:700}
+.fx-phone u{display:block;text-decoration:none;text-align:center;background:var(--cobalt);border-radius:10px;padding:9px;margin-top:11px;font-size:12px;font-weight:700}
+.fx-vis-exp{background:#fff;border:1px solid var(--rule-2);border-radius:18px;padding:22px;box-shadow:var(--shadow-s)}
+.fx-vis-exp p{margin:0 0 16px;font-size:13px;color:var(--muted);font-weight:600}
+.fx-exp-row{margin-bottom:16px;font-size:13px;font-weight:600}
+.fx-exp-row:last-child{margin-bottom:0}
+.fx-exp-row span{display:block;margin-bottom:6px}
+.fx-exp-row i{display:block;height:12px;background:var(--cobalt);border-radius:999px}
+.fx-exp-row:nth-child(3) i{background:var(--gold)}
 .fx-exp-row:nth-child(4) i{background:#8E96F5}
-.fx-exp-row:nth-child(5) i{background:var(--red)}
+.fx-exp-row:nth-child(5) i{background:var(--coral)}
 .fx-vis-ai{display:flex;flex-direction:column;gap:10px}
-.fx-vis-ai .u,.fx-chat .u{align-self:flex-end;max-width:80%;background:var(--blue);color:#fff;padding:10px 14px;border-radius:16px 16px 4px 16px;font-size:14px;font-weight:600}
-.fx-vis-ai .b,.fx-chat .b{max-width:90%;background:#fff;border:2px solid var(--ink);padding:12px 14px;border-radius:16px 16px 16px 4px;font-size:14px;line-height:1.5}
+.fx-vis-ai .u,.fx-chat .u{align-self:flex-end;max-width:82%;background:var(--cobalt);color:#fff;padding:11px 15px;border-radius:18px 18px 4px 18px;font-size:14px;font-weight:600}
+.fx-vis-ai .b,.fx-chat .b{max-width:92%;background:#fff;border:1px solid var(--rule-2);padding:13px 15px;border-radius:18px 18px 18px 4px;font-size:14px;line-height:1.5;box-shadow:var(--shadow-s)}
 .fx-vis-ai .b b,.fx-chat .b b{display:block;margin-bottom:3px}
 
 /* workflow */
-.fx-dark{background:var(--ink);color:#fff;border-top:var(--line);border-bottom:var(--line)}
-.fx-dark .fx-head p{color:#C3C0EA}
-.fx-dark .fx-note{font-size:14px;margin:14px 0 0}
-.fx-flow-grid{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:64px;align-items:start}
+.fx-dark{background:var(--ink);color:#fff}
+.fx-dark .fx-head p{color:#B4B6E2}
+.fx-dark .fx-note{font-size:14px;margin:16px 0 0}
+.fx-flow-grid{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:72px;align-items:center}
 .fx-flow-grid>*{min-width:0}
-.fx-steps{list-style:none;margin:0;padding:22px 26px;background:#fff;color:var(--ink);border:3px solid var(--yellow);border-radius:6px;font-family:var(--receipt);box-shadow:8px 8px 0 var(--yellow)}
-.fx-steps li{display:flex;align-items:center;gap:12px;padding:16px 0;border-bottom:2px dashed var(--ink)}
-.fx-steps li:last-child{border-bottom:0}
-.fx-step-n{flex:none;width:34px;height:34px;display:grid;place-items:center;background:var(--ink);color:var(--yellow);border-radius:50%;font:700 15px var(--receipt)}
+.fx-receipt-wrap{filter:drop-shadow(0 30px 34px rgba(0,0,0,.4))}
+.fx-receipt{
+  background:#fff;color:var(--ink);font-family:var(--receipt);padding:40px 32px 48px;
+  -webkit-mask:linear-gradient(#000 0 0) center/100% calc(100% - 16px) no-repeat,
+    conic-gradient(from 135deg at top,#0000,#000 1deg 89deg,#0000 90deg) top/16px 8px repeat-x,
+    conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) bottom/16px 8px repeat-x;
+  mask:linear-gradient(#000 0 0) center/100% calc(100% - 16px) no-repeat,
+    conic-gradient(from 135deg at top,#0000,#000 1deg 89deg,#0000 90deg) top/16px 8px repeat-x,
+    conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) bottom/16px 8px repeat-x;
+}
+.fx-receipt-head{text-align:center;padding-bottom:16px;border-bottom:1px dashed var(--ink)}
+.fx-receipt-head strong{display:block;font:700 22px var(--receipt);letter-spacing:.02em}
+.fx-receipt-head span{font-size:13px;color:#4D4A73}
+.fx-steps{list-style:none;margin:0;padding:0}
+.fx-steps li{display:flex;align-items:center;gap:12px;padding:16px 0;border-bottom:1px dashed var(--ink)}
+.fx-step-n{flex:none;width:32px;height:32px;display:grid;place-items:center;background:var(--ink);color:var(--gold);border-radius:50%;font:700 14px var(--receipt)}
 .fx-step-body{min-width:0}
 .fx-step-body h3{margin:0;font:700 17px var(--receipt)}
 .fx-step-body p{margin:3px 0 0;font:400 13px/1.45 var(--receipt);color:#4D4A73}
-.fx-leader{flex:1;min-width:12px;border-bottom:2px dotted #8F8CC0;align-self:flex-end;margin-bottom:6px}
+.fx-leader{flex:1;min-width:12px;border-bottom:2px dotted #9391C4;align-self:flex-end;margin-bottom:6px}
 .fx-step-time{flex:none;font-weight:700;font-size:14px}
+.fx-receipt-foot{text-align:center;padding-top:18px;font-size:13px;color:#4D4A73}
 
 /* ai */
-.fx-ai-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:64px;align-items:center}
+.fx-ai-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:72px;align-items:center}
 .fx-ai-grid>*{min-width:0}
-.fx-ask-list{list-style:none;padding:0;margin:0 0 22px;display:flex;flex-direction:column;gap:8px}
-.fx-ask-list li{background:#fff;border:2px solid var(--ink);border-radius:12px;padding:12px 16px;font-weight:600;box-shadow:var(--hard-sm);width:fit-content;max-width:100%}
-.fx-ask-list li:nth-child(2){margin-left:22px}
-.fx-ask-list li:nth-child(3){margin-left:44px}
-.fx-chat{background:#fff;border:var(--line);border-radius:20px;box-shadow:8px 8px 0 var(--ink);overflow:hidden}
-.fx-chat-bar{background:var(--blue);color:#fff;font-weight:700;padding:12px 16px;border-bottom:var(--line)}
-.fx-chat-body{padding:22px;min-height:290px;display:flex;flex-direction:column;justify-content:flex-end;gap:14px;background:var(--paper)}
-.fx-chat-input{background:#fff;border:2px solid var(--ink);border-radius:999px;padding:12px 16px;font-size:14px;color:#77749D}
+.fx-ask-list{list-style:none;padding:0;margin:0 0 24px;display:flex;flex-direction:column;gap:8px}
+.fx-ask-list li{background:#fff;border:1px solid var(--rule-2);border-radius:14px;padding:13px 18px;font-weight:600;box-shadow:var(--shadow-s);width:fit-content;max-width:100%}
+.fx-ask-list li:nth-child(2){margin-left:24px}
+.fx-ask-list li:nth-child(3){margin-left:48px}
+.fx-chat{background:#fff;border:1px solid var(--rule-2);border-radius:26px;box-shadow:var(--shadow-l);overflow:hidden}
+.fx-chat-bar{display:flex;justify-content:space-between;align-items:center;background:var(--ink);color:#fff;font-weight:700;padding:14px 20px}
+.fx-chat-bar small{font-weight:500;color:#A9ABD9;font-size:12px}
+.fx-chat-body{padding:24px;min-height:320px;display:flex;flex-direction:column;justify-content:flex-end;gap:14px;background:var(--mist)}
+.fx-chat-bars{margin-top:12px;display:flex;flex-direction:column;gap:9px}
+.fx-chat-bars div{display:grid;grid-template-columns:74px 1fr 62px;gap:10px;align-items:center;font-size:12px;font-weight:600}
+.fx-chat-bars i{display:block;height:9px;border-radius:999px;background:var(--cobalt)}
+.fx-chat-bars div:nth-child(2) i{background:#7C86F6}
+.fx-chat-bars div:nth-child(3) i{background:#B3B9FA}
+.fx-chat-bars em{font-style:normal;text-align:right;font-variant-numeric:tabular-nums}
+.fx-chat-input{background:#fff;border:1px solid var(--rule-2);border-radius:999px;padding:13px 18px;font-size:14px;color:#77749D}
 
 /* login */
-.fx-login{background:var(--blue);border-top:var(--line);padding:96px 0;
-  background-image:radial-gradient(rgba(255,255,255,.16) 1.4px,transparent 1.4px);background-size:22px 22px}
-.fx-login-grid{display:grid;grid-template-columns:minmax(0,1fr) 450px;gap:72px;align-items:center}
+.fx-login{
+  background-color:var(--cobalt);padding:108px 0;
+  background-image:linear-gradient(rgba(255,255,255,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.07) 1px,transparent 1px);
+  background-size:52px 52px;
+}
+.fx-login-grid{display:grid;grid-template-columns:minmax(0,1fr) 450px;gap:80px;align-items:center}
 .fx-login-grid>*{min-width:0}
 .fx-login-copy{color:#fff}
-.fx-login-copy p{font-size:18px;line-height:1.6;color:#DAD9FA;max-width:480px;margin:0 0 24px}
+.fx-login-copy p{font-size:18px;line-height:1.65;color:#DCDEFB;max-width:480px;margin:0 0 26px}
 .fx-login-copy ul{list-style:none;padding:0;margin:0;display:flex;flex-wrap:wrap;gap:8px}
-.fx-login-copy li{background:rgba(255,255,255,.14);border:2px solid #fff;border-radius:999px;padding:7px 14px;font-weight:600;font-size:14px}
-.fx-login-card{background:#fff;border:var(--line);border-radius:20px;padding:30px;box-shadow:8px 8px 0 var(--ink);color:var(--ink)}
+.fx-login-copy li{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.4);border-radius:999px;padding:8px 16px;font-weight:600;font-size:14px}
+.fx-login-card{background:#fff;border-radius:26px;padding:34px;box-shadow:0 4px 10px rgba(10,12,70,.15),0 50px 90px -30px rgba(10,12,70,.65);color:var(--ink)}
 .fx-login-card h3{font:800 30px/1.1 var(--display);letter-spacing:-.03em;margin:0 0 6px}
-.fx-login-sub{margin:0 0 16px;color:var(--muted);font-size:15px}
-.fx-not-you{border:0;background:none;color:var(--blue);font-weight:700;font-size:14px;padding:0;margin:0 0 16px;text-decoration:underline;text-underline-offset:3px}
+.fx-login-sub{margin:0 0 18px;color:var(--muted);font-size:15px}
+.fx-not-you{border:0;background:none;color:var(--cobalt);font-weight:600;font-size:14px;padding:0;margin:0 0 18px;text-decoration:underline;text-underline-offset:3px}
 .fx-login-card form{display:flex;flex-direction:column;gap:14px}
-.fx-login-card label{display:flex;flex-direction:column;gap:6px;font-weight:700;font-size:14px}
+.fx-login-card label{display:flex;flex-direction:column;gap:7px;font-weight:600;font-size:14px}
 .fx-login-card input{
-  width:100%;height:48px;border:2px solid var(--ink);border-radius:12px;padding:0 14px;font-size:15px;
-  background:var(--paper);color:var(--ink);
+  width:100%;height:50px;border:1px solid var(--rule-2);border-radius:14px;padding:0 15px;font-size:15px;
+  background:var(--mist);color:var(--ink);transition:border-color .15s, background .15s, box-shadow .15s;
 }
-.fx-login-card input:focus{outline:3px solid var(--blue);outline-offset:2px;background:#fff}
-.fx-login-card input[aria-invalid="true"]{border-color:var(--red)}
+.fx-login-card input:hover{border-color:var(--muted)}
+.fx-login-card input:focus{outline:none;border-color:var(--cobalt);background:#fff;box-shadow:0 0 0 4px rgba(61,75,242,.16)}
+.fx-login-card input[aria-invalid="true"]{border-color:var(--coral)}
 .fx-pw-label{display:flex;justify-content:space-between;align-items:center}
-.fx-pw-label a{color:var(--blue);font-size:13px;font-weight:700}
+.fx-pw-label a{color:var(--cobalt);font-size:13px;font-weight:600}
 .fx-pw-wrap{position:relative;display:block}
-.fx-pw-wrap input{padding-right:70px}
-.fx-pw-wrap button{position:absolute;right:6px;top:6px;height:36px;padding:0 12px;border:2px solid var(--ink);background:var(--yellow);border-radius:8px;font-weight:700;font-size:13px;color:var(--ink)}
-.fx-field-error{color:var(--red);font-size:13px;font-weight:600;margin-top:-8px}
-.fx-error{background:#FFEDEA;border:2px solid var(--red);color:#9C2616;border-radius:10px;padding:10px 12px;font-size:14px;font-weight:600}
-.fx-submit{height:50px;border:var(--line);border-radius:999px;background:var(--yellow);color:var(--ink);font-weight:800;font-size:16px;box-shadow:var(--hard-sm);transition:transform .12s, box-shadow .12s}
-.fx-submit:hover:not(:disabled){transform:translate(-2px,-2px);box-shadow:5px 5px 0 var(--ink)}
-.fx-submit:active:not(:disabled){transform:translate(2px,2px);box-shadow:none}
+.fx-pw-wrap input{padding-right:74px}
+.fx-pw-wrap button{position:absolute;right:7px;top:7px;height:36px;padding:0 13px;border:0;background:#fff;border-radius:9px;font-weight:600;font-size:13px;color:var(--ink);box-shadow:inset 0 0 0 1px var(--rule-2)}
+.fx-pw-wrap button:hover{box-shadow:inset 0 0 0 1px var(--ink)}
+.fx-field-error{color:var(--coral);font-size:13px;font-weight:600;margin-top:-8px}
+.fx-error{background:#FFF0ED;border:1px solid #F5B8AD;color:#9C2616;border-radius:12px;padding:11px 14px;font-size:14px;font-weight:600}
+.fx-submit{height:52px;border:0;border-radius:999px;background:var(--ink);color:#fff;font-weight:700;font-size:16px;box-shadow:0 14px 28px -14px rgba(21,19,58,.8);transition:transform .15s, background .15s}
+.fx-submit:hover:not(:disabled){background:var(--ink-2);transform:translateY(-1px)}
 .fx-submit:disabled,.fx-google:disabled,.fx-demo-btn:disabled{opacity:.6}
 .fx-or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px;font-weight:600}
-.fx-or span{flex:1;height:2px;background:#DAD8F0}
-.fx-google{height:48px;border:2px solid var(--ink);border-radius:999px;background:#fff;font-weight:700;font-size:15px;color:var(--ink)}
-.fx-google:hover:not(:disabled){background:var(--paper)}
-.fx-demo-btn{border:0;background:none;color:var(--blue);font-weight:700;font-size:14px;padding:4px;text-decoration:underline;text-underline-offset:3px}
-.fx-login-foot{display:flex;justify-content:center;gap:6px;margin-top:18px;font-size:14px;color:var(--muted)}
-.fx-login-foot a{color:var(--blue);font-weight:700}
+.fx-or span{flex:1;height:1px;background:var(--rule-2)}
+.fx-google{height:50px;border:1px solid var(--rule-2);border-radius:999px;background:#fff;font-weight:600;font-size:15px;color:var(--ink);transition:border-color .15s}
+.fx-google:hover:not(:disabled){border-color:var(--ink)}
+.fx-demo-btn{border:0;background:none;color:var(--cobalt);font-weight:600;font-size:14px;padding:4px;text-decoration:underline;text-underline-offset:4px}
+.fx-login-foot{display:flex;justify-content:center;gap:6px;margin-top:20px;font-size:14px;color:var(--muted)}
+.fx-login-foot a{color:var(--cobalt);font-weight:600}
 
 /* footer */
-.fx-footer{background:var(--ink);padding:36px 0 44px;border-top:var(--line)}
+.fx-footer{background:var(--ink);padding:40px 0 48px}
 .fx-footer-in{display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
-.fx-footer nav{display:flex;flex-wrap:wrap;gap:6px 20px}
-.fx-footer nav a{color:#C3C0EA;text-decoration:none;font-size:14px;font-weight:600}
-.fx-footer nav a:hover{color:var(--yellow)}
+.fx-footer nav{display:flex;flex-wrap:wrap;gap:6px 22px}
+.fx-footer nav a{color:#B4B6E2;text-decoration:none;font-size:14px;font-weight:600;transition:color .15s}
+.fx-footer nav a:hover{color:var(--gold)}
 
 /* ── responsive ── */
 @media(max-width:1000px){
-  .fx-hero-grid,.fx-flow-grid,.fx-ai-grid,.fx-login-grid{grid-template-columns:1fr;gap:40px}
-  .fx-panel{grid-template-columns:1fr;padding:28px}
-  .fx-login-grid{gap:40px}
+  .fx-hero-grid,.fx-flow-grid,.fx-ai-grid,.fx-login-grid{grid-template-columns:1fr;gap:48px}
+  .fx-feat{grid-template-columns:1fr;gap:0}
+  .fx-feat-stage{display:none}
+  .fx-feat-inline{display:block;margin:4px 0 22px}
+  .fx-biz-cols{columns:2;column-gap:40px}
 }
 @media(max-width:700px){
-  .fx-hero{padding:44px 0 56px}
-  .fx-section,.fx-login{padding:64px 0}
+  .fx-hero{padding:48px 0 64px}
+  .fx-hero-grid::before{top:-48px;bottom:-64px;left:-14px}
+  .fx-section,.fx-login{padding:68px 0}
+  .fx-biz{padding:68px 0 40px}
+  .fx-biz-top{margin-bottom:40px}
+  .fx-biz-cols{columns:1}
   .fx-counter-grid{grid-template-columns:1fr}
-  .fx-shelf{border-right:0;border-bottom:2px dashed #BDBAE3}
+  .fx-shelf{border-right:0;border-bottom:1px solid var(--rule)}
   .fx-shelf ul{max-height:280px}
   .fx-brand small{display:none}
-  .fx-tabs button{padding:10px 12px;font-size:14px}
-  .fx-panel{padding:20px;border-radius:0 14px 14px 14px}
-  .fx-panel-visual{padding:14px}
-  .fx-stock-row{grid-template-columns:96px 1fr 56px;gap:8px}
-  .fx-steps{padding:14px 16px}
+  .fx-stock-row{grid-template-columns:96px 1fr 58px;gap:8px}
+  .fx-receipt{padding:34px 20px 42px}
   .fx-steps li{flex-wrap:wrap}
   .fx-leader{display:none}
-  .fx-step-time{margin-left:46px;font-size:13px}
+  .fx-step-time{margin-left:44px;font-size:13px}
   .fx-step-body{flex:1 1 60%}
   .fx-ask-list li:nth-child(2),.fx-ask-list li:nth-child(3){margin-left:0}
-  .fx-login-card{padding:22px}
-  .fx-biz{padding:56px 0}
-  .fx-biz-grid{grid-template-columns:1fr}
-  .fx-counter,.fx-panel,.fx-chat,.fx-login-card{box-shadow:5px 5px 0 var(--ink)}
+  .fx-login-card{padding:24px}
+  .fx-chat-bars div{grid-template-columns:68px 1fr 58px}
 }
 @media(prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
