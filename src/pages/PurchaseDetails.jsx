@@ -501,7 +501,7 @@ export default function PurchaseDetails() {
 
                     <dt>
 
-                      {row\.icon}
+                      {row.icon}
 
                       {row.label}
 
