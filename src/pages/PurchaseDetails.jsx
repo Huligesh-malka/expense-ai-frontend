@@ -903,7 +903,7 @@ export default function PurchaseDetails() {
 
 
 
-  ].filter((row) => hasText(row\.value));
+  ].filter((row) => hasText(row.value));
 
 
 
@@ -993,7 +993,7 @@ export default function PurchaseDetails() {
 
 
 
-              onClick={() => window\.print()}
+              onClick={() => window.print()}
 
 
 
@@ -1221,7 +1221,7 @@ export default function PurchaseDetails() {
 
 
 
-                  <div key={row\.label}>
+                  <div key={row.label}>
 
 
 
@@ -1229,11 +1229,11 @@ export default function PurchaseDetails() {
 
 
 
-                      {row\.icon}
+                      {row.icon}
 
 
 
-                      {row\.label}
+                      {row.label}
 
 
 
@@ -1241,7 +1241,7 @@ export default function PurchaseDetails() {
 
 
 
-                    <dd>{row\.value}</dd>
+                    <dd>{row.value}</dd>
 
 
 
@@ -1874,7 +1874,7 @@ export default function PurchaseDetails() {
 
 
 
-            onClick={() => window\.print()}
+            onClick={() => window.print()}
 
 
 
@@ -2010,7 +2010,7 @@ function Styles() {
 
 
 
-      @import url("https\\://fonts.googleapis.com/css2?family=Manrope:wght\\@400;500;600;700;800&display=swap");
+      @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
 
 
 
