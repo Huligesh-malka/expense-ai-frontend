@@ -38,6 +38,45 @@ const CATEGORIES = [
   ["📦", "Other"],
 ];
 
+/* Business types supported. status: "full" | "extra" | "soon" (use "soon" for modules not built yet) */
+const BUSINESSES = [
+  ["🛒", "Grocery Stores", "full", ""],
+  ["🏬", "Supermarkets", "full", ""],
+  ["💊", "Medical Stores / Pharmacies", "full", ""],
+  ["📱", "Electronics Shops", "full", ""],
+  ["📲", "Mobile Shops", "full", ""],
+  ["🎧", "Mobile Accessories", "full", ""],
+  ["🔧", "Hardware Stores", "full", ""],
+  ["👕", "Clothing Stores", "full", ""],
+  ["👟", "Footwear Stores", "full", ""],
+  ["💄", "Cosmetics Shops", "full", ""],
+  ["🧴", "Beauty Product Stores", "full", ""],
+  ["✏️", "Stationery Shops", "full", ""],
+  ["📚", "Book Shops", "full", ""],
+  ["🧸", "Toys Shops", "full", ""],
+  ["🔌", "Home Appliances", "full", ""],
+  ["🛋️", "Furniture Shops", "full", ""],
+  ["🍽️", "Restaurants", "extra", "Restaurant-specific features"],
+  ["☕", "Cafes", "extra", "Restaurant-specific features"],
+  ["🍞", "Bakeries", "full", ""],
+  ["🍬", "Sweet Shops", "full", ""],
+  ["🍎", "Fruit Shops", "full", ""],
+  ["🥬", "Vegetable Shops", "full", ""],
+  ["🥩", "Meat Shops", "extra", "Weight-based billing"],
+  ["🥛", "Dairy Shops", "full", ""],
+  ["🐾", "Pet Shops", "full", ""],
+  ["🚗", "Automobile Spare Parts", "full", ""],
+  ["🎨", "Paint Shops", "full", ""],
+  ["💡", "Electrical Shops", "full", ""],
+  ["🚿", "Plumbing Stores", "full", ""],
+  ["🎁", "Gift Shops", "full", ""],
+  ["📦", "Wholesale Businesses", "full", ""],
+  ["🚚", "Distributor Businesses", "full", ""],
+  ["🏭", "Small Manufacturing Businesses", "extra", "With production module"],
+  ["🌐", "Online Sellers", "extra", "With e-commerce integration"],
+  ["🏪", "General Retail Stores", "full", ""],
+];
+
 /* Sample data for the live counter demo (illustrative only) */
 const PRODUCTS = [
   { id: "earphones", name: "Earphones", cat: "Electronics", price: 299, stock: 7, low: 3 },
@@ -457,6 +496,7 @@ export default function Login() {
 
   const [active, setActive] = useState(0);
   const [demoCat, setDemoCat] = useState("All");
+  const [bizFilter, setBizFilter] = useState("all");
   const [pending, setPending] = useState("");
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -467,6 +507,11 @@ export default function Login() {
   const passwordRef = useRef(null);
 
   const feature = FEATURES[active];
+  const bizFull = BUSINESSES.filter((b) => b[2] === "full").length;
+  const bizExtra = BUSINESSES.length - bizFull;
+  const bizShown = BUSINESSES.filter(
+    (b) => bizFilter === "all" || (bizFilter === "full" ? b[2] === "full" : b[2] !== "full")
+  );
   const isLoading = Boolean(pending);
   const emailInvalid =
     emailTouched && formData.email.length > 0 && !EMAIL_RE.test(formData.email);
@@ -625,6 +670,7 @@ export default function Login() {
     () => [
       ["#product", "Try it"],
       ["#categories", "Categories"],
+      ["#businesses", "Businesses"],
       ["#features", "Features"],
       ["#workflow", "Getting started"],
       ["#ai", "AI Business"],
@@ -734,6 +780,53 @@ export default function Login() {
               ))}
             </ul>
             <p className="fx-cats-hint">Tap a category to try it on the counter above.</p>
+          </div>
+        </section>
+
+        {/* BUSINESSES: every kind of shop we support */}
+        <section className="fx-biz" id="businesses">
+          <div className="fx-wrap">
+            <div className="fx-head">
+              <h2>Built for {BUSINESSES.length} kinds of business.</h2>
+              <p>
+                From a corner grocery to a distributor. {bizFull} work fully out of the box;
+                {" "}{bizExtra} need extra features, marked on the card.
+              </p>
+            </div>
+
+            <div className="fx-biz-filter" role="group" aria-label="Filter business types">
+              {[
+                ["all", `All ${BUSINESSES.length}`],
+                ["full", `Full support (${bizFull})`],
+                ["extra", `With extra features (${bizExtra})`],
+              ].map(([key, label]) => (
+                <button
+                  type="button"
+                  key={key}
+                  className={bizFilter === key ? "on" : ""}
+                  aria-pressed={bizFilter === key}
+                  onClick={() => setBizFilter(key)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <ul className="fx-biz-grid">
+              {bizShown.map(([icon, name, status, note]) => (
+                <li key={name} className={"fx-biz-card " + status}>
+                  <span className="fx-biz-icon" aria-hidden="true">{icon}</span>
+                  <span className="fx-biz-name">{name}</span>
+                  <span className="fx-biz-tag">
+                    {status === "full"
+                      ? "Full support"
+                      : status === "soon"
+                      ? "Coming soon"
+                      : note}
+                  </span>
+                </li>
+              ))}
+            </ul>
           </div>
         </section>
 
@@ -1171,6 +1264,25 @@ a,button{-webkit-tap-highlight-color:transparent}
 .fx-cats-grid button:active{transform:translate(2px,2px);box-shadow:none}
 .fx-cats-hint{margin:16px 0 0;text-align:center;font-size:13px;font-weight:600}
 
+/* ── businesses ── */
+.fx-biz{padding:88px 0;background:#fff;border-bottom:var(--line)}
+.fx-biz-filter{display:flex;flex-wrap:wrap;gap:8px;margin:28px 0 24px}
+.fx-biz-filter button{border:2px solid var(--ink);background:#fff;color:var(--ink);border-radius:999px;padding:8px 16px;font-weight:700;font-size:14px}
+.fx-biz-filter button:hover{background:var(--yellow)}
+.fx-biz-filter button.on{background:var(--ink);color:#fff}
+.fx-biz-grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.fx-biz-card{
+  display:grid;grid-template-columns:auto 1fr;grid-template-areas:"i n" "i t";column-gap:12px;row-gap:3px;align-items:center;
+  padding:12px 14px;background:var(--paper);border:2px solid var(--ink);border-radius:14px;
+}
+.fx-biz-icon{grid-area:i;font-size:26px;line-height:1;width:42px;height:42px;display:grid;place-items:center;background:#fff;border:2px solid var(--ink);border-radius:10px}
+.fx-biz-name{grid-area:n;font-weight:700;font-size:15px;line-height:1.2}
+.fx-biz-tag{grid-area:t;font-size:12px;font-weight:700;color:var(--green)}
+.fx-biz-card.extra{background:#FFF6D6}
+.fx-biz-card.extra .fx-biz-tag{color:#8A5A00}
+.fx-biz-card.soon{background:#EFEFF6;border-style:dashed}
+.fx-biz-card.soon .fx-biz-tag{color:var(--muted)}
+
 /* ── sections ── */
 .fx-section{padding:96px 0}
 .fx-head{max-width:640px}
@@ -1339,6 +1451,8 @@ a,button{-webkit-tap-highlight-color:transparent}
   .fx-ask-list li:nth-child(2),.fx-ask-list li:nth-child(3){margin-left:0}
   .fx-login-card{padding:22px}
   .fx-cats-grid button{font-size:13px;padding:7px 12px 7px 10px}
+  .fx-biz{padding:56px 0}
+  .fx-biz-grid{grid-template-columns:1fr}
   .fx-counter,.fx-panel,.fx-chat,.fx-login-card{box-shadow:5px 5px 0 var(--ink)}
 }
 @media(prefers-reduced-motion:reduce){
