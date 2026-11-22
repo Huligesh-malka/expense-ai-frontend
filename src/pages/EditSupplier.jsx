@@ -386,7 +386,7 @@ if (formData.pincode && !/^[0-9]{6}$/.test(formData.pincode)) {
 
     >
 
-      {/\* Header \*/}
+      {/* Header */}
 
       <div
 
@@ -485,7 +485,7 @@ if (formData.pincode && !/^[0-9]{6}$/.test(formData.pincode)) {
       </div>
 
 
-      {/\* Messages \*/}
+      {/* Messages */}
 
       {successMessage && (
 
@@ -557,7 +557,7 @@ if (formData.pincode && !/^[0-9]{6}$/.test(formData.pincode)) {
       )}
 
 
-      {/\* Form \*/}
+      {/* Form */}
 
       <form onSubmit={handleSubmit}>
 
@@ -573,7 +573,7 @@ if (formData.pincode && !/^[0-9]{6}$/.test(formData.pincode)) {
 
         >
 
-          {/\* Personal Info \*/}
+          {/* Personal Info */}
 
           <div
 
@@ -780,7 +780,7 @@ if (formData.pincode && !/^[0-9]{6}$/.test(formData.pincode)) {
           </div>
 
 
-          {/\* Contact Info \*/}
+          {/* Contact Info */}
 
           <div
 
@@ -1077,7 +1077,7 @@ if (formData.pincode && !/^[0-9]{6}$/.test(formData.pincode)) {
           </div>
 
 
-          {/\* Address Info \*/}
+          {/* Address Info */}
 
           <div
 
@@ -1432,7 +1432,7 @@ if (formData.pincode && !/^[0-9]{6}$/.test(formData.pincode)) {
           </div>
 
 
-          {/\* Financial & Status \*/}
+          {/* Financial & Status */}
 
           <div
 
@@ -1661,7 +1661,7 @@ if (formData.pincode && !/^[0-9]{6}$/.test(formData.pincode)) {
           </div>
 
 
-          {/\* Notes \*/}
+          {/* Notes */}
 
           <div
 
@@ -1757,7 +1757,7 @@ if (formData.pincode && !/^[0-9]{6}$/.test(formData.pincode)) {
           </div>
 
 
-          {/\* Action Buttons \*/}
+          {/* Action Buttons */}
 
           <div
 
