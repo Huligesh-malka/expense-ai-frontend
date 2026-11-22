@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useLocation } from "react-router-dom";
 import jsPDF from "jspdf";
 import API from "../services/api";
 import {
@@ -827,6 +827,7 @@ const GLOBAL_STYLES = `
 export default function ViewSupplier() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [supplier, setSupplier] = useState(null);
   const [purchases, setPurchases] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1199,12 +1200,10 @@ export default function ViewSupplier() {
       {/* Top bar */}
       <div className="vs-topbar">
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <Link to="/suppliers">
-            <button className="vs-back-btn">
+          <button className="vs-back-btn" onClick={() => navigate(location.state?.from || "/suppliers")} type="button">
               <FiArrowLeft />
               Back
             </button>
-          </Link>
           <div>
             <p className="vs-heading-eyebrow">Vendor Khata</p>
             <h1 className="vs-heading">Supplier Details</h1>

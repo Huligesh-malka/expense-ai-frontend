@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import API from "../services/api";
 import {
   FiPlus, FiSearch, FiEdit2, FiEye, FiTruck, FiPhone, FiMail,
@@ -21,6 +21,7 @@ const money = (value) => new Intl.NumberFormat("en-IN", { style: "currency", cur
 const normalizedStatus = (status) => String(status || "active").toLowerCase() === "inactive" ? "inactive" : "active";
 
 export default function Suppliers() {
+  const location = useLocation();
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -135,7 +136,7 @@ export default function Suppliers() {
                         <div className="supplier-card-contact-item"><span className="supplier-card-label"><FiMail /> EMAIL</span><strong title={supplier.supplier_email || "Not provided"}>{supplier.supplier_email || "Not provided"}</strong></div>
                       </div>
                       <div className={`supplier-card-balance ${due > 0 ? "has-due" : "is-clear"}`}><div><span className="supplier-card-label">OUTSTANDING BALANCE</span><strong>{money(due)}</strong></div><span className="supplier-balance-state">{due > 0 ? "● PAYMENT DUE" : "✓ ACCOUNT CLEAR"}</span></div>
-                      <div className="supplier-card-actions"><Link to={`/supplier/${supplier.id}`} className="supplier-card-view"><FiEye /> Account details <FiChevronRight /></Link><div className="suppliers-row-actions"><Link to={`/edit-supplier/${supplier.id}`} className="suppliers-icon-btn edit" title="Edit supplier" aria-label={`Edit ${name}`}><FiEdit2 /></Link><button type="button" className={`suppliers-icon-btn ${status === "inactive" ? "activate" : "deactivate"}`} onClick={() => updateSupplierStatus(supplier)} disabled={updatingId === supplier.id} title={status === "inactive" ? "Activate supplier" : "Deactivate supplier"} aria-label={status === "inactive" ? `Activate ${name}` : `Deactivate ${name}`}>{status === "inactive" ? <FiCheckCircle /> : <FiXCircle />}</button></div></div>
+                      <div className="supplier-card-actions"><Link to={`/supplier/${supplier.id}`} state={{ from: `${location.pathname}${location.search}` }} className="supplier-card-view"><FiEye /> Account details <FiChevronRight /></Link><div className="suppliers-row-actions"><Link to={`/edit-supplier/${supplier.id}`} className="suppliers-icon-btn edit" title="Edit supplier" aria-label={`Edit ${name}`}><FiEdit2 /></Link><button type="button" className={`suppliers-icon-btn ${status === "inactive" ? "activate" : "deactivate"}`} onClick={() => updateSupplierStatus(supplier)} disabled={updatingId === supplier.id} title={status === "inactive" ? "Activate supplier" : "Deactivate supplier"} aria-label={status === "inactive" ? `Activate ${name}` : `Deactivate ${name}`}>{status === "inactive" ? <FiCheckCircle /> : <FiXCircle />}</button></div></div>
                     </article>
                   );
                 })}
