@@ -90,6 +90,7 @@ const getBillNumber = (purchase) =>
 
 export default function Purchases() {
   const [purchases, setPurchases] = useState([]);
+  const [supplierProfiles, setSupplierProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -110,14 +111,81 @@ export default function Purchases() {
       setLoading(true);
       setError("");
 
-      const response = await API.get("/purchases");
+      // Load purchase bills and the supplier directory separately.
+      // Purchase rows contain financial data; /suppliers contains
+      // the supplier profile data (phone, company, email, etc.).
+      const [purchaseResponse, supplierResponse] = await Promise.all([
+        API.get("/purchases"),
+        API.get("/suppliers").catch((supplierError) => {
+          console.warn("Supplier directory could not be loaded:", supplierError);
+          return { data: { data: [] } };
+        }),
+      ]);
 
-      const data =
-        response.data?.data ||
-        response.data?.purchases ||
-        [];
+      const extractRows = (responseData) => {
+        if (Array.isArray(responseData)) return responseData;
+        if (Array.isArray(responseData?.data)) return responseData.data;
+        if (Array.isArray(responseData?.suppliers)) return responseData.suppliers;
+        if (Array.isArray(responseData?.purchases)) return responseData.purchases;
+        if (Array.isArray(responseData?.rows)) return responseData.rows;
+        return [];
+      };
 
-      setPurchases(Array.isArray(data) ? data : []);
+      const purchaseData = extractRows(purchaseResponse.data);
+      const supplierData = extractRows(supplierResponse.data);
+
+      // Normalize supplier profile field names because different backend
+      // versions may use phone/email/company/address aliases.
+      const normalizeSupplier = (supplier) => ({
+        ...supplier,
+        id: supplier.id ?? supplier.supplier_id ?? supplier.supplierId,
+        supplier_name:
+          supplier.supplier_name ?? supplier.name ?? supplier.supplierName ?? "",
+        company_name:
+          supplier.company_name ?? supplier.company ?? supplier.business_name ?? supplier.supplier_company ?? "",
+        supplier_phone:
+          supplier.supplier_phone ?? supplier.phone ?? supplier.mobile ?? supplier.contact_number ?? supplier.phone_number ?? "",
+        supplier_email:
+          supplier.supplier_email ?? supplier.email ?? supplier.email_address ?? "",
+        address:
+          supplier.address ?? supplier.supplier_address ?? supplier.billing_address ?? supplier.address_line ??
+          [supplier.address_line1, supplier.address_line2, supplier.city, supplier.state, supplier.pincode]
+            .filter(Boolean).join(", "),
+        gst_number:
+          supplier.gst_number ?? supplier.gst_no ?? supplier.gstin ?? supplier.tax_number ?? "",
+      });
+
+      const normalizedSupplierData = (Array.isArray(supplierData) ? supplierData : [])
+        .map(normalizeSupplier);
+
+      setSupplierProfiles(normalizedSupplierData);
+
+      const supplierMap = new Map(
+        normalizedSupplierData.map((supplier) => [String(supplier.id), supplier])
+      );
+
+      // Merge supplier profile details into purchase rows by supplier ID.
+      const enrichedPurchases = (Array.isArray(purchaseData) ? purchaseData : []).map((purchase) => {
+        const supplier = supplierMap.get(String(purchase.supplier_id ?? purchase.supplierId));
+        return {
+          ...purchase,
+          supplier_id: purchase.supplier_id ?? purchase.supplierId ?? supplier?.id,
+          supplier_name:
+            purchase.supplier_name || purchase.supplierName || supplier?.supplier_name || "Unknown Supplier",
+          company_name:
+            purchase.company_name || purchase.supplier_company || supplier?.company_name || "",
+          supplier_phone:
+            purchase.supplier_phone || purchase.phone || supplier?.supplier_phone || "",
+          supplier_email:
+            purchase.supplier_email || purchase.email || supplier?.supplier_email || "",
+          address:
+            purchase.address || purchase.supplier_address || supplier?.address || "",
+          gst_number:
+            purchase.gst_number || purchase.gstin || supplier?.gst_number || "",
+        };
+      });
+
+      setPurchases(enrichedPurchases);
     } catch (err) {
       console.error("Purchase loading error:", err);
 
@@ -137,38 +205,44 @@ export default function Purchases() {
   const suppliers = useMemo(() => {
     const supplierMap = new Map();
 
-    purchases.forEach((purchase) => {
-      const supplierId = purchase.supplier_id;
+    // First seed every supplier from the supplier directory. This ensures
+    // profile details are available even if purchase rows omit them.
+    supplierProfiles.forEach((profile) => {
+      const supplierId = profile.id ?? profile.supplier_id;
+      if (supplierId == null) return;
 
-      // Supplier ID is the unique identifier.
-      if (!supplierId) return;
+      supplierMap.set(String(supplierId), {
+        supplier_id: supplierId,
+        supplier_name: profile.supplier_name || "Unknown Supplier",
+        company_name: profile.company_name || "",
+        supplier_phone: profile.supplier_phone || "",
+        supplier_email: profile.supplier_email || "",
+        address: profile.address || "",
+        gst_number: profile.gst_number || "",
+        purchases: [],
+        total_purchases: 0,
+        total_paid: 0,
+        total_due: 0,
+        bill_count: 0,
+        last_purchase: null,
+      });
+    });
+
+    // Then aggregate purchase and payment data by supplier ID.
+    purchases.forEach((purchase) => {
+      const supplierId = getSupplierId(purchase);
+      if (supplierId == null) return;
 
       const supplierKey = String(supplierId);
-
       if (!supplierMap.has(supplierKey)) {
         supplierMap.set(supplierKey, {
           supplier_id: supplierId,
           supplier_name: getSupplierName(purchase),
-
-          company_name:
-            purchase.company_name ||
-            purchase.supplier_company ||
-            "",
-
-          supplier_phone:
-            purchase.supplier_phone ||
-            purchase.phone ||
-            "",
-
-          supplier_email:
-            purchase.supplier_email ||
-            "",
-
-          address:
-            purchase.address ||
-            purchase.supplier_address ||
-            "",
-
+          company_name: purchase.company_name || purchase.supplier_company || "",
+          supplier_phone: purchase.supplier_phone || purchase.phone || "",
+          supplier_email: purchase.supplier_email || purchase.email || "",
+          address: purchase.address || purchase.supplier_address || "",
+          gst_number: purchase.gst_number || purchase.gstin || "",
           purchases: [],
           total_purchases: 0,
           total_paid: 0,
@@ -179,69 +253,33 @@ export default function Purchases() {
       }
 
       const supplier = supplierMap.get(supplierKey);
-
       supplier.purchases.push(purchase);
-
-      supplier.total_purchases += number(
-        purchase.total_amount
-      );
-
-      supplier.total_paid += number(
-        purchase.paid_amount
-      );
-
+      supplier.total_purchases += number(purchase.total_amount);
+      supplier.total_paid += number(purchase.paid_amount);
       supplier.total_due += getDue(purchase);
-
       supplier.bill_count += 1;
 
-      const purchaseDate = new Date(
-        purchase.created_at
-      );
-
-      if (
-        !supplier.last_purchase ||
-        purchaseDate > supplier.last_purchase
-      ) {
+      const purchaseDate = purchase.created_at ? new Date(purchase.created_at) : null;
+      if (purchaseDate && !Number.isNaN(purchaseDate.getTime()) &&
+          (!supplier.last_purchase || purchaseDate > supplier.last_purchase)) {
         supplier.last_purchase = purchaseDate;
       }
 
-      if (
-        !supplier.company_name &&
-        purchase.company_name
-      ) {
-        supplier.company_name =
-          purchase.company_name;
-      }
-
-      if (
-        !supplier.supplier_phone &&
-        purchase.supplier_phone
-      ) {
-        supplier.supplier_phone =
-          purchase.supplier_phone;
-      }
-
-      if (
-        !supplier.supplier_email &&
-        purchase.supplier_email
-      ) {
-        supplier.supplier_email =
-          purchase.supplier_email;
-      }
-
-      if (
-        !supplier.address &&
-        purchase.address
-      ) {
-        supplier.address = purchase.address;
-      }
+      // Fill missing profile data from the purchase row as a fallback.
+      supplier.supplier_name = supplier.supplier_name === "Unknown Supplier"
+        ? (purchase.supplier_name || supplier.supplier_name)
+        : supplier.supplier_name;
+      supplier.company_name ||= purchase.company_name || purchase.supplier_company || "";
+      supplier.supplier_phone ||= purchase.supplier_phone || purchase.phone || "";
+      supplier.supplier_email ||= purchase.supplier_email || purchase.email || "";
+      supplier.address ||= purchase.address || purchase.supplier_address || "";
+      supplier.gst_number ||= purchase.gst_number || purchase.gstin || "";
     });
 
     return Array.from(supplierMap.values()).sort(
-      (a, b) =>
-        b.total_purchases - a.total_purchases
+      (a, b) => b.total_purchases - a.total_purchases
     );
-  }, [purchases]);
+  }, [purchases, supplierProfiles]);
 
   /* =========================================================
      SEARCH
@@ -254,18 +292,18 @@ export default function Purchases() {
 
     return suppliers.filter((supplier) => {
       return (
-        supplier.supplier_name
+        String(supplier.supplier_name || "")
           .toLowerCase()
           .includes(term) ||
         String(supplier.supplier_id)
           .includes(term) ||
-        supplier.company_name
+        String(supplier.company_name || "")
           .toLowerCase()
           .includes(term) ||
-        supplier.supplier_phone
+        String(supplier.supplier_phone || "")
           .toLowerCase()
           .includes(term) ||
-        supplier.supplier_email
+        String(supplier.supplier_email || "")
           .toLowerCase()
           .includes(term)
       );
@@ -414,7 +452,7 @@ export default function Purchases() {
               <div className="supplier-profile-left">
 
                 <div className="supplier-avatar large">
-                  {supplier.supplier_name
+                  {String(supplier.supplier_name || "S")
                     .charAt(0)
                     .toUpperCase()}
                 </div>
