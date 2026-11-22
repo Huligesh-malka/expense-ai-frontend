@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom";
 
 import API from "../services/api";
 
@@ -152,6 +152,7 @@ export default function PurchaseDetails() {
   const { id } = useParams();
 
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
 
 
@@ -234,6 +235,13 @@ export default function PurchaseDetails() {
     setPaymentError("");
     setPaymentOpen(true);
   };
+
+  useEffect(() => {
+    if (purchase && searchParams.get("payment") === "1") {
+      openPaymentModal();
+      setSearchParams({}, { replace: true });
+    }
+  }, [purchase, searchParams]);
 
   const closePaymentModal = () => {
     if (savingPayment) return;
