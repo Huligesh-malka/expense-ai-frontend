@@ -40,7 +40,7 @@ import {
 
 
 
-const styles = \`
+const styles = `
 
 .supplier-edit-page{
 
@@ -3762,4 +3762,4 @@ export default function EditSupplier() {
 
     );
 
-}
+`;
