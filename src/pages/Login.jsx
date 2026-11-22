@@ -1,84 +1,90 @@
-import { useState, useContext, useEffect, useRef, useMemo } from "react";
+import { useState, useContext, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from "../firebase";
 import API from "../services/api";
 import { AuthContext } from "../context/AuthContext";
 
-/* ───────────────────────── CONFIG ───────────────────────── */
-
 const CONFIG = {
-  brand: "FinancePro",
-  tagline: "Business management for Indian shops",
-  signupNote: "Set up in about 2 minutes",
-  trust: ["Secure sign-in", "Your data stays yours", "Built for Indian businesses"],
+  brand: "Expense AI",
+  tagline: "The operating system for your business",
   demo: { enabled: true, email: "demo@financepro.com", password: "password123" },
 };
 
 const LAST_EMAIL_KEY = "financepro_last_email";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-/* Sample data for the live counter demo (illustrative only) */
 const PRODUCTS = [
-  { id: "rice", name: "Rice 5 kg", price: 365, stock: 12, low: 4 },
-  { id: "dal", name: "Toor dal 1 kg", price: 168, stock: 9, low: 4 },
-  { id: "oil", name: "Sunflower oil 1 L", price: 142, stock: 5, low: 3 },
-  { id: "milk", name: "Milk 500 ml", price: 27, stock: 30, low: 10 },
+  { id: "rice", name: "Rice · 5 kg", price: 365, stock: 12, low: 4 },
+  { id: "dal", name: "Toor dal · 1 kg", price: 168, stock: 9, low: 4 },
+  { id: "oil", name: "Sunflower oil · 1 L", price: 142, stock: 5, low: 3 },
+  { id: "milk", name: "Milk · 500 ml", price: 27, stock: 30, low: 10 },
   { id: "biscuit", name: "Biscuits", price: 10, stock: 18, low: 8 },
 ];
 
 const FEATURES = [
   {
     id: "billing",
-    label: "Billing",
-    headline: "Make a bill in the time it takes to say the total.",
-    description:
-      "Add products, take payment and keep every sale linked to your stock and your customers.",
-    points: ["Create bills", "Record payments", "Sales history"],
+    label: "Smart billing",
+    icon: "▤",
+    title: "A faster checkout. A cleaner business.",
+    desc: "Create bills, collect payments and automatically keep your sales and stock connected.",
+    bullets: ["GST-ready invoices", "Cash, UPI and card payments", "Sales history"],
   },
   {
     id: "inventory",
     label: "Inventory",
-    headline: "See what is running out before a customer asks.",
-    description:
-      "Products, quantities and low-stock alerts sit together, so you can reorder in time.",
-    points: ["Products", "Stock levels", "Low-stock alerts"],
+    icon: "▦",
+    title: "Know your stock before it runs out.",
+    desc: "Track products, quantities, units and low-stock items from one live inventory.",
+    bullets: ["Barcode-friendly workflow", "Multiple units", "Low-stock alerts"],
   },
   {
-    id: "qr",
-    label: "QR ordering",
-    headline: "Customers scan, pick and send the order.",
-    description:
-      "Put a QR at the counter. Customers browse your products on their phone and the order lands in your workspace.",
-    points: ["Scan QR", "Choose products", "Send order"],
+    id: "purchases",
+    label: "Purchases",
+    icon: "↗",
+    title: "Keep purchases and suppliers in sync.",
+    desc: "Record supplier purchases and understand how much money goes into your stock.",
+    bullets: ["Purchase records", "Supplier management", "Stock updates"],
   },
   {
     id: "expenses",
     label: "Expenses",
-    headline: "Know where the money goes each month.",
-    description:
-      "Record purchases and expenses in one place and review them as clear reports.",
-    points: ["Purchases", "Expenses", "Reports"],
+    icon: "₹",
+    title: "Every expense has a place.",
+    desc: "Capture business spending, organize categories and review the numbers without spreadsheets.",
+    bullets: ["Expense tracking", "Category insights", "Reports"],
   },
   {
     id: "ai",
     label: "AI Business",
-    headline: "Ask a question. Get an answer from your own data.",
-    description:
-      "AI Business reads the sales, expenses and stock your account can access and explains them in plain language.",
-    points: ["Sales insights", "Expense analysis", "Business questions"],
+    icon: "✦",
+    title: "Ask your business. Get useful answers.",
+    desc: "Explore sales, expenses and stock with plain-language questions based on your business data.",
+    bullets: ["Business insights", "Expense analysis", "Reorder suggestions"],
   },
 ];
 
-const JOURNEY = [
-  ["Create your business", "Add your shop name and type.", "2 min"],
-  ["Add products", "Prices, units, stock and categories.", "Your pace"],
-  ["Start selling", "Make bills and record payments.", "Day 1"],
-  ["Stay in control", "Check stock, purchases, expenses and customers.", "Daily"],
-  ["Ask AI", "Question the data already in your workspace.", "Anytime"],
+const BUSINESS_TYPES = [
+  "Grocery & Kirana",
+  "Medical & Pharmacy",
+  "Electronics",
+  "Clothing & Fashion",
+  "Stationery",
+  "Hardware",
+  "Bakery & Food",
+  "Mobile Shop",
+  "Wholesale",
+  "Other Retail",
 ];
 
-/* ───────────────────────── HELPERS ───────────────────────── */
+const JOURNEY = [
+  ["Create your workspace", "Add your business name and choose your business type."],
+  ["Add products", "Enter products, prices, units and opening stock."],
+  ["Start billing", "Scan or search products and complete your first sale."],
+  ["Manage everything", "Track stock, purchases, customers and expenses."],
+  ["Use AI insights", "Ask questions and make decisions with your business data."],
+];
 
 const safeGet = (key) => {
   try {
@@ -87,45 +93,34 @@ const safeGet = (key) => {
     return "";
   }
 };
+
 const safeSet = (key, value) => {
   try {
     localStorage.setItem(key, value);
   } catch {}
 };
+
 const safeRemove = (key) => {
   try {
     localStorage.removeItem(key);
   } catch {}
 };
 
-const inr = (n) => "₹" + Number(n).toLocaleString("en-IN");
+const inr = (value) =>
+  "₹" + Number(value || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 
-function getGreeting() {
-  const h = new Date().getHours();
-  if (h < 12) return "Good morning";
-  if (h < 17) return "Good afternoon";
+function greeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
   return "Good evening";
 }
 
-function useIsMobile(breakpoint = 860) {
-  const [mobile, setMobile] = useState(
-    typeof window !== "undefined" ? window.innerWidth < breakpoint : false
-  );
-  useEffect(() => {
-    const onResize = () => setMobile(window.innerWidth < breakpoint);
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, [breakpoint]);
-  return mobile;
-}
-
-/* ───────────────────────── SMALL COMPONENTS ───────────────────────── */
-
-function Brand({ light }) {
+function Brand({ footer = false }) {
   return (
-    <Link to="/" className={"fx-brand" + (light ? " light" : "")}>
-      <span className="fx-brand-mark">F</span>
-      <span className="fx-brand-text">
+    <Link to="/" className={`ea-brand ${footer ? "ea-brand-footer" : ""}`}>
+      <span className="ea-brand-mark">E</span>
+      <span className="ea-brand-copy">
         <strong>{CONFIG.brand}</strong>
         <small>{CONFIG.tagline}</small>
       </span>
@@ -133,266 +128,156 @@ function Brand({ light }) {
   );
 }
 
-/* The one memorable thing: a counter you can actually use */
-function LiveCounter() {
+function LiveDemo() {
   const [cart, setCart] = useState({});
   const [question, setQuestion] = useState("");
-  const [sold, setSold] = useState(0);
+  const [completedSales, setCompletedSales] = useState(0);
 
   const lines = PRODUCTS.filter((p) => cart[p.id]).map((p) => ({
     ...p,
     qty: cart[p.id],
     amount: cart[p.id] * p.price,
   }));
-  const total = lines.reduce((s, l) => s + l.amount, 0);
-  const itemCount = lines.reduce((s, l) => s + l.qty, 0);
+  const total = lines.reduce((sum, line) => sum + line.amount, 0);
+  const itemCount = lines.reduce((sum, line) => sum + line.qty, 0);
+  const soldTotal = completedSales;
 
-  const left = (p) => p.stock - (cart[p.id] || 0);
-  const lowItems = PRODUCTS.filter((p) => left(p) <= p.low);
+  const remaining = (product) => product.stock - (cart[product.id] || 0);
+  const lowItems = PRODUCTS.filter((p) => remaining(p) <= p.low);
 
-  const add = (p) => {
-    if (left(p) <= 0) return;
-    setCart((c) => ({ ...c, [p.id]: (c[p.id] || 0) + 1 }));
+  const add = (product) => {
+    if (remaining(product) <= 0) return;
+    setCart((current) => ({ ...current, [product.id]: (current[product.id] || 0) + 1 }));
   };
-  const remove = (p) => {
-    setCart((c) => {
-      const next = { ...c };
-      if (next[p.id] > 1) next[p.id] -= 1;
-      else delete next[p.id];
+
+  const remove = (product) => {
+    setCart((current) => {
+      const next = { ...current };
+      if (next[product.id] > 1) next[product.id] -= 1;
+      else delete next[product.id];
       return next;
     });
   };
-  const clear = () => setCart({});
-  const finish = () => {
+
+  const complete = () => {
     if (!total) return;
-    setSold((s) => s + total);
+    setCompletedSales((current) => current + total);
     setCart({});
   };
 
   const answers = {
-    low: () =>
-      lowItems.length
-        ? `Running low: ${lowItems
-            .map((p) => `${p.name} (${left(p)} left)`)
-            .join(", ")}.`
-        : "Nothing is below its alert level right now.",
-    bill: () =>
-      total
-        ? `This bill has ${itemCount} item${itemCount > 1 ? "s" : ""} and comes to ${inr(total)}.`
-        : "The bill is empty. Tap a product to add it.",
-    today: () =>
-      sold
-        ? `You have billed ${inr(sold)} in this demo session.`
-        : "No bill has been completed yet. Tap Complete sale on a bill.",
+    stock: lowItems.length
+      ? `Low stock: ${lowItems.map((p) => `${p.name} (${remaining(p)} left)`).join(", ")}.`
+      : "All sample products are above their alert levels.",
+    bill: total
+      ? `This bill contains ${itemCount} items and totals ${inr(total)}.`
+      : "Your bill is empty. Add products from the sample shelf.",
+    sales: soldTotal
+      ? `Completed demo sales: ${inr(soldTotal)}.`
+      : "Complete a sample sale to see the sales total.",
   };
 
-  const questions = [
-    ["low", "What is running low?"],
-    ["bill", "What is on this bill?"],
-    ["today", "How much have I sold?"],
-  ];
-
   return (
-    <div className="fx-counter" id="product-demo">
-      <div className="fx-counter-bar">
-        <span className="fx-dots"><i /><i /><i /></span>
-        <span>Counter · sample shop</span>
-        <span className="fx-sold">Sold today {inr(sold)}</span>
+    <div className="ea-demo-card" id="demo">
+      <div className="ea-demo-top">
+        <div className="ea-window-dots"><i /><i /><i /></div>
+        <span>Live POS preview</span>
+        <span className="ea-demo-live"><i /> Interactive demo</span>
       </div>
 
-      <div className="fx-counter-grid">
-        <div className="fx-shelf">
-          <h3>Tap to add</h3>
-          <ul>
-            {PRODUCTS.map((p) => {
-              const remaining = left(p);
-              const isLow = remaining <= p.low;
+      <div className="ea-demo-body">
+        <div className="ea-products">
+          <div className="ea-demo-heading">
+            <div><small>DEMO STORE</small><h3>Product shelf</h3></div>
+            <span className="ea-demo-count">{PRODUCTS.length} products</span>
+          </div>
+          <div className="ea-product-list">
+            {PRODUCTS.map((product) => {
+              const left = remaining(product);
+              const isLow = left <= product.low;
               return (
-                <li key={p.id}>
-                  <button
-                    type="button"
-                    onClick={() => add(p)}
-                    disabled={remaining <= 0}
-                    aria-label={`Add ${p.name}, ${inr(p.price)}, ${remaining} left`}
-                  >
-                    <span className="fx-p-name">{p.name}</span>
-                    <span className="fx-p-price">{inr(p.price)}</span>
-                    <span className={"fx-p-stock" + (isLow ? " low" : "")}>
-                      {remaining <= 0 ? "Out of stock" : `${remaining} left`}
-                    </span>
-                  </button>
-                </li>
+                <button key={product.id} className="ea-product" onClick={() => add(product)} disabled={left <= 0}>
+                  <span className="ea-product-icon">{product.id === "rice" ? "🌾" : product.id === "dal" ? "🫘" : product.id === "oil" ? "🫙" : product.id === "milk" ? "🥛" : "🍪"}</span>
+                  <span className="ea-product-info"><strong>{product.name}</strong><small className={isLow ? "low" : ""}>{left <= 0 ? "Out of stock" : `${left} in stock`}</small></span>
+                  <span className="ea-product-price">{inr(product.price)}</span>
+                  <span className="ea-add">+</span>
+                </button>
               );
             })}
-          </ul>
+          </div>
         </div>
 
-        <div className="fx-bill-wrap">
-          <div className="fx-bill" aria-live="polite">
-            <div className="fx-bill-head">
-              <strong>Bill #0042</strong>
-              <span>{new Date().toLocaleDateString("en-IN")}</span>
-            </div>
-            {lines.length === 0 ? (
-              <p className="fx-bill-empty">Your bill prints here as you add products.</p>
-            ) : (
-              <ul className="fx-bill-lines">
-                {lines.map((l) => (
-                  <li key={l.id}>
-                    <span className="fx-bill-name">{l.name}</span>
-                    <span className="fx-bill-qty">
-                      <button type="button" onClick={() => remove(l)} aria-label={`Remove one ${l.name}`}>−</button>
-                      {l.qty}
-                      <button type="button" onClick={() => add(l)} aria-label={`Add one ${l.name}`}>+</button>
+        <div className="ea-receipt-panel">
+          <div className="ea-receipt">
+            <div className="ea-receipt-header"><strong>DEMO BILL #0042</strong><span>{new Date().toLocaleDateString("en-IN")}</span></div>
+            {lines.length ? (
+              <div className="ea-receipt-lines">
+                {lines.map((line) => (
+                  <div className="ea-receipt-line" key={line.id}>
+                    <span className="ea-line-name">{line.name}</span>
+                    <span className="ea-qty">
+                      <button onClick={() => remove(line)} aria-label={`Remove one ${line.name}`}>−</button>
+                      {line.qty}
+                      <button onClick={() => add(line)} aria-label={`Add one ${line.name}`}>+</button>
                     </span>
-                    <span className="fx-bill-amt">{inr(l.amount)}</span>
-                  </li>
+                    <strong>{inr(line.amount)}</strong>
+                  </div>
                 ))}
-              </ul>
-            )}
-            <div className="fx-bill-total">
-              <span>Total</span>
-              <strong>{inr(total)}</strong>
+              </div>
+            ) : <div className="ea-empty-receipt">Tap a product to build your bill.</div>}
+            <div className="ea-total"><span>Total</span><strong>{inr(total)}</strong></div>
+            <div className="ea-receipt-actions">
+              <button className="ea-complete" disabled={!total} onClick={complete}>Complete sale <span>↗</span></button>
+              <button className="ea-clear" disabled={!total} onClick={() => setCart({})}>Clear</button>
             </div>
-            <div className="fx-bill-actions">
-              <button type="button" className="fx-btn-yellow" onClick={finish} disabled={!total}>
-                Complete sale
-              </button>
-              <button type="button" className="fx-btn-ghost" onClick={clear} disabled={!total}>
-                Clear
-              </button>
-            </div>
+          </div>
+          <div className="ea-demo-stats">
+            <div><small>DEMO SALES</small><strong>{inr(soldTotal)}</strong></div>
+            <div><small>ITEMS IN BILL</small><strong>{itemCount}</strong></div>
           </div>
         </div>
       </div>
 
-      <div className="fx-ask">
-        <div className="fx-ask-chips">
-          <span>Ask AI Business</span>
-          {questions.map(([key, label]) => (
-            <button
-              type="button"
-              key={key}
-              className={question === key ? "on" : ""}
-              onClick={() => setQuestion(key)}
-            >
-              {label}
-            </button>
-          ))}
+      <div className="ea-ai-demo">
+        <div className="ea-ai-demo-label"><span className="ea-ai-icon">✦</span><div><strong>AI Business</strong><small>Ask the sample shop</small></div></div>
+        <div className="ea-question-chips">
+          <button onClick={() => setQuestion("stock")}>What's running low?</button>
+          <button onClick={() => setQuestion("bill")}>What's on this bill?</button>
+          <button onClick={() => setQuestion("sales")}>How much have I sold?</button>
         </div>
-        <p className="fx-ask-answer">
-          {question ? answers[question]() : "Pick a question. The answer comes from the sample shop above."}
-        </p>
+        {question && <div className="ea-answer">{answers[question]}</div>}
       </div>
     </div>
   );
 }
 
-/* Mini visuals for the feature explorer */
-function FeatureVisual({ id }) {
-  if (id === "billing") {
-    return (
-      <div className="fx-vis fx-vis-bill">
-        <div className="fx-mini-receipt">
-          <b>Bill #0043</b>
-          <div><span>Rice 5 kg × 2</span><span>₹730</span></div>
-          <div><span>Milk 500 ml × 4</span><span>₹108</span></div>
-          <div><span>Biscuits × 3</span><span>₹30</span></div>
-          <div className="t"><span>Total</span><span>₹868</span></div>
-        </div>
-        <div className="fx-pay">
-          <span>Paid by</span>
-          <i className="on">UPI</i><i>Cash</i><i>Card</i>
-        </div>
-      </div>
-    );
+function FeatureVisual({ feature }) {
+  if (feature === "billing") {
+    return <div className="ea-visual-billing"><div className="ea-visual-receipt"><div className="ea-vr-head">SALE RECEIPT <span>✓ PAID</span></div><div className="ea-vr-row"><span>Rice 5 kg × 2</span><b>₹730</b></div><div className="ea-vr-row"><span>Milk 500 ml × 4</span><b>₹108</b></div><div className="ea-vr-row"><span>Biscuits × 3</span><b>₹30</b></div><div className="ea-vr-total"><span>Total</span><b>₹868</b></div></div><div className="ea-visual-payment"><span>Payment received</span><div><b>UPI</b><b>Cash</b><b>Card</b></div></div></div>;
   }
-  if (id === "inventory") {
-    const rows = [
-      ["Rice 5 kg", 80, "ok", "12 bags"],
-      ["Sunflower oil 1 L", 22, "low", "2 left"],
-      ["Milk 500 ml", 62, "ok", "21 packs"],
-      ["Toor dal 1 kg", 14, "low", "1 left"],
-    ];
-    return (
-      <div className="fx-vis fx-vis-stock">
-        {rows.map(([name, w, s, n]) => (
-          <div className="fx-stock-row" key={name}>
-            <span>{name}</span>
-            <div className="fx-meter"><i className={s} style={{ width: w + "%" }} /></div>
-            <em className={s}>{n}</em>
-          </div>
-        ))}
-      </div>
-    );
+  if (feature === "inventory") {
+    const rows = [["Rice 5 kg", 76, "12 bags"], ["Sunflower oil", 20, "2 left"], ["Milk 500 ml", 68, "21 packs"], ["Toor dal", 12, "1 left"]];
+    return <div className="ea-stock-visual">{rows.map(([name, width, stock]) => <div className="ea-stock-row" key={name}><span>{name}</span><div><i style={{ width: `${width}%` }} /></div><strong className={width < 25 ? "low" : ""}>{stock}</strong></div>)}</div>;
   }
-  if (id === "qr") {
-    return (
-      <div className="fx-vis fx-vis-qr">
-        <div className="fx-qr-code" aria-hidden="true">
-          {Array.from({ length: 49 }).map((_, i) => (
-            <i key={i} className={[0, 1, 2, 7, 9, 14, 15, 16, 4, 5, 6, 11, 13, 20, 18, 22, 24, 26, 29, 31, 33, 35, 36, 40, 42, 43, 44, 46, 48].includes(i) ? "k" : ""} />
-          ))}
-        </div>
-        <div className="fx-phone">
-          <b>Order from our shop</b>
-          <div><span>Milk 500 ml</span><i>Add</i></div>
-          <div><span>Biscuits</span><i>Add</i></div>
-          <div><span>Rice 5 kg</span><i>Add</i></div>
-          <u>Send order to shop</u>
-        </div>
-      </div>
-    );
+  if (feature === "purchases") {
+    return <div className="ea-purchase-visual"><div className="ea-purchase-card"><div><span className="ea-purchase-icon">↗</span><span><small>SUPPLIER PURCHASE</small><strong>Purchase #PUR-1028</strong></span><b className="ea-purchase-status">Received</b></div><hr/><div className="ea-purchase-row"><span>Products added</span><strong>24 items</strong></div><div className="ea-purchase-row"><span>Supplier</span><strong>Metro Wholesale</strong></div><div className="ea-purchase-total"><span>Total purchase</span><strong>₹12,450</strong></div></div></div>;
   }
-  if (id === "expenses") {
-    const rows = [
-      ["Stock purchases", 88],
-      ["Rent", 46],
-      ["Electricity", 21],
-      ["Transport", 14],
-    ];
-    return (
-      <div className="fx-vis fx-vis-exp">
-        <p>Sample month</p>
-        {rows.map(([name, w]) => (
-          <div className="fx-exp-row" key={name}>
-            <span>{name}</span>
-            <i style={{ width: w + "%" }} />
-          </div>
-        ))}
-      </div>
-    );
+  if (feature === "expenses") {
+    return <div className="ea-expense-visual"><div className="ea-expense-top"><small>MONTHLY EXPENSES</small><strong>₹18,420</strong><span>↓ 8.4% vs last month</span></div>{[["Stock purchases", 84], ["Rent", 48], ["Electricity", 24], ["Transport", 18]].map(([name, width]) => <div className="ea-expense-row" key={name}><span>{name}</span><i style={{ width: `${width}%` }} /></div>)}</div>;
   }
-  return (
-    <div className="fx-vis fx-vis-ai">
-      <div className="u">Which expense grew the most?</div>
-      <div className="b">
-        <b>AI Business</b>
-        I compare this month with last month using the expenses your account can access, then explain the biggest change.
-      </div>
-      <div className="u">And what should I reorder?</div>
-    </div>
-  );
+  return <div className="ea-ai-visual"><div className="ea-ai-question">Which products should I reorder?</div><div className="ea-ai-response"><span className="ea-ai-response-icon">✦</span><div><strong>AI Business</strong><p>Oil and Toor dal are below your stock alert. Based on recent sales, consider reordering them this week.</p><div className="ea-ai-tags"><span>Inventory</span><span>Recommendation</span></div></div></div><div className="ea-ai-question">Where did my expenses increase?</div></div>;
 }
-
-/* ───────────────────────── PAGE ───────────────────────── */
 
 export default function Login() {
   const navigate = useNavigate();
   const { login } = useContext(AuthContext);
-  const mobile = useIsMobile();
 
   const [returning, setReturning] = useState(() => ({
     name: (safeGet("userName") || "").split(" ")[0],
     business: safeGet("businessName"),
   }));
-
-  const [formData, setFormData] = useState(() => ({
-    email: safeGet(LAST_EMAIL_KEY),
-    password: "",
-  }));
-
-  const [active, setActive] = useState(0);
+  const [formData, setFormData] = useState({ email: safeGet(LAST_EMAIL_KEY), password: "" });
+  const [activeFeature, setActiveFeature] = useState("billing");
   const [pending, setPending] = useState("");
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -401,832 +286,335 @@ export default function Login() {
   const [mobileMenu, setMobileMenu] = useState(false);
   const emailRef = useRef(null);
   const passwordRef = useRef(null);
-
-  const feature = FEATURES[active];
-  const isLoading = Boolean(pending);
-  const emailInvalid =
-    emailTouched && formData.email.length > 0 && !EMAIL_RE.test(formData.email);
-
-  /* Focus the right field only when the person reaches the login section */
   const loginSectionRef = useRef(null);
   const focusedOnce = useRef(false);
+
+  const feature = FEATURES.find((item) => item.id === activeFeature) || FEATURES[0];
+  const isLoading = Boolean(pending);
+  const emailInvalid = emailTouched && formData.email.length > 0 && !EMAIL_RE.test(formData.email);
+
   useEffect(() => {
     const node = loginSectionRef.current;
     if (!node || typeof IntersectionObserver === "undefined") return;
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && !focusedOnce.current) {
-          focusedOnce.current = true;
-          if (formData.email) passwordRef.current?.focus({ preventScroll: true });
-          else emailRef.current?.focus({ preventScroll: true });
-        }
-      },
-      { threshold: 0.6 }
-    );
-    io.observe(node);
-    return () => io.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && !focusedOnce.current) {
+        focusedOnce.current = true;
+        if (formData.email) passwordRef.current?.focus({ preventScroll: true });
+        else emailRef.current?.focus({ preventScroll: true });
+      }
+    }, { threshold: 0.45 });
+    observer.observe(node);
+    return () => observer.disconnect();
   }, []);
 
   const finishLogin = (data) => {
     const { user, business, token } = data;
     login(user, token);
-
     safeSet("userId", user.id);
     safeSet("userName", user.full_name);
     safeSet("userEmail", user.email);
     safeSet(LAST_EMAIL_KEY, user.email);
-
     if (business) {
       safeSet("businessId", business.id);
       safeSet("businessName", business.business_name);
       safeSet("businessType", business.business_type);
     }
-
-    if (user.role === "admin") {
-      navigate("/admin/dashboard", { replace: true });
-    } else if (business) {
-      navigate("/dashboard", { replace: true });
-    } else {
-      navigate("/create-business", { replace: true });
-    }
+    if (user.role === "admin") navigate("/admin/dashboard", { replace: true });
+    else if (business) navigate("/dashboard", { replace: true });
+    else navigate("/create-business", { replace: true });
   };
-
-  const fail = (message) => setError(message);
 
   const runAuth = async (kind, request, fallbackMessage) => {
     setPending(kind);
     setError("");
-
     try {
       const res = await request();
-
-      if (res.data.success) {
-        finishLogin(res.data);
-      } else {
-        fail(res.data.message || fallbackMessage);
-      }
+      if (res?.data?.success) finishLogin(res.data);
+      else setError(res?.data?.message || fallbackMessage);
     } catch (err) {
       console.error(`${kind} login error:`, err);
-
-      if (
-        err.code === "auth/popup-closed-by-user" ||
-        err.code === "auth/cancelled-popup-request"
-      ) {
-        fail("Google sign-in was closed before it finished. Try again.");
+      if (err.code === "auth/popup-closed-by-user" || err.code === "auth/cancelled-popup-request") {
+        setError("Google sign-in was closed before it finished. Try again.");
       } else if (err.code === "auth/popup-blocked") {
-        fail("Your browser blocked the Google window. Allow popups and try again.");
+        setError("Your browser blocked the Google window. Allow popups and try again.");
       } else if (!err.response) {
-        fail("Cannot reach the server. Check your internet connection and try again.");
+        setError("Cannot reach the server. Check your internet connection and try again.");
       } else {
-        fail(err.response?.data?.message || err.message || fallbackMessage);
+        setError(err.response?.data?.message || err.message || fallbackMessage);
       }
     } finally {
       setPending("");
     }
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const handleSubmit = (event) => {
+    event.preventDefault();
     if (isLoading) return;
-
     if (!EMAIL_RE.test(formData.email)) {
       setEmailTouched(true);
-      fail("Enter a valid email address.");
+      setError("Enter a valid email address.");
       return;
     }
-
-    runAuth(
-      "email",
-      () => API.post("/auth/login", formData),
-      "Sign in failed. Please try again."
-    );
+    runAuth("email", () => API.post("/auth/login", formData), "Sign in failed. Please try again.");
   };
 
-  const handleGoogleLogin = () =>
-    runAuth(
-      "google",
-      async () => {
-        const result = await signInWithPopup(auth, googleProvider);
-        const idToken = await result.user.getIdToken();
-        return API.post("/auth/google", { idToken });
-      },
-      "Google sign-in failed. Please try again."
-    );
+  const handleGoogleLogin = () => runAuth("google", async () => {
+    const result = await signInWithPopup(auth, googleProvider);
+    const idToken = await result.user.getIdToken();
+    return API.post("/auth/google", { idToken });
+  }, "Google sign-in failed. Please try again.");
 
-  const handleDemo = () =>
-    runAuth(
-      "demo",
-      () =>
-        API.post("/auth/login", {
-          email: CONFIG.demo.email,
-          password: CONFIG.demo.password,
-        }),
-      "The demo is unavailable right now. Please try again."
-    );
+  const handleDemo = () => runAuth("demo", () => API.post("/auth/login", CONFIG.demo), "The demo is unavailable right now. Please try again.");
 
   const forgetReturning = () => {
-    [
-      "userId",
-      "userName",
-      "userEmail",
-      "businessId",
-      "businessName",
-      "businessType",
-      LAST_EMAIL_KEY,
-    ].forEach(safeRemove);
-
+    ["userId", "userName", "userEmail", "businessId", "businessName", "businessType", LAST_EMAIL_KEY].forEach(safeRemove);
     setReturning({ name: "", business: "" });
     setFormData({ email: "", password: "" });
     setTimeout(() => emailRef.current?.focus(), 0);
   };
 
-  const title = returning.name
-    ? `${getGreeting()}, ${returning.name}`
-    : getGreeting();
-
-  const subtitle = returning.business
-    ? `${returning.business} is ready when you are.`
-    : "Sign in to open your workspace.";
-
-  const navLinks = useMemo(
-    () => [
-      ["#product", "Try it"],
-      ["#features", "Features"],
-      ["#workflow", "Getting started"],
-      ["#ai", "AI Business"],
-    ],
-    []
-  );
-
-  const onCaps = (e) => {
-    if (e.getModifierState) setCapsOn(e.getModifierState("CapsLock"));
-  };
+  const navLinks = [["#demo", "Live demo"], ["#features", "Features"], ["#businesses", "Businesses"], ["#workflow", "How it works"], ["#login", "Login"]];
 
   return (
-    <div className="fx-page">
+    <div className="expense-ai-page">
       <style>{CSS}</style>
+      <a className="ea-skip" href="#login">Skip to sign in</a>
 
-      <a href="#login" className="fx-skip">Skip to login</a>
-
-      {/* NAV */}
-      <header className="fx-nav">
+      <header className="ea-nav">
         <Brand />
-        {!mobile && (
-          <nav className="fx-nav-links" aria-label="Sections">
-            {navLinks.map(([href, label]) => (
-              <a key={href} href={href}>{label}</a>
-            ))}
-          </nav>
-        )}
-        <div className="fx-nav-actions">
-          {!mobile && <a href="#login" className="fx-nav-login">Login</a>}
-          <Link to="/register" className="fx-btn fx-btn-blue fx-btn-sm">Create business</Link>
-          {mobile && (
-            <button
-              type="button"
-              className="fx-menu-btn"
-              onClick={() => setMobileMenu((v) => !v)}
-              aria-label="Toggle menu"
-              aria-expanded={mobileMenu}
-            >
-              {mobileMenu ? "✕" : "☰"}
-            </button>
-          )}
+        <nav className="ea-nav-links">
+          {navLinks.map(([href, label]) => <a key={href} href={href}>{label}</a>)}
+        </nav>
+        <div className="ea-nav-actions">
+          <Link to="/register" className="ea-nav-cta">Create account <span>↗</span></Link>
+          <button className="ea-menu-btn" onClick={() => setMobileMenu((v) => !v)} aria-label="Toggle navigation">{mobileMenu ? "×" : "☰"}</button>
         </div>
-        {mobile && mobileMenu && (
-          <div className="fx-mobile-menu">
-            {navLinks.map(([href, label]) => (
-              <a key={href} href={href} onClick={() => setMobileMenu(false)}>{label}</a>
-            ))}
-            <a href="#login" onClick={() => setMobileMenu(false)}>Login</a>
-          </div>
-        )}
+        {mobileMenu && <nav className="ea-mobile-menu">{navLinks.map(([href, label]) => <a key={href} href={href} onClick={() => setMobileMenu(false)}>{label}</a>)}</nav>}
       </header>
 
       <main>
-        {/* HERO */}
-        <section className="fx-hero" id="product">
-          <div className="fx-wrap fx-hero-grid">
-            <div className="fx-hero-copy">
-              <p className="fx-sticker">Billing · Stock · Expenses · AI</p>
-              <h1>
-                Your shop,
-                <br />
-                counted while
-                <br />
-                you sell.
-              </h1>
-              <p className="fx-lead">
-                FinancePro keeps billing, inventory, expenses, customers and QR
-                orders in one workspace, and lets you ask questions about all of it.
-              </p>
-              <div className="fx-hero-actions">
-                <Link to="/register" className="fx-btn fx-btn-blue">Create your business</Link>
-                <a href="#login" className="fx-btn fx-btn-white">Login</a>
+        <section className="ea-hero">
+          <div className="ea-hero-grid">
+            <div className="ea-hero-copy">
+              <div className="ea-eyebrow"><span className="ea-eyebrow-dot" /> BUSINESS MANAGEMENT · BUILT FOR INDIA</div>
+              <h1>Run your business.<br /><span>Understand every rupee.</span></h1>
+              <p className="ea-hero-description">Billing, inventory, purchases, expenses and AI business insights — connected in one simple workspace.</p>
+              <div className="ea-hero-actions">
+                <Link to="/register" className="ea-primary-btn">Start your business <span>↗</span></Link>
+                <a href="#demo" className="ea-secondary-btn">Explore live demo <span>↓</span></a>
               </div>
-              <ul className="fx-trust">
-                {CONFIG.trust.map((t) => (
-                  <li key={t}>{t}</li>
-                ))}
-              </ul>
+              <div className="ea-trust-row"><span>✓ Simple setup</span><span>✓ Business-ready</span><span>✓ One workspace</span></div>
+              <div className="ea-business-preview"><small>MADE FOR</small><div>{BUSINESS_TYPES.slice(0, 5).map((type) => <span key={type}>{type}</span>)}</div></div>
             </div>
-
-            <div className="fx-hero-demo">
-              <LiveCounter />
-              <p className="fx-demo-note">Sample shop and sample prices. Nothing here is saved.</p>
-            </div>
+            <div className="ea-hero-visual"><LiveDemo /><div className="ea-hero-caption"><span className="ea-caption-dot" /> Sample data · Nothing is saved</div></div>
           </div>
         </section>
 
-        {/* MARQUEE-FREE STRIP: who it is for */}
-        <section className="fx-strip" aria-label="Who it is for">
-          <div className="fx-wrap">
-            <span>Kirana stores</span>
-            <span>General stores</span>
-            <span>Medical shops</span>
-            <span>Stationery</span>
-            <span>Hardware</span>
-            <span>Small wholesalers</span>
+        <section className="ea-logo-strip" id="businesses"><div className="ea-strip-inner"><span>ONE PLATFORM FOR</span>{["Retail", "Grocery", "Medical", "Electronics", "Fashion", "Wholesale"].map((x) => <b key={x}>{x}</b>)}</div></section>
+
+        <section className="ea-section ea-features" id="features">
+          <div className="ea-section-heading"><span className="ea-section-kicker">YOUR BUSINESS, CONNECTED</span><h2>Everything your shop needs.<br /><em>Nothing you don't.</em></h2><p>Choose a feature and see how it fits into your daily workflow.</p></div>
+          <div className="ea-feature-tabs">{FEATURES.map((item) => <button key={item.id} className={activeFeature === item.id ? "active" : ""} onClick={() => setActiveFeature(item.id)}><span>{item.icon}</span>{item.label}</button>)}</div>
+          <div className="ea-feature-panel" key={feature.id}>
+            <div className="ea-feature-copy"><div className="ea-feature-icon">{feature.icon}</div><h3>{feature.title}</h3><p>{feature.desc}</p><ul>{feature.bullets.map((bullet) => <li key={bullet}><span>✓</span>{bullet}</li>)}</ul><Link to="/register" className="ea-text-link">Get started with {feature.label.toLowerCase()} <span>↗</span></Link></div>
+            <div className="ea-feature-visual"><FeatureVisual feature={feature.id} /></div>
           </div>
         </section>
 
-        {/* FEATURES */}
-        <section className="fx-section" id="features">
-          <div className="fx-wrap">
-            <div className="fx-head">
-              <h2>One workspace for everything the counter touches.</h2>
-              <p>Choose a part of the business to see how it works.</p>
-            </div>
+        <section className="ea-business-section">
+          <div className="ea-section-heading"><span className="ea-section-kicker">FLEXIBLE BY BUSINESS TYPE</span><h2>Built for the way<br /><em>you actually sell.</em></h2><p>Choose your business type. Configure the products, units and workflow around it.</p></div>
+          <div className="ea-business-grid">{BUSINESS_TYPES.map((type, i) => <div className="ea-business-card" key={type}><span className="ea-business-number">{String(i + 1).padStart(2, "0")}</span><strong>{type}</strong><span className="ea-business-arrow">↗</span></div>)}</div>
+          <div className="ea-business-note"><span>+</span> More business categories can be configured as your business grows.</div>
+        </section>
 
-            <div className="fx-explorer">
-              <div className="fx-tabs" role="tablist" aria-label="Features">
-                {FEATURES.map((f, i) => (
-                  <button
-                    key={f.id}
-                    type="button"
-                    role="tab"
-                    id={`tab-${f.id}`}
-                    aria-selected={i === active}
-                    aria-controls="feature-panel"
-                    className={i === active ? "on" : ""}
-                    onClick={() => setActive(i)}
-                  >
-                    {f.label}
-                  </button>
-                ))}
-              </div>
-
-              <div
-                className="fx-panel"
-                id="feature-panel"
-                role="tabpanel"
-                aria-labelledby={`tab-${feature.id}`}
-                key={feature.id}
-              >
-                <div className="fx-panel-copy">
-                  <h3>{feature.headline}</h3>
-                  <p>{feature.description}</p>
-                  <ul>
-                    {feature.points.map((p) => (
-                      <li key={p}>{p}</li>
-                    ))}
-                  </ul>
-                  <Link to="/register" className="fx-link">Start with {feature.label.toLowerCase()}</Link>
-                </div>
-                <div className="fx-panel-visual">
-                  <FeatureVisual id={feature.id} />
-                </div>
-              </div>
-            </div>
+        <section className="ea-workflow-section" id="workflow">
+          <div className="ea-workflow-inner"><div className="ea-section-heading ea-light-heading"><span className="ea-section-kicker">GET STARTED</span><h2>From setup to<br /><em>your first sale.</em></h2><p>Start simple. Add more tools as your business grows.</p><Link to="/register" className="ea-primary-btn ea-yellow-btn">Create your workspace <span>↗</span></Link></div>
+            <div className="ea-steps">{JOURNEY.map(([title, description], i) => <div className="ea-step" key={title}><span className="ea-step-number">{String(i + 1).padStart(2, "0")}</span><div><strong>{title}</strong><p>{description}</p></div><span className="ea-step-check">{i === 0 ? "↗" : "→"}</span></div>)}</div>
           </div>
         </section>
 
-        {/* WORKFLOW as a printed bill of steps */}
-        <section className="fx-section fx-dark" id="workflow">
-          <div className="fx-wrap fx-flow-grid">
-            <div className="fx-head">
-              <h2>From empty shop to daily control.</h2>
-              <p>Five steps, in the order a shop owner actually does them.</p>
-              <Link to="/register" className="fx-btn fx-btn-yellow">Create your business</Link>
-              <p className="fx-note">{CONFIG.signupNote}</p>
-            </div>
-
-            <ol className="fx-steps">
-              {JOURNEY.map(([name, text, time], i) => (
-                <li key={name}>
-                  <span className="fx-step-n">{i + 1}</span>
-                  <div className="fx-step-body">
-                    <h3>{name}</h3>
-                    <p>{text}</p>
-                  </div>
-                  <span className="fx-leader" aria-hidden="true" />
-                  <span className="fx-step-time">{time}</span>
-                </li>
-              ))}
-            </ol>
-          </div>
+        <section className="ea-ai-section" id="ai">
+          <div className="ea-ai-section-inner"><div className="ea-section-heading"><span className="ea-section-kicker">YOUR AI BUSINESS ASSISTANT</span><h2>Don't just see numbers.<br /><em>Understand them.</em></h2><p>Ask business questions in plain language and get insights from the data available in your workspace.</p><div className="ea-ai-prompts"><span>Which products sell slowly?</span><span>What should I reorder?</span><span>Where did expenses increase?</span></div></div><div className="ea-ai-card"><div className="ea-ai-card-top"><span className="ea-ai-brand"><i>✦</i> AI Business</span><span className="ea-ai-online"><i /> Ready</span></div><div className="ea-ai-chat"><div className="ea-chat-user">What should I reorder this week?</div><div className="ea-chat-answer"><span className="ea-chat-symbol">✦</span><div><strong>Business insight</strong><p>Review products below their stock alert first. Compare recent sales with current stock and prioritize items that sell consistently.</p><div className="ea-chat-insight"><span>Inventory insight</span><span>Reorder planning</span></div></div></div><div className="ea-ai-input"><span>Ask about your business…</span><button>↑</button></div></div></div></div>
         </section>
 
-        {/* AI */}
-        <section className="fx-section" id="ai">
-          <div className="fx-wrap fx-ai-grid">
-            <div className="fx-head">
-              <h2>Ask your business a question.</h2>
-              <p>
-                AI Business reads the information your account is allowed to see
-                and answers in plain language. No report building.
-              </p>
-              <ul className="fx-ask-list">
-                <li>Which products sell slowest?</li>
-                <li>Where did my expenses go up?</li>
-                <li>What should I reorder this week?</li>
-              </ul>
-              <a href="#product-demo" className="fx-link">Try a sample question</a>
-            </div>
-
-            <div className="fx-chat" aria-hidden="true">
-              <div className="fx-chat-bar">AI Business</div>
-              <div className="fx-chat-body">
-                <div className="u">What can you help me understand?</div>
-                <div className="b">
-                  <b>FinancePro AI</b>
-                  Sales, inventory, expenses and activity available to your account. Ask in your own words.
-                </div>
-                <div className="fx-chat-input">Ask about your business…</div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* LOGIN */}
-        <section className="fx-login" id="login" ref={loginSectionRef}>
-          <div className="fx-wrap fx-login-grid">
-            <div className="fx-login-copy">
-              <h2>{returning.name ? title : "Your workspace is waiting."}</h2>
-              <p>
-                Sign in to keep billing, managing stock and reviewing your numbers.
-              </p>
-              <ul>
-                <li>Billing and sales</li>
-                <li>Inventory and purchases</li>
-                <li>Customers and suppliers</li>
-                <li>AI business insights</li>
-              </ul>
-            </div>
-
-            <div className="fx-login-card">
-              <h3>{title}</h3>
-              <p className="fx-login-sub">{subtitle}</p>
-
-              {returning.name && (
-                <button type="button" className="fx-not-you" onClick={forgetReturning}>
-                  Not {returning.name}? Use a different account
-                </button>
-              )}
-
+        <section className="ea-login-section" id="login" ref={loginSectionRef}>
+          <div className="ea-login-grid"><div className="ea-login-info"><span className="ea-section-kicker">WELCOME BACK</span><h2>{returning.name ? `${greeting()}, ${returning.name}.` : "Your business is ready."}</h2><p>{returning.business ? `${returning.business} is ready when you are.` : "Sign in to open your business workspace and pick up where you left off."}</p><div className="ea-login-benefits"><div><span>01</span>Billing and sales</div><div><span>02</span>Inventory and purchases</div><div><span>03</span>Customers and suppliers</div><div><span>04</span>AI business insights</div></div><div className="ea-login-quote">“One workspace. A clearer picture of your business.”</div></div>
+            <div className="ea-login-card"><div className="ea-login-card-header"><div className="ea-login-icon">↗</div><div><h3>{greeting()}</h3><p>{returning.business || "Sign in to your workspace"}</p></div></div>
+              {returning.name && <button className="ea-not-you" type="button" onClick={forgetReturning}>Not {returning.name}? Use another account</button>}
               <form onSubmit={handleSubmit} noValidate>
-                <label>
-                  Email address
-                  <input
-                    ref={emailRef}
-                    type="email"
-                    name="email"
-                    placeholder="you@business.in"
-                    value={formData.email}
-                    onChange={(e) => {
-                      setFormData((prev) => ({ ...prev, email: e.target.value }));
-                      if (error) setError("");
-                    }}
-                    onBlur={() => setEmailTouched(true)}
-                    autoComplete="email"
-                    aria-invalid={emailInvalid || !!error}
-                    required
-                  />
-                </label>
-                {emailInvalid && <small className="fx-field-error">Try name@business.in</small>}
-
-                <label>
-                  <span className="fx-pw-label">
-                    Password
-                    <Link to="/forgot-password">Forgot password?</Link>
-                  </span>
-                  <span className="fx-pw-wrap">
-                    <input
-                      ref={passwordRef}
-                      type={showPassword ? "text" : "password"}
-                      name="password"
-                      placeholder="Enter your password"
-                      value={formData.password}
-                      onChange={(e) => {
-                        setFormData((prev) => ({ ...prev, password: e.target.value }));
-                        if (error) setError("");
-                      }}
-                      onKeyUp={onCaps}
-                      onKeyDown={onCaps}
-                      autoComplete="current-password"
-                      minLength={6}
-                      required
-                    />
-                    <button type="button" onClick={() => setShowPassword((v) => !v)}>
-                      {showPassword ? "Hide" : "Show"}
-                    </button>
-                  </span>
-                </label>
-                {capsOn && <small className="fx-field-error">Caps Lock is on.</small>}
-
-                {error && <div className="fx-error" role="alert">{error}</div>}
-
-                <button className="fx-submit" type="submit" disabled={isLoading}>
-                  {pending === "email" ? "Signing in…" : "Sign in"}
-                </button>
-
-                <div className="fx-or"><span />or<span /></div>
-
-                <button className="fx-google" type="button" onClick={handleGoogleLogin} disabled={isLoading}>
-                  {pending === "google" ? "Opening Google…" : "Continue with Google"}
-                </button>
-
-                {CONFIG.demo.enabled && (
-                  <button className="fx-demo-btn" type="button" onClick={handleDemo} disabled={isLoading}>
-                    {pending === "demo" ? "Opening demo…" : "Try the demo business"}
-                  </button>
-                )}
+                <label className="ea-field"><span>Email address</span><input ref={emailRef} type="email" name="email" placeholder="you@business.in" value={formData.email} onChange={(e) => { setFormData((prev) => ({ ...prev, email: e.target.value })); if (error) setError(""); }} onBlur={() => setEmailTouched(true)} autoComplete="email" aria-invalid={emailInvalid || !!error} required /></label>
+                {emailInvalid && <small className="ea-field-error">Enter a valid email address.</small>}
+                <label className="ea-field"><span className="ea-password-label">Password <Link to="/forgot-password">Forgot password?</Link></span><span className="ea-password-wrap"><input ref={passwordRef} type={showPassword ? "text" : "password"} name="password" placeholder="Enter your password" value={formData.password} onChange={(e) => { setFormData((prev) => ({ ...prev, password: e.target.value })); if (error) setError(""); }} onKeyUp={(e) => setCapsOn(e.getModifierState?.("CapsLock") || false)} onKeyDown={(e) => setCapsOn(e.getModifierState?.("CapsLock") || false)} autoComplete="current-password" minLength={6} required /><button type="button" onClick={() => setShowPassword((v) => !v)}>{showPassword ? "Hide" : "Show"}</button></span></label>
+                {capsOn && <small className="ea-field-error">Caps Lock is on.</small>}
+                {error && <div className="ea-error" role="alert"><span>!</span>{error}</div>}
+                <button className="ea-signin-btn" type="submit" disabled={isLoading}>{pending === "email" ? <><span className="ea-spinner" /> Signing in…</> : <>Sign in <span>↗</span></>}</button>
+                <div className="ea-or"><span />or<span /></div>
+                <button className="ea-google-btn" type="button" onClick={handleGoogleLogin} disabled={isLoading}><span className="ea-google-mark">G</span>{pending === "google" ? "Opening Google…" : "Continue with Google"}</button>
+                {CONFIG.demo.enabled && <button className="ea-demo-login" type="button" onClick={handleDemo} disabled={isLoading}>{pending === "demo" ? "Opening demo…" : "Explore demo account"}</button>}
               </form>
-
-              <div className="fx-login-foot">
-                <span>New here?</span>
-                <Link to="/register">Create your business</Link>
-              </div>
+              <div className="ea-login-foot">New to Expense AI? <Link to="/register">Create your business <span>↗</span></Link></div>
             </div>
           </div>
         </section>
       </main>
 
-      <footer className="fx-footer">
-        <div className="fx-wrap fx-footer-in">
-          <Brand light />
-          <nav aria-label="Footer">
-            {navLinks.map(([href, label]) => (
-              <a key={href} href={href}>{label}</a>
-            ))}
-            <Link to="/register">Create business</Link>
-          </nav>
-        </div>
-      </footer>
+      <footer className="ea-footer"><div className="ea-footer-inner"><Brand footer /><div className="ea-footer-links">{navLinks.map(([href, label]) => <a key={href} href={href}>{label}</a>)}<Link to="/register">Create account</Link></div><span className="ea-copyright">© {new Date().getFullYear()} Expense AI</span></div></footer>
     </div>
   );
 }
 
-/* ───────────────────────── STYLES ───────────────────────── */
-
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=Courier+Prime:wght@400;700&display=swap');
-
-:root{
-  --ink:#14123A;
-  --blue:#2B3BE0;
-  --blue-d:#1E2BB5;
-  --yellow:#FFC61A;
-  --paper:#F3F2FB;
-  --white:#FFFFFF;
-  --red:#E8412C;
-  --green:#12875E;
-  --muted:#55527A;
-  --line:2.5px solid var(--ink);
-  --hard:5px 5px 0 var(--ink);
-  --hard-sm:3px 3px 0 var(--ink);
-  --display:'Bricolage Grotesque','Figtree',system-ui,sans-serif;
-  --body:'Figtree',system-ui,sans-serif;
-  --receipt:'Courier Prime','Courier New',monospace;
-}
-
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
+:root{--ea-ink:#101828;--ea-muted:#667085;--ea-blue:#3157d5;--ea-blue-dark:#2443b8;--ea-bg:#f6f8fc;--ea-line:#e5eaf2;--ea-white:#fff;--ea-green:#12b76a;--ea-yellow:#ffd66b}
 *{box-sizing:border-box}
-html{scroll-behavior:smooth;scroll-padding-top:84px}
-body{margin:0 !important;background:var(--paper);display:block !important;place-items:initial !important;overflow-x:hidden}
-/* Undo Vite/CRA starter styles (narrow, centered #root) while this page is mounted */
-#root{max-width:none !important;width:100% !important;margin:0 !important;padding:0 !important;text-align:left !important;display:block !important}
+html{scroll-behavior:smooth;scroll-padding-top:90px}
+body{margin:0!important;background:#fff;display:block!important;place-items:initial!important;overflow-x:hidden}
+#root{max-width:none!important;width:100%!important;margin:0!important;padding:0!important;text-align:left!important;display:block!important}
 button,input{font:inherit}
 button{cursor:pointer}
-button:disabled{cursor:not-allowed}
+button:disabled{cursor:not-allowed;opacity:.55}
 a,button{-webkit-tap-highlight-color:transparent}
-:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
-
-.fx-page{
-  min-height:100vh;width:100%;text-align:left;color:var(--ink);font-family:var(--body);
-  background:var(--paper);overflow-x:hidden;
-}
-.fx-wrap{width:min(1180px,92vw);margin:0 auto}
-.fx-skip{position:absolute;left:-999px;top:8px;background:var(--yellow);border:var(--line);padding:8px 12px;z-index:200;font-weight:700;color:var(--ink)}
-.fx-skip:focus{left:8px}
-
-/* ── buttons ── */
-.fx-btn{
-  display:inline-flex;align-items:center;justify-content:center;gap:8px;
-  min-height:48px;padding:12px 22px;border-radius:999px;border:var(--line);
-  font:700 15px var(--body);text-decoration:none;color:var(--ink);
-  box-shadow:var(--hard-sm);transition:transform .12s ease, box-shadow .12s ease;
-}
-.fx-btn:hover{transform:translate(-2px,-2px);box-shadow:5px 5px 0 var(--ink)}
-.fx-btn:active{transform:translate(2px,2px);box-shadow:0 0 0 var(--ink)}
-.fx-btn-blue{background:var(--blue);color:#fff}
-.fx-btn-white{background:#fff}
-.fx-btn-yellow{background:var(--yellow)}
-.fx-btn-sm{min-height:42px;padding:8px 16px;font-size:14px}
-
-/* ── nav ── */
-.fx-nav{
-  position:sticky;top:0;z-index:100;
-  display:flex;align-items:center;justify-content:space-between;gap:18px;
-  padding:10px 4vw;background:var(--white);border-bottom:var(--line);
-}
-.fx-brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink)}
-.fx-brand-mark{
-  width:40px;height:40px;display:grid;place-items:center;background:var(--yellow);
-  border:var(--line);border-radius:10px;transform:rotate(-6deg);
-  font:800 22px var(--display);box-shadow:var(--hard-sm);
-}
-.fx-brand-text{display:flex;flex-direction:column;line-height:1.1}
-.fx-brand strong{font:800 20px var(--display);letter-spacing:-.3px}
-.fx-brand small{font-size:11px;color:var(--muted);margin-top:2px}
-.fx-brand.light{color:#fff}
-.fx-brand.light small{color:#B9B6E6}
-.fx-brand.light .fx-brand-mark{box-shadow:none}
-.fx-nav-links{display:flex;gap:4px}
-.fx-nav-links a,.fx-nav-login{
-  color:var(--ink);text-decoration:none;font-weight:600;font-size:14px;
-  padding:8px 12px;border-radius:999px;
-}
-.fx-nav-links a:hover,.fx-nav-login:hover{background:var(--yellow)}
-.fx-nav-actions{display:flex;align-items:center;gap:8px}
-.fx-menu-btn{width:42px;height:42px;border:var(--line);border-radius:10px;background:#fff;font-size:18px}
-.fx-mobile-menu{
-  position:absolute;left:0;right:0;top:100%;background:#fff;border-bottom:var(--line);
-  display:flex;flex-direction:column;padding:8px 4vw 14px;
-}
-.fx-mobile-menu a{padding:13px 4px;text-decoration:none;color:var(--ink);font-weight:700;border-bottom:1.5px dashed #CFCDEB}
-
-/* ── hero ── */
-.fx-hero{
-  padding:64px 0 72px;
-  background-color:var(--paper);
-  background-image:radial-gradient(#C9C6EE 1.4px,transparent 1.4px);
-  background-size:22px 22px;
-  border-bottom:var(--line);
-}
-.fx-hero-grid{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:56px;align-items:start}
-.fx-hero-grid>*{min-width:0}
-.fx-sticker{
-  display:inline-block;margin:0 0 22px;padding:7px 14px;background:var(--yellow);
-  border:var(--line);border-radius:8px;font-weight:700;font-size:13px;
-  transform:rotate(-2deg);box-shadow:var(--hard-sm);
-}
-.fx-hero h1{
-  font:800 clamp(44px,5.6vw,84px)/1 var(--display);letter-spacing:-.025em;margin:0 0 24px;
-}
-.fx-lead{font-size:18px;line-height:1.6;color:var(--muted);max-width:520px;margin:0}
-.fx-hero-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:30px}
-.fx-trust{list-style:none;padding:0;margin:28px 0 0;display:flex;flex-wrap:wrap;gap:8px}
-.fx-trust li{
-  background:#fff;border:2px solid var(--ink);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600;
-}
-.fx-trust li::before{content:"✓";color:var(--green);font-weight:800;margin-right:6px}
-.fx-demo-note{margin:12px 4px 0;font-size:13px;color:var(--muted)}
-
-/* ── live counter ── */
-.fx-counter{background:#fff;border:var(--line);border-radius:20px;box-shadow:8px 8px 0 var(--ink);overflow:hidden}
-.fx-counter-bar{
-  display:flex;align-items:center;justify-content:space-between;gap:12px;
-  padding:10px 14px;background:var(--ink);color:#fff;font-size:13px;font-weight:600;
-}
-.fx-dots{display:flex;gap:5px}
-.fx-dots i{width:10px;height:10px;border-radius:50%;background:var(--yellow);display:block}
-.fx-dots i:nth-child(2){background:var(--red)}
-.fx-dots i:nth-child(3){background:#5CE0A8}
-.fx-sold{color:var(--yellow)}
-.fx-counter-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}
-.fx-counter-grid>*{min-width:0}
-.fx-shelf{padding:16px;border-right:2px dashed #BDBAE3}
-.fx-shelf h3,.fx-ask-chips span{margin:0 0 10px;font:700 13px var(--body);color:var(--muted)}
-.fx-shelf ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
-.fx-shelf button{
-  width:100%;display:grid;grid-template-columns:1fr auto;gap:2px 10px;text-align:left;
-  padding:10px 12px;background:var(--paper);border:2px solid var(--ink);border-radius:12px;color:var(--ink);
-  transition:transform .1s, background .1s;
-}
-.fx-shelf button:hover:not(:disabled){background:var(--yellow);transform:translateX(3px)}
-.fx-shelf button:disabled{opacity:.45}
-.fx-p-name{font-weight:700;font-size:14px}
-.fx-p-price{font-weight:800;font-size:14px;text-align:right}
-.fx-p-stock{grid-column:1/-1;font-size:12px;color:var(--green);font-weight:600}
-.fx-p-stock.low{color:var(--red)}
-.fx-bill-wrap{padding:16px;background:#F7F6FD}
-.fx-bill{
-  position:relative;background:#fff;border:2px solid var(--ink);padding:14px 14px 22px;
-  font-family:var(--receipt);font-size:13px;min-height:100%;
-  -webkit-mask:linear-gradient(#000 0 0) top/100% calc(100% - 8px) no-repeat,
-    conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) bottom/12px 8px repeat-x;
-  mask:linear-gradient(#000 0 0) top/100% calc(100% - 8px) no-repeat,
-    conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) bottom/12px 8px repeat-x;
-}
-.fx-bill-head{display:flex;justify-content:space-between;border-bottom:2px dashed var(--ink);padding-bottom:8px;margin-bottom:8px}
-.fx-bill-empty{color:var(--muted);margin:18px 0;line-height:1.5}
-.fx-bill-lines{list-style:none;margin:0;padding:0}
-.fx-bill-lines li{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:5px 0;animation:fxPrint .25s ease both}
-@keyframes fxPrint{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
-.fx-bill-name{min-width:0;overflow-wrap:anywhere}
-.fx-bill-qty{display:inline-flex;align-items:center;gap:6px;font-weight:700}
-.fx-bill-qty button{width:22px;height:22px;border:1.5px solid var(--ink);background:var(--yellow);border-radius:6px;line-height:1;padding:0;font-weight:700}
-.fx-bill-amt{min-width:56px;text-align:right;font-weight:700}
-.fx-bill-total{display:flex;justify-content:space-between;align-items:baseline;border-top:2px dashed var(--ink);margin-top:10px;padding-top:10px;font-size:15px}
-.fx-bill-total strong{font-size:22px}
-.fx-bill-actions{display:flex;gap:8px;margin-top:12px;font-family:var(--body)}
-.fx-btn-yellow,.fx-btn-ghost{border:2px solid var(--ink);border-radius:999px;padding:9px 14px;font-weight:700;font-size:13px;color:var(--ink)}
-.fx-bill-actions .fx-btn-yellow{background:var(--yellow);flex:1}
-.fx-bill-actions .fx-btn-ghost{background:#fff}
-.fx-bill-actions button:disabled{opacity:.4}
-.fx-ask{border-top:var(--line);padding:14px 16px;background:#fff}
-.fx-ask-chips{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.fx-ask-chips span{margin:0 4px 0 0;color:var(--ink)}
-.fx-ask-chips button{border:2px solid var(--ink);background:#fff;border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600;color:var(--ink)}
-.fx-ask-chips button:hover{background:var(--paper)}
-.fx-ask-chips button.on{background:var(--blue);color:#fff}
-.fx-ask-answer{margin:12px 0 0;padding:12px;background:var(--paper);border-left:5px solid var(--blue);border-radius:4px;font-size:14px;line-height:1.5;min-height:48px}
-
-/* ── strip ── */
-.fx-strip{background:var(--yellow);border-bottom:var(--line);padding:14px 0}
-.fx-strip .fx-wrap{display:flex;flex-wrap:wrap;justify-content:center;gap:10px 28px;font-weight:700;font-size:15px}
-
-/* ── sections ── */
-.fx-section{padding:96px 0}
-.fx-head{max-width:640px}
-.fx-head h2,.fx-login-copy h2{font:800 clamp(32px,4.2vw,54px)/1.05 var(--display);letter-spacing:-.02em;margin:0 0 16px}
-.fx-head p{font-size:17px;line-height:1.6;color:var(--muted);margin:0 0 20px}
-.fx-link{color:var(--blue);font-weight:700;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:4px}
-.fx-link:hover{color:var(--blue-d)}
-
-/* feature explorer */
-.fx-explorer{margin-top:44px}
-.fx-tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:-2.5px;position:relative;z-index:2}
-.fx-tabs button{
-  padding:12px 20px;border:var(--line);border-bottom:0;border-radius:14px 14px 0 0;background:#E4E2F7;
-  font-weight:700;font-size:15px;color:var(--ink);
-}
-.fx-tabs button:hover{background:#fff}
-.fx-tabs button.on{background:#fff}
-.fx-panel{
-  display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:40px;align-items:center;
-  background:#fff;border:var(--line);border-radius:0 18px 18px 18px;padding:40px;box-shadow:8px 8px 0 var(--ink);
-  animation:fxSwap .3s ease both;
-}
-@keyframes fxSwap{from{opacity:.4;transform:translateY(6px)}to{opacity:1;transform:none}}
-.fx-panel>*{min-width:0}
-.fx-panel-copy h3{font:800 clamp(26px,3vw,38px)/1.1 var(--display);letter-spacing:-.03em;margin:0 0 14px}
-.fx-panel-copy p{font-size:16px;line-height:1.65;color:var(--muted);margin:0 0 18px}
-.fx-panel-copy ul{list-style:none;padding:0;margin:0 0 22px;display:flex;flex-wrap:wrap;gap:8px}
-.fx-panel-copy li{background:var(--paper);border:2px solid var(--ink);border-radius:8px;padding:6px 10px;font-size:13px;font-weight:600}
-.fx-panel-visual{background:var(--paper);border:2px solid var(--ink);border-radius:14px;padding:22px;min-height:290px;display:grid;place-items:center;
-  background-image:radial-gradient(#D3D0F1 1.2px,transparent 1.2px);background-size:16px 16px}
-
-.fx-vis{width:100%}
-.fx-vis-bill{display:flex;flex-direction:column;gap:14px;align-items:center}
-.fx-mini-receipt{width:min(280px,100%);background:#fff;border:2px solid var(--ink);padding:14px;font:13px var(--receipt);box-shadow:var(--hard-sm);transform:rotate(-1.5deg)}
-.fx-mini-receipt b{display:block;border-bottom:2px dashed var(--ink);padding-bottom:6px;margin-bottom:6px}
-.fx-mini-receipt div{display:flex;justify-content:space-between;padding:3px 0}
-.fx-mini-receipt .t{border-top:2px dashed var(--ink);margin-top:6px;padding-top:7px;font-weight:700}
-.fx-pay{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600}
-.fx-pay i{font-style:normal;border:2px solid var(--ink);border-radius:999px;padding:4px 12px;background:#fff}
-.fx-pay i.on{background:var(--green);color:#fff}
-.fx-vis-stock{display:flex;flex-direction:column;gap:14px}
-.fx-stock-row{display:grid;grid-template-columns:120px 1fr 64px;gap:12px;align-items:center;font-size:13px;font-weight:600}
-.fx-meter{height:14px;border:2px solid var(--ink);border-radius:999px;background:#fff;overflow:hidden}
-.fx-meter i{display:block;height:100%;background:var(--green)}
-.fx-meter i.low{background:var(--red)}
-.fx-stock-row em{font-style:normal;color:var(--green);text-align:right}
-.fx-stock-row em.low{color:var(--red)}
-.fx-vis-qr{display:flex;align-items:center;justify-content:center;gap:22px;flex-wrap:wrap}
-.fx-qr-code{display:grid;grid-template-columns:repeat(7,1fr);width:120px;height:120px;padding:8px;background:#fff;border:2px solid var(--ink);gap:2px}
-.fx-qr-code i{background:#EEEDFA}
-.fx-qr-code i.k{background:var(--ink)}
-.fx-phone{width:170px;background:var(--ink);color:#fff;border-radius:22px;padding:16px 14px;border:3px solid var(--ink);box-shadow:var(--hard-sm)}
-.fx-phone b{display:block;font-size:13px;margin-bottom:10px}
-.fx-phone div{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-top:1px solid #3A3870;font-size:12px}
-.fx-phone i{font-style:normal;background:var(--yellow);color:var(--ink);border-radius:6px;padding:2px 8px;font-weight:700}
-.fx-phone u{display:block;text-decoration:none;text-align:center;background:var(--blue);border-radius:8px;padding:8px;margin-top:10px;font-size:12px;font-weight:700}
-.fx-vis-exp p{margin:0 0 14px;font-size:13px;color:var(--muted);font-weight:600}
-.fx-exp-row{margin-bottom:14px;font-size:13px;font-weight:600}
-.fx-exp-row span{display:block;margin-bottom:5px}
-.fx-exp-row i{display:block;height:20px;background:var(--blue);border:2px solid var(--ink);border-radius:6px}
-.fx-exp-row:nth-child(3) i{background:var(--yellow)}
-.fx-exp-row:nth-child(4) i{background:#8E96F5}
-.fx-exp-row:nth-child(5) i{background:var(--red)}
-.fx-vis-ai{display:flex;flex-direction:column;gap:10px}
-.fx-vis-ai .u,.fx-chat .u{align-self:flex-end;max-width:80%;background:var(--blue);color:#fff;padding:10px 14px;border-radius:16px 16px 4px 16px;font-size:14px;font-weight:600}
-.fx-vis-ai .b,.fx-chat .b{max-width:90%;background:#fff;border:2px solid var(--ink);padding:12px 14px;border-radius:16px 16px 16px 4px;font-size:14px;line-height:1.5}
-.fx-vis-ai .b b,.fx-chat .b b{display:block;margin-bottom:3px}
-
-/* workflow */
-.fx-dark{background:var(--ink);color:#fff;border-top:var(--line);border-bottom:var(--line)}
-.fx-dark .fx-head p{color:#C3C0EA}
-.fx-dark .fx-note{font-size:14px;margin:14px 0 0}
-.fx-flow-grid{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:64px;align-items:start}
-.fx-flow-grid>*{min-width:0}
-.fx-steps{list-style:none;margin:0;padding:22px 26px;background:#fff;color:var(--ink);border:3px solid var(--yellow);border-radius:6px;font-family:var(--receipt);box-shadow:8px 8px 0 var(--yellow)}
-.fx-steps li{display:flex;align-items:center;gap:12px;padding:16px 0;border-bottom:2px dashed var(--ink)}
-.fx-steps li:last-child{border-bottom:0}
-.fx-step-n{flex:none;width:34px;height:34px;display:grid;place-items:center;background:var(--ink);color:var(--yellow);border-radius:50%;font:700 15px var(--receipt)}
-.fx-step-body{min-width:0}
-.fx-step-body h3{margin:0;font:700 17px var(--receipt)}
-.fx-step-body p{margin:3px 0 0;font:400 13px/1.45 var(--receipt);color:#4D4A73}
-.fx-leader{flex:1;min-width:12px;border-bottom:2px dotted #8F8CC0;align-self:flex-end;margin-bottom:6px}
-.fx-step-time{flex:none;font-weight:700;font-size:14px}
-
-/* ai */
-.fx-ai-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:64px;align-items:center}
-.fx-ai-grid>*{min-width:0}
-.fx-ask-list{list-style:none;padding:0;margin:0 0 22px;display:flex;flex-direction:column;gap:8px}
-.fx-ask-list li{background:#fff;border:2px solid var(--ink);border-radius:12px;padding:12px 16px;font-weight:600;box-shadow:var(--hard-sm);width:fit-content;max-width:100%}
-.fx-ask-list li:nth-child(2){margin-left:22px}
-.fx-ask-list li:nth-child(3){margin-left:44px}
-.fx-chat{background:#fff;border:var(--line);border-radius:20px;box-shadow:8px 8px 0 var(--ink);overflow:hidden}
-.fx-chat-bar{background:var(--blue);color:#fff;font-weight:700;padding:12px 16px;border-bottom:var(--line)}
-.fx-chat-body{padding:22px;min-height:290px;display:flex;flex-direction:column;justify-content:flex-end;gap:14px;background:var(--paper)}
-.fx-chat-input{background:#fff;border:2px solid var(--ink);border-radius:999px;padding:12px 16px;font-size:14px;color:#77749D}
-
-/* login */
-.fx-login{background:var(--blue);border-top:var(--line);padding:96px 0;
-  background-image:radial-gradient(rgba(255,255,255,.16) 1.4px,transparent 1.4px);background-size:22px 22px}
-.fx-login-grid{display:grid;grid-template-columns:minmax(0,1fr) 450px;gap:72px;align-items:center}
-.fx-login-grid>*{min-width:0}
-.fx-login-copy{color:#fff}
-.fx-login-copy p{font-size:18px;line-height:1.6;color:#DAD9FA;max-width:480px;margin:0 0 24px}
-.fx-login-copy ul{list-style:none;padding:0;margin:0;display:flex;flex-wrap:wrap;gap:8px}
-.fx-login-copy li{background:rgba(255,255,255,.14);border:2px solid #fff;border-radius:999px;padding:7px 14px;font-weight:600;font-size:14px}
-.fx-login-card{background:#fff;border:var(--line);border-radius:20px;padding:30px;box-shadow:8px 8px 0 var(--ink);color:var(--ink)}
-.fx-login-card h3{font:800 30px/1.1 var(--display);letter-spacing:-.03em;margin:0 0 6px}
-.fx-login-sub{margin:0 0 16px;color:var(--muted);font-size:15px}
-.fx-not-you{border:0;background:none;color:var(--blue);font-weight:700;font-size:14px;padding:0;margin:0 0 16px;text-decoration:underline;text-underline-offset:3px}
-.fx-login-card form{display:flex;flex-direction:column;gap:14px}
-.fx-login-card label{display:flex;flex-direction:column;gap:6px;font-weight:700;font-size:14px}
-.fx-login-card input{
-  width:100%;height:48px;border:2px solid var(--ink);border-radius:12px;padding:0 14px;font-size:15px;
-  background:var(--paper);color:var(--ink);
-}
-.fx-login-card input:focus{outline:3px solid var(--blue);outline-offset:2px;background:#fff}
-.fx-login-card input[aria-invalid="true"]{border-color:var(--red)}
-.fx-pw-label{display:flex;justify-content:space-between;align-items:center}
-.fx-pw-label a{color:var(--blue);font-size:13px;font-weight:700}
-.fx-pw-wrap{position:relative;display:block}
-.fx-pw-wrap input{padding-right:70px}
-.fx-pw-wrap button{position:absolute;right:6px;top:6px;height:36px;padding:0 12px;border:2px solid var(--ink);background:var(--yellow);border-radius:8px;font-weight:700;font-size:13px;color:var(--ink)}
-.fx-field-error{color:var(--red);font-size:13px;font-weight:600;margin-top:-8px}
-.fx-error{background:#FFEDEA;border:2px solid var(--red);color:#9C2616;border-radius:10px;padding:10px 12px;font-size:14px;font-weight:600}
-.fx-submit{height:50px;border:var(--line);border-radius:999px;background:var(--yellow);color:var(--ink);font-weight:800;font-size:16px;box-shadow:var(--hard-sm);transition:transform .12s, box-shadow .12s}
-.fx-submit:hover:not(:disabled){transform:translate(-2px,-2px);box-shadow:5px 5px 0 var(--ink)}
-.fx-submit:active:not(:disabled){transform:translate(2px,2px);box-shadow:none}
-.fx-submit:disabled,.fx-google:disabled,.fx-demo-btn:disabled{opacity:.6}
-.fx-or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px;font-weight:600}
-.fx-or span{flex:1;height:2px;background:#DAD8F0}
-.fx-google{height:48px;border:2px solid var(--ink);border-radius:999px;background:#fff;font-weight:700;font-size:15px;color:var(--ink)}
-.fx-google:hover:not(:disabled){background:var(--paper)}
-.fx-demo-btn{border:0;background:none;color:var(--blue);font-weight:700;font-size:14px;padding:4px;text-decoration:underline;text-underline-offset:3px}
-.fx-login-foot{display:flex;justify-content:center;gap:6px;margin-top:18px;font-size:14px;color:var(--muted)}
-.fx-login-foot a{color:var(--blue);font-weight:700}
-
-/* footer */
-.fx-footer{background:var(--ink);padding:36px 0 44px;border-top:var(--line)}
-.fx-footer-in{display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
-.fx-footer nav{display:flex;flex-wrap:wrap;gap:6px 20px}
-.fx-footer nav a{color:#C3C0EA;text-decoration:none;font-size:14px;font-weight:600}
-.fx-footer nav a:hover{color:var(--yellow)}
-
-/* ── responsive ── */
-@media(max-width:1000px){
-  .fx-hero-grid,.fx-flow-grid,.fx-ai-grid,.fx-login-grid{grid-template-columns:1fr;gap:40px}
-  .fx-panel{grid-template-columns:1fr;padding:28px}
-  .fx-login-grid{gap:40px}
-}
-@media(max-width:700px){
-  .fx-hero{padding:44px 0 56px}
-  .fx-section,.fx-login{padding:64px 0}
-  .fx-counter-grid{grid-template-columns:1fr}
-  .fx-shelf{border-right:0;border-bottom:2px dashed #BDBAE3}
-  .fx-brand small{display:none}
-  .fx-tabs button{padding:10px 12px;font-size:14px}
-  .fx-panel{padding:20px;border-radius:0 14px 14px 14px}
-  .fx-panel-visual{padding:14px}
-  .fx-stock-row{grid-template-columns:96px 1fr 56px;gap:8px}
-  .fx-steps{padding:14px 16px}
-  .fx-steps li{flex-wrap:wrap}
-  .fx-leader{display:none}
-  .fx-step-time{margin-left:46px;font-size:13px}
-  .fx-step-body{flex:1 1 60%}
-  .fx-ask-list li:nth-child(2),.fx-ask-list li:nth-child(3){margin-left:0}
-  .fx-login-card{padding:22px}
-  .fx-counter,.fx-panel,.fx-chat,.fx-login-card{box-shadow:5px 5px 0 var(--ink)}
-}
-@media(prefers-reduced-motion:reduce){
-  html{scroll-behavior:auto}
-  *{animation:none !important;transition:none !important}
-}
+:focus-visible{outline:3px solid #8aa3ff;outline-offset:3px}
+.expense-ai-page{font-family:'DM Sans',sans-serif;color:var(--ea-ink);background:#fff;min-height:100vh;overflow:hidden}
+.ea-wrap{width:min(1220px,92vw);margin:auto}
+.ea-skip{position:absolute;left:-999px;top:8px;z-index:999;background:#fff;padding:10px}
+.ea-skip:focus{left:8px}
+.ea-nav{height:78px;padding:0 5vw;display:flex;align-items:center;justify-content:space-between;gap:25px;border-bottom:1px solid var(--ea-line);background:#fff;position:sticky;top:0;z-index:100}
+.ea-brand{display:flex;align-items:center;gap:11px;text-decoration:none;color:var(--ea-ink)}
+.ea-brand-mark{width:42px;height:42px;display:grid;place-items:center;border-radius:13px;background:linear-gradient(135deg,#3157d5,#6c8cff);color:#fff;font:800 23px Manrope;box-shadow:0 8px 20px #3157d533}
+.ea-brand-copy{display:flex;flex-direction:column;line-height:1.2}
+.ea-brand-copy strong{font:800 18px Manrope;letter-spacing:-.5px}
+.ea-brand-copy small{font-size:10px;color:var(--ea-muted);margin-top:3px}
+.ea-nav-links{display:flex;align-items:center;gap:28px}
+.ea-nav-links a,.ea-footer-links a{color:#536078;text-decoration:none;font-size:13px;font-weight:600;transition:.2s}
+.ea-nav-links a:hover,.ea-footer-links a:hover{color:var(--ea-blue)}
+.ea-nav-actions{display:flex;align-items:center;gap:12px}
+.ea-nav-cta{background:var(--ea-blue);color:#fff;text-decoration:none;padding:12px 18px;border-radius:11px;font-size:13px;font-weight:700;box-shadow:0 5px 12px #3157d522}
+.ea-nav-cta span{margin-left:8px}
+.ea-menu-btn{display:none;border:1px solid var(--ea-line);background:#fff;border-radius:10px;width:42px;height:42px;font-size:20px}
+.ea-mobile-menu{position:absolute;top:78px;left:0;right:0;padding:12px 5vw 18px;background:#fff;border-bottom:1px solid var(--ea-line);display:flex;flex-direction:column;gap:0}
+.ea-mobile-menu a{padding:12px 0;color:var(--ea-ink);text-decoration:none;border-bottom:1px solid var(--ea-line)}
+.ea-hero{background:linear-gradient(180deg,#f7f9ff 0%,#fff 100%);padding:76px 5vw 80px}
+.ea-hero-grid{max-width:1320px;margin:auto;display:grid;grid-template-columns:.88fr 1.12fr;gap:60px;align-items:center}
+.ea-hero-copy{max-width:580px}
+.ea-eyebrow,.ea-section-kicker{font-size:11px;letter-spacing:1.7px;font-weight:800;color:var(--ea-blue)}
+.ea-eyebrow{display:flex;align-items:center;gap:9px;margin-bottom:22px}
+.ea-eyebrow-dot{width:8px;height:8px;border-radius:50%;background:var(--ea-green);box-shadow:0 0 0 5px #12b76a15}
+.ea-hero h1{font:800 clamp(42px,5.5vw,74px)/1.08 Manrope;letter-spacing:-3.5px;margin:0 0 24px}
+.ea-hero h1 span{color:var(--ea-blue)}
+.ea-hero-description{font-size:17px;line-height:1.75;color:#58657c;max-width:520px;margin:0}
+.ea-hero-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:30px}
+.ea-primary-btn,.ea-secondary-btn{display:inline-flex;align-items:center;justify-content:center;gap:16px;padding:15px 20px;border-radius:12px;text-decoration:none;font-size:14px;font-weight:700;transition:.2s}
+.ea-primary-btn{background:var(--ea-blue);color:#fff;box-shadow:0 8px 20px #3157d533}
+.ea-primary-btn:hover{background:var(--ea-blue-dark);transform:translateY(-2px)}
+.ea-secondary-btn{border:1px solid #dce3ef;background:#fff;color:var(--ea-ink)}
+.ea-secondary-btn:hover{border-color:var(--ea-blue);color:var(--ea-blue)}
+.ea-trust-row{display:flex;flex-wrap:wrap;gap:17px;margin-top:25px;color:#667085;font-size:12px;font-weight:600}
+.ea-trust-row span:before{content:"✓";color:var(--ea-green);margin-right:7px;font-weight:900}
+.ea-business-preview{margin-top:38px;padding-top:22px;border-top:1px solid var(--ea-line)}
+.ea-business-preview>small{font-size:10px;letter-spacing:1.4px;color:#98a2b3;font-weight:800}
+.ea-business-preview>div{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+.ea-business-preview span{background:#fff;border:1px solid var(--ea-line);border-radius:7px;padding:7px 9px;font-size:11px;font-weight:600;color:#526078}
+.ea-hero-visual{min-width:0}
+.ea-hero-caption{display:flex;align-items:center;gap:8px;margin:14px 5px;color:#8994a8;font-size:11px}
+.ea-caption-dot{width:6px;height:6px;border-radius:50%;background:#98a2b3}
+.ea-demo-card{background:#fff;border:1px solid #e4e9f2;border-radius:19px;overflow:hidden;box-shadow:0 24px 60px #1e3a8a12}
+.ea-demo-top{height:49px;background:#f9fafc;border-bottom:1px solid var(--ea-line);display:flex;align-items:center;gap:12px;padding:0 16px;font-size:12px;font-weight:700;color:#526078}
+.ea-window-dots{display:flex;gap:5px}.ea-window-dots i{width:7px;height:7px;border-radius:50%;background:#d0d5dd}.ea-window-dots i:nth-child(1){background:#ff6a63}.ea-window-dots i:nth-child(2){background:#ffc44d}.ea-window-dots i:nth-child(3){background:#45c77a}
+.ea-demo-live{margin-left:auto;color:#12a86a;font-size:10px;display:flex;align-items:center;gap:6px}.ea-demo-live i{width:6px;height:6px;border-radius:50%;background:#12b76a}
+.ea-demo-body{display:grid;grid-template-columns:1fr 1fr}
+.ea-products{padding:18px;border-right:1px solid var(--ea-line)}
+.ea-demo-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.ea-demo-heading small{font-size:9px;letter-spacing:1.4px;color:#98a2b3;font-weight:800}
+.ea-demo-heading h3{font:700 16px Manrope;margin:4px 0 0}
+.ea-demo-count{font-size:10px;color:#98a2b3;background:#f2f4f7;border-radius:6px;padding:6px}
+.ea-product-list{display:flex;flex-direction:column;gap:8px}
+.ea-product{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:1px solid #e9edf4;background:#fff;border-radius:10px;padding:10px;transition:.15s}
+.ea-product:hover:not(:disabled){border-color:#b6c5ff;background:#f8faff;transform:translateY(-1px)}
+.ea-product-icon{width:34px;height:34px;display:grid;place-items:center;border-radius:9px;background:#f2f5ff;font-size:17px}
+.ea-product-info{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
+.ea-product-info strong{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ea-product-info small{font-size:9px;color:#12a86a}.ea-product-info small.low{color:#e04444}
+.ea-product-price{font-size:11px;font-weight:800}
+.ea-add{width:22px;height:22px;display:grid;place-items:center;background:#edf2ff;color:var(--ea-blue);border-radius:6px;font-weight:800}
+.ea-receipt-panel{padding:18px;background:#fbfcfe}
+.ea-receipt{background:#fff;border:1px solid #e9edf4;border-radius:12px;padding:14px}
+.ea-receipt-header{display:flex;justify-content:space-between;font-size:10px;color:#667085;border-bottom:1px dashed #e5eaf2;padding-bottom:10px}
+.ea-receipt-header strong{color:#344054}
+.ea-empty-receipt{padding:28px 0;text-align:center;font-size:11px;color:#98a2b3}
+.ea-receipt-lines{padding:8px 0}
+.ea-receipt-line{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:7px 0;font-size:10px}
+.ea-line-name{min-width:0}.ea-qty{display:flex;align-items:center;gap:5px;font-weight:700}
+.ea-qty button{border:1px solid #dce3ef;background:#f8faff;border-radius:4px;width:17px;height:17px;padding:0;color:var(--ea-blue);font-weight:800}
+.ea-receipt-line strong{font-size:10px;text-align:right}
+.ea-total{border-top:1px solid #e5eaf2;padding-top:11px;display:flex;justify-content:space-between;align-items:center;font-size:11px}
+.ea-total strong{font:800 20px Manrope;color:var(--ea-ink)}
+.ea-receipt-actions{display:flex;gap:7px;margin-top:12px}
+.ea-complete{flex:1;background:var(--ea-blue);color:#fff;border:0;border-radius:8px;padding:10px;font-size:10px;font-weight:700}
+.ea-complete span{margin-left:8px}.ea-clear{border:1px solid var(--ea-line);background:#fff;border-radius:8px;padding:9px 11px;font-size:10px;font-weight:700;color:#667085}
+.ea-demo-stats{display:flex;gap:10px;margin-top:10px}
+.ea-demo-stats>div{flex:1;border:1px solid var(--ea-line);border-radius:8px;padding:9px;background:#fff}
+.ea-demo-stats small{display:block;font-size:8px;color:#98a2b3;letter-spacing:1px;font-weight:800}
+.ea-demo-stats strong{display:block;font:700 14px Manrope;margin-top:4px}
+.ea-ai-demo{border-top:1px solid var(--ea-line);padding:13px 16px;background:#fff}
+.ea-ai-demo-label{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.ea-ai-icon{width:25px;height:25px;display:grid;place-items:center;background:#edf2ff;color:var(--ea-blue);border-radius:7px}
+.ea-ai-demo-label div{display:flex;flex-direction:column}.ea-ai-demo-label strong{font-size:11px}.ea-ai-demo-label small{font-size:9px;color:#98a2b3}
+.ea-question-chips{display:flex;flex-wrap:wrap;gap:6px}
+.ea-question-chips button{border:1px solid #dfe5f0;background:#f8faff;color:#526078;border-radius:20px;padding:6px 9px;font-size:9px;font-weight:600}
+.ea-question-chips button:hover{border-color:#9db0ff;color:var(--ea-blue)}
+.ea-answer{margin-top:9px;background:#f3f6ff;border-left:3px solid var(--ea-blue);padding:9px 11px;border-radius:5px;color:#344054;font-size:10px;line-height:1.5}
+.ea-logo-strip{border-top:1px solid var(--ea-line);border-bottom:1px solid var(--ea-line);padding:22px 5vw;background:#fff}
+.ea-strip-inner{max-width:1220px;margin:auto;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:25px}
+.ea-strip-inner>span{font-size:10px;letter-spacing:1.5px;color:#98a2b3;font-weight:800}
+.ea-strip-inner b{font:700 13px Manrope;color:#98a2b3}
+.ea-section{padding:100px 5vw}
+.ea-section-heading{text-align:center;max-width:680px;margin:0 auto 45px}
+.ea-section-heading h2{font:800 clamp(34px,4.5vw,56px)/1.15 Manrope;letter-spacing:-2px;margin:15px 0}
+.ea-section-heading h2 em{font-style:normal;color:var(--ea-blue)}
+.ea-section-heading p{font-size:15px;color:#667085;line-height:1.7;margin:0}
+.ea-feature-tabs{display:flex;justify-content:center;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+.ea-feature-tabs button{display:flex;align-items:center;gap:8px;border:1px solid #e3e8f1;background:#fff;border-radius:9px;padding:11px 15px;color:#667085;font-size:12px;font-weight:700;transition:.2s}
+.ea-feature-tabs button span{font-size:16px}.ea-feature-tabs button.active{background:#edf2ff;border-color:#b9c8ff;color:var(--ea-blue)}
+.ea-feature-panel{max-width:1100px;margin:auto;display:grid;grid-template-columns:.85fr 1.15fr;gap:40px;align-items:center;border:1px solid #e6ebf3;border-radius:20px;padding:38px;background:#fff;box-shadow:0 14px 40px #10182808;animation:ea-fade .25s ease}
+@keyframes ea-fade{from{opacity:.5;transform:translateY(5px)}to{opacity:1;transform:none}}
+.ea-feature-icon{width:46px;height:46px;display:grid;place-items:center;background:#edf2ff;color:var(--ea-blue);border-radius:13px;font-size:22px;font-weight:800}
+.ea-feature-copy h3{font:800 30px/1.2 Manrope;letter-spacing:-1px;margin:18px 0 12px}
+.ea-feature-copy p{font-size:14px;color:#667085;line-height:1.7}
+.ea-feature-copy ul{list-style:none;padding:0;margin:20px 0;display:flex;flex-direction:column;gap:10px}
+.ea-feature-copy li{font-size:13px;font-weight:600;color:#344054}.ea-feature-copy li span{color:var(--ea-green);margin-right:9px}
+.ea-text-link{color:var(--ea-blue);font-weight:700;text-decoration:none;font-size:13px}.ea-text-link span{margin-left:6px}
+.ea-feature-visual{min-height:280px;border-radius:15px;background:linear-gradient(135deg,#f7f9ff,#f0f4ff);padding:28px;display:grid;place-items:center;overflow:hidden}
+.ea-visual-billing{width:100%;display:flex;flex-direction:column;align-items:center;gap:14px}
+.ea-visual-receipt{width:min(300px,100%);background:#fff;border:1px solid #e5eaf2;border-radius:12px;padding:16px;box-shadow:0 10px 25px #10182810}
+.ea-vr-head{display:flex;justify-content:space-between;border-bottom:1px dashed #e5eaf2;padding-bottom:10px;font-size:10px;font-weight:800}.ea-vr-head span{color:var(--ea-green)}
+.ea-vr-row{display:flex;justify-content:space-between;padding:8px 0;font-size:11px;color:#667085}
+.ea-vr-total{display:flex;justify-content:space-between;border-top:1px solid #e5eaf2;padding-top:11px;font-size:12px;font-weight:800}
+.ea-visual-payment{display:flex;align-items:center;gap:10px;font-size:10px;color:#667085}.ea-visual-payment div{display:flex;gap:6px}.ea-visual-payment b{background:#fff;border:1px solid #dfe5f0;border-radius:6px;padding:6px 10px;color:#344054}
+.ea-stock-visual,.ea-expense-visual{width:100%;display:flex;flex-direction:column;gap:16px}
+.ea-stock-row{display:grid;grid-template-columns:120px 1fr 65px;gap:10px;align-items:center;font-size:11px;font-weight:600}
+.ea-stock-row>div{height:10px;background:#fff;border:1px solid #e5eaf2;border-radius:20px;overflow:hidden}.ea-stock-row i{display:block;height:100%;background:linear-gradient(90deg,#3157d5,#7b96ff);border-radius:20px}
+.ea-stock-row strong{text-align:right;font-size:10px;color:#12a86a}.ea-stock-row strong.low{color:#e04444}
+.ea-purchase-visual{width:100%}.ea-purchase-card{max-width:350px;margin:auto;background:#fff;border:1px solid #e5eaf2;border-radius:13px;padding:18px;box-shadow:0 10px 25px #10182810}
+.ea-purchase-card>div:first-child{display:flex;align-items:center;gap:10px}.ea-purchase-icon{width:34px;height:34px;display:grid;place-items:center;background:#edf2ff;border-radius:8px;color:var(--ea-blue);font-size:18px}.ea-purchase-card>div:first-child span:nth-child(2){display:flex;flex-direction:column;gap:3px}.ea-purchase-card small{font-size:8px;color:#98a2b3;letter-spacing:1px}.ea-purchase-card strong{font-size:11px}.ea-purchase-status{margin-left:auto;background:#ecfdf3;color:#12a86a;padding:5px 8px;border-radius:20px;font-size:9px}
+.ea-purchase-card hr{border:0;border-top:1px solid #e5eaf2;margin:15px 0}.ea-purchase-row,.ea-purchase-total{display:flex;justify-content:space-between;padding:7px 0;font-size:11px}.ea-purchase-row span{color:#667085}.ea-purchase-total{border-top:1px solid #e5eaf2;margin-top:8px;padding-top:12px;font-weight:700}.ea-expense-top{display:flex;flex-direction:column;gap:5px;margin-bottom:5px}.ea-expense-top small{font-size:9px;letter-spacing:1px;color:#98a2b3}.ea-expense-top strong{font:800 24px Manrope}.ea-expense-top span{font-size:10px;color:#12a86a}.ea-expense-row{display:flex;flex-direction:column;gap:6px;font-size:11px;font-weight:600}.ea-expense-row i{height:12px;border-radius:5px;background:linear-gradient(90deg,#3157d5,#8ca3ff)}
+.ea-ai-visual{width:100%;display:flex;flex-direction:column;gap:13px}.ea-ai-question{align-self:flex-end;background:#3157d5;color:#fff;border-radius:12px 12px 3px 12px;padding:10px 13px;font-size:11px}.ea-ai-response{display:flex;gap:10px;max-width:95%;background:#fff;border:1px solid #e5eaf2;border-radius:12px 12px 12px 3px;padding:13px;box-shadow:0 8px 20px #10182808}.ea-ai-response-icon{width:26px;height:26px;flex-shrink:0;background:#edf2ff;color:var(--ea-blue);border-radius:7px;display:grid;place-items:center}.ea-ai-response strong{font-size:11px}.ea-ai-response p{font-size:10px;color:#667085;line-height:1.6;margin:5px 0}.ea-ai-tags{display:flex;gap:5px}.ea-ai-tags span{font-size:8px;color:var(--ea-blue);background:#edf2ff;padding:4px 6px;border-radius:5px}
+.ea-business-section{padding:100px 5vw;background:#f8faff}.ea-business-grid{max-width:1050px;margin:auto;display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.ea-business-card{background:#fff;border:1px solid #e5eaf2;border-radius:12px;padding:17px;min-height:100px;position:relative;display:flex;flex-direction:column;justify-content:space-between;transition:.2s}.ea-business-card:hover{border-color:#b6c5ff;transform:translateY(-3px);box-shadow:0 10px 25px #3157d510}.ea-business-number{font-size:9px;color:#98a2b3;font-weight:800;letter-spacing:1px}.ea-business-card strong{font-size:12px;line-height:1.4}.ea-business-arrow{position:absolute;right:13px;bottom:13px;color:#b0b9ca}.ea-business-note{max-width:1050px;margin:22px auto 0;text-align:center;color:#667085;font-size:12px}.ea-business-note span{color:var(--ea-blue);font-weight:800;margin-right:6px}
+.ea-workflow-section{background:#111b35;color:#fff;padding:95px 5vw}.ea-workflow-inner{max-width:1220px;margin:auto;display:grid;grid-template-columns:.8fr 1.2fr;gap:75px;align-items:center}.ea-light-heading{text-align:left;margin:0}.ea-light-heading h2{color:#fff}.ea-light-heading h2 em{color:#86a0ff}.ea-light-heading p{color:#aab4cb;margin-bottom:27px}.ea-yellow-btn{background:var(--ea-yellow);color:#111b35;box-shadow:none}.ea-yellow-btn:hover{background:#ffca45}
+.ea-steps{border-top:1px solid #35415d}.ea-step{display:grid;grid-template-columns:48px 1fr 35px;gap:15px;align-items:center;padding:21px 0;border-bottom:1px solid #35415d}.ea-step-number{font:700 12px Manrope;color:#86a0ff}.ea-step strong{font-size:14px}.ea-step p{font-size:11px;color:#aab4cb;margin:5px 0 0;line-height:1.5}.ea-step-check{color:#86a0ff;font-size:17px;text-align:right}
+.ea-ai-section{padding:100px 5vw}.ea-ai-section-inner{max-width:1150px;margin:auto;display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center}.ea-ai-section .ea-section-heading{text-align:left;margin:0}.ea-ai-prompts{display:flex;flex-wrap:wrap;gap:7px;margin-top:25px}.ea-ai-prompts span{background:#f3f6ff;border:1px solid #e0e7ff;color:#526078;padding:8px 10px;border-radius:20px;font-size:10px;font-weight:600}
+.ea-ai-card{background:#f8faff;border:1px solid #e5eaf2;border-radius:18px;padding:20px;box-shadow:0 15px 40px #10182808}.ea-ai-card-top{display:flex;align-items:center;justify-content:space-between;padding-bottom:14px;border-bottom:1px solid #e5eaf2}.ea-ai-brand{font-size:13px;font-weight:800}.ea-ai-brand i{font-style:normal;color:var(--ea-blue);margin-right:6px}.ea-ai-online{font-size:10px;color:#12a86a;display:flex;align-items:center;gap:5px}.ea-ai-online i{width:6px;height:6px;border-radius:50%;background:#12b76a}
+.ea-ai-chat{display:flex;flex-direction:column;gap:13px;padding:18px 0}.ea-chat-user{align-self:flex-end;background:#3157d5;color:#fff;padding:11px 13px;border-radius:12px 12px 3px 12px;font-size:12px}.ea-chat-answer{display:flex;gap:10px;background:#fff;border:1px solid #e5eaf2;border-radius:12px 12px 12px 3px;padding:14px}.ea-chat-symbol{width:26px;height:26px;background:#edf2ff;color:var(--ea-blue);border-radius:7px;display:grid;place-items:center;flex-shrink:0}.ea-chat-answer strong{font-size:11px}.ea-chat-answer p{font-size:11px;line-height:1.65;color:#667085;margin:6px 0 10px}.ea-chat-insight{display:flex;gap:6px}.ea-chat-insight span{background:#edf2ff;color:var(--ea-blue);padding:5px 7px;border-radius:5px;font-size:8px;font-weight:700}.ea-ai-input{display:flex;justify-content:space-between;align-items:center;border:1px solid #e5eaf2;background:#fff;border-radius:10px;padding:10px 12px;color:#98a2b3;font-size:11px}.ea-ai-input button{border:0;background:var(--ea-blue);color:#fff;width:25px;height:25px;border-radius:7px;font-weight:800}
+.ea-login-section{padding:100px 5vw;background:#f7f9fc;border-top:1px solid var(--ea-line)}.ea-login-grid{max-width:1120px;margin:auto;display:grid;grid-template-columns:1fr .85fr;gap:75px;align-items:center}
+.ea-login-info h2{font:800 clamp(36px,4vw,52px)/1.15 Manrope;letter-spacing:-2px;margin:16px 0}.ea-login-info>p{font-size:15px;color:#667085;line-height:1.7;max-width:450px}.ea-login-benefits{display:flex;flex-direction:column;gap:14px;margin-top:35px}.ea-login-benefits div{display:flex;align-items:center;gap:15px;font-size:13px;font-weight:700}.ea-login-benefits span{font-size:10px;color:var(--ea-blue);background:#edf2ff;padding:7px 9px;border-radius:7px}.ea-login-quote{margin-top:35px;border-left:3px solid var(--ea-blue);padding:12px 15px;color:#667085;font-size:12px;font-style:italic}
+.ea-login-card{background:#fff;border:1px solid #e5eaf2;border-radius:18px;padding:30px;box-shadow:0 20px 50px #1018280a}.ea-login-card-header{display:flex;align-items:center;gap:12px;margin-bottom:22px}.ea-login-icon{width:42px;height:42px;background:#edf2ff;color:var(--ea-blue);border-radius:12px;display:grid;place-items:center;font-size:20px;font-weight:800}.ea-login-card-header h3{font:800 21px Manrope;margin:0}.ea-login-card-header p{font-size:11px;color:#667085;margin:4px 0 0}.ea-not-you{border:0;background:#f8faff;color:var(--ea-blue);font-size:11px;font-weight:700;padding:9px 11px;border-radius:7px;margin-bottom:14px}
+.ea-field{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}.ea-field>span{font-size:11px;font-weight:700;color:#344054}.ea-field input{width:100%;border:1px solid #dce3ef;border-radius:9px;padding:13px 14px;background:#fff;color:var(--ea-ink);font-size:13px;outline:none;transition:.2s}.ea-field input:focus{border-color:#8aa3ff;box-shadow:0 0 0 3px #3157d515}.ea-field input::placeholder{color:#b0b8c5}.ea-password-label{display:flex;justify-content:space-between;align-items:center}.ea-password-label a{color:var(--ea-blue);text-decoration:none;font-size:10px}.ea-password-wrap{display:flex;position:relative}.ea-password-wrap input{padding-right:60px}.ea-password-wrap button{position:absolute;right:10px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:var(--ea-blue);font-size:10px;font-weight:700}.ea-field-error{display:block;color:#d92d20;font-size:10px;margin:-8px 0 12px}.ea-error{display:flex;gap:9px;align-items:center;background:#fff4f2;border:1px solid #fecdca;color:#b42318;border-radius:8px;padding:10px 12px;font-size:11px;margin:0 0 14px}.ea-error span{width:18px;height:18px;display:grid;place-items:center;border-radius:50%;background:#fecdca;font-weight:800}
+.ea-signin-btn{width:100%;border:0;border-radius:9px;background:var(--ea-blue);color:#fff;padding:14px;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 7px 16px #3157d522}.ea-signin-btn:hover:not(:disabled){background:var(--ea-blue-dark)}.ea-signin-btn span{margin-left:5px}.ea-spinner{width:15px;height:15px;border:2px solid #ffffff55;border-top-color:#fff;border-radius:50%;animation:ea-spin .7s linear infinite}@keyframes ea-spin{to{transform:rotate(360deg)}}
+.ea-or{display:flex;align-items:center;gap:12px;margin:18px 0;color:#98a2b3;font-size:10px}.ea-or span{flex:1;height:1px;background:#e5eaf2}.ea-google-btn{width:100%;border:1px solid #dce3ef;background:#fff;border-radius:9px;padding:12px;font-size:12px;font-weight:700;color:#344054;display:flex;justify-content:center;align-items:center;gap:10px}.ea-google-btn:hover{background:#f8faff}.ea-google-mark{font:800 17px Arial;color:#4285f4}.ea-demo-login{width:100%;border:0;background:none;color:var(--ea-blue);font-size:11px;font-weight:700;padding:13px 5px 3px}.ea-login-foot{display:flex;justify-content:center;gap:5px;margin-top:22px;color:#667085;font-size:11px}.ea-login-foot a{color:var(--ea-blue);text-decoration:none;font-weight:700}.ea-login-foot a span{margin-left:4px}
+.ea-footer{background:#111b35;color:#fff;padding:30px 5vw}.ea-footer-inner{max-width:1220px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:25px;flex-wrap:wrap}.ea-brand-footer{color:#fff}.ea-brand-footer .ea-brand-mark{background:#fff;color:var(--ea-blue);box-shadow:none}.ea-brand-footer .ea-brand-copy small{color:#aab4cb}.ea-footer-links{display:flex;flex-wrap:wrap;gap:18px}.ea-footer-links a{color:#aab4cb;font-size:11px}.ea-copyright{font-size:10px;color:#77839b}
+@media(max-width:1050px){.ea-hero-grid{grid-template-columns:1fr;gap:45px}.ea-hero-copy{max-width:780px}.ea-hero-visual{max-width:850px}.ea-workflow-inner,.ea-ai-section-inner,.ea-login-grid{grid-template-columns:1fr;gap:45px}.ea-business-grid{grid-template-columns:repeat(3,1fr)}.ea-login-info{max-width:700px}}
+@media(max-width:800px){.ea-nav-links{display:none}.ea-menu-btn{display:block}.ea-hero{padding:55px 5vw}.ea-hero h1{letter-spacing:-2px}.ea-section,.ea-business-section,.ea-workflow-section,.ea-ai-section,.ea-login-section{padding:70px 5vw}.ea-feature-panel{grid-template-columns:1fr;padding:25px;gap:25px}.ea-business-grid{grid-template-columns:repeat(2,1fr)}.ea-strip-inner{gap:15px}.ea-strip-inner b{font-size:11px}}
+@media(max-width:560px){.ea-nav{height:68px}.ea-brand-copy small{display:none}.ea-nav-cta{padding:10px 12px;font-size:11px}.ea-mobile-menu{top:68px}.ea-hero{padding:45px 5vw}.ea-hero h1{font-size:43px}.ea-hero-description{font-size:15px}.ea-hero-actions{flex-direction:column;align-items:stretch}.ea-primary-btn,.ea-secondary-btn{width:100%}.ea-demo-body{grid-template-columns:1fr}.ea-products{border-right:0;border-bottom:1px solid var(--ea-line)}.ea-product-list{display:grid;grid-template-columns:1fr 1fr}.ea-product{padding:8px;gap:7px}.ea-product-icon{width:28px;height:28px;font-size:14px}.ea-product-price{font-size:10px}.ea-receipt-panel{padding:12px}.ea-section-heading h2{font-size:34px;letter-spacing:-1.5px}.ea-feature-tabs{justify-content:flex-start;overflow-x:auto;flex-wrap:nowrap;padding-bottom:4px}.ea-feature-tabs button{white-space:nowrap}.ea-feature-panel{padding:20px}.ea-feature-copy h3{font-size:26px}.ea-feature-visual{padding:18px;min-height:230px}.ea-stock-row{grid-template-columns:85px 1fr 55px;gap:6px}.ea-business-grid{grid-template-columns:1fr 1fr}.ea-business-card{min-height:85px;padding:13px}.ea-workflow-inner{gap:35px}.ea-step{grid-template-columns:35px 1fr 20px;gap:10px}.ea-login-card{padding:22px}.ea-login-foot{flex-wrap:wrap}.ea-footer-inner{align-items:flex-start;flex-direction:column}.ea-footer-links{gap:12px}.ea-ai-card{padding:14px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation:none!important;transition:none!important}}
 `;
