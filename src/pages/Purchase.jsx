@@ -754,7 +754,7 @@ export default function Purchases() {
 
                                 {due > 0 && (
                                   <Link
-                                    to={`/purchase/${purchase.id}/pay`}
+                                    to={`/purchase/${purchase.id}?payment=1`}
                                     className="pay-button"
                                   >
                                     Pay
@@ -856,7 +856,7 @@ export default function Purchases() {
 
                           {due > 0 && (
                             <Link
-                              to={`/purchase/${purchase.id}/pay`}
+                              to={`/purchase/${purchase.id}?payment=1`}
                               className="purchase-button primary"
                             >
                               Pay now
