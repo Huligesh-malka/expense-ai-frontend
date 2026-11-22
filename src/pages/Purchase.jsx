@@ -1678,33 +1678,55 @@ function PurchaseStyles() {
       .supplier-table-wrapper {
         overflow-x: auto;
         border-top: 1px solid #e5eaf2;
+        scrollbar-width: thin;
+        scrollbar-color: #cbd5e1 transparent;
       }
 
       .supplier-table {
         width: 100%;
-        min-width: 1150px;
+        min-width: 0;
+        table-layout: fixed;
         border-collapse: collapse;
       }
 
       .supplier-table th {
-        padding: 15px 18px;
+        padding: 14px 12px;
         background: #f8fafc;
         text-align: left;
         white-space: nowrap;
         color: #7b879d;
-        font-size: 10px;
+        font-size: 9px;
         font-weight: 800;
         text-transform: uppercase;
-        letter-spacing: .5px;
+        letter-spacing: .45px;
       }
 
       .supplier-table td {
-        padding: 17px 18px;
+        padding: 14px 12px;
         border-bottom: 1px solid #edf0f5;
         color: #475569;
-        font-size: 12px;
-        white-space: nowrap;
+        font-size: 11px;
+        white-space: normal;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
+
+      .supplier-table th:nth-child(1),
+      .supplier-table td:nth-child(1) { width: 112px; }
+      .supplier-table th:nth-child(2),
+      .supplier-table td:nth-child(2) { width: 26%; }
+      .supplier-table th:nth-child(3),
+      .supplier-table td:nth-child(3) { width: 72px; }
+      .supplier-table th:nth-child(4),
+      .supplier-table td:nth-child(4),
+      .supplier-table th:nth-child(5),
+      .supplier-table td:nth-child(5),
+      .supplier-table th:nth-child(6),
+      .supplier-table td:nth-child(6) { width: 13%; }
+      .supplier-table th:nth-child(7),
+      .supplier-table td:nth-child(7) { width: 130px; }
+      .supplier-table th:nth-child(8),
+      .supplier-table td:nth-child(8) { width: 105px; }
 
       .supplier-table tbody tr {
         cursor: pointer;
@@ -1722,8 +1744,21 @@ function PurchaseStyles() {
       .supplier-cell {
         display: flex;
         align-items: center;
-        gap: 11px;
-        min-width: 210px;
+        gap: 10px;
+        min-width: 0;
+      }
+
+      .supplier-name-block {
+        min-width: 0;
+        overflow: hidden;
+      }
+
+      .supplier-name-block strong,
+      .supplier-name-block span,
+      .supplier-name-block small {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
       .supplier-avatar {
@@ -1786,7 +1821,10 @@ function PurchaseStyles() {
 
       .supplier-id-left {
         min-width: 76px;
-        font-size: 12px;
+        padding: 8px 9px;
+        font-size: 11px;
+        background: #eef4ff;
+        border-color: #d8e5ff;
       }
 
       .bill-count {
@@ -1822,15 +1860,19 @@ function PurchaseStyles() {
       .account-button {
         display: inline-flex;
         align-items: center;
-        gap: 7px;
-        padding: 9px 11px;
-        border: 1px solid #e2e8f0;
+        justify-content: center;
+        gap: 6px;
+        width: 100%;
+        padding: 9px 8px;
+        border: 1px solid #dbe4f0;
         border-radius: 9px;
         background: white;
         color: #475569;
-        font-size: 11px;
+        font-size: 10px;
         font-weight: 800;
         cursor: pointer;
+        white-space: nowrap;
+        transition: .18s ease;
       }
 
       .account-button:hover {
@@ -1858,7 +1900,16 @@ function PurchaseStyles() {
       .mobile-supplier-top {
         display: flex;
         align-items: center;
-        justify-content: space-between;
+        gap: 10px;
+        justify-content: flex-start;
+      }
+
+      .mobile-supplier-top .supplier-cell {
+        flex: 1;
+      }
+
+      .mobile-id-badge {
+        flex-shrink: 0;
       }
 
       .mobile-chevron {
@@ -2480,6 +2531,26 @@ function PurchaseStyles() {
         .information-grid {
           grid-template-columns: repeat(2, 1fr);
         }
+      }
+
+      @media (max-width: 1050px) and (min-width: 761px) {
+        .supplier-table th,
+        .supplier-table td {
+          padding: 11px 8px;
+          font-size: 10px;
+        }
+
+        .supplier-table th:nth-child(1),
+        .supplier-table td:nth-child(1) { width: 100px; }
+        .supplier-table th:nth-child(2),
+        .supplier-table td:nth-child(2) { width: 22%; }
+        .supplier-table th:nth-child(7),
+        .supplier-table td:nth-child(7) { width: 112px; }
+        .supplier-table th:nth-child(8),
+        .supplier-table td:nth-child(8) { width: 90px; }
+        .supplier-id-left { min-width: 68px; font-size: 10px; }
+        .supplier-avatar { width: 34px; height: 34px; }
+        .supplier-cell { gap: 7px; }
       }
 
       @media (max-width: 760px) {
